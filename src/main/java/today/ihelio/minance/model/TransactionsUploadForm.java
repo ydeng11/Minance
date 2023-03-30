@@ -3,7 +3,7 @@ package today.ihelio.minance.model;
 import java.io.InputStream;
 import javax.ws.rs.FormParam;
 
-public class FileUploadForm {
+public class TransactionsUploadForm {
 
   @FormParam("file")
   public InputStream file;
@@ -14,4 +14,6 @@ public class FileUploadForm {
   @FormParam("bank")
   public String bank;
 
+  @FormParam("account")
+  public String account;
 }

@@ -4,26 +4,25 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import java.util.Date;
-import java.util.UUID;
+import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.MappedSuperclass;
 import today.ihelio.minance.config.CustomJsonDateDeserializer;
 
-@MappedSuperclass
-public abstract class AbstractTransaction extends PanacheEntityBase {
+@Entity
+public class Transaction extends PanacheEntityBase {
   @Id
-  @GeneratedValue(strategy = GenerationType.AUTO)
-  private UUID id;
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private long id;
+  private long bankId;
+  private long accountId;
   @JsonProperty("Transaction Date")
   @JsonDeserialize(using = CustomJsonDateDeserializer.class)
   private Date transactionDate;
   @JsonDeserialize(using = CustomJsonDateDeserializer.class)
   @JsonProperty("Post Date")
   private Date postDate;
-  @JsonProperty("Bank")
-  private String bank;
   @JsonProperty("Description")
   private String description;
   @JsonProperty("Category")
@@ -35,15 +34,31 @@ public abstract class AbstractTransaction extends PanacheEntityBase {
   @JsonProperty("Memo")
   private String memo;
 
-  public AbstractTransaction() {
+  public Transaction() {
   }
 
-  public UUID getId() {
+  public long getId() {
     return id;
   }
 
-  public void setId(UUID id) {
+  public void setId(long id) {
     this.id = id;
+  }
+
+  public long getBankId() {
+    return bankId;
+  }
+
+  public void setBankId(long bankId) {
+    this.bankId = bankId;
+  }
+
+  public long getAccountId() {
+    return accountId;
+  }
+
+  public void setAccountId(long accountId) {
+    this.accountId = accountId;
   }
 
   public Date getTransactionDate() {
@@ -76,14 +91,6 @@ public abstract class AbstractTransaction extends PanacheEntityBase {
 
   public void setType(String type) {
     this.type = type;
-  }
-
-  public String getBank() {
-    return bank;
-  }
-
-  public void setBank(String bank) {
-    this.bank = bank;
   }
 
   public String getCategory() {
