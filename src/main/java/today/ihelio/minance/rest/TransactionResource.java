@@ -1,52 +1,149 @@
 package today.ihelio.minance.rest;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.MappingIterator;
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import com.fasterxml.jackson.dataformat.csv.CsvSchema;
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
-import javax.transaction.Transactional;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import org.jboss.resteasy.annotations.providers.multipart.MultipartForm;
-import today.ihelio.minance.model.FileUploadForm;
-import today.ihelio.minance.model.ChaseTransaction;
-import today.ihelio.minance.utils.ParseCSV;
+import today.ihelio.minance.model.Account;
+import today.ihelio.minance.model.Bank;
+import today.ihelio.minance.model.Transaction;
+import today.ihelio.minance.model.TransactionsUploadForm;
+import today.ihelio.minance.service.AccountService;
+import today.ihelio.minance.service.BankService;
+import today.ihelio.minance.service.TransactionService;
 
-@Path("/v1/phinance")
+import static javax.ws.rs.core.Response.Status.CREATED;
+
+@Path("/1.0/minance/transaction")
 @RegisterRestClient(baseUri = "http://localhost:8080/")
 public class TransactionResource {
+  @Inject
+  private TransactionService transactionService;
+  @Inject
+  private AccountService accountService;
+  @Inject
+  private BankService bankService;
+
+  private static batchUploadResponse createBatchUploadResponse(List<Boolean> results) {
+    int uploaded = results.size();
+    int created = (int) results.stream().filter(r -> r).count();
+    int duplicated = (int) results.stream().filter(r -> !r).count();
+    return new batchUploadResponse(uploaded, created, duplicated);
+  }
 
   @POST
-  @Path("/upload")
-  @Produces(MediaType.TEXT_PLAIN)
-  public String sendFile(@MultipartForm FileUploadForm form) throws Exception {
+  @Path("/batch_upload")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.MULTIPART_FORM_DATA)
+  public Response uploadTransactions(@MultipartForm TransactionsUploadForm form) throws Exception {
 
     InputStream file = form.file;
 
-    List<ChaseTransaction> dataObjects = ParseCSV.parseChase(file);
+    List<Transaction> transactions = parseTransactions(file);
+    List<Boolean> results = new ArrayList<>();
 
-    for (ChaseTransaction dataObject : dataObjects) {
-      create(dataObject);
+    String bankName = form.bank;
+    String accountName = form.account;
+
+    Bank bank = bankService.findBankByName(bankName);
+    if (bank == null) {
+      return Response.status(Response.Status.BAD_REQUEST).entity("No Bank Found").build();
+    }
+    Account account = accountService.findAccountByBankAndName(bank.id, accountName);
+    if (account == null) {
+      return Response.status(Response.Status.BAD_REQUEST).entity("No Account Found").build();
     }
 
-    return "File uploaded successfully!";
+    results = transactions.stream().map((entity) -> {
+      entity.setBankId(bank.id);
+      entity.setAccountId(account.id);
+      return transactionService.createSingleTransaction(entity);
+    }).collect(Collectors.toList());
+
+    return Response.ok(createBatchUploadResponse(results)).build();
   }
 
-  @Transactional
-  public void create(ChaseTransaction entity) {
-    String query = "transactionDate = ?1 AND postDate = ?2 AND description = ?3 "
-        + "AND amount = ?4 AND bank = ?5";
-    //if (ChaseTransaction.find(query,
-    //    entity.getTransactionDate(),
-    //    entity.getPostDate(),
-    //    entity.getDescription(),
-    //    entity.getAmount(),
-    //    entity.getBank()).firstResult() == null) {
-    //  // the entity doesn't exist, save it
-    //  entity.persist();
-    //}
-    entity.persist();
+  @POST
+  @Path("/create")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response createTransaction(Transaction transaction) {
+    transactionService.createSingleTransaction(transaction);
+    return Response.status(CREATED).entity(transaction).build();
   }
 
+  @PUT
+  @Path("/update/{id}")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response updateTransaction(@PathParam("id") long id, Transaction transaction) {
+    Transaction existingTransaction = transactionService.findTransactionById(id);
+    if (existingTransaction == null) {
+      return Response.status(Response.Status.NOT_FOUND).build();
+    }
+    transactionService.updateTransaction(transaction);
+    return Response.status(Response.Status.OK).entity(existingTransaction).build();
+  }
+
+  @DELETE
+  @Path("/delete/{id}")
+  public Response deleteTransaction(@PathParam("id") long id) {
+    Transaction existingTransaction = transactionService.findTransactionById(id);
+    if (existingTransaction == null) {
+      return Response.status(Response.Status.NOT_FOUND).build();
+    }
+    transactionService.deleteTransaction(existingTransaction);
+    return Response.status(Response.Status.NO_CONTENT).build();
+  }
+
+  private List<Transaction> parseTransactions(InputStream inputStream) throws IOException {
+    CsvMapper csvMapper = new CsvMapper();
+    CsvSchema schema = CsvSchema.builder()
+        .addColumn("Transaction Date")
+        .addColumn("Post Date")
+        .addColumn("Description")
+        .addColumn("Category")
+        .addColumn("Type")
+        .addColumn("Amount")
+        .addColumn("Memo")
+        .setSkipFirstDataRow(true)
+        .setColumnSeparator(',') // specify the delimiter
+        .build();
+
+    MappingIterator<Transaction> mappingIterator = csvMapper
+        .readerWithSchemaFor(Transaction.class).with(schema).readValues(inputStream);
+    return mappingIterator.readAll();
+  }
+
+  public static class batchUploadResponse {
+    @JsonProperty("uploaded")
+    public final int uploaded;
+    @JsonProperty("created")
+    public final int created;
+    @JsonProperty("duplicated")
+    public final int duplicated;
+
+    private batchUploadResponse(int uploaded, int created, int duplicated) {
+      this.uploaded = uploaded;
+      this.created = created;
+      this.duplicated = duplicated;
+    }
+  }
 }
