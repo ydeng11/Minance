@@ -20,8 +20,8 @@ public class Transaction extends PanacheEntityBase {
   @JsonProperty("Transaction Date")
   @JsonDeserialize(using = CustomJsonDateDeserializer.class)
   private Date transactionDate;
-  @JsonDeserialize(using = CustomJsonDateDeserializer.class)
   @JsonProperty("Post Date")
+  @JsonDeserialize(using = CustomJsonDateDeserializer.class)
   private Date postDate;
   @JsonProperty("Description")
   private String description;
