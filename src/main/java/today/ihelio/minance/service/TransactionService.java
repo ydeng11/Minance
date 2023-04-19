@@ -17,11 +17,6 @@ public class TransactionService {
   @Inject TransactionRepository transactionRepository;
 
   @Transactional
-  public void createBatchTransactions(List<Transaction> transactions) {
-    transactionRepository.persist(transactions);
-  }
-
-  @Transactional
   public boolean createSingleTransaction(Transaction transaction) {
     if (!isDuplicate(transaction)) {
       transactionRepository.persist(transaction);
@@ -33,7 +28,7 @@ public class TransactionService {
   @Transactional(REQUIRES_NEW)
   public void updateTransaction(Transaction transaction) {
     Transaction existing = findTransactionById(transaction.getId());
-    existing.setAccountId(transaction.getAccountId());
+    existing.setAccount(transaction.getAccount());
     existing.setDescription(transaction.getDescription());
     existing.setCategory(transaction.getCategory());
     existing.setTransactionDate(transaction.getTransactionDate());
@@ -53,13 +48,11 @@ public class TransactionService {
     return transactionRepository.find("id", id).firstResult();
   }
 
-  @Transactional(SUPPORTS)
   private boolean isDuplicate(Transaction transaction) {
-    String query = "bankId = ?1 AND accountId = ?2 AND transactionDate = ?3 AND postDate = ?4 AND "
-        + "category = ?5 AND description = ?6 AND type = ?7 AND amount = ?8";
+    String query = "account = ?! AND transactionDate = ?2 AND postDate = ?3 AND "
+        + "category = ?4 AND description = ?5 AND type = ?6 AND amount = ?7";
     List<Transaction> duplicates = transactionRepository.list(query,
-        transaction.getBankId(),
-        transaction.getAccountId(),
+        transaction.getAccount(),
         transaction.getTransactionDate(),
         transaction.getPostDate(),
         transaction.getCategory(),

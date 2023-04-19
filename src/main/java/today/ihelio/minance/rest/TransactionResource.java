@@ -7,7 +7,9 @@ import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
@@ -27,6 +29,7 @@ import today.ihelio.minance.model.Transaction;
 import today.ihelio.minance.model.TransactionsUploadForm;
 import today.ihelio.minance.service.AccountService;
 import today.ihelio.minance.service.BankService;
+import today.ihelio.minance.service.CsvSchemaService;
 import today.ihelio.minance.service.TransactionService;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -40,12 +43,28 @@ public class TransactionResource {
   private AccountService accountService;
   @Inject
   private BankService bankService;
+  @Inject
+  private CsvSchemaService csvSchemaService;
 
   private static batchUploadResponse createBatchUploadResponse(List<Boolean> results) {
     int uploaded = results.size();
     int created = (int) results.stream().filter(r -> r).count();
     int duplicated = (int) results.stream().filter(r -> !r).count();
     return new batchUploadResponse(uploaded, created, duplicated);
+  }
+
+  private static List<String> getColumnNamesFromCsv(InputStream inputStream) throws IOException {
+    CsvMapper csvMapper = new CsvMapper();
+    CsvSchema csvSchema = CsvSchema.emptySchema().withHeader();
+    MappingIterator<Map<String, String>> mappingIterator =
+        csvMapper.readerFor(Map.class).with(csvSchema).readValues(inputStream);
+
+    if (mappingIterator.hasNext()) {
+      Map<String, String> firstRow = mappingIterator.next();
+      return new ArrayList<>(firstRow.keySet());
+    } else {
+      return Collections.emptyList();
+    }
   }
 
   @POST
@@ -55,10 +74,6 @@ public class TransactionResource {
   public Response uploadTransactions(@MultipartForm TransactionsUploadForm form) throws Exception {
 
     InputStream file = form.file;
-
-    List<Transaction> transactions = parseTransactions(file);
-    List<Boolean> results = new ArrayList<>();
-
     String bankName = form.bank;
     String accountName = form.account;
 
@@ -70,10 +85,18 @@ public class TransactionResource {
     if (account == null) {
       return Response.status(Response.Status.BAD_REQUEST).entity("No Account Found").build();
     }
+    CsvSchema csvSchema;
+    try {
+      csvSchema = csvSchemaService.getSchema(account);
+    } catch (Exception e) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(e.getMessage()).build();
+    }
 
+    List<Transaction> transactions = parseTransactions(file, csvSchema);
+    List<Boolean> results = new ArrayList<>();
     results = transactions.stream().map((entity) -> {
-      entity.setBankId(bank.id);
-      entity.setAccountId(account.id);
+      entity.setAccount(account);
       return transactionService.createSingleTransaction(entity);
     }).collect(Collectors.toList());
 
@@ -113,22 +136,12 @@ public class TransactionResource {
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 
-  private List<Transaction> parseTransactions(InputStream inputStream) throws IOException {
+  private List<Transaction> parseTransactions(InputStream inputStream,
+      CsvSchema csvSchema)
+      throws IOException {
     CsvMapper csvMapper = new CsvMapper();
-    CsvSchema schema = CsvSchema.builder()
-        .addColumn("Transaction Date")
-        .addColumn("Post Date")
-        .addColumn("Description")
-        .addColumn("Category")
-        .addColumn("Type")
-        .addColumn("Amount")
-        .addColumn("Memo")
-        .setSkipFirstDataRow(true)
-        .setColumnSeparator(',') // specify the delimiter
-        .build();
-
     MappingIterator<Transaction> mappingIterator = csvMapper
-        .readerWithSchemaFor(Transaction.class).with(schema).readValues(inputStream);
+        .readerWithSchemaFor(Transaction.class).with(csvSchema).readValues(inputStream);
     return mappingIterator.readAll();
   }
 

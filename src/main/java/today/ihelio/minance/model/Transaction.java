@@ -4,10 +4,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import java.util.Date;
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.JoinColumn;
+import javax.persistence.ManyToOne;
 import today.ihelio.minance.config.CustomJsonDateDeserializer;
 
 @Entity
@@ -15,13 +19,14 @@ public class Transaction extends PanacheEntityBase {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private long id;
-  private long bankId;
-  private long accountId;
+  @ManyToOne(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER)
+  @JoinColumn(name = "account_id")
+  private Account account;
   @JsonProperty("Transaction Date")
   @JsonDeserialize(using = CustomJsonDateDeserializer.class)
   private Date transactionDate;
-  @JsonDeserialize(using = CustomJsonDateDeserializer.class)
   @JsonProperty("Post Date")
+  @JsonDeserialize(using = CustomJsonDateDeserializer.class)
   private Date postDate;
   @JsonProperty("Description")
   private String description;
@@ -45,20 +50,12 @@ public class Transaction extends PanacheEntityBase {
     this.id = id;
   }
 
-  public long getBankId() {
-    return bankId;
+  public Account getAccount() {
+    return account;
   }
 
-  public void setBankId(long bankId) {
-    this.bankId = bankId;
-  }
-
-  public long getAccountId() {
-    return accountId;
-  }
-
-  public void setAccountId(long accountId) {
-    this.accountId = accountId;
+  public void setAccount(Account account) {
+    this.account = account;
   }
 
   public Date getTransactionDate() {
