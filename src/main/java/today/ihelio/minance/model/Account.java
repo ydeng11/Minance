@@ -8,19 +8,26 @@ import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
+import javax.persistence.Table;
 
 @Entity
+@Table(name = "Account")
 public class Account extends PanacheEntity {
   private String name;
   private long bankId;
   private AccountType type;
   private double balance;
   @JsonIgnore
-  @OneToMany(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER, mappedBy = "account")
+  @OneToMany(cascade = {
+      CascadeType.MERGE}, fetch = FetchType.LAZY, mappedBy = "account", orphanRemoval = true)
   private List<Transaction> transactions;
   @JsonIgnore
   @OneToOne(mappedBy = "account")
   private TransactionCsvSchema transactionCsvSchema;
+
+  public Long getId() {
+    return id;
+  }
 
   public String getName() {
     return name;
@@ -60,6 +67,10 @@ public class Account extends PanacheEntity {
 
   public void setTransactions(List<Transaction> transactions) {
     this.transactions = transactions;
+  }
+
+  public void addTransaction(Transaction transaction) {
+    this.transactions.add(transaction);
   }
 
   public TransactionCsvSchema getTransactionCsvSchema() {
