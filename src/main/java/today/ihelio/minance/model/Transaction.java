@@ -4,34 +4,43 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import java.util.Date;
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
+import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 import today.ihelio.minance.config.CustomJsonDateDeserializer;
 
 @Entity
+@Table(name = "Transaction")
 public class Transaction extends PanacheEntityBase {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private long id;
-  private long bankId;
-  private long accountId;
-  @JsonProperty("Transaction Date")
+  @ManyToOne(cascade = {CascadeType.MERGE}, fetch = FetchType.LAZY)
+  private Account account;
+  @JsonProperty("transaction date")
   @JsonDeserialize(using = CustomJsonDateDeserializer.class)
+  @Temporal(TemporalType.DATE)
   private Date transactionDate;
+  @JsonProperty("post date")
   @JsonDeserialize(using = CustomJsonDateDeserializer.class)
-  @JsonProperty("Post Date")
+  @Temporal(TemporalType.DATE)
   private Date postDate;
-  @JsonProperty("Description")
+  @JsonProperty("description")
   private String description;
-  @JsonProperty("Category")
+  @JsonProperty("category")
   private String category;
-  @JsonProperty("Type")
+  @JsonProperty("type")
   private String type;
-  @JsonProperty("Amount")
+  @JsonProperty("amount")
   private double amount;
-  @JsonProperty("Memo")
+  @JsonProperty("memo")
   private String memo;
 
   public Transaction() {
@@ -45,20 +54,12 @@ public class Transaction extends PanacheEntityBase {
     this.id = id;
   }
 
-  public long getBankId() {
-    return bankId;
+  public Account getAccount() {
+    return account;
   }
 
-  public void setBankId(long bankId) {
-    this.bankId = bankId;
-  }
-
-  public long getAccountId() {
-    return accountId;
-  }
-
-  public void setAccountId(long accountId) {
-    this.accountId = accountId;
+  public void setAccount(Account account) {
+    this.account = account;
   }
 
   public Date getTransactionDate() {

@@ -36,11 +36,18 @@ public class AccountService {
     account.setName(updatedAccount.getName());
     account.setType(updatedAccount.getType());
     account.setBalance(updatedAccount.getBalance());
+    account.setTransactionCsvSchema(updatedAccount.getTransactionCsvSchema());
+    account.setTransactions(updatedAccount.getTransactions());
     accountRepository.persist(account);
   }
 
   @Transactional(SUPPORTS)
   public Account findAccountByBankAndName(Long bankId, String accountName) {
     return accountRepository.find("bankId = ?1 and name = ?2", bankId, accountName).firstResult();
+  }
+
+  @Transactional(SUPPORTS)
+  public Account findAccountById(long accountId) {
+    return accountRepository.findById(accountId);
   }
 }
