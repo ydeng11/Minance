@@ -1,22 +1,25 @@
 package today.ihelio.minance.model;
 
 import io.quarkus.hibernate.orm.panache.PanacheEntity;
-import javax.json.bind.annotation.JsonbTransient;
+import java.util.List;
+import javax.persistence.CascadeType;
 import javax.persistence.Entity;
-import javax.persistence.JoinColumn;
+import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
+import javax.persistence.Table;
+import org.codehaus.jackson.annotate.JsonIgnore;
 
 @Entity
+@Table(name = "TransactionCsvSchema")
 public class TransactionCsvSchema extends PanacheEntity {
   @OneToOne
-  @JoinColumn(name = "accountId")
-  @JsonbTransient
   private Account account;
   private boolean useHeader;
-  private String columnSeparator;
+  private char columnSeparator;
   private boolean skipFirstDataRow;
-  private String
-  private String columnMapping;
+  @OneToMany(mappedBy = "transactionCsvSchema", cascade = CascadeType.ALL, orphanRemoval = true)
+  @JsonIgnore
+  private List<CsvSchemaColumnMapping> csvSchemaColumnMappings;
 
   public TransactionCsvSchema() {
   }
@@ -26,7 +29,7 @@ public class TransactionCsvSchema extends PanacheEntity {
     this.useHeader = builder.useHeader;
     this.columnSeparator = builder.columnSeparator;
     this.skipFirstDataRow = builder.skipFirstDataRow;
-    this.columnMapping = builder.columnMapping;
+    this.csvSchemaColumnMappings = builder.csvSchemaColumnMappings;
   }
 
   public boolean isUseHeader() {
@@ -37,11 +40,11 @@ public class TransactionCsvSchema extends PanacheEntity {
     this.useHeader = useHeader;
   }
 
-  public String getColumnSeparator() {
+  public char getColumnSeparator() {
     return columnSeparator;
   }
 
-  public void setColumnSeparator(String columnSeparator) {
+  public void setColumnSeparator(char columnSeparator) {
     this.columnSeparator = columnSeparator;
   }
 
@@ -61,20 +64,12 @@ public class TransactionCsvSchema extends PanacheEntity {
     this.account = account;
   }
 
-  public String getColumnMapping() {
-    return columnMapping;
-  }
-
-  public void setColumnMapping(String columnMapping) {
-    this.columnMapping = columnMapping;
-  }
-
   public static class Builder {
     private Account account;
     private boolean useHeader = true;
-    private String columnSeparator = ",";
+    private char columnSeparator = ',';
     private boolean skipFirstDataRow = false;
-    private String columnMapping;
+    private List<CsvSchemaColumnMapping> csvSchemaColumnMappings;
 
     public Builder() {
     }
@@ -89,7 +84,7 @@ public class TransactionCsvSchema extends PanacheEntity {
       return this;
     }
 
-    public Builder columnSeparator(String columnSeparator) {
+    public Builder columnSeparator(char columnSeparator) {
       this.columnSeparator = columnSeparator;
       return this;
     }
@@ -99,8 +94,8 @@ public class TransactionCsvSchema extends PanacheEntity {
       return this;
     }
 
-    public Builder columnMapping(String columnMapping) {
-      this.columnMapping = columnMapping;
+    public Builder withColumnMapping(List<CsvSchemaColumnMapping> csvSchemaColumnMappings) {
+      this.csvSchemaColumnMappings = csvSchemaColumnMappings;
       return this;
     }
 

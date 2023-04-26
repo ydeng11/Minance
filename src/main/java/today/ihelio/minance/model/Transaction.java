@@ -10,33 +10,37 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
 import today.ihelio.minance.config.CustomJsonDateDeserializer;
 
 @Entity
+@Table(name = "Transaction")
 public class Transaction extends PanacheEntityBase {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private long id;
-  @ManyToOne(cascade = {CascadeType.ALL}, fetch = FetchType.EAGER)
-  @JoinColumn(name = "account_id")
+  @ManyToOne(cascade = {CascadeType.MERGE}, fetch = FetchType.LAZY)
   private Account account;
-  @JsonProperty("Transaction Date")
+  @JsonProperty("transaction date")
   @JsonDeserialize(using = CustomJsonDateDeserializer.class)
+  @Temporal(TemporalType.DATE)
   private Date transactionDate;
-  @JsonProperty("Post Date")
+  @JsonProperty("post date")
   @JsonDeserialize(using = CustomJsonDateDeserializer.class)
+  @Temporal(TemporalType.DATE)
   private Date postDate;
-  @JsonProperty("Description")
+  @JsonProperty("description")
   private String description;
-  @JsonProperty("Category")
+  @JsonProperty("category")
   private String category;
-  @JsonProperty("Type")
+  @JsonProperty("type")
   private String type;
-  @JsonProperty("Amount")
+  @JsonProperty("amount")
   private double amount;
-  @JsonProperty("Memo")
+  @JsonProperty("memo")
   private String memo;
 
   public Transaction() {
