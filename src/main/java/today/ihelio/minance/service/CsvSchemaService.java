@@ -3,24 +3,24 @@ package today.ihelio.minance.service;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import javax.persistence.EntityNotFoundException;
 import javax.transaction.Transactional;
 import today.ihelio.minance.model.Account;
+import today.ihelio.minance.model.CsvSchemaColumnMapping;
 import today.ihelio.minance.model.TransactionCsvSchema;
+import today.ihelio.minance.repository.CsvSchemaColumnMappingRepository;
 import today.ihelio.minance.repository.CsvSchemaRepository;
 
 import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
-import static today.ihelio.minance.rest.CsvSchemaResource.deserializeColumns;
 
 @Singleton
 @Transactional
 public class CsvSchemaService {
   private final CsvSchemaRepository csvSchemaRepository;
-  private final Map<Account, CsvSchema> schemaMap;
+  private final CsvSchemaColumnMappingRepository csvSchemaColumnMappingRepository;
   Function<String, CsvSchema.ColumnType> mapColumnType = type -> {
     switch (type.toLowerCase()) {
       case "string":
@@ -35,9 +35,10 @@ public class CsvSchemaService {
   };
 
   @Inject
-  public CsvSchemaService(CsvSchemaRepository csvSchemaRepository) {
+  public CsvSchemaService(CsvSchemaRepository csvSchemaRepository,
+      CsvSchemaColumnMappingRepository csvSchemaColumnMappingRepository) {
     this.csvSchemaRepository = csvSchemaRepository;
-    this.schemaMap = new ConcurrentHashMap<>();
+    this.csvSchemaColumnMappingRepository = csvSchemaColumnMappingRepository;
   }
 
   @Transactional
@@ -54,9 +55,8 @@ public class CsvSchemaService {
   @Transactional(REQUIRES_NEW)
   public void updateSchema(TransactionCsvSchema updatedSchema) {
     csvSchemaRepository.update(
-        "columnNames = ?1, columnSeparator = ?2, dataTypes = ?3, skipFirstDataRow = ?4, useHeader = ?5 where id = ?6",
-        updatedSchema.getColumnNames(), updatedSchema.getColumnSeparator(),
-        updatedSchema.getDataTypes(), updatedSchema.isSkipFirstDataRow(),
+        "columnSeparator = ?1, skipFirstDataRow = ?2, useHeader = ?3 where id = ?4",
+        updatedSchema.getColumnSeparator(), updatedSchema.isSkipFirstDataRow(),
         updatedSchema.isUseHeader(), updatedSchema.id);
   }
 
@@ -71,38 +71,46 @@ public class CsvSchemaService {
         .firstResult();
   }
 
-  public CsvSchema getSchema(Account account) {
-    if (account == null) {
-      throw new IllegalArgumentException("Customer object cannot be null");
+  @Transactional
+  public Map<String, String> findSchemaColumnMapping(TransactionCsvSchema transactionCsvSchema) {
+    List<CsvSchemaColumnMapping> csvSchemaMappings = csvSchemaColumnMappingRepository.
+        list("transactionCsvSchema_id = ?1", transactionCsvSchema.id);
+    Map<String, String> columnMapper = csvSchemaMappings.stream()
+        .collect(
+            Collectors.toMap(CsvSchemaColumnMapping::getColumnName,
+                CsvSchemaColumnMapping::getMappedName));
+    return columnMapper;
+  }
+
+  @Transactional
+  public void saveSchemaColumnMapping(TransactionCsvSchema transactionCsvSchema,
+      Map<String, String> columnMapping) {
+    for (Map.Entry<String, String> item : columnMapping.entrySet()) {
+      CsvSchemaColumnMapping csvSchemaMapping = new CsvSchemaColumnMapping();
+      csvSchemaMapping.setTransactionCsvSchema(transactionCsvSchema);
+      csvSchemaMapping.setColumnName(item.getKey());
+      csvSchemaMapping.setMappedName(item.getValue());
+      csvSchemaColumnMappingRepository.persist(csvSchemaMapping);
     }
-    if (!schemaMap.containsKey(account)) {
-      TransactionCsvSchema transactionCsvSchema = findSchemaByAccount(account);
-      if (transactionCsvSchema == null) {
-        throw new EntityNotFoundException("Schema for account " + account.getName() + " from bank "
-            + account.getBankId() + " not found");
-      }
+  }
 
-      List<String> columnNames = deserializeColumns(transactionCsvSchema.getColumnNames());
-      List<String> mappedColumns = deserializeColumns(transactionCsvSchema.getMappedColumns());
+  @Transactional
+  public void deleteSchemaColumnMapping(TransactionCsvSchema transactionCsvSchema) {
+    csvSchemaColumnMappingRepository.delete("transactionCsvSchema_id",
+        transactionCsvSchema.id);
+  }
 
-      CsvSchema.Builder csvSchemaBuilder = CsvSchema.builder();
+  public CsvSchema buildCsvSchema(TransactionCsvSchema transactionCsvSchema,
+      List<String> columnNames, Map<String, String> columnMapper) {
+    CsvSchema.Builder csvSchemaBuilder = CsvSchema.builder().
+        setUseHeader(transactionCsvSchema.isUseHeader()).
+        setColumnSeparator(transactionCsvSchema.getColumnSeparator()).
+        setSkipFirstDataRow(transactionCsvSchema.isSkipFirstDataRow());
 
-      for (int i = 0; i < columnNames.size(); i++) {
-        csvSchemaBuilder.addColumn(columnNames.get(i));
-      }
-      CsvSchema csvSchema =
-          csvSchemaBuilder.setSkipFirstDataRow(transactionCsvSchema.isSkipFirstDataRow())
-              .setColumnSeparator(transactionCsvSchema.getColumnSeparator().charAt(0))
-              .setUseHeader(transactionCsvSchema.isUseHeader())// specify the delimiter
-              .build();
-
-      if (mappedColumns.size() != 0) {
-
-      }
-
-      schemaMap.put(account, csvSchema);
+    for (String column : columnNames) {
+      csvSchemaBuilder.addColumn(columnMapper.get(column.toLowerCase()));
     }
 
-    return schemaMap.get(account);
+    return csvSchemaBuilder.build();
   }
 }

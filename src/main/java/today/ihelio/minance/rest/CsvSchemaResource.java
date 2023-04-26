@@ -1,10 +1,11 @@
 package today.ihelio.minance.rest;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.smallrye.common.constraint.Nullable;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -31,12 +32,22 @@ public class CsvSchemaResource {
   @Inject AccountService accountService;
   @Inject BankService bankService;
 
-  public static String serializeColumns(List<String> columns) {
-    return String.join(",", columns);
+  public static List<String> deserializeColumns(String columns) {
+    return Arrays.stream(columns.split(",")).map(x -> x.trim()).collect(Collectors.toList());
   }
 
-  public static List<String> deserializeColumns(String columns) {
-    return Arrays.asList(columns.split(","));
+  private Map<String, String> convertToMap(List<String> keys, List<String> values) {
+    Map<String, String> columnMapping = new HashMap<>();
+    if (keys.size() != values.size()) {
+      Response.status(Response.Status.BAD_REQUEST)
+          .entity("The size of column names must be equal to the size of mapped names")
+          .build();
+    }
+
+    for (int i = 0; i < keys.size(); i++) {
+      columnMapping.put(keys.get(i), values.get(i));
+    }
+    return columnMapping;
   }
 
   @POST
@@ -46,10 +57,11 @@ public class CsvSchemaResource {
   public Response createSchema(
       @FormParam("bankName") String bankName,
       @FormParam("accountName") String accountName,
-      @FormParam("useHeader") boolean useHeader,
-      @FormParam("columnSeparator") String columnSeparator,
-      @FormParam("skipFirstDataRow") boolean skipFirstDataRow,
-      @FormParam("columnMapping") Map<String, String> columnMapping) {
+      @Nullable @FormParam("useHeader") boolean useHeader,
+      @Nullable @FormParam("columnSeparator") char columnSeparator,
+      @Nullable @FormParam("skipFirstDataRow") boolean skipFirstDataRow,
+      @FormParam("columnNames") String columnNames,
+      @FormParam("mappedNames") String mappedNames) {
 
     Bank bank = bankService.findBankByName(bankName);
     if (bank == null) {
@@ -60,33 +72,21 @@ public class CsvSchemaResource {
       return Response.status(404).entity("Account not found").build();
     }
 
-    ObjectMapper mapper = new ObjectMapper();
-    String jsonString;
-
-    try {
-      jsonString = mapper.writeValueAsString(columnMapping);
-    } catch (JsonProcessingException e) {
-      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-          .entity(e.getMessage())
-          .build();
-    }
+    Map<String, String> columnMapping =
+        convertToMap(deserializeColumns(columnNames), deserializeColumns(mappedNames));
 
     TransactionCsvSchema transactionCsvSchema = new TransactionCsvSchema.Builder()
         .withAccount(account)
         .useHeader(useHeader)
         .skipFirstDataRow(skipFirstDataRow)
         .columnSeparator(columnSeparator)
-        .columnMapping(jsonString)
         .build();
-
     account.setTransactionCsvSchema(transactionCsvSchema);
+    csvSchemaService.createSchema(transactionCsvSchema);
+    csvSchemaService.saveSchemaColumnMapping(transactionCsvSchema, columnMapping);
 
-    if (csvSchemaService.createSchema(transactionCsvSchema)) {
-      return Response.status(Response.Status.CREATED)
-          .entity(transactionCsvSchema)
-          .build();
-    }
-    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+    return Response.status(Response.Status.CREATED)
+        .entity(transactionCsvSchema)
         .build();
   }
 
@@ -95,12 +95,11 @@ public class CsvSchemaResource {
   @Produces(MediaType.APPLICATION_JSON)
   @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
   public Response updateSchema(@PathParam("id") Long id,
-      @FormParam("accountId") Long accountId,
-      @FormParam("useHeader") boolean useHeader,
-      @FormParam("columnSeparator") String columnSeparator,
-      @FormParam("skipFirstDataRow") boolean skipFirstDataRow,
-      @FormParam("columnNames") List<String> columnNames,
-      @FormParam("mappedColumns") List<String> mappedColumns) {
+      @Nullable @FormParam("useHeader") boolean useHeader,
+      @Nullable @FormParam("columnSeparator") char columnSeparator,
+      @Nullable @FormParam("skipFirstDataRow") boolean skipFirstDataRow,
+      @FormParam("columnNames") String columnNames,
+      @FormParam("mappedNames") String mappedNames) {
 
     TransactionCsvSchema schema = csvSchemaService.findSchemaById(id);
     if (schema == null) {
@@ -109,17 +108,18 @@ public class CsvSchemaResource {
           .build();
     }
 
-    Account account = accountService.findAccountById(accountId);
-    if (account == null) {
-      return Response.status(Response.Status.NOT_FOUND).entity("Account not found").build();
-    }
+    Map<String, String> columnMapping =
+        convertToMap(deserializeColumns(columnNames), deserializeColumns(mappedNames));
+
+    csvSchemaService.deleteSchemaColumnMapping(schema);
 
     schema.setUseHeader(useHeader);
     schema.setSkipFirstDataRow(skipFirstDataRow);
     schema.setColumnSeparator(columnSeparator);
-    schema.set(mappedColumns);
 
     csvSchemaService.updateSchema(schema);
+
+    csvSchemaService.saveSchemaColumnMapping(schema, columnMapping);
 
     return Response.status(Response.Status.OK).entity(schema).build();
   }
