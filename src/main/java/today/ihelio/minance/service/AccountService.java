@@ -1,53 +1,95 @@
 package today.ihelio.minance.service;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import javax.transaction.Transactional;
-import today.ihelio.minance.model.Account;
-import today.ihelio.minance.repository.AccountRepository;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.NotFoundException;
+import java.util.List;
+import org.jooq.DSLContext;
+import org.jooq.exception.DataAccessException;
+import today.ihelio.jooq.tables.pojos.Accounts;
+import today.ihelio.jooq.tables.pojos.Banks;
+import today.ihelio.minance.exception.CustomException;
 
-import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
-import static javax.transaction.Transactional.TxType.SUPPORTS;
+import static today.ihelio.jooq.Tables.ACCOUNTS;
 
-@Singleton
-@Transactional
+@ApplicationScoped
 public class AccountService {
-  @Inject AccountRepository accountRepository;
+  private final DSLContext dslContext;
+  private final BankService bankService;
 
-  // Create account
-  @Transactional
-  public void creatAccount(Account account) {
-    accountRepository.persist(account);
+  @Inject
+  public AccountService(DSLContext dslContext, BankService bankService) {
+    this.dslContext = dslContext;
+    this.bankService = bankService;
   }
 
-  // Delete account by id
-  @Transactional
-  public void deleteAccount(long id) {
-    accountRepository.deleteById(id);
-  }
-
-  // Update account by id
-  @Transactional(REQUIRES_NEW)
-  public void updateAccount(long id, Account updatedAccount) {
-    Account account = accountRepository.findById(id);
-    if (account == null) {
-      throw new IllegalArgumentException("Account not found");
+  public int create(Accounts account) throws DataAccessException, CustomException {
+    Banks banks = bankService.findBankByName(account.getBankName());
+    if (banks == null) {
+      throw new CustomException(new NotFoundException("bank not found"));
     }
-    account.setName(updatedAccount.getName());
-    account.setType(updatedAccount.getType());
-    account.setBalance(updatedAccount.getBalance());
-    account.setTransactionCsvSchema(updatedAccount.getTransactionCsvSchema());
-    account.setTransactions(updatedAccount.getTransactions());
-    accountRepository.persist(account);
+    return dslContext.insertInto(ACCOUNTS, ACCOUNTS.BANK_ID, ACCOUNTS.BANK_NAME,
+            ACCOUNTS.ACCOUNT_NAME, ACCOUNTS.ACCOUNT_TYPE)
+        .values(banks.getBankId(), account.getBankName(), account.getAccountName(),
+            account.getAccountType())
+        .onDuplicateKeyIgnore()
+        .execute();
   }
 
-  @Transactional(SUPPORTS)
-  public Account findAccountByBankAndName(Long bankId, String accountName) {
-    return accountRepository.find("bankId = ?1 and name = ?2", bankId, accountName).firstResult();
+  public int update(Accounts accounts) throws DataAccessException {
+    return dslContext.update(ACCOUNTS)
+        .set(ACCOUNTS.BANK_ID, accounts.getBankId())
+        .set(ACCOUNTS.BANK_NAME, accounts.getBankName())
+        .set(ACCOUNTS.ACCOUNT_NAME, accounts.getAccountName())
+        .set(ACCOUNTS.ACCOUNT_TYPE, accounts.getAccountType())
+        .where(ACCOUNTS.ACCOUNT_ID.eq(accounts.getAccountId()))
+        .execute();
   }
 
-  @Transactional(SUPPORTS)
-  public Account findAccountById(long accountId) {
-    return accountRepository.findById(accountId);
+  public int delete(int accountId) throws DataAccessException {
+    return dslContext.delete(ACCOUNTS).where(ACCOUNTS.ACCOUNT_ID.eq(accountId)).execute();
+  }
+
+  public Accounts retrieve(int accountId) throws DataAccessException, IllegalStateException {
+    return dslContext
+        .select(ACCOUNTS)
+        .from(ACCOUNTS)
+        .where(ACCOUNTS.ACCOUNT_ID.eq(accountId))
+        .fetchOne().into(Accounts.class);
+  }
+
+  public List<Accounts> retrieveAll() throws IllegalStateException {
+    return dslContext.select(ACCOUNTS)
+        .from(ACCOUNTS)
+        .where(ACCOUNTS.ACCOUNT_NAME.isNotNull())
+        .orderBy(ACCOUNTS.ACCOUNT_ID)
+        .fetchInto(Accounts.class);
+  }
+
+  public Accounts findAccountByBankAndAccountName(String bankName, String accountName)
+      throws DataAccessException {
+    Banks banks = bankService.findBankByName(bankName);
+    return dslContext
+        .select(ACCOUNTS)
+        .from(ACCOUNTS)
+        .where(ACCOUNTS.BANK_ID.eq(banks.getBankId()).and(ACCOUNTS.ACCOUNT_NAME.eq(accountName)))
+        .fetchOne().into(Accounts.class);
+  }
+
+  public Object retrieveAccountsByBank(String bankName) {
+    Banks banks = bankService.findBankByName(bankName);
+    return dslContext
+        .select(ACCOUNTS)
+        .from(ACCOUNTS)
+        .where(ACCOUNTS.BANK_ID.eq(banks.getBankId()))
+        .orderBy(ACCOUNTS.ACCOUNT_ID)
+        .fetchInto(Accounts.class);
+  }
+
+  public int delete(String bankName, String accountName) {
+    Banks banks = bankService.findBankByName(bankName);
+    return dslContext.delete(ACCOUNTS)
+        .where(ACCOUNTS.ACCOUNT_NAME.eq(accountName)).and(ACCOUNTS.BANK_ID.eq(banks.getBankId()))
+        .execute();
   }
 }
