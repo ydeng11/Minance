@@ -1,88 +1,89 @@
 package today.ihelio.minance.rest;
 
-import javax.inject.Inject;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
-import org.jboss.resteasy.annotations.jaxrs.FormParam;
-import today.ihelio.minance.model.Account;
-import today.ihelio.minance.model.Bank;
+import today.ihelio.jooq.tables.pojos.Accounts;
+import today.ihelio.minance.exception.CustomException;
+import today.ihelio.minance.exception.RecordAlreadyExistingException;
 import today.ihelio.minance.service.AccountService;
 import today.ihelio.minance.service.BankService;
 
 @Path("/1.0/minance/account")
 @RegisterRestClient(baseUri = "http://localhost:8080/")
+@Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
+@ApplicationScoped
 public class AccountResource {
+  private final AccountService accountService;
+  private final BankService bankService;
+
   @Inject
-  private AccountService accountService;
-  @Inject
-  private BankService bankService;
+  public AccountResource(AccountService accountService, BankService bankService) {
+    this.accountService = accountService;
+    this.bankService = bankService;
+  }
 
   @POST
   @Path("/create")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
-  public Response createAccount(
-      @FormParam("name") String name,
-      @FormParam("bank") String bankName,
-      @FormParam("type") Account.AccountType type,
-      @FormParam("balance") double balance) {
-
-    Account account = new Account();
-    account.setName(name);
-    account.setType(type);
-    account.setBalance(balance);
-
-    Bank bank = bankService.findBankByName(bankName);
-    if (bank == null) {
-      bank = bankService.creatBank(bankName);
+  public Response createAccount(Accounts accounts) throws CustomException {
+    try {
+      if (accountService.create(accounts) == 0) {
+        throw new RecordAlreadyExistingException("account already exited");
+      }
+    } catch (Exception e) {
+      CustomException customException = new CustomException(e);
+      throw customException;
     }
-    if (accountService.findAccountByBankAndName(bank.id, account.getName()) != null) {
-      return Response.status(Response.Status.CONFLICT)
-          .entity("Record already exists")
-          .build();
-    }
-
-    account.setBankId(bank.id);
-
-    accountService.creatAccount(account);
-
     return Response.status(Response.Status.CREATED)
-        .entity(account)
+        .entity(accounts)
         .build();
   }
 
   @PUT
-  @Path("/update/{id}")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Consumes(MediaType.APPLICATION_JSON)
-  public Response updateAccount(@PathParam("id") long id, Account updatedAccount) {
-    accountService.updateAccount(id, updatedAccount);
+  @Path("/update")
+  public Response updateAccount(Accounts updatedAccount) throws CustomException {
+    if (accountService.update(updatedAccount) == 0) {
+      throw new CustomException(
+          new IllegalStateException("account not found, please create this account instead!"));
+    }
     return Response.ok(updatedAccount).build();
   }
 
   @DELETE
-  @Path("/delete/{id}")
-  public Response deleteAccount(@PathParam("id") long id) {
-    accountService.deleteAccount(id);
-    return Response.noContent().build();
+  @Path("/delete/{bank_name}/{account_name}")
+  public Response deleteAccount(@PathParam("bank_name") String bankName,
+      @PathParam("account_name") String accountName) throws CustomException {
+    if (accountService.delete(bankName, accountName) == 0) {
+      CustomException customException = new CustomException(
+          new IllegalStateException("account not found, please create this account instead!"));
+      throw customException;
+    }
+    return Response.status(Response.Status.OK).build();
   }
 
   @GET
-  @Path("/bankid={bankId}&account_name={accountName}")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Consumes(MediaType.APPLICATION_JSON)
-  public Response findAccountByBankIdAndAccountName(@PathParam("bankId") long id,
-      @PathParam("accountName") String accountName) {
-    Account account = accountService.findAccountByBankAndName(id, accountName);
-    return Response.ok(account).build();
+  @Path("/retrieveAll")
+  public Response retrieveAll() throws CustomException {
+    return Response.status(Response.Status.OK).entity(accountService.retrieveAll()).build();
+  }
+
+  @GET
+  @Path("/retrieveAccounts/{bank_name}")
+  public Response retrieveAccountsByBank(@PathParam("bank_name") String bankName)
+      throws CustomException {
+    return Response.status(Response.Status.OK)
+        .entity(accountService.retrieveAccountsByBank(bankName))
+        .build();
   }
 }
