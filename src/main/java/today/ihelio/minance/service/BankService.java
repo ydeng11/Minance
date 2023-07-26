@@ -1,48 +1,60 @@
 package today.ihelio.minance.service;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import javax.transaction.Transactional;
-import today.ihelio.minance.model.Bank;
-import today.ihelio.minance.repository.BankRepository;
+import jakarta.enterprise.context.ApplicationScoped;
+import java.util.List;
+import org.jooq.DSLContext;
+import today.ihelio.jooq.tables.pojos.Banks;
 
-import static javax.transaction.Transactional.TxType.REQUIRED;
-import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
-import static javax.transaction.Transactional.TxType.SUPPORTS;
+import static today.ihelio.jooq.Tables.BANKS;
 
-@Singleton
-@Transactional(REQUIRED)
+@ApplicationScoped
 public class BankService {
-  @Inject BankRepository bankRepository;
+  private final DSLContext dslContext;
 
-  @Transactional
-  public Bank creatBank(String bankName) {
-    Bank bank = new Bank();
-    bank.setName(bankName);
-    bankRepository.persist(bank);
-    return bank;
+  public BankService(DSLContext dslContext) {
+    this.dslContext = dslContext;
   }
 
-  @Transactional
-  public void deleteBank(Bank bank) {
-    bankRepository.delete(bank);
+  public int create(Banks bank) {
+    return dslContext.insertInto(BANKS, BANKS.BANK_NAME)
+        .values(bank.getBankName())
+        .onDuplicateKeyIgnore()
+        .execute();
   }
 
-  @Transactional(REQUIRES_NEW)
-  public Bank updateBank(Bank bank) {
-    Bank existing = bankRepository.findById(bank.id);
-    existing.setName(bank.getName());
-    existing.persist();
-    return existing;
+  public int delete(String bankName) {
+    return dslContext.delete(BANKS).where(BANKS.BANK_NAME.eq(bankName)).execute();
   }
 
-  @Transactional(SUPPORTS)
-  public Bank findBankById(long bankId) {
-    return bankRepository.findById(bankId);
+  public int update(Banks banks) {
+    return dslContext.update(BANKS)
+        .set(BANKS.BANK_NAME, banks.getBankName())
+        .where(BANKS.BANK_ID.eq(banks.getBankId()))
+        .execute();
   }
 
-  @Transactional(SUPPORTS)
-  public Bank findBankByName(String name) {
-    return bankRepository.find("name", name).firstResult();
+  public Banks retrieve(int bankId) throws IllegalStateException {
+    return dslContext.select(BANKS)
+        .from(BANKS)
+        .where(BANKS.BANK_ID.eq(bankId))
+        .fetchOne()
+        .into(Banks.class);
+  }
+
+  public List<Banks> retrieveAll() throws IllegalStateException {
+    return dslContext.select(BANKS)
+        .from(BANKS)
+        .where(BANKS.BANK_NAME.isNotNull())
+        .orderBy(BANKS.BANK_ID)
+        .fetchInto(Banks.class);
+  }
+
+  public Banks findBankByName(String bankName) {
+    return
+        dslContext.select(BANKS)
+            .from(BANKS)
+            .where(BANKS.BANK_NAME.eq(bankName))
+            .fetchOne()
+            .into(Banks.class);
   }
 }

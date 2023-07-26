@@ -1,9 +1,0 @@
-package today.ihelio.minance.repository;
-
-import io.quarkus.hibernate.orm.panache.PanacheRepository;
-import javax.inject.Singleton;
-import today.ihelio.minance.model.CsvSchemaColumnMapping;
-
-@Singleton
-public class CsvSchemaColumnMappingRepository implements PanacheRepository<CsvSchemaColumnMapping> {
-}

@@ -1,117 +1,111 @@
 package today.ihelio.minance.service;
 
-import com.google.common.annotations.VisibleForTesting;
-import io.smallrye.common.constraint.Nullable;
-import java.text.SimpleDateFormat;
+import com.google.common.collect.ImmutableList;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.NotFoundException;
+import java.time.LocalDate;
 import java.util.List;
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import javax.transaction.Transactional;
-import today.ihelio.minance.model.Transaction;
-import today.ihelio.minance.repository.TransactionRepository;
+import java.util.stream.Collectors;
+import org.jooq.DSLContext;
+import org.jooq.Field;
+import org.jooq.Record10;
+import today.ihelio.jooq.tables.pojos.Transactions;
+import today.ihelio.jooq.tables.records.TransactionsRecord;
+import today.ihelio.minance.exception.CustomException;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static javax.transaction.Transactional.TxType.REQUIRED;
-import static javax.transaction.Transactional.TxType.REQUIRES_NEW;
-import static javax.transaction.Transactional.TxType.SUPPORTS;
+import static today.ihelio.jooq.Tables.TRANSACTIONS;
 
-@Singleton
-@Transactional(REQUIRED)
+@ApplicationScoped
 public class TransactionService {
-  @Inject TransactionRepository transactionRepository;
+  public static final List<Field<?>> INSERTABLE_FIELDS = ImmutableList.of(TRANSACTIONS.ACCOUNT_ID,
+      TRANSACTIONS.CATEGORY,
+      TRANSACTIONS.DESCRIPTION,
+      TRANSACTIONS.TRANSACTION_TYPE,
+      TRANSACTIONS.TRANSACTION_DATE,
+      TRANSACTIONS.POST_DATE,
+      TRANSACTIONS.MEMO,
+      TRANSACTIONS.AMOUNT,
+      TRANSACTIONS.BANK_NAME,
+      TRANSACTIONS.ACCOUNT_NAME);
+  DSLContext dslContext;
 
-  @Transactional
-  public boolean createSingleTransaction(Transaction transaction) {
-    if (!isDuplicate(transaction)) {
-      transactionRepository.persist(transaction);
-      return true;
+  @Inject
+  public TransactionService(DSLContext dslContext) {
+    this.dslContext = dslContext;
+  }
+
+  public int create(List<Transactions> transactionsList) {
+    return dslContext.insertInto(TRANSACTIONS, INSERTABLE_FIELDS)
+        .valuesOfRecords(transactionsList.stream().map(t -> {
+          TransactionsRecord r = new TransactionsRecord(t);
+          return r.into(TRANSACTIONS.ACCOUNT_ID,
+              TRANSACTIONS.CATEGORY,
+              TRANSACTIONS.DESCRIPTION,
+              TRANSACTIONS.TRANSACTION_TYPE,
+              TRANSACTIONS.TRANSACTION_DATE,
+              TRANSACTIONS.POST_DATE,
+              TRANSACTIONS.MEMO,
+              TRANSACTIONS.AMOUNT,
+              TRANSACTIONS.BANK_NAME,
+              TRANSACTIONS.ACCOUNT_NAME);
+        }).collect(Collectors.toList()))
+        .onDuplicateKeyUpdate()
+        .set(TRANSACTIONS.IS_DUPLICATE, "Y")
+        .execute();
+  }
+
+  public int update(Transactions transactions) throws CustomException {
+    if (retrieve(transactions.getTransactionId()) == null) {
+      throw new CustomException(new NotFoundException("transaction not found"));
     }
-    return false;
+    return dslContext.update(TRANSACTIONS)
+        .set(TRANSACTIONS.ACCOUNT_ID, transactions.getAccountId())
+        .set(TRANSACTIONS.ACCOUNT_NAME, transactions.getAccountName())
+        .set(TRANSACTIONS.BANK_NAME, transactions.getBankName())
+        .set(TRANSACTIONS.DESCRIPTION, transactions.getDescription())
+        .set(TRANSACTIONS.CATEGORY, transactions.getCategory())
+        .set(TRANSACTIONS.TRANSACTION_TYPE, transactions.getTransactionType())
+        .set(TRANSACTIONS.MEMO, transactions.getMemo())
+        .set(TRANSACTIONS.POST_DATE, transactions.getPostDate())
+        .set(TRANSACTIONS.TRANSACTION_DATE, transactions.getTransactionDate())
+        .set(TRANSACTIONS.AMOUNT, transactions.getAmount())
+        .where(TRANSACTIONS.TRANSACTION_ID.eq(transactions.getTransactionId()))
+        .execute();
   }
 
-  @Transactional(REQUIRES_NEW)
-  public void updateTransaction(Transaction transaction) {
-    transactionRepository.update(TransactionQueryBuilder.buildUpdateQuery(transaction));
+  public int delete(List<Integer> transactionIds) {
+    return dslContext.delete(TRANSACTIONS)
+        .where(TRANSACTIONS.TRANSACTION_ID.in(transactionIds))
+        .execute();
   }
 
-  @Transactional
-  public void deleteTransaction(Transaction transaction) {
-    transactionRepository.delete(transaction);
+  public Transactions retrieve(int transactionId) {
+    return dslContext.select(TRANSACTIONS)
+        .from(TRANSACTIONS)
+        .where(TRANSACTIONS.TRANSACTION_ID.eq(transactionId))
+        .fetchOne()
+        .into(Transactions.class);
   }
 
-  @Nullable
-  @Transactional(SUPPORTS)
-  public Transaction findTransactionById(long id) {
-    return transactionRepository.find("id", id).firstResult();
+  public List<Transactions> retrieveByAccount(int accountId) {
+    return dslContext.select(TRANSACTIONS)
+        .from(TRANSACTIONS)
+        .where(TRANSACTIONS.ACCOUNT_ID.eq(accountId))
+        .orderBy(TRANSACTIONS.TRANSACTION_DATE)
+        .fetchInto(Transactions.class);
   }
 
-  @Transactional(SUPPORTS)
-  private boolean isDuplicate(Transaction transaction) {
-
-    checkNotNull(transaction.getAccount());
-    checkNotNull(transaction.getTransactionDate());
-
-    List<Transaction> duplicates =
-        transactionRepository.list(TransactionQueryBuilder.buildListQuery(transaction));
-
-    return !duplicates.isEmpty();
+  public List<Transactions> retrieveDuplicate(Integer accountId) {
+    return dslContext.select(TRANSACTIONS)
+        .from(TRANSACTIONS)
+        .where(TRANSACTIONS.IS_DUPLICATE.eq("Y"))
+        .and(TRANSACTIONS.ACCOUNT_ID.eq(accountId))
+        .orderBy(TRANSACTIONS.TRANSACTION_DATE)
+        .fetchInto(Transactions.class);
   }
 
-  public static class TransactionQueryBuilder {
-    static SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-
-    @VisibleForTesting
-    static String buildListQuery(Transaction transaction) {
-      String query = "";
-
-      query = String.format("account_id = %s AND transactionDate = '%s' AND amount = %s",
-          transaction.getAccount().getId(), formatter.format(transaction.getTransactionDate()),
-          transaction.getAmount());
-      query +=
-          " AND postDate " + (transaction.getPostDate() != null ? String.format("= '%s'",
-              formatter.format(transaction.getPostDate()))
-              : "is null");
-      query +=
-          " AND category " + (transaction.getCategory() != null ? String.format("= '%s'",
-              transaction.getCategory())
-              : "is null");
-      query += " AND description " + (transaction.getDescription() != null ? String.format("= '%s'",
-          transaction.getDescription()) : "is null");
-      query +=
-          " AND type " + (transaction.getType() != null ? String.format("= '%s'",
-              transaction.getType()) : "is null");
-      return query;
-    }
-
-    @VisibleForTesting
-    static String buildUpdateQuery(Transaction transaction) {
-      String query = "";
-
-      if (transaction.getTransactionDate() != null) {
-        query +=
-            String.format("transactionDate = '%s', ",
-                formatter.format(transaction.getTransactionDate()));
-      }
-      if (transaction.getPostDate() != null) {
-        query += String.format("postDate = '%s', ", formatter.format(transaction.getPostDate()));
-      }
-      if (transaction.getDescription() != null) {
-        query += String.format("description = '%s', ", transaction.getDescription());
-      }
-      if (transaction.getCategory() != null) {
-        query += String.format("category = '%s', ", transaction.getCategory());
-      }
-      if (transaction.getType() != null) {
-        query += String.format("type = '%s', ", transaction.getType());
-      }
-      if (transaction.getMemo() != null) {
-        query += String.format("memo = '%s', ", transaction.getMemo());
-      }
-      query += String.format("amount = %s , ", transaction.getAmount());
-      query += String.format("account_id = %s ", transaction.getAccount().getId());
-      query += String.format("where id = %s", transaction.getId());
-
-      return query;
-    }
+  public interface TransactionInsertableColumns extends
+      Record10<Integer, String, String, String, LocalDate, LocalDate, String, Long, String, String> {
   }
 }
