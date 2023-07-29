@@ -17,7 +17,6 @@ import today.ihelio.jooq.tables.pojos.Accounts;
 import today.ihelio.minance.exception.CustomException;
 import today.ihelio.minance.exception.RecordAlreadyExistingException;
 import today.ihelio.minance.service.AccountService;
-import today.ihelio.minance.service.BankService;
 
 @Path("/1.0/minance/account")
 @RegisterRestClient(baseUri = "http://localhost:8080/")
@@ -26,24 +25,18 @@ import today.ihelio.minance.service.BankService;
 @ApplicationScoped
 public class AccountResource {
   private final AccountService accountService;
-  private final BankService bankService;
 
   @Inject
-  public AccountResource(AccountService accountService, BankService bankService) {
+  public AccountResource(AccountService accountService) {
     this.accountService = accountService;
-    this.bankService = bankService;
   }
 
   @POST
   @Path("/create")
-  public Response createAccount(Accounts accounts) throws CustomException {
-    try {
-      if (accountService.create(accounts) == 0) {
-        throw new RecordAlreadyExistingException("account already exited");
-      }
-    } catch (Exception e) {
-      CustomException customException = new CustomException(e);
-      throw customException;
+  public Response createAccount(Accounts accounts)
+      throws RecordAlreadyExistingException, CustomException {
+    if (accountService.create(accounts) == 0) {
+      throw new RecordAlreadyExistingException("account already exited");
     }
     return Response.status(Response.Status.CREATED)
         .entity(accounts)

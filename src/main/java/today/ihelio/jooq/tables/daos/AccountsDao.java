@@ -127,4 +127,19 @@ public class AccountsDao extends DAOImpl<AccountsRecord, today.ihelio.jooq.table
     public List<today.ihelio.jooq.tables.pojos.Accounts> fetchByAccountType(String... values) {
         return fetch(Accounts.ACCOUNTS.ACCOUNT_TYPE, values);
     }
+
+    /**
+     * Fetch records that have <code>init_balance BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Accounts> fetchRangeOfInitBalance(Long lowerInclusive, Long upperInclusive) {
+        return fetchRange(Accounts.ACCOUNTS.INIT_BALANCE, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>init_balance IN (values)</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Accounts> fetchByInitBalance(Long... values) {
+        return fetch(Accounts.ACCOUNTS.INIT_BALANCE, values);
+    }
 }

@@ -18,8 +18,12 @@ public class CustomException extends Exception implements Serializable {
     this.initCause(e);
   }
 
-  public CustomException(String msg, Exception e) {
+  public CustomException(Exception e, String msg) {
     super(msg, e);
     this.initCause(e);
+  }
+
+  public CustomException of(Exception e, String msg) {
+    return new CustomException(e, msg);
   }
 }

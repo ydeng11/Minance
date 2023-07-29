@@ -42,6 +42,7 @@ public class AccountService {
         .set(ACCOUNTS.BANK_NAME, accounts.getBankName())
         .set(ACCOUNTS.ACCOUNT_NAME, accounts.getAccountName())
         .set(ACCOUNTS.ACCOUNT_TYPE, accounts.getAccountType())
+        .set(ACCOUNTS.INIT_BALANCE, accounts.getInitBalance())
         .where(ACCOUNTS.ACCOUNT_ID.eq(accounts.getAccountId()))
         .execute();
   }

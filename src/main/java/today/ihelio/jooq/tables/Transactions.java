@@ -111,7 +111,7 @@ public class Transactions extends TableImpl<TransactionsRecord> {
     /**
      * The column <code>minance.transactions.is_duplicate</code>.
      */
-    public final TableField<TransactionsRecord, String> IS_DUPLICATE = createField(DSL.name("is_duplicate"), SQLDataType.VARCHAR(1), this, "");
+    public final TableField<TransactionsRecord, String> IS_DUPLICATE = createField(DSL.name("is_duplicate"), SQLDataType.VARCHAR(1).defaultValue(DSL.inline("n", SQLDataType.VARCHAR)), this, "");
 
     private Transactions(Name alias, Table<TransactionsRecord> aliased) {
         this(alias, aliased, null);
