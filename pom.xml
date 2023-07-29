@@ -89,6 +89,10 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-resteasy-qute</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
       <artifactId>quarkus-arc</artifactId>
     </dependency>
     <dependency>
@@ -240,6 +244,8 @@
               <includes>.*</includes>
               <excludes></excludes>
               <inputSchema>minance</inputSchema>
+              <recordVersionFields>REC_VERSION</recordVersionFields>
+              <recordTimestampFields>REC_TIMESTAMP</recordTimestampFields>
             </database>
             <target>
               <packageName>today.ihelio.jooq</packageName>

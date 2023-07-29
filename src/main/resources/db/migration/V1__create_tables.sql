@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     bank_name VARCHAR(25) NOT NULL,
     account_name VARCHAR(25) NOT NULL,
     account_type VARCHAR(25) NOT NULL,
+    init_balance NUMERIC,
     PRIMARY KEY (account_id),
     CONSTRAINT FOREIGN KEY (bank_id) REFERENCES banks(bank_id),
     CONSTRAINT account_unique UNIQUE (bank_name, account_name)
@@ -32,11 +33,11 @@ CREATE TABLE IF NOT EXISTS transactions (
     amount NUMERIC,
     bank_name VARCHAR(50),
     account_name VARCHAR(50),
-    is_duplicate VARCHAR(1),
+    is_duplicate VARCHAR(1) DEFAULT 'n',
     PRIMARY KEY (transaction_id),
     FOREIGN KEY (account_id) REFERENCES accounts(account_id),
     CONSTRAINT transaction_unique UNIQUE (account_id, category, transaction_type, transaction_date,
-                                          post_date, amount)
+                                          post_date, amount, memo)
 )
     ENGINE = InnoDB
     CHARACTER SET UTF8MB4;
