@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Minance</title>
+    <link rel="stylesheet" href="./css/style.css" />
+    <link rel="stylesheet" href="./css/bootstrap.min.css" />
+    <script src="./js/tether.min.js"></script>
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/minance/script.js"></script>
+    <script src="./js/minance/transaction.js"></script>
+    <script src="./js/jquery.csv.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row clearfix">
+        <div class="col-md-12 column">
+          <nav class="navbar navbar-default" role="navigation">
+            <div class="navbar-header">
+              <a class="navbar-brand" href="index.html">Home</a>
+              <a class="navbar-brand" href="bank.html">Bank</a>
+              <a class="navbar-brand" href="account.html">Account</a>
+              <a class="navbar-brand" href="schema.html">Csv Formatter</a>
+              <a class="navbar-brand" href="transaction.html">Transaction</a>
+              <a class="navbar-brand" href="#">Visualization</a>
+            </div>
+          </nav>
+        </div>
+      </div>
+      <div class="row clearfix">
+        <div class="col-md-12 column">
+          <h2 class="text-center">Transaction</h2>
+          <br />
+          <div class="row clearfix">
+            <div class="col-md-4 column">
+              <div class="form-floating">
+                <select
+                  class="form-select"
+                  id="bankSelect"
+                  aria-label="Select Bank"
+                >
+                  <option selected>Select Bank</option>
+                  <option value="none">None</option>
+                </select>
+                <label for="bankSelect">Bank Name</label>
+              </div>
+              <br />
+              <div class="form-floating">
+                <select
+                  class="form-select"
+                  id="accountSelect"
+                  aria-label="Select Account"
+                >
+                  <option selected>Select Account</option>
+                  <option value="accountSelect">Account Name</option>
+                </select>
+                <label for="accountSelect">Account Name</label>
+              </div>
+              <br />
+            </div>
+            <div class="col-md-8 column">
+              <div class="rawCsvTable">
+                <table
+                  id="csv-table"
+                  class="table table-bordered table-striped text-center"
+                ></table>
+              </div>
+            </div>
+            <div class="row g-2">
+              <div id="fileUpload" class="col-md-3 column">
+                <fieldset>
+                  <input
+                    type="file"
+                    name="File Upload"
+                    id="txtFileUpload"
+                    accept=".csv"
+                  />
+                </fieldset>
+              </div>
+              <div class="col-md-2 column">
+                <button
+                  type="submit"
+                  class="btn btn-outline-dark"
+                  id="uploadActivities"
+                >
+                  Upload
+                </button>
+              </div>
+            </div>
+            <br />
+            <form class="row g-2">
+              <div class="col-md-1 column">
+                <input
+                  type="text"
+                  readonly
+                  class="form-control-plaintext"
+                  id="transactionIdToDeleteLabel"
+                  value="Transaction Id"
+                />
+              </div>
+              <div class="col-md-2 column">
+                <label for="transactionIdToDelete" class="visually-hidden"
+                  >Type in Transaction Id</label
+                >
+                <input
+                  type="text"
+                  class="form-control"
+                  id="transactionIdToDelete"
+                  placeholder="Transaction Id"
+                />
+              </div>
+              <div class="col-auto">
+                <button
+                  type="submit"
+                  class="btn btn-outline-dark"
+                  id="deleteTransaction"
+                >
+                  Delete
+                </button>
+              </div>
+            </form>
+            <br />
+            <div class="col-md-4 column">
+              <p id="msgBox"></p>
+            </div>
+
+            <br />
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="col-md-12 column">
+          <form class="row g-3">
+            <div class="col"></div>
+            <div class="col-md-2 column">
+              <div class="form-floating">
+                <select
+                  class="form-select"
+                  id="filterDuplicate"
+                  aria-label="filterDuplicate"
+                >
+                  <option selected value="y">Yes</option>
+                  <option selected value="n">No</option>
+                </select>
+                <label for="filterDuplicate">filter Duplicate</label>
+              </div>
+            </div>
+            <div class="col-auto">
+              <button
+                type="submit"
+                class="btn btn-outline-dark"
+                id="retrieveRecords"
+              >
+                Get Records
+              </button>
+            </div>
+          </form>
+          <br/>
+          <div class="tbodyDiv">
+            <table
+              id="data-table"
+              class="table table-bordered table-striped text-center"
+            ></table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

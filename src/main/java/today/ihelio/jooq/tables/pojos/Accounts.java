@@ -20,6 +20,7 @@ public class Accounts implements Serializable {
     private String bankName;
     private String accountName;
     private String accountType;
+    private Long initBalance;
 
     public Accounts() {}
 
@@ -29,6 +30,7 @@ public class Accounts implements Serializable {
         this.bankName = value.bankName;
         this.accountName = value.accountName;
         this.accountType = value.accountType;
+        this.initBalance = value.initBalance;
     }
 
     public Accounts(
@@ -36,13 +38,15 @@ public class Accounts implements Serializable {
         Integer bankId,
         String bankName,
         String accountName,
-        String accountType
+        String accountType,
+        Long initBalance
     ) {
         this.accountId = accountId;
         this.bankId = bankId;
         this.bankName = bankName;
         this.accountName = accountName;
         this.accountType = accountType;
+        this.initBalance = initBalance;
     }
 
     /**
@@ -115,6 +119,20 @@ public class Accounts implements Serializable {
         this.accountType = accountType;
     }
 
+    /**
+     * Getter for <code>minance.accounts.init_balance</code>.
+     */
+    public Long getInitBalance() {
+        return this.initBalance;
+    }
+
+    /**
+     * Setter for <code>minance.accounts.init_balance</code>.
+     */
+    public void setInitBalance(Long initBalance) {
+        this.initBalance = initBalance;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj)
@@ -154,6 +172,12 @@ public class Accounts implements Serializable {
         }
         else if (!this.accountType.equals(other.accountType))
             return false;
+        if (this.initBalance == null) {
+            if (other.initBalance != null)
+                return false;
+        }
+        else if (!this.initBalance.equals(other.initBalance))
+            return false;
         return true;
     }
 
@@ -166,6 +190,7 @@ public class Accounts implements Serializable {
         result = prime * result + ((this.bankName == null) ? 0 : this.bankName.hashCode());
         result = prime * result + ((this.accountName == null) ? 0 : this.accountName.hashCode());
         result = prime * result + ((this.accountType == null) ? 0 : this.accountType.hashCode());
+        result = prime * result + ((this.initBalance == null) ? 0 : this.initBalance.hashCode());
         return result;
     }
 
@@ -178,6 +203,7 @@ public class Accounts implements Serializable {
         sb.append(", ").append(bankName);
         sb.append(", ").append(accountName);
         sb.append(", ").append(accountType);
+        sb.append(", ").append(initBalance);
 
         sb.append(")");
         return sb.toString();

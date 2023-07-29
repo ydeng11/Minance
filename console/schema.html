@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Minance</title>
+    <link rel="stylesheet" href="./css/style.css" />
+    <link rel="stylesheet" href="./css/bootstrap.min.css" />
+    <script src="./js/tether.min.js"></script>
+    <script src="./js/jquery.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/minance/script.js"></script>
+    <script src="./js/minance/schema.js"></script>
+    <script src="./js/jquery.csv.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row clearfix">
+        <div class="col-md-12 column">
+          <nav class="navbar navbar-default" role="navigation">
+            <div class="navbar-header">
+              <a class="navbar-brand" href="index.html">Home</a>
+              <a class="navbar-brand" href="bank.html">Bank</a>
+              <a class="navbar-brand" href="account.html">Account</a>
+              <a class="navbar-brand" href="schema.html">Csv Formatter</a>
+              <a class="navbar-brand" href="transaction.html">Transaction</a>
+              <a class="navbar-brand" href="#">Visualization</a>
+            </div>
+          </nav>
+        </div>
+      </div>
+      <div class="row clearfix">
+        <div class="col-md-12 column">
+          <h2 class="text-center">Csv Formatter</h2>
+          <br />
+          <div class="row clearfix">
+            <div class="col-md-4 column">
+              <div id="dvImportSegments" class="fileupload">
+                <fieldset>
+                  <p><bold>Check Csv Format</bold></p>
+                  <input
+                    type="file"
+                    name="File Upload"
+                    id="txtFileUpload"
+                    accept=".csv"
+                  />
+                </fieldset>
+              </div>
+            </div>
+
+            <div class="col-md-8 column">
+              <div class="rawCsvTable">
+                <table
+                  id="csv-table"
+                  class="table table-bordered table-striped text-center"
+                ></table>
+              </div>
+            </div>
+
+            <br />
+          </div>
+          <br />
+          <div class="row clearfix">
+            <div class="col-md-4 column">
+              <div class="form-floating">
+                <select
+                  class="form-select"
+                  id="bankSelect"
+                  aria-label="Select Bank"
+                >
+                  <option selected>Select Bank</option>
+                  <option value="none">None</option>
+                </select>
+                <label for="bankSelect">Bank Name</label>
+              </div>
+              <br />
+              <div class="form-floating">
+                <select
+                  class="form-select"
+                  id="accountSelect"
+                  aria-label="Select Account"
+                >
+                  <option selected>Select Account</option>
+                  <option value="None">None</option>
+                </select>
+                <label for="accountSelect">Account Name</label>
+              </div>
+              <br />
+
+              <form>
+                <div class="form-group row">
+                  <label for="transactionHeader" class="col-sm-4 col-form-label"
+                    >Transaction Header</label
+                  >
+                  <div class="col-sm-8">
+                    <input
+                      type="text"
+                      readonly
+                      class="form-control-plaintext"
+                      id="transactionHeader"
+                      value="Input Csv Header"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-group row">
+                  <label for="category" class="col-sm-4 col-form-label"
+                    >Category</label
+                  >
+                  <div class="col-sm-8">
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="category"
+                      value=""
+                    />
+                  </div>
+                </div>
+                <br />
+                <div class="form-group row">
+                  <label for="description" class="col-sm-4 col-form-label"
+                    >Description</label
+                  >
+                  <div class="col-sm-8">
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="description"
+                      value=""
+                    />
+                  </div>
+                </div>
+                <br />
+                <div class="form-group row">
+                  <label for="transactionType" class="col-sm-4 col-form-label"
+                    >Transaction Type</label
+                  >
+                  <div class="col-sm-8">
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="transactionType"
+                      value=""
+                    />
+                  </div>
+                </div>
+                <br />
+                <div class="form-group row">
+                  <label for="transactionDate" class="col-sm-4 col-form-label"
+                    >Transaction Date</label
+                  >
+                  <div class="col-sm-8">
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="transactionDate"
+                      value=""
+                    />
+                  </div>
+                </div>
+                <br />
+                <div class="form-group row">
+                  <label for="postDate" class="col-sm-4 col-form-label"
+                    >Post Date</label
+                  >
+                  <div class="col-sm-8">
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="postDate"
+                      value=""
+                    />
+                  </div>
+                </div>
+                <br />
+                <div class="form-group row">
+                  <label for="amount" class="col-sm-4 col-form-label"
+                    >Amount</label
+                  >
+                  <div class="col-sm-8">
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="amount"
+                      value=""
+                    />
+                  </div>
+                </div>
+                <br />
+                <div class="form-group row">
+                  <label for="memo" class="col-sm-4 col-form-label"
+                    >Memo</label
+                  >
+                  <div class="col-sm-8">
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="memo"
+                      value=""
+                    />
+                  </div>
+                </div>
+                <br />
+                <div class="form-group row">
+                  <label for="dateFormat" class="col-sm-4 col-form-label"
+                    >Date Format</label
+                  >
+                  <div class="col-sm-8">
+                    <input
+                      type="text"
+                      class="form-control"
+                      id="dateFormat"
+                      placeholder="MM/dd/yyyy for 12/31/2011"
+                      value=""
+                    />
+                  </div>
+                </div>
+                <br />
+                <div>
+                  <button
+                    type="submit"
+                    class="btn btn-outline-dark"
+                    id="createSchema"
+                  >
+                    Create
+                  </button>
+                </div>
+              </form>
+
+              <br />
+              <form class="form-floating">
+                <input type="text" class="form-control" id="deleteSchemaForm" placeholder="Account Id"/>
+                <label for="deleteSchemaForm">Delete Schema</label>
+                <br />
+                <div>
+                  <button
+                    type="submit"
+                    class="btn btn-outline-dark"
+                    id="deleteSchema"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </form>
+              <div class="col-md-4 column">
+                <p id="msgBox"></p>
+              </div>
+            </div>
+            <div class="col-md-8 column">
+              <div class="tbodyDiv">
+                <table
+                  id="data-table"
+                  class="table table-bordered table-striped text-center"
+                ></table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
