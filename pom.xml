@@ -6,20 +6,20 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>today.ihelio</groupId>
   <artifactId>minance</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>0.0.1-beta</version>
   <properties>
     <compiler-plugin.version>3.11.0</compiler-plugin.version>
+    <jackson.version>2.14.2</jackson.version>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <quarkus-bom.version>3.2.0.Final</quarkus-bom.version>
+    <quarkus-jooq.version>2.0.0</quarkus-jooq.version>
     <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
     <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
     <quarkus.platform.version>3.2.0.Final</quarkus.platform.version>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0</surefire-plugin.version>
-    <jackson.version>2.14.2</jackson.version>
-    <quarkus-bom.version>3.2.0.Final</quarkus-bom.version>
-    <quarkus-jooq.version>2.0.0</quarkus-jooq.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -48,6 +48,10 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-jdbc-mysql</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-container-image-docker</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -89,7 +93,7 @@
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-resteasy-qute</artifactId>
+      <artifactId>quarkus-smallrye-health</artifactId>
     </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
@@ -99,7 +103,6 @@
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit5-mockito</artifactId>
     </dependency>
-
     <dependency>
       <groupId>io.quarkiverse.jooq</groupId>
       <artifactId>quarkus-jooq</artifactId>
@@ -110,7 +113,6 @@
       <artifactId>jooq</artifactId>
       <version>3.18.5</version>
     </dependency>
-    <!-- These may not be required, unless you use the GenerationTool manually for code generation -->
     <dependency>
       <groupId>org.jooq</groupId>
       <artifactId>jooq-meta</artifactId>
@@ -122,11 +124,14 @@
       <version>3.18.5</version>
     </dependency>
     <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-flyway</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.flywaydb</groupId>
       <artifactId>flyway-mysql</artifactId>
       <version>9.20.0</version>
     </dependency>
-
     <dependency>
       <groupId>com.opencsv</groupId>
       <artifactId>opencsv</artifactId>
@@ -190,70 +195,69 @@
           </execution>
         </executions>
       </plugin>
-      <plugin>
-        <groupId>org.flywaydb</groupId>
-        <artifactId>flyway-maven-plugin</artifactId>
-        <version>9.20.0</version>
-        <executions>
-          <execution>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>migrate</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <cleanDisabled>false</cleanDisabled>
-          <baselineOnMigrate>true</baselineOnMigrate>
-          <driver>com.mysql.cj.jdbc.Driver</driver>
-          <url>jdbc:mysql://localhost:3306/minance?createDatabaseIfNotExist=true</url>
-          <user>root</user>
-          <password>pass</password>
-          <locations>
-            <location>filesystem:src/main/resources/db/migration</location>
-          </locations>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.jooq</groupId>
-        <artifactId>jooq-codegen-maven</artifactId>
-        <version>3.18.5</version>
-        <executions>
-          <execution>
-            <id>generate-jooq-sources</id>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>generate</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <jdbc>
-            <driver>com.mysql.cj.jdbc.Driver</driver>
-            <url>jdbc:mysql://localhost:3306/minance</url>
-            <user>root</user>
-            <password>pass</password>
-          </jdbc>
-          <generator>
-            <generate>
-              <daos>true</daos>
-            </generate>
-            <database>
-              <name>org.jooq.meta.mysql.MySQLDatabase</name>
-              <includes>.*</includes>
-              <excludes></excludes>
-              <inputSchema>minance</inputSchema>
-              <recordVersionFields>REC_VERSION</recordVersionFields>
-              <recordTimestampFields>REC_TIMESTAMP</recordTimestampFields>
-            </database>
-            <target>
-              <packageName>today.ihelio.jooq</packageName>
-              <directory>src/main/java</directory>
-            </target>
-          </generator>
-        </configuration>
-      </plugin>
+      <!--      <plugin>-->
+      <!--        <groupId>org.flywaydb</groupId>-->
+      <!--        <artifactId>flyway-maven-plugin</artifactId>-->
+      <!--        <version>9.20.0</version>-->
+      <!--        <executions>-->
+      <!--          <execution>-->
+      <!--            <phase>generate-sources</phase>-->
+      <!--            <goals>-->
+      <!--              <goal>migrate</goal>-->
+      <!--            </goals>-->
+      <!--          </execution>-->
+      <!--        </executions>-->
+      <!--        <configuration>-->
+      <!--          <cleanDisabled>false</cleanDisabled>-->
+      <!--          <baselineOnMigrate>true</baselineOnMigrate>-->
+      <!--          <driver>com.mysql.cj.jdbc.Driver</driver>-->
+      <!--          <url>jdbc:mysql://localhost:3306/minance?createDatabaseIfNotExist=true</url>-->
+      <!--          <user>root</user>-->
+      <!--          <password>minance</password>-->
+      <!--          <locations>-->
+      <!--            <location>filesystem:src/main/resources/db/migration</location>-->
+      <!--          </locations>-->
+      <!--        </configuration>-->
+      <!--      </plugin>-->
+      <!--      <plugin>-->
+      <!--        <groupId>org.jooq</groupId>-->
+      <!--        <artifactId>jooq-codegen-maven</artifactId>-->
+      <!--        <version>3.18.5</version>-->
+      <!--        <executions>-->
+      <!--          <execution>-->
+      <!--            <id>generate-jooq-sources</id>-->
+      <!--            <phase>generate-sources</phase>-->
+      <!--            <goals>-->
+      <!--              <goal>generate</goal>-->
+      <!--            </goals>-->
+      <!--          </execution>-->
+      <!--        </executions>-->
+      <!--        <configuration>-->
+      <!--          <jdbc>-->
+      <!--            <driver>com.mysql.cj.jdbc.Driver</driver>-->
+      <!--            <url>jdbc:mysql://localhost:3306/minance</url>-->
+      <!--            <user>root</user>-->
+      <!--            <password>minance</password>-->
+      <!--          </jdbc>-->
+      <!--          <generator>-->
+      <!--            <generate>-->
+      <!--              <daos>true</daos>-->
+      <!--            </generate>-->
+      <!--            <database>-->
+      <!--              <name>org.jooq.meta.mysql.MySQLDatabase</name>-->
+      <!--              <includes>.*</includes>-->
+      <!--              <excludes></excludes>-->
+      <!--              <inputSchema>minance</inputSchema>-->
+      <!--              <recordVersionFields>REC_VERSION</recordVersionFields>-->
+      <!--              <recordTimestampFields>REC_TIMESTAMP</recordTimestampFields>-->
+      <!--            </database>-->
+      <!--            <target>-->
+      <!--              <packageName>today.ihelio.jooq</packageName>-->
+      <!--              <directory>src/main/java</directory>-->
+      <!--            </target>-->
+      <!--          </generator>-->
+      <!--        </configuration>-->
+      <!--      </plugin>-->
     </plugins>
   </build>
   <profiles>

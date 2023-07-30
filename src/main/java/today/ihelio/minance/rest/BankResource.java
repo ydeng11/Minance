@@ -18,7 +18,7 @@ import today.ihelio.minance.exception.RecordAlreadyExistingException;
 import today.ihelio.minance.service.BankService;
 
 @Path("/1.0/minance/bank")
-@RegisterRestClient(baseUri = "http://localhost:8080/")
+@RegisterRestClient
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class BankResource {

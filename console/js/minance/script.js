@@ -2,7 +2,8 @@ var dynamicTable = (function () {
   var _tableId, _table, _fields, _headers, _defaultText;
 
   /** Builds the row with columns from the specified names.
-   *  If the item parameter is specified, the memebers of the names array will be used as property names of the item; otherwise they will be directly parsed as text.
+   *  If the item parameter is specified, the memebers of the names array will be used as property
+   * names of the item; otherwise they will be directly parsed as text.
    */
   function _buildRowColumns(names, item) {
     var row = "<tr>";
@@ -27,25 +28,24 @@ var dynamicTable = (function () {
 
   function _setNoItemsInfo() {
     if (_table.length < 1) return; //not configured.
-    var colspan =
-      _headers != null && _headers.length > 0
-        ? 'colspan="' + _headers.length + '"'
-        : "";
-    var content =
-      '<tr class="no-items"><td ' +
-      colspan +
-      ' style="text-align:center">' +
-      _defaultText +
-      "</td></tr>";
-    if (_table.children("tbody").length > 0)
+    var colspan = _headers != null && _headers.length > 0 ? 'colspan="'
+        + _headers.length
+        + '"' : "";
+    var content = '<tr class="no-items"><td '
+        + colspan
+        + ' style="text-align:center">'
+        + _defaultText
+        + "</td></tr>";
+    if (_table.children("tbody").length > 0) {
       _table.children("tbody").html(content);
-    else _table.append("<tbody>" + content + "</tbody>");
+    } else {
+      _table.append("<tbody>" + content + "</tbody>");
+    }
   }
 
   function _removeNoItemsInfo() {
     var c = _table.children("tbody").children("tr");
-    if (c.length == 1 && c.hasClass("no-items"))
-      _table.children("tbody").empty();
+    if (c.length == 1 && c.hasClass("no-items")) _table.children("tbody").empty();
   }
 
   return {
@@ -59,8 +59,7 @@ var dynamicTable = (function () {
       _setHeaders();
       _setNoItemsInfo();
       return this;
-    },
-    /** Loads the specified data to the table body. */
+    }, /** Loads the specified data to the table body. */
     load: function (data, append) {
       if (_table.length < 1) return; //not configured.
       _setHeaders();
@@ -76,8 +75,7 @@ var dynamicTable = (function () {
         _setNoItemsInfo();
       }
       return this;
-    },
-    /** Clears the table body. */
+    }, /** Clears the table body. */
     clear: function () {
       _setNoItemsInfo();
       return this;
@@ -94,12 +92,14 @@ async function callApi(url = "", method = "", data = {}) {
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
     credentials: "omit", // include, *same-origin, omit
     headers: {
-      "Content-Type": "application/json",
-      // 'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    redirect: "follow", // manual, *follow, error
-    referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
-    body: Object.keys(data).length == 0 ? null : JSON.stringify(data), // body data type must match "Content-Type" header
+      accept: 'application/json', "Content-Type": "application/json", // 'Content-Type':
+                                                                      // 'application/x-www-form-urlencoded',
+    }, redirect: "follow", // manual, *follow, error
+    referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin,
+                                   // origin-when-cross-origin, same-origin, strict-origin,
+                                   // strict-origin-when-cross-origin, unsafe-url
+    body: Object.keys(data).length == 0 ? null : JSON.stringify(data), // body data type must match
+                                                                       // "Content-Type" header
   });
   return response; // parses JSON response into native JavaScript objects
 }
@@ -112,21 +112,26 @@ async function callApiFormData(url = "", method = "", data = {}) {
     mode: "cors", // no-cors, *cors, same-origin
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
     credentials: "omit", // include, *same-origin, omit
-    redirect: "follow", // manual, *follow, error
-    referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+    headers: {
+      accept: 'application/json', "Content-Type": "application/json", // 'Content-Type':
+                                                                      // 'application/x-www-form-urlencoded',
+    }, redirect: "follow", // manual, *follow, error
+    referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin,
+                                   // origin-when-cross-origin, same-origin, strict-origin,
+                                   // strict-origin-when-cross-origin, unsafe-url
     body: data, // body data type must match "Content-Type" header
   });
   return response; // parses JSON response into native JavaScript objects
 }
 
 function getAllData(endpoint) {
-  return callApi("http://localhost:8080/1.0/minance/" + endpoint + "/retrieveAll", "GET")
-    .then((response) => response.json())
-    .then((data) => {
-      return data;
-    })
-    .catch((error) => {
-      alert(error);
-      return {};
-    });
+  return callApi("/1.0/minance/" + endpoint + "/retrieveAll", "GET")
+      .then((response) => response.json())
+      .then((data) => {
+        return data;
+      })
+      .catch((error) => {
+        alert(error);
+        return {};
+      });
 }
