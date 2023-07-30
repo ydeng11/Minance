@@ -53,8 +53,8 @@ var csvData;
 $(document).ready(function (e) {
   // upload csv
   document
-    .getElementById("txtFileUpload")
-    .addEventListener("change", upload, false);
+      .getElementById("txtFileUpload")
+      .addEventListener("change", upload, false);
 
   // find all the banks for the banks select
   getAllData("bank").then((data) => {
@@ -62,15 +62,11 @@ $(document).ready(function (e) {
       return;
     }
     let options = "<option selected>Select Bank</option>";
-    data.forEach(
-      (item) =>
-        (options +=
-          '<option value="' +
-          item.bankName +
-          '">' +
-          item.bankName +
-          "</option>")
-    );
+    data.forEach((item) => (options += '<option value="'
+        + item.bankName
+        + '">'
+        + item.bankName
+        + "</option>"));
     $("#bankSelect").html(options);
   });
 
@@ -85,46 +81,15 @@ $(document).ready(function (e) {
       let options = "<option selected>Select Account</option>";
       data.forEach((item) => {
         if (item.bankName == $("#bankSelect").val()) {
-          options +=
-            '<option value="' +
-            item.accountName +
-            '">' +
-            item.accountName +
-            "</option>";
+          options += '<option value="' + item.accountName + '">' + item.accountName + "</option>";
         }
       });
       $("#accountSelect").html(options);
     });
   });
 
-  let dt = dynamicTable.config(
-    "data-table",
-    [
-      "transactionId",
-      "accountName",
-      "bankName",
-      "category",
-      "description",
-      "transactionType",
-      "transactionDate",
-      "postDate",
-      "amount",
-      "memo",
-    ],
-    [
-      "Transaction Id",
-      "Account Name",
-      "Bank Name",
-      "Category",
-      "Description",
-      "Transaction Type",
-      "Transaction Date",
-      "Post Date",
-      "Amount",
-      "Memo",
-    ], //set to null for field names instead of custom header names
-    "There are no transaction to list..."
-  );
+  let dt = dynamicTable.config("data-table", ["transactionId", "accountName", "bankName", "category", "description", "transactionType", "transactionDate", "postDate", "amount", "memo",], ["Transaction Id", "Account Name", "Bank Name", "Category", "Description", "Transaction Type", "Transaction Date", "Post Date", "Amount", "Memo",], //set to null for field names instead of custom header names
+      "There are no transaction to list...");
 
   $("#uploadActivities").on("click", function (event) {
     event.preventDefault();
@@ -138,33 +103,26 @@ $(document).ready(function (e) {
     body.append("bankName", bankName);
     body.append("accountName", accountName);
     body.append("file", files[0]);
-    callApiFormData(
-      "http://localhost:8080/1.0/minance/transactions/batch_upload",
-      "POST",
-      body
-    )
-      .then((response) => {
-        if (response.ok) {
-          $("#msgBox").text(accountName + " Created!");
-        }
-        callApi(
-          "http://localhost:8080/1.0/minance/transactions/retrieve/" +
-            bankName +
-            "/" +
-            accountName +
-            "/y",
-          "GET"
-        )
-          .then((response) => {
-            if (response.ok) {
-              return response.json();
-            }
-          })
-          .then((data) => dt.load(data));
-      })
-      .catch((error) => {
-        alert(error);
-      });
+    callApiFormData("/1.0/minance/transactions/batch_upload", "POST", body)
+        .then((response) => {
+          if (response.ok) {
+            $("#msgBox").text(accountName + " Created!");
+          }
+          callApi("/1.0/minance/transactions/retrieve/"
+              + bankName
+              + "/"
+              + accountName
+              + "/y", "GET")
+              .then((response) => {
+                if (response.ok) {
+                  return response.json();
+                }
+              })
+              .then((data) => dt.load(data));
+        })
+        .catch((error) => {
+          alert(error);
+        });
   });
 
   $("#deleteTransaction").on("click", function (event) {
@@ -172,13 +130,11 @@ $(document).ready(function (e) {
 
     let txnId = $("#transactionIdToDelete").val();
 
-    callApi("http://localhost:8080/1.0/minance/transactions/delete/" + txnId, "DELETE").then(
-      (response) => {
-        if (response.ok) {
-          $("#msgBox").text(txnId + " Deleted!");
-        }
+    callApi("/1.0/minance/transactions/delete/" + txnId, "DELETE").then((response) => {
+      if (response.ok) {
+        $("#msgBox").text(txnId + " Deleted!");
       }
-    );
+    });
   });
 
   $("#retrieveRecords").on("click", function (event) {
@@ -187,23 +143,20 @@ $(document).ready(function (e) {
     let accountName = $("#accountSelect").val();
     let filterDuplicate = $("#filterDuplicate").val();
 
-    callApi(
-      "http://localhost:8080/1.0/minance/transactions/retrieve/" +
-        bankName +
-        "/" +
-        accountName +
-        "/" +
-        filterDuplicate,
-      "GET"
-    )
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        }
-      })
-      .then((data) => dt.load(data))
-      .catch((error) => {
-        alert(error);
-      });
+    callApi("/1.0/minance/transactions/retrieve/"
+        + bankName
+        + "/"
+        + accountName
+        + "/"
+        + filterDuplicate, "GET")
+        .then((response) => {
+          if (response.ok) {
+            return response.json();
+          }
+        })
+        .then((data) => dt.load(data))
+        .catch((error) => {
+          alert(error);
+        });
   });
 });

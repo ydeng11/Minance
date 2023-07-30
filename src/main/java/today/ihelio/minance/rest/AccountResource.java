@@ -19,7 +19,7 @@ import today.ihelio.minance.exception.RecordAlreadyExistingException;
 import today.ihelio.minance.service.AccountService;
 
 @Path("/1.0/minance/account")
-@RegisterRestClient(baseUri = "http://localhost:8080/")
+@RegisterRestClient
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @ApplicationScoped

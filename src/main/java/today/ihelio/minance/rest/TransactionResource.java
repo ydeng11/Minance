@@ -42,7 +42,7 @@ import static jakarta.ws.rs.core.Response.Status.CREATED;
 import static jakarta.ws.rs.core.Response.Status.NOT_ACCEPTABLE;
 
 @Path("/1.0/minance/transactions")
-@RegisterRestClient(baseUri = "http://localhost:8080/")
+@RegisterRestClient
 @Produces(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 public class TransactionResource {

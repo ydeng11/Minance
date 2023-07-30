@@ -12,24 +12,16 @@ $(document).ready(function (e) {
     }
     bankMap = Object.fromEntries(data);
     let options = "<option selected>Select Bank</option>";
-    data.forEach(
-      (item) =>
-        (options +=
-          '<option value="' +
-          item.bankName +
-          '">' +
-          item.bankName +
-          "</option>")
-    );
+    data.forEach((item) => (options += '<option value="'
+        + item.bankName
+        + '">'
+        + item.bankName
+        + "</option>"));
     $("#bankSelect").html(options);
   });
 
-  let dt = dynamicTable.config(
-    "data-table",
-    ["accountId", "accountName", "accountType", "bankName", "initBalance"],
-    ["Account Id", "Account Name", "Account Type", "Bank Name", "Init Balance"], //set to null for field names instead of custom header names
-    "There are no banks to list..."
-  );
+  let dt = dynamicTable.config("data-table", ["accountId", "accountName", "accountType", "bankName", "initBalance"], ["Account Id", "Account Name", "Account Type", "Bank Name", "Init Balance"], //set to null for field names instead of custom header names
+      "There are no banks to list...");
 
   getAllData("account").then((data) => dt.load(data));
 
@@ -45,17 +37,17 @@ $(document).ready(function (e) {
       accountType: accountType,
       initBalance: initBalance,
     };
-    callApi("http://localhost:8080/1.0/minance/account/create", "POST", body)
-      .then((response) => {
-        if (response.ok) {
+    callApi("/1.0/minance/account/create", "POST", body)
+        .then((response) => {
+          if (response.ok) {
             $("#msgBox").text(accountName + " Created!");
-        }
-        $("#accountForm").trigger("reset");
-        getAllData("account").then((data) => dt.load(data));
-      })
-      .catch((error) => {
-        alert(error);
-      });
+          }
+          $("#accountForm").trigger("reset");
+          getAllData("account").then((data) => dt.load(data));
+        })
+        .catch((error) => {
+          alert(error);
+        });
     resetInput();
   });
 
@@ -65,16 +57,13 @@ $(document).ready(function (e) {
     let bankName = $("#bankSelect").val();
     let accountName = $("#accountForm").val();
 
-    callApi(
-      "http://localhost:8080/1.0/minance/account/delete/" +
-        bankName +
-        "/" +
-        accountName,
-      "DELETE"
-    ).then((response) => {
-        if (response.ok) {
-            $("#msgBox").text(accountName + " Deleted!");
-        }
+    callApi("/1.0/minance/account/delete/"
+        + bankName
+        + "/"
+        + accountName, "DELETE").then((response) => {
+      if (response.ok) {
+        $("#msgBox").text(accountName + " Deleted!");
+      }
       $("#bankForm").trigger("reset");
       getAllData("account").then((data) => dt.load(data));
     });

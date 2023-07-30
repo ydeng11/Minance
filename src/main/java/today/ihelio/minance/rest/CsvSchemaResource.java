@@ -20,7 +20,7 @@ import today.ihelio.minance.service.AccountService;
 import today.ihelio.minance.service.CsvHeaderMappingService;
 
 @Path("/1.0/minance/csvschema")
-@RegisterRestClient(baseUri = "http://localhost:8080/")
+@RegisterRestClient
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @ApplicationScoped

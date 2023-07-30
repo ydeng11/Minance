@@ -4,12 +4,9 @@ function resetInput() {
 }
 
 $(document).ready(function (e) {
-  let dt = dynamicTable.config(
-    "data-table",
-    ["bankId", "bankName"],
-    ["Bank Id", "Bank Name"], //set to null for field names instead of custom header names
-    "There are no banks to list..."
-  );
+  let dt = dynamicTable.config("data-table", ["bankId", "bankName"], ["Bank Id", "Bank Name"], //set to null for field names
+                                                                 // instead of custom header names
+      "There are no banks to list...");
   getAllData("bank").then((data) => dt.load(data));
 
   $("#createBank").on("click", function (event) {
@@ -19,15 +16,15 @@ $(document).ready(function (e) {
     let body = {
       bankName: bankName,
     };
-    callApi("http://localhost:8080/1.0/minance/bank/create", "POST", body)
-      .then((response) => {
-        $("#msgBox").text(bankName + " Created!");
-        $("#bankForm").trigger("reset");
-        getAllData("bank").then((data) => dt.load(data));
-      })
-      .catch((error) => {
-        alert(error);
-      });
+    callApi("/1.0/minance/bank/create", "POST", body)
+        .then((response) => {
+          $("#msgBox").text(bankName + " Created!");
+          $("#bankForm").trigger("reset");
+          getAllData("bank").then((data) => dt.load(data));
+        })
+        .catch((error) => {
+          alert(error);
+        });
     resetInput();
   });
 
@@ -35,10 +32,7 @@ $(document).ready(function (e) {
     event.preventDefault();
 
     let bankName = $("#bankForm").val();
-    callApi(
-      "http://localhost:8080/1.0/minance/bank/delete/" + bankName,
-      "DELETE"
-    ).then((response) => {
+    callApi("/1.0/minance/bank/delete/" + bankName, "DELETE").then((response) => {
       $("#msgBox").text(bankName + " Deleted!");
       $("#bankForm").trigger("reset");
       getAllData("bank").then((data) => dt.load(data));
