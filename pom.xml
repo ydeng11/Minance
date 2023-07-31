@@ -20,8 +20,8 @@
     <quarkus.platform.version>3.2.0.Final</quarkus.platform.version>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0</surefire-plugin.version>
-    <skip.jooq.generation>true</skip.jooq.generation>
-    <flyway.skip>true</flyway.skip>
+    <skip.jooq.generation>false</skip.jooq.generation>
+    <flyway.skip>false</flyway.skip>
   </properties>
   <dependencyManagement>
     <dependencies>
