@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     transaction_date DATE,
     post_date DATE,
     memo VARCHAR(200),
+    address VARCHAR(200),
     amount NUMERIC,
     bank_name VARCHAR(50),
     account_name VARCHAR(50),

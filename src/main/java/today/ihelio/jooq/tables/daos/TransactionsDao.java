@@ -175,6 +175,21 @@ public class TransactionsDao extends DAOImpl<TransactionsRecord, today.ihelio.jo
     }
 
     /**
+     * Fetch records that have <code>address BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfAddress(String lowerInclusive, String upperInclusive) {
+        return fetchRange(Transactions.TRANSACTIONS.ADDRESS, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>address IN (values)</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByAddress(String... values) {
+        return fetch(Transactions.TRANSACTIONS.ADDRESS, values);
+    }
+
+    /**
      * Fetch records that have <code>amount BETWEEN lowerInclusive AND
      * upperInclusive</code>
      */

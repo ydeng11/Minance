@@ -24,6 +24,7 @@ public class Transactions implements Serializable {
     private LocalDate transactionDate;
     private LocalDate postDate;
     private String memo;
+    private String address;
     private Long amount;
     private String bankName;
     private String accountName;
@@ -40,6 +41,7 @@ public class Transactions implements Serializable {
         this.transactionDate = value.transactionDate;
         this.postDate = value.postDate;
         this.memo = value.memo;
+        this.address = value.address;
         this.amount = value.amount;
         this.bankName = value.bankName;
         this.accountName = value.accountName;
@@ -55,6 +57,7 @@ public class Transactions implements Serializable {
         LocalDate transactionDate,
         LocalDate postDate,
         String memo,
+        String address,
         Long amount,
         String bankName,
         String accountName,
@@ -68,6 +71,7 @@ public class Transactions implements Serializable {
         this.transactionDate = transactionDate;
         this.postDate = postDate;
         this.memo = memo;
+        this.address = address;
         this.amount = amount;
         this.bankName = bankName;
         this.accountName = accountName;
@@ -187,6 +191,20 @@ public class Transactions implements Serializable {
     }
 
     /**
+     * Getter for <code>minance.transactions.address</code>.
+     */
+    public String getAddress() {
+        return this.address;
+    }
+
+    /**
+     * Setter for <code>minance.transactions.address</code>.
+     */
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    /**
      * Getter for <code>minance.transactions.amount</code>.
      */
     public Long getAmount() {
@@ -299,6 +317,12 @@ public class Transactions implements Serializable {
         }
         else if (!this.memo.equals(other.memo))
             return false;
+        if (this.address == null) {
+            if (other.address != null)
+                return false;
+        }
+        else if (!this.address.equals(other.address))
+            return false;
         if (this.amount == null) {
             if (other.amount != null)
                 return false;
@@ -338,6 +362,7 @@ public class Transactions implements Serializable {
         result = prime * result + ((this.transactionDate == null) ? 0 : this.transactionDate.hashCode());
         result = prime * result + ((this.postDate == null) ? 0 : this.postDate.hashCode());
         result = prime * result + ((this.memo == null) ? 0 : this.memo.hashCode());
+        result = prime * result + ((this.address == null) ? 0 : this.address.hashCode());
         result = prime * result + ((this.amount == null) ? 0 : this.amount.hashCode());
         result = prime * result + ((this.bankName == null) ? 0 : this.bankName.hashCode());
         result = prime * result + ((this.accountName == null) ? 0 : this.accountName.hashCode());
@@ -357,6 +382,7 @@ public class Transactions implements Serializable {
         sb.append(", ").append(transactionDate);
         sb.append(", ").append(postDate);
         sb.append(", ").append(memo);
+        sb.append(", ").append(address);
         sb.append(", ").append(amount);
         sb.append(", ").append(bankName);
         sb.append(", ").append(accountName);

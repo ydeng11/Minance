@@ -104,6 +104,7 @@ public class TransactionResource {
           tempTransactions.setCategory(t.getCategory());
           tempTransactions.setTransactionType(t.getTransactionType());
           tempTransactions.setAmount(t.getAmount().longValue());
+          tempTransactions.setAddress(t.getAddress());
           tempTransactions.setMemo(t.getMemo());
           tempTransactions.setTransactionDate(LocalDate.parse(t.getTransactionDate(), formatter));
           tempTransactions.setPostDate(LocalDate.parse(t.getPostDate(), formatter));

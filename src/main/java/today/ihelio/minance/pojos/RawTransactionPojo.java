@@ -8,12 +8,13 @@ public class RawTransactionPojo {
   private String postDate;
   private String memo;
   private Double amount;
+  private String address;
 
   public RawTransactionPojo() {
   }
 
   public RawTransactionPojo(String category, String description, String transactionType,
-      String transactionDate, String postDate, String memo, Double amount) {
+      String transactionDate, String postDate, String memo, Double amount, String address) {
     this.category = category;
     this.description = description;
     this.transactionType = transactionType;
@@ -21,6 +22,7 @@ public class RawTransactionPojo {
     this.postDate = postDate;
     this.memo = memo;
     this.amount = amount;
+    this.address = address;
   }
 
   public String getCategory() {
@@ -77,5 +79,13 @@ public class RawTransactionPojo {
 
   public void setAmount(Double amount) {
     this.amount = amount;
+  }
+
+  public String getAddress() {
+    return address;
+  }
+
+  public void setAddress(String address) {
+    this.address = address;
   }
 }

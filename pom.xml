@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>today.ihelio</groupId>
   <artifactId>minance</artifactId>
-  <version>0.0.1-beta</version>
+  <version>0.0.2</version>
   <properties>
     <compiler-plugin.version>3.11.0</compiler-plugin.version>
     <jackson.version>2.14.2</jackson.version>
@@ -20,6 +20,8 @@
     <quarkus.platform.version>3.2.0.Final</quarkus.platform.version>
     <skipITs>true</skipITs>
     <surefire-plugin.version>3.0.0</surefire-plugin.version>
+    <skip.jooq.generation>true</skip.jooq.generation>
+    <flyway.skip>true</flyway.skip>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -195,69 +197,71 @@
           </execution>
         </executions>
       </plugin>
-      <!--      <plugin>-->
-      <!--        <groupId>org.flywaydb</groupId>-->
-      <!--        <artifactId>flyway-maven-plugin</artifactId>-->
-      <!--        <version>9.20.0</version>-->
-      <!--        <executions>-->
-      <!--          <execution>-->
-      <!--            <phase>generate-sources</phase>-->
-      <!--            <goals>-->
-      <!--              <goal>migrate</goal>-->
-      <!--            </goals>-->
-      <!--          </execution>-->
-      <!--        </executions>-->
-      <!--        <configuration>-->
-      <!--          <cleanDisabled>false</cleanDisabled>-->
-      <!--          <baselineOnMigrate>true</baselineOnMigrate>-->
-      <!--          <driver>com.mysql.cj.jdbc.Driver</driver>-->
-      <!--          <url>jdbc:mysql://localhost:3306/minance?createDatabaseIfNotExist=true</url>-->
-      <!--          <user>root</user>-->
-      <!--          <password>minance</password>-->
-      <!--          <locations>-->
-      <!--            <location>filesystem:src/main/resources/db/migration</location>-->
-      <!--          </locations>-->
-      <!--        </configuration>-->
-      <!--      </plugin>-->
-      <!--      <plugin>-->
-      <!--        <groupId>org.jooq</groupId>-->
-      <!--        <artifactId>jooq-codegen-maven</artifactId>-->
-      <!--        <version>3.18.5</version>-->
-      <!--        <executions>-->
-      <!--          <execution>-->
-      <!--            <id>generate-jooq-sources</id>-->
-      <!--            <phase>generate-sources</phase>-->
-      <!--            <goals>-->
-      <!--              <goal>generate</goal>-->
-      <!--            </goals>-->
-      <!--          </execution>-->
-      <!--        </executions>-->
-      <!--        <configuration>-->
-      <!--          <jdbc>-->
-      <!--            <driver>com.mysql.cj.jdbc.Driver</driver>-->
-      <!--            <url>jdbc:mysql://localhost:3306/minance</url>-->
-      <!--            <user>root</user>-->
-      <!--            <password>minance</password>-->
-      <!--          </jdbc>-->
-      <!--          <generator>-->
-      <!--            <generate>-->
-      <!--              <daos>true</daos>-->
-      <!--            </generate>-->
-      <!--            <database>-->
-      <!--              <name>org.jooq.meta.mysql.MySQLDatabase</name>-->
-      <!--              <includes>.*</includes>-->
-      <!--              <excludes></excludes>-->
-      <!--              <inputSchema>minance</inputSchema>-->
-      <!--              <recordVersionFields>REC_VERSION</recordVersionFields>-->
-      <!--              <recordTimestampFields>REC_TIMESTAMP</recordTimestampFields>-->
-      <!--            </database>-->
-      <!--            <target>-->
-      <!--              <packageName>today.ihelio.jooq</packageName>-->
-      <!--              <directory>src/main/java</directory>-->
-      <!--            </target>-->
-      <!--          </generator>-->
-      <!--        </configuration>-->
-      <!--      </plugin>-->
+      <plugin>
+        <groupId>org.flywaydb</groupId>
+        <artifactId>flyway-maven-plugin</artifactId>
+        <version>9.20.0</version>
+        <executions>
+          <execution>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>migrate</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <skip>${flyway.skip}</skip>
+          <cleanDisabled>false</cleanDisabled>
+          <baselineOnMigrate>true</baselineOnMigrate>
+          <driver>com.mysql.cj.jdbc.Driver</driver>
+          <url>jdbc:mysql://localhost:3306/minance?createDatabaseIfNotExist=true</url>
+          <user>root</user>
+          <password>minance</password>
+          <locations>
+            <location>filesystem:src/main/resources/db/migration</location>
+          </locations>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.jooq</groupId>
+        <artifactId>jooq-codegen-maven</artifactId>
+        <version>3.18.5</version>
+        <executions>
+          <execution>
+            <id>generate-jooq-sources</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <skip>${skip.jooq.generation}</skip>
+          <jdbc>
+            <driver>com.mysql.cj.jdbc.Driver</driver>
+            <url>jdbc:mysql://localhost:3306/minance</url>
+            <user>root</user>
+            <password>minance</password>
+          </jdbc>
+          <generator>
+            <generate>
+              <daos>true</daos>
+            </generate>
+            <database>
+              <name>org.jooq.meta.mysql.MySQLDatabase</name>
+              <includes>.*</includes>
+              <excludes></excludes>
+              <inputSchema>minance</inputSchema>
+              <recordVersionFields>REC_VERSION</recordVersionFields>
+              <recordTimestampFields>REC_TIMESTAMP</recordTimestampFields>
+            </database>
+            <target>
+              <packageName>today.ihelio.jooq</packageName>
+              <directory>src/main/java</directory>
+            </target>
+          </generator>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
   <profiles>
