@@ -4,12 +4,10 @@ import com.google.common.collect.ImmutableList;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.NotFoundException;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.jooq.DSLContext;
 import org.jooq.Field;
-import org.jooq.Record10;
 import today.ihelio.jooq.tables.pojos.Transactions;
 import today.ihelio.jooq.tables.records.TransactionsRecord;
 import today.ihelio.minance.exception.CustomException;
@@ -26,6 +24,7 @@ public class TransactionService {
       TRANSACTIONS.POST_DATE,
       TRANSACTIONS.MEMO,
       TRANSACTIONS.AMOUNT,
+      TRANSACTIONS.ADDRESS,
       TRANSACTIONS.BANK_NAME,
       TRANSACTIONS.ACCOUNT_NAME);
   DSLContext dslContext;
@@ -47,6 +46,7 @@ public class TransactionService {
               TRANSACTIONS.POST_DATE,
               TRANSACTIONS.MEMO,
               TRANSACTIONS.AMOUNT,
+              TRANSACTIONS.ADDRESS,
               TRANSACTIONS.BANK_NAME,
               TRANSACTIONS.ACCOUNT_NAME);
         }).collect(Collectors.toList()))
@@ -70,6 +70,7 @@ public class TransactionService {
         .set(TRANSACTIONS.POST_DATE, transactions.getPostDate())
         .set(TRANSACTIONS.TRANSACTION_DATE, transactions.getTransactionDate())
         .set(TRANSACTIONS.AMOUNT, transactions.getAmount())
+        .set(TRANSACTIONS.ADDRESS, transactions.getAddress())
         .where(TRANSACTIONS.TRANSACTION_ID.eq(transactions.getTransactionId()))
         .execute();
   }
@@ -103,9 +104,5 @@ public class TransactionService {
         .and(TRANSACTIONS.ACCOUNT_ID.eq(accountId))
         .orderBy(TRANSACTIONS.TRANSACTION_DATE)
         .fetchInto(Transactions.class);
-  }
-
-  public interface TransactionInsertableColumns extends
-      Record10<Integer, String, String, String, LocalDate, LocalDate, String, Long, String, String> {
   }
 }

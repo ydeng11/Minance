@@ -147,6 +147,8 @@ $(document).ready(function (e) {
         inputColumn: $("#postDate").val(), transactionColumn: "postDate",
       }, {
         inputColumn: $("#amount").val(), transactionColumn: "amount",
+      },{
+        inputColumn: $("#address").val(), addressColumn: "address",
       }, {
         inputColumn: $("#memo").val(), transactionColumn: "memo",
       },],

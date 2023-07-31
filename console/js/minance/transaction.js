@@ -50,7 +50,7 @@ function upload(evt) {
 
 var csvData;
 
-$(document).ready(function (e) {
+$(document).ready(function () {
   // upload csv
   document
       .getElementById("txtFileUpload")
@@ -58,7 +58,7 @@ $(document).ready(function (e) {
 
   // find all the banks for the banks select
   getAllData("bank").then((data) => {
-    if (data.length == 0) {
+    if (data == null || data.length == 0) {
       return;
     }
     let options = "<option selected>Select Bank</option>";
@@ -74,7 +74,7 @@ $(document).ready(function (e) {
   let accountMap;
   $("#bankSelect").on("change", function () {
     getAllData("account").then((data) => {
-      if (data.length == 0) {
+      if (data == null || data.length == 0) {
         return;
       }
       accountMap = Object.fromEntries(data);
@@ -88,7 +88,7 @@ $(document).ready(function (e) {
     });
   });
 
-  let dt = dynamicTable.config("data-table", ["transactionId", "accountName", "bankName", "category", "description", "transactionType", "transactionDate", "postDate", "amount", "memo",], ["Transaction Id", "Account Name", "Bank Name", "Category", "Description", "Transaction Type", "Transaction Date", "Post Date", "Amount", "Memo",], //set to null for field names instead of custom header names
+  let dt = dynamicTable.config("data-table", ["transactionId", "accountName", "bankName", "category", "description", "transactionType", "transactionDate", "postDate", "amount", "address", "memo",], ["Transaction Id", "Account Name", "Bank Name", "Category", "Description", "Transaction Type", "Transaction Date", "Post Date", "Amount", "Address", "Memo",], //set to null for field names instead of custom header names
       "There are no transaction to list...");
 
   $("#uploadActivities").on("click", function (event) {
@@ -96,7 +96,7 @@ $(document).ready(function (e) {
     let bankName = $("#bankSelect").val();
     let accountName = $("#accountSelect").val();
     let files = document.querySelector("input[type=file]").files;
-    if (files.length == 0) {
+    if (files == null || files.length == 0) {
       return;
     }
     let body = new FormData();
