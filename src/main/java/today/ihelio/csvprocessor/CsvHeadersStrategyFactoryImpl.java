@@ -8,7 +8,7 @@ import java.util.Map;
 import org.jooq.DSLContext;
 import org.jooq.Record2;
 import org.jooq.Result;
-import today.ihelio.minance.pojos.RawTransactionPojo;
+import today.ihelio.minance.csvpojos.RawTransactionPojo;
 
 import static today.ihelio.jooq.tables.CsvColumnMapping.CSV_COLUMN_MAPPING;
 

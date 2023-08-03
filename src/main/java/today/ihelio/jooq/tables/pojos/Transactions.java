@@ -25,6 +25,10 @@ public class Transactions implements Serializable {
     private LocalDate postDate;
     private String memo;
     private String address;
+    private String city;
+    private String stateName;
+    private String country;
+    private String zipcode;
     private Long amount;
     private String bankName;
     private String accountName;
@@ -42,6 +46,10 @@ public class Transactions implements Serializable {
         this.postDate = value.postDate;
         this.memo = value.memo;
         this.address = value.address;
+        this.city = value.city;
+        this.stateName = value.stateName;
+        this.country = value.country;
+        this.zipcode = value.zipcode;
         this.amount = value.amount;
         this.bankName = value.bankName;
         this.accountName = value.accountName;
@@ -58,6 +66,10 @@ public class Transactions implements Serializable {
         LocalDate postDate,
         String memo,
         String address,
+        String city,
+        String stateName,
+        String country,
+        String zipcode,
         Long amount,
         String bankName,
         String accountName,
@@ -72,6 +84,10 @@ public class Transactions implements Serializable {
         this.postDate = postDate;
         this.memo = memo;
         this.address = address;
+        this.city = city;
+        this.stateName = stateName;
+        this.country = country;
+        this.zipcode = zipcode;
         this.amount = amount;
         this.bankName = bankName;
         this.accountName = accountName;
@@ -205,6 +221,62 @@ public class Transactions implements Serializable {
     }
 
     /**
+     * Getter for <code>minance.transactions.city</code>.
+     */
+    public String getCity() {
+        return this.city;
+    }
+
+    /**
+     * Setter for <code>minance.transactions.city</code>.
+     */
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    /**
+     * Getter for <code>minance.transactions.state_name</code>.
+     */
+    public String getStateName() {
+        return this.stateName;
+    }
+
+    /**
+     * Setter for <code>minance.transactions.state_name</code>.
+     */
+    public void setStateName(String stateName) {
+        this.stateName = stateName;
+    }
+
+    /**
+     * Getter for <code>minance.transactions.country</code>.
+     */
+    public String getCountry() {
+        return this.country;
+    }
+
+    /**
+     * Setter for <code>minance.transactions.country</code>.
+     */
+    public void setCountry(String country) {
+        this.country = country;
+    }
+
+    /**
+     * Getter for <code>minance.transactions.zipcode</code>.
+     */
+    public String getZipcode() {
+        return this.zipcode;
+    }
+
+    /**
+     * Setter for <code>minance.transactions.zipcode</code>.
+     */
+    public void setZipcode(String zipcode) {
+        this.zipcode = zipcode;
+    }
+
+    /**
      * Getter for <code>minance.transactions.amount</code>.
      */
     public Long getAmount() {
@@ -323,6 +395,30 @@ public class Transactions implements Serializable {
         }
         else if (!this.address.equals(other.address))
             return false;
+        if (this.city == null) {
+            if (other.city != null)
+                return false;
+        }
+        else if (!this.city.equals(other.city))
+            return false;
+        if (this.stateName == null) {
+            if (other.stateName != null)
+                return false;
+        }
+        else if (!this.stateName.equals(other.stateName))
+            return false;
+        if (this.country == null) {
+            if (other.country != null)
+                return false;
+        }
+        else if (!this.country.equals(other.country))
+            return false;
+        if (this.zipcode == null) {
+            if (other.zipcode != null)
+                return false;
+        }
+        else if (!this.zipcode.equals(other.zipcode))
+            return false;
         if (this.amount == null) {
             if (other.amount != null)
                 return false;
@@ -363,6 +459,10 @@ public class Transactions implements Serializable {
         result = prime * result + ((this.postDate == null) ? 0 : this.postDate.hashCode());
         result = prime * result + ((this.memo == null) ? 0 : this.memo.hashCode());
         result = prime * result + ((this.address == null) ? 0 : this.address.hashCode());
+        result = prime * result + ((this.city == null) ? 0 : this.city.hashCode());
+        result = prime * result + ((this.stateName == null) ? 0 : this.stateName.hashCode());
+        result = prime * result + ((this.country == null) ? 0 : this.country.hashCode());
+        result = prime * result + ((this.zipcode == null) ? 0 : this.zipcode.hashCode());
         result = prime * result + ((this.amount == null) ? 0 : this.amount.hashCode());
         result = prime * result + ((this.bankName == null) ? 0 : this.bankName.hashCode());
         result = prime * result + ((this.accountName == null) ? 0 : this.accountName.hashCode());
@@ -383,6 +483,10 @@ public class Transactions implements Serializable {
         sb.append(", ").append(postDate);
         sb.append(", ").append(memo);
         sb.append(", ").append(address);
+        sb.append(", ").append(city);
+        sb.append(", ").append(stateName);
+        sb.append(", ").append(country);
+        sb.append(", ").append(zipcode);
         sb.append(", ").append(amount);
         sb.append(", ").append(bankName);
         sb.append(", ").append(accountName);

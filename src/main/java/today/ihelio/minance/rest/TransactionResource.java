@@ -18,8 +18,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Reader;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,8 +28,8 @@ import today.ihelio.csvprocessor.CsvHeaderStrategyFactory;
 import today.ihelio.jooq.tables.pojos.Accounts;
 import today.ihelio.jooq.tables.pojos.Banks;
 import today.ihelio.jooq.tables.pojos.Transactions;
+import today.ihelio.minance.csvpojos.RawTransactionPojo;
 import today.ihelio.minance.exception.CustomException;
-import today.ihelio.minance.pojos.RawTransactionPojo;
 import today.ihelio.minance.pojos.TransactionsUploadForm;
 import today.ihelio.minance.service.AccountService;
 import today.ihelio.minance.service.BankService;
@@ -86,8 +84,12 @@ public class TransactionResource {
         csvHeaderStrategyFactory.getStrategy(account.getAccountId(), RawTransactionPojo.class);
 
     CsvToBean<RawTransactionPojo> csvReader =
-        createCsvReader(new InputStreamReader(file), RawTransactionPojo.class,
-            headerMappingStrategy);
+        new CsvToBeanBuilder<RawTransactionPojo>(new InputStreamReader(file))
+            .withType(RawTransactionPojo.class)
+            .withSeparator(',')
+            .withIgnoreLeadingWhiteSpace(true)
+            .withIgnoreEmptyLine(true)
+            .build();
 
     List<RawTransactionPojo> rawTransactions = csvReader.parse();
 
@@ -95,22 +97,22 @@ public class TransactionResource {
     DateTimeFormatter formatter =
         csvHeaderMappingService.retrieveDateFormat(account.getAccountId());
 
-    rawTransactions.forEach(t -> {
-          Transactions tempTransactions = new Transactions();
-          tempTransactions.setAccountId(account.getAccountId());
-          tempTransactions.setAccountName(account.getAccountName());
-          tempTransactions.setBankName(banks.getBankName());
-          tempTransactions.setDescription(t.getDescription());
-          tempTransactions.setCategory(t.getCategory());
-          tempTransactions.setTransactionType(t.getTransactionType());
-          tempTransactions.setAmount(t.getAmount().longValue());
-          tempTransactions.setAddress(t.getAddress());
-          tempTransactions.setMemo(t.getMemo());
-          tempTransactions.setTransactionDate(LocalDate.parse(t.getTransactionDate(), formatter));
-          tempTransactions.setPostDate(LocalDate.parse(t.getPostDate(), formatter));
-          transactionList.add(tempTransactions);
-        }
-    );
+    //rawTransactions.forEach(t -> {
+    //      Transactions tempTransactions = new Transactions();
+    //      tempTransactions.setAccountId(account.getAccountId());
+    //      tempTransactions.setAccountName(account.getAccountName());
+    //      tempTransactions.setBankName(banks.getBankName());
+    //      tempTransactions.setDescription(t.getDescription());
+    //      tempTransactions.setCategory(t.getCategory());
+    //      tempTransactions.setTransactionType(t.getTransactionType());
+    //      tempTransactions.setAmount(t.getAmount().longValue());
+    //      tempTransactions.setAddress(t.getAddress());
+    //      tempTransactions.setMemo(t.getMemo());
+    //      tempTransactions.setTransactionDate(LocalDate.parse(t.getTransactionDate(), formatter));
+    //      tempTransactions.setPostDate(LocalDate.parse(t.getPostDate(), formatter));
+    //      transactionList.add(tempTransactions);
+    //    }
+    //);
 
     int numUploaded = transactionService.create(transactionList);
     return Response.ok().entity(numUploaded + " transactions uploaded").build();
@@ -169,16 +171,5 @@ public class TransactionResource {
     } else {
       return Response.status(Response.Status.OK).build();
     }
-  }
-
-  private <T> CsvToBean<T> createCsvReader(Reader reader, Class<T> clazz,
-      HeaderColumnNameTranslateMappingStrategy strategy) {
-    return new CsvToBeanBuilder(reader)
-        .withType(clazz)
-        .withSeparator(',')
-        .withIgnoreLeadingWhiteSpace(true)
-        .withIgnoreEmptyLine(true)
-        .withMappingStrategy(strategy)
-        .build();
   }
 }

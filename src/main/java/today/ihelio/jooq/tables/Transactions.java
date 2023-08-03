@@ -11,12 +11,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function13;
+import org.jooq.Function17;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row13;
+import org.jooq.Row17;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -96,7 +96,27 @@ public class Transactions extends TableImpl<TransactionsRecord> {
     /**
      * The column <code>minance.transactions.address</code>.
      */
-    public final TableField<TransactionsRecord, String> ADDRESS = createField(DSL.name("address"), SQLDataType.VARCHAR(200), this, "");
+    public final TableField<TransactionsRecord, String> ADDRESS = createField(DSL.name("address"), SQLDataType.VARCHAR(100), this, "");
+
+    /**
+     * The column <code>minance.transactions.city</code>.
+     */
+    public final TableField<TransactionsRecord, String> CITY = createField(DSL.name("city"), SQLDataType.VARCHAR(30), this, "");
+
+    /**
+     * The column <code>minance.transactions.state_name</code>.
+     */
+    public final TableField<TransactionsRecord, String> STATE_NAME = createField(DSL.name("state_name"), SQLDataType.VARCHAR(30), this, "");
+
+    /**
+     * The column <code>minance.transactions.country</code>.
+     */
+    public final TableField<TransactionsRecord, String> COUNTRY = createField(DSL.name("country"), SQLDataType.VARCHAR(10), this, "");
+
+    /**
+     * The column <code>minance.transactions.zipcode</code>.
+     */
+    public final TableField<TransactionsRecord, String> ZIPCODE = createField(DSL.name("zipcode"), SQLDataType.VARCHAR(10), this, "");
 
     /**
      * The column <code>minance.transactions.amount</code>.
@@ -228,18 +248,18 @@ public class Transactions extends TableImpl<TransactionsRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row13 type methods
+    // Row17 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row13<Integer, Integer, String, String, String, LocalDate, LocalDate, String, String, Long, String, String, String> fieldsRow() {
-        return (Row13) super.fieldsRow();
+    public Row17<Integer, Integer, String, String, String, LocalDate, LocalDate, String, String, String, String, String, String, Long, String, String, String> fieldsRow() {
+        return (Row17) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function13<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super Long, ? super String, ? super String, ? super String, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function17<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Long, ? super String, ? super String, ? super String, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -247,7 +267,7 @@ public class Transactions extends TableImpl<TransactionsRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function13<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super Long, ? super String, ? super String, ? super String, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function17<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Long, ? super String, ? super String, ? super String, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

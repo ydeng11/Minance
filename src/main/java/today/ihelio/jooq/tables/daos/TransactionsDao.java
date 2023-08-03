@@ -190,6 +190,66 @@ public class TransactionsDao extends DAOImpl<TransactionsRecord, today.ihelio.jo
     }
 
     /**
+     * Fetch records that have <code>city BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfCity(String lowerInclusive, String upperInclusive) {
+        return fetchRange(Transactions.TRANSACTIONS.CITY, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>city IN (values)</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByCity(String... values) {
+        return fetch(Transactions.TRANSACTIONS.CITY, values);
+    }
+
+    /**
+     * Fetch records that have <code>state_name BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfStateName(String lowerInclusive, String upperInclusive) {
+        return fetchRange(Transactions.TRANSACTIONS.STATE_NAME, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>state_name IN (values)</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByStateName(String... values) {
+        return fetch(Transactions.TRANSACTIONS.STATE_NAME, values);
+    }
+
+    /**
+     * Fetch records that have <code>country BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfCountry(String lowerInclusive, String upperInclusive) {
+        return fetchRange(Transactions.TRANSACTIONS.COUNTRY, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>country IN (values)</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByCountry(String... values) {
+        return fetch(Transactions.TRANSACTIONS.COUNTRY, values);
+    }
+
+    /**
+     * Fetch records that have <code>zipcode BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfZipcode(String lowerInclusive, String upperInclusive) {
+        return fetchRange(Transactions.TRANSACTIONS.ZIPCODE, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>zipcode IN (values)</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByZipcode(String... values) {
+        return fetch(Transactions.TRANSACTIONS.ZIPCODE, values);
+    }
+
+    /**
      * Fetch records that have <code>amount BETWEEN lowerInclusive AND
      * upperInclusive</code>
      */
