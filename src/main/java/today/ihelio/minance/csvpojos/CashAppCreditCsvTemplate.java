@@ -9,41 +9,55 @@ import java.time.LocalDate;
 
 import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.APPLE;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CHASE;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CASH_APP;
 
 @Dependent
-public class AppleCreditCsvTemplate implements BankAccountCsvTemplate {
+public class CashAppCreditCsvTemplate implements BankAccountCsvTemplate {
   @CsvIgnore
   public final BankAccountPair bankAccountPair =
-      BankAccountPair.of(APPLE, CREDIT);
+      BankAccountPair.of(CASH_APP, CREDIT);
 
-  @CsvBindByName(column = "Amount(USD)")
+  @CsvBindByName(column = "Currency")
+  public String currency;
+
+  @CsvBindByName(column = "Amount")
   public double amount;
 
-  @CsvBindByName(column = "Category")
-  public String category;
+  @CsvBindByName(column = "Fee")
+  public double fee;
 
-  @CsvBindByName(column = "Type")
-  public String transactionType;
+  @CsvBindByName(column = "Net Amount")
+  public double netAmount;
 
-  @CsvBindByName(column = "Description")
-  public String description;
+  @CsvBindByName(column = "Asset Type")
+  public String assetType;
 
-  @CsvBindByName(column = "Merchant")
-  public String merchant;
+  @CsvBindByName(column = "Asset Price")
+  public String assetPrice;
+
+  @CsvBindByName(column = "Asset Amount")
+  public String assetAmount;
+
+  @CsvBindByName(column = "Status")
+  public String status;
+
+  @CsvBindByName(column = "Transaction ID")
+  public String transactionId;
 
   @CsvDate(value = "MM/dd/yyyy")
-  @CsvBindByName(column = "Transaction Date")
-  public LocalDate transactionDate;
+  @CsvBindByName(column = "Date")
+  public LocalDate date;
 
-  @CsvDate(value = "MM/dd/yyyy")
-  @CsvBindByName(column = "Clearing Date")
-  public LocalDate clearingDate;
+  @CsvBindByName(column = "Notes")
+  public String notes;
 
-  @CsvBindByName(column = "Purchased By")
-  public String memberName;
+  @CsvBindByName(column = "Name of sender/receiver")
+  public String senderOrReceiver;
 
-  public AppleCreditCsvTemplate() {
+  @CsvBindByName(column = "Account")
+  public String account;
+
+  public CashAppCreditCsvTemplate() {
   }
 
   @Override
@@ -52,16 +66,21 @@ public class AppleCreditCsvTemplate implements BankAccountCsvTemplate {
   }
 
   @Override public String toString() {
-    return "AppleCreditCsvTemplate{" +
+    return "CashAppCreditCsvTemplate{" +
         "bankAccountPair=" + bankAccountPair +
+        ", currency='" + currency + '\'' +
         ", amount=" + amount +
-        ", category='" + category + '\'' +
-        ", transactionType='" + transactionType + '\'' +
-        ", description='" + description + '\'' +
-        ", merchant='" + merchant + '\'' +
-        ", transactionDate=" + transactionDate +
-        ", clearingDate=" + clearingDate +
-        ", memberName='" + memberName + '\'' +
+        ", fee=" + fee +
+        ", netAmount=" + netAmount +
+        ", assetType='" + assetType + '\'' +
+        ", assetPrice=" + assetPrice +
+        ", assetAmount=" + assetAmount +
+        ", status='" + status + '\'' +
+        ", transactionId='" + transactionId + '\'' +
+        ", date=" + date +
+        ", notes='" + notes + '\'' +
+        ", senderOrReceiver='" + senderOrReceiver + '\'' +
+        ", account='" + account + '\'' +
         '}';
   }
 }

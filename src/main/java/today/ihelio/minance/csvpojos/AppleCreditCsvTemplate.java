@@ -4,38 +4,45 @@ import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
 import com.opencsv.bean.CsvIgnore;
 import jakarta.enterprise.context.Dependent;
+
 import java.time.LocalDate;
 
 import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CHASE;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.APPLE;
 
 @Dependent
-public class ChaseCreditCsvTemplate implements BankAccountCsvTemplate {
+public class AppleCreditCsvTemplate implements BankAccountCsvTemplate {
   @CsvIgnore
   public final BankAccountPair bankAccountPair =
-      BankAccountPair.of(CHASE, CREDIT);
+      BankAccountPair.of(APPLE, CREDIT);
 
-  @CsvBindByName(column = "Amount")
+  @CsvBindByName(column = "Amount(USD)")
   public double amount;
 
   @CsvBindByName(column = "Category")
   public String category;
 
-  @CsvBindByName(column = "Description")
-  public String description;
   @CsvBindByName(column = "Type")
   public String transactionType;
+
+  @CsvBindByName(column = "Description")
+  public String description;
+
+  @CsvBindByName(column = "Merchant")
+  public String merchant;
+
   @CsvDate(value = "MM/dd/yyyy")
   @CsvBindByName(column = "Transaction Date")
   public LocalDate transactionDate;
+
   @CsvDate(value = "MM/dd/yyyy")
-  @CsvBindByName(column = "Post Date")
-  public LocalDate postDate;
+  @CsvBindByName(column = "Clearing Date")
+  public LocalDate clearingDate;
 
-  @CsvBindByName(column = "Memo")
-  public String memo;
+  @CsvBindByName(column = "Purchased By")
+  public String memberName;
 
-  public ChaseCreditCsvTemplate() {
+  public AppleCreditCsvTemplate() {
   }
 
   @Override
@@ -44,15 +51,16 @@ public class ChaseCreditCsvTemplate implements BankAccountCsvTemplate {
   }
 
   @Override public String toString() {
-    return "ChaseCreditCsvTemplate{" +
+    return "AppleCreditCsvTemplate{" +
         "bankAccountPair=" + bankAccountPair +
         ", amount=" + amount +
         ", category='" + category + '\'' +
-        ", description='" + description + '\'' +
         ", transactionType='" + transactionType + '\'' +
+        ", description='" + description + '\'' +
+        ", merchant='" + merchant + '\'' +
         ", transactionDate=" + transactionDate +
-        ", postDate=" + postDate +
-        ", memo='" + memo + '\'' +
+        ", clearingDate=" + clearingDate +
+        ", memberName='" + memberName + '\'' +
         '}';
   }
 }

@@ -4,42 +4,50 @@ import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
 import com.opencsv.bean.CsvIgnore;
 import jakarta.enterprise.context.Dependent;
+
 import java.time.LocalDate;
 
 import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.BANK_OF_AMERICA;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CITI;
+
 @Dependent
-public class BoaCreditCsvTemplate implements BankAccountCsvTemplate {
+public class CitiCreditCsvTemplate implements BankAccountCsvTemplate {
     @CsvIgnore
     public final BankAccountPair bankAccountPair =
-            BankAccountPair.of(BANK_OF_AMERICA,CREDIT);
-    @CsvBindByName(column = "Amount")
-    public double amount;
+            BankAccountPair.of(CITI,CREDIT);
+    @CsvBindByName(column = "Debit")
+    public double debit;
 
-    @CsvBindByName(column = "Payee")
+    @CsvBindByName(column = "Credit")
+    public double credit;
+
+    @CsvBindByName(column = "Description")
     public String description;
 
     @CsvDate(value = "MM/dd/yyyy")
-    @CsvBindByName(column = "Posted Date")
-    public LocalDate postDate;
+    @CsvBindByName(column = "Date")
+    public LocalDate date;
 
-    @CsvBindByName(column = "Address")
-    public String address;
+    @CsvBindByName(column = "Status")
+    public String status;
 
-    @CsvBindByName(column = "Reference Number")
-    public String referenceNumber;
+    @CsvBindByName(column = "Member Name")
+    public String memberName;
 
+    public CitiCreditCsvTemplate() {
+    }
     @Override
     public BankAccountPair getBankAccount(){ return bankAccountPair; }
 
     @Override public String toString(){
-        return "BoaCreditCsvTemplate{" +
+        return "CitiCreditCsvTemplate{" +
                 "bankAccountPair=" + bankAccountPair +
-                ", amount=" + amount +
+                ", debit=" + debit +
+                ", credit=" + credit +
                 ", description='" + description + '\'' +
-                ", postDate=" + postDate +
-                ", address='" + address + '\'' +
-                ", referenceNumber='" + referenceNumber + '\'' +
+                ", date=" + date +
+                ", status='" + status + '\'' +
+                ", memberName='" + memberName + '\'' +
                 '}';
     }
 }

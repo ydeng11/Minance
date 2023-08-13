@@ -4,44 +4,42 @@ import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
 import com.opencsv.bean.CsvIgnore;
 import jakarta.enterprise.context.Dependent;
+
 import java.time.LocalDate;
 
-import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
+import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.BANK_OF_AMERICA;
+
 @Dependent
-public class BoaCreditCsvTemplate implements BankAccountCsvTemplate {
+public class BoaDebitCsvTemplate implements BankAccountCsvTemplate {
     @CsvIgnore
     public final BankAccountPair bankAccountPair =
-            BankAccountPair.of(BANK_OF_AMERICA,CREDIT);
+            BankAccountPair.of(BANK_OF_AMERICA,DEBIT);
     @CsvBindByName(column = "Amount")
     public double amount;
 
-    @CsvBindByName(column = "Payee")
+    @CsvBindByName(column = "Running Bal.")
+    public double balance;
+
+    @CsvBindByName(column = "Description")
     public String description;
 
     @CsvDate(value = "MM/dd/yyyy")
-    @CsvBindByName(column = "Posted Date")
-    public LocalDate postDate;
+    @CsvBindByName(column = "Date")
+    public LocalDate date;
 
-    @CsvBindByName(column = "Address")
-    public String address;
-
-    @CsvBindByName(column = "Reference Number")
-    public String referenceNumber;
-
-    public BoaCreditCsvTemplate() {
+    public BoaDebitCsvTemplate() {
     }
     @Override
     public BankAccountPair getBankAccount(){ return bankAccountPair; }
 
     @Override public String toString(){
-        return "BoaCreditCsvTemplate{" +
+        return "BoaDebitCsvTemplate{" +
                 "bankAccountPair=" + bankAccountPair +
                 ", amount=" + amount +
+                ", balance=" + balance +
                 ", description='" + description + '\'' +
-                ", postDate=" + postDate +
-                ", address='" + address + '\'' +
-                ", referenceNumber='" + referenceNumber + '\'' +
+                ", date=" + date +
                 '}';
     }
 }

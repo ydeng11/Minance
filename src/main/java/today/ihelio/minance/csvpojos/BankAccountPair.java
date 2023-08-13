@@ -54,6 +54,7 @@ public class BankAccountPair {
     CITI("citi"),
     WELLS_FARGO("wellsFargo"),
     CASH_APP("cash"),
+    APPLE("apple"),
     BANK_OF_AMERICA("bankOfAmerica");
     private final String name;
 
