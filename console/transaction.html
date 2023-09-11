@@ -112,22 +112,46 @@
             />
           </div>
           <div class="col-md-2 column">
-            <label class="visually-hidden" for="transactionIdToDelete"
-            >Type in Transaction Id</label
-            >
+            <label class="visually-hidden" for="transactionIdToDelete">Type in Transaction Id</label>
             <input
                 class="form-control"
                 id="transactionIdToDelete"
                 placeholder="Transaction Id"
-                type="text"
-            />
+                type="text"/>
           </div>
           <div class="col-auto">
             <button
                 class="btn btn-outline-dark"
                 id="deleteTransaction"
-                type="submit"
-            >
+                type="submit">
+              Delete
+            </button>
+          </div>
+        </form>
+        <br/>
+        <form class="row g-2">
+          <div class="col-md-1 column">
+            <input
+                class="form-control-plaintext"
+                id="transactionUploadTimeLabel"
+                readonly
+                type="text"
+                value="Upload Time"
+            />
+          </div>
+          <div class="col-md-2 column">
+            <label class="visually-hidden" for="transactionUploadTime">Type in Upload Time for batch delete</label>
+            <input
+                class="form-control"
+                id="transactionUploadTime"
+                placeholder="Upload Time"
+                type="text"/>
+          </div>
+          <div class="col-auto">
+            <button
+                class="btn btn-outline-dark"
+                id="batchDeleteTransactions"
+                type="submit">
               Delete
             </button>
           </div>

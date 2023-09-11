@@ -186,11 +186,25 @@ public class TransactionResource {
 
   @DELETE
   @Path("/delete/{id}")
-  public Response deleteTransaction(@PathParam("id") int transactionId) throws SQLException {
+  public Response deleteTransaction(@PathParam("id") int transactionId)
+      throws SQLException, CustomException {
     if (transactionService.delete(ImmutableList.of(transactionId)) == 0) {
-      return Response.status(Response.Status.NO_CONTENT).build();
+      throw CustomException.from(new IllegalArgumentException(
+          "Didn't find the transaction id: " + transactionId));
     } else {
-      return Response.status(Response.Status.OK).build();
+      return Response.status(OK).build();
+    }
+  }
+
+  @DELETE
+  @Path("/delete/uploadTime/{uploadAt}")
+  public Response deleteTransactionUploadedAt(@PathParam("uploadAt") String uploadAt)
+      throws SQLException, CustomException {
+    if (transactionService.deleteWithUploadTime(uploadAt) == 0) {
+      throw CustomException.from(new IllegalArgumentException(
+          "Didn't find any records uploaded at: " + uploadAt));
+    } else {
+      return Response.status(OK).entity("deleted").build();
     }
   }
 }

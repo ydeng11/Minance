@@ -88,7 +88,9 @@ $(document).ready(function () {
     });
   });
 
-  let dt = dynamicTable.config("data-table", ["transactionId", "accountName", "bankName", "category", "description", "transactionType", "transactionDate", "postDate", "amount", "address", "memo",], ["Transaction Id", "Account Name", "Bank Name", "Category", "Description", "Transaction Type", "Transaction Date", "Post Date", "Amount", "Address", "Memo",], //set to null for field names instead of custom header names
+  let dt = dynamicTable.config("data-table", 
+  ["transactionId", "accountName", "bankName", "category", "description", "transactionType", "transactionDate", "postDate", "amount", "address", "memo", "uploadTime"], 
+  ["Transaction Id", "Account Name", "Bank Name", "Category", "Description", "Transaction Type", "Transaction Date", "Post Date", "Amount", "Address", "Memo", "Upload Time"], //set to null for field names instead of custom header names
       "There are no transaction to list...");
 
   $("#uploadActivities").on("click", function (event) {
@@ -139,6 +141,18 @@ $(document).ready(function () {
     callApi("http://localhost:8080/1.0/minance/transactions/delete/" + txnId, "DELETE").then((response) => {
       if (response.ok) {
         $("#msgBox").text(txnId + " Deleted!");
+      }
+    });
+  });
+
+  $("#batchDeleteTransactions").on("click", function (event) {
+    event.preventDefault();
+
+    let uploadTime = $("#transactionUploadTime").val();
+
+    callApi("http://localhost:8080/1.0/minance/transactions/delete/uploadTime/" + uploadTime, "DELETE").then((response) => {
+      if (response.ok) {
+        $("#msgBox").text("Deleted!");
       }
     });
   });
