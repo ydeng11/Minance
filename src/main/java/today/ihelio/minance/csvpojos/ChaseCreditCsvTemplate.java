@@ -4,7 +4,9 @@ import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
 import com.opencsv.bean.CsvIgnore;
 import jakarta.enterprise.context.Dependent;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import today.ihelio.jooq.tables.pojos.Transactions;
 
 import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CHASE;
@@ -14,9 +16,11 @@ public class ChaseCreditCsvTemplate implements BankAccountCsvTemplate {
   @CsvIgnore
   public final BankAccountPair bankAccountPair =
       BankAccountPair.of(CHASE, CREDIT);
+  @CsvIgnore
+  private final String PAYMENT = "Payment";
 
   @CsvBindByName(column = "Amount")
-  public double amount;
+  public BigDecimal amount;
 
   @CsvBindByName(column = "Category")
   public String category;
@@ -36,6 +40,23 @@ public class ChaseCreditCsvTemplate implements BankAccountCsvTemplate {
   public String memo;
 
   public ChaseCreditCsvTemplate() {
+  }
+
+  @Override
+  public Transactions toTransactions() {
+    Transactions transactions = new Transactions();
+    transactions.setAmount(amount.negate());
+    if (category.isEmpty() && PAYMENT.equals(transactionType)) {
+      transactions.setCategory(PAYMENT);
+    } else {
+      transactions.setCategory(category);
+    }
+    transactions.setDescription(description);
+    transactions.setTransactionType(transactionType);
+    transactions.setTransactionDate(transactionDate);
+    transactions.setPostDate(postDate);
+    transactions.setMemo(memo);
+    return transactions;
   }
 
   @Override

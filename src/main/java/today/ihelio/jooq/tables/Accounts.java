@@ -4,6 +4,7 @@
 package today.ihelio.jooq.tables;
 
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
@@ -82,7 +83,7 @@ public class Accounts extends TableImpl<AccountsRecord> {
     /**
      * The column <code>minance.accounts.init_balance</code>.
      */
-    public final TableField<AccountsRecord, Long> INIT_BALANCE = createField(DSL.name("init_balance"), SQLDataType.BIGINT, this, "");
+    public final TableField<AccountsRecord, BigDecimal> INIT_BALANCE = createField(DSL.name("init_balance"), SQLDataType.DECIMAL(9, 2), this, "");
 
     private Accounts(Name alias, Table<AccountsRecord> aliased) {
         this(alias, aliased, null);
@@ -203,14 +204,14 @@ public class Accounts extends TableImpl<AccountsRecord> {
     // -------------------------------------------------------------------------
 
     @Override
-    public Row6<Integer, Integer, String, String, String, Long> fieldsRow() {
+    public Row6<Integer, Integer, String, String, String, BigDecimal> fieldsRow() {
         return (Row6) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function6<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super Long, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function6<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super BigDecimal, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -218,7 +219,7 @@ public class Accounts extends TableImpl<AccountsRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function6<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super Long, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function6<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super BigDecimal, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

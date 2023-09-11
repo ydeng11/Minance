@@ -1,5 +1,9 @@
 package today.ihelio.minance.csvpojos;
 
-interface BankAccountCsvTemplate {
+import today.ihelio.jooq.tables.pojos.Transactions;
+
+public interface BankAccountCsvTemplate {
   BankAccountPair getBankAccount();
+
+  Transactions toTransactions();
 }

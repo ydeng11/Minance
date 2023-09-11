@@ -13,10 +13,10 @@ CREATE TABLE IF NOT EXISTS accounts (
     bank_name VARCHAR(25) NOT NULL,
     account_name VARCHAR(25) NOT NULL,
     account_type VARCHAR(25) NOT NULL,
-    init_balance NUMERIC,
+    init_balance DECIMAL(9, 2),
     PRIMARY KEY (account_id),
     CONSTRAINT FOREIGN KEY (bank_id) REFERENCES banks(bank_id),
-    CONSTRAINT account_unique UNIQUE (bank_name, account_name)
+    CONSTRAINT account_unique UNIQUE (bank_name, account_type, account_name)
 )
     ENGINE = InnoDB
     CHARACTER SET UTF8MB4;
@@ -35,10 +35,11 @@ CREATE TABLE IF NOT EXISTS transactions (
     state_name VARCHAR(30),
     country VARCHAR(10),
     zipcode VARCHAR(10),
-    amount NUMERIC,
+    amount DECIMAL(9, 2),
     bank_name VARCHAR(50),
     account_name VARCHAR(50),
-    is_duplicate VARCHAR(1) DEFAULT 'n',
+    upload_time VARCHAR(20),
+    is_duplicate BOOLEAN DEFAULT false,
     PRIMARY KEY (transaction_id),
     FOREIGN KEY (account_id) REFERENCES accounts(account_id),
     CONSTRAINT transaction_unique UNIQUE (account_id, category, transaction_type, transaction_date,
@@ -47,15 +48,21 @@ CREATE TABLE IF NOT EXISTS transactions (
     ENGINE = InnoDB
     CHARACTER SET UTF8MB4;
 
-CREATE TABLE IF NOT EXISTS csv_column_mapping (
-    ccm_id INT AUTO_INCREMENT,
-    account_id INT,
-    transaction_column VARCHAR(20),
-    input_column VARCHAR(20),
-    date_format VARCHAR(20),
-    PRIMARY KEY (ccm_id),
-    CONSTRAINT FOREIGN KEY (account_id) REFERENCES accounts(account_id),
-    CONSTRAINT account_unique UNIQUE (account_id, transaction_column)
+CREATE TABLE IF NOT EXISTS minance_category (
+    m_category_id INT AUTO_INCREMENT,
+    category VARCHAR(20) NOT NULL,
+    PRIMARY KEY (m_category_id),
+    CONSTRAINT minance_category_unique UNIQUE (category)
+)
+    ENGINE = InnoDB
+    CHARACTER SET UTF8MB4;
+
+CREATE TABLE IF NOT EXISTS raw_category_to_minance_category (
+    rc_to_mc_id INT AUTO_INCREMENT,
+    raw_category VARCHAR(100) NOT NULL,
+    minance_category_id INT NOT NULL,
+    PRIMARY KEY (rc_to_mc_id),
+    FOREIGN KEY (minance_category_id) REFERENCES minance_category(m_category_id)
 )
     ENGINE = InnoDB
     CHARACTER SET UTF8MB4;

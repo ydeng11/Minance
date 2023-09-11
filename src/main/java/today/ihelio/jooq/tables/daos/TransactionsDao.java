@@ -4,6 +4,7 @@
 package today.ihelio.jooq.tables.daos;
 
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -253,14 +254,14 @@ public class TransactionsDao extends DAOImpl<TransactionsRecord, today.ihelio.jo
      * Fetch records that have <code>amount BETWEEN lowerInclusive AND
      * upperInclusive</code>
      */
-    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfAmount(Long lowerInclusive, Long upperInclusive) {
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfAmount(BigDecimal lowerInclusive, BigDecimal upperInclusive) {
         return fetchRange(Transactions.TRANSACTIONS.AMOUNT, lowerInclusive, upperInclusive);
     }
 
     /**
      * Fetch records that have <code>amount IN (values)</code>
      */
-    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByAmount(Long... values) {
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByAmount(BigDecimal... values) {
         return fetch(Transactions.TRANSACTIONS.AMOUNT, values);
     }
 
@@ -295,17 +296,32 @@ public class TransactionsDao extends DAOImpl<TransactionsRecord, today.ihelio.jo
     }
 
     /**
+     * Fetch records that have <code>upload_time BETWEEN lowerInclusive AND
+     * upperInclusive</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfUploadTime(String lowerInclusive, String upperInclusive) {
+        return fetchRange(Transactions.TRANSACTIONS.UPLOAD_TIME, lowerInclusive, upperInclusive);
+    }
+
+    /**
+     * Fetch records that have <code>upload_time IN (values)</code>
+     */
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByUploadTime(String... values) {
+        return fetch(Transactions.TRANSACTIONS.UPLOAD_TIME, values);
+    }
+
+    /**
      * Fetch records that have <code>is_duplicate BETWEEN lowerInclusive AND
      * upperInclusive</code>
      */
-    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfIsDuplicate(String lowerInclusive, String upperInclusive) {
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfIsDuplicate(Boolean lowerInclusive, Boolean upperInclusive) {
         return fetchRange(Transactions.TRANSACTIONS.IS_DUPLICATE, lowerInclusive, upperInclusive);
     }
 
     /**
      * Fetch records that have <code>is_duplicate IN (values)</code>
      */
-    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByIsDuplicate(String... values) {
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByIsDuplicate(Boolean... values) {
         return fetch(Transactions.TRANSACTIONS.IS_DUPLICATE, values);
     }
 }

@@ -19,10 +19,10 @@
           <nav class="navbar navbar-default" role="navigation">
             <div class="navbar-header">
               <a class="navbar-brand" href="index.html">Home</a>
-              <a class="navbar-brand" href="bank.html">Bank</a>
+              <!-- <a class="navbar-brand" href="bank.html">Bank</a> -->
               <a class="navbar-brand" href="account.html">Account</a>
-              <a class="navbar-brand" href="schema.html">Schema</a>
               <a class="navbar-brand" href="transaction.html">Transaction</a>
+              <a class="navbar-brand" href="group_category.html">Group Category</a>
               <a class="navbar-brand" href="/metabase/">Visualization</a>
             </div>
           </nav>
@@ -38,7 +38,14 @@
               <div class="form-floating">
                 <select class="form-select" id="bankSelect" aria-label="Select Bank">
                   <option selected>Select Bank</option>
-                  <option value="none">None</option>
+                  <option value="CITI">Citi</option>
+                  <option value="CHASE">Chase</option>
+                  <option value="DISCOVER">Discover</option>
+                  <option value="BANK_OF_AMERICA">Bank of America</option>
+                  <option value="AMEX">American Express</option>
+                  <option value="WELLS_FARGO">Wells Fargo</option>
+                  <option value="APPLE">Apple</option>
+                  <option value="CASH_APP">Cash App</option>
                 </select>
                 <label for="bankSelect">Bank Name</label>
               </div>
@@ -46,10 +53,10 @@
               <div class="form-floating">
                 <select class="form-select" id="accountTypeSelect" aria-label="Select Bank">
                   <option selected>Select AccountType</option>
-                  <option value="credit">Credit Card</option>
-                  <option value="debit">Debit Card</option>
-                  <option value="saving">Saving</option>
-                  <option value="checking">Checking</option>
+                  <option value="CREDIT">Credit Card</option>
+                  <option value="DEBIT">Debit Card</option>
+                  <option value="SAVING">Saving</option>
+                  <option value="CHECKING">Checking</option>
                 </select>
                 <label for="accountTypeSelect">Account Type</label>
               </div>

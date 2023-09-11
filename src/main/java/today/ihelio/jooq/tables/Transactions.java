@@ -4,6 +4,7 @@
 package today.ihelio.jooq.tables;
 
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
@@ -11,12 +12,12 @@ import java.util.function.Function;
 
 import org.jooq.Field;
 import org.jooq.ForeignKey;
-import org.jooq.Function17;
+import org.jooq.Function18;
 import org.jooq.Identity;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
-import org.jooq.Row17;
+import org.jooq.Row18;
 import org.jooq.Schema;
 import org.jooq.SelectField;
 import org.jooq.Table;
@@ -121,7 +122,7 @@ public class Transactions extends TableImpl<TransactionsRecord> {
     /**
      * The column <code>minance.transactions.amount</code>.
      */
-    public final TableField<TransactionsRecord, Long> AMOUNT = createField(DSL.name("amount"), SQLDataType.BIGINT, this, "");
+    public final TableField<TransactionsRecord, BigDecimal> AMOUNT = createField(DSL.name("amount"), SQLDataType.DECIMAL(9, 2), this, "");
 
     /**
      * The column <code>minance.transactions.bank_name</code>.
@@ -134,9 +135,14 @@ public class Transactions extends TableImpl<TransactionsRecord> {
     public final TableField<TransactionsRecord, String> ACCOUNT_NAME = createField(DSL.name("account_name"), SQLDataType.VARCHAR(50), this, "");
 
     /**
+     * The column <code>minance.transactions.upload_time</code>.
+     */
+    public final TableField<TransactionsRecord, String> UPLOAD_TIME = createField(DSL.name("upload_time"), SQLDataType.VARCHAR(20), this, "");
+
+    /**
      * The column <code>minance.transactions.is_duplicate</code>.
      */
-    public final TableField<TransactionsRecord, String> IS_DUPLICATE = createField(DSL.name("is_duplicate"), SQLDataType.VARCHAR(1).defaultValue(DSL.inline("n", SQLDataType.VARCHAR)), this, "");
+    public final TableField<TransactionsRecord, Boolean> IS_DUPLICATE = createField(DSL.name("is_duplicate"), SQLDataType.BOOLEAN.defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "");
 
     private Transactions(Name alias, Table<TransactionsRecord> aliased) {
         this(alias, aliased, null);
@@ -248,18 +254,18 @@ public class Transactions extends TableImpl<TransactionsRecord> {
     }
 
     // -------------------------------------------------------------------------
-    // Row17 type methods
+    // Row18 type methods
     // -------------------------------------------------------------------------
 
     @Override
-    public Row17<Integer, Integer, String, String, String, LocalDate, LocalDate, String, String, String, String, String, String, Long, String, String, String> fieldsRow() {
-        return (Row17) super.fieldsRow();
+    public Row18<Integer, Integer, String, String, String, LocalDate, LocalDate, String, String, String, String, String, String, BigDecimal, String, String, String, Boolean> fieldsRow() {
+        return (Row18) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function17<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Long, ? super String, ? super String, ? super String, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function18<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super BigDecimal, ? super String, ? super String, ? super String, ? super Boolean, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -267,7 +273,7 @@ public class Transactions extends TableImpl<TransactionsRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function17<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super Long, ? super String, ? super String, ? super String, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super BigDecimal, ? super String, ? super String, ? super String, ? super Boolean, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

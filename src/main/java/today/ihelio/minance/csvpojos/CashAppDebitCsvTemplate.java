@@ -4,25 +4,26 @@ import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
 import com.opencsv.bean.CsvIgnore;
 import jakarta.enterprise.context.Dependent;
-
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import today.ihelio.jooq.tables.pojos.Transactions;
 
-import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.APPLE;
+import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CASH_APP;
 
 @Dependent
-public class CashAppCreditCsvTemplate implements BankAccountCsvTemplate {
+public class CashAppDebitCsvTemplate implements BankAccountCsvTemplate {
   @CsvIgnore
   public final BankAccountPair bankAccountPair =
-      BankAccountPair.of(CASH_APP, CREDIT);
+      BankAccountPair.of(CASH_APP, DEBIT);
 
   @CsvBindByName(column = "Currency")
   public String currency;
 
   @CsvBindByName(column = "Amount")
-  public double amount;
-
+  public BigDecimal amount;
+  @CsvBindByName(column = "Transaction Type")
+  public String transactionType;
   @CsvBindByName(column = "Fee")
   public double fee;
 
@@ -33,10 +34,10 @@ public class CashAppCreditCsvTemplate implements BankAccountCsvTemplate {
   public String assetType;
 
   @CsvBindByName(column = "Asset Price")
-  public String assetPrice;
+  public BigDecimal assetPrice;
 
   @CsvBindByName(column = "Asset Amount")
-  public String assetAmount;
+  public BigDecimal assetAmount;
 
   @CsvBindByName(column = "Status")
   public String status;
@@ -57,7 +58,7 @@ public class CashAppCreditCsvTemplate implements BankAccountCsvTemplate {
   @CsvBindByName(column = "Account")
   public String account;
 
-  public CashAppCreditCsvTemplate() {
+  public CashAppDebitCsvTemplate() {
   }
 
   @Override
@@ -65,11 +66,22 @@ public class CashAppCreditCsvTemplate implements BankAccountCsvTemplate {
     return bankAccountPair;
   }
 
+  @Override public Transactions toTransactions() {
+    Transactions transactions = new Transactions();
+    transactions.setAmount(amount);
+    transactions.setTransactionType(transactionType);
+    transactions.setTransactionDate(date);
+    transactions.setPostDate(date);
+    transactions.setMemo(notes);
+    return transactions;
+  }
+
   @Override public String toString() {
-    return "CashAppCreditCsvTemplate{" +
+    return "CashAppDebitCsvTemplate{" +
         "bankAccountPair=" + bankAccountPair +
         ", currency='" + currency + '\'' +
         ", amount=" + amount +
+        ", transactionType='" + transactionType + '\'' +
         ", fee=" + fee +
         ", netAmount=" + netAmount +
         ", assetType='" + assetType + '\'' +

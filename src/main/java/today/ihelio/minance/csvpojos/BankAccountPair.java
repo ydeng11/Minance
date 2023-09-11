@@ -1,6 +1,7 @@
 package today.ihelio.minance.csvpojos;
 
 import java.util.Objects;
+import today.ihelio.minance.exception.CustomException;
 
 public class BankAccountPair {
   private final BankName bankName;
@@ -13,6 +14,15 @@ public class BankAccountPair {
 
   public static BankAccountPair of(BankName bankName, AccountType accountType) {
     return new BankAccountPair(bankName, accountType);
+  }
+
+  public static void checkEnumFormat(Class clazz, String string)
+      throws CustomException {
+    try {
+      Enum.valueOf(clazz, string);
+    } catch (IllegalArgumentException e) {
+      throw CustomException.from(new IllegalArgumentException(string + " is not valid input!"));
+    }
   }
 
   public BankName getBankName() {
@@ -48,14 +58,15 @@ public class BankAccountPair {
   }
 
   public enum BankName {
-    CHASE("chase"),
-    AMEX("amex"),
-    DISCOVER("discover"),
-    CITI("citi"),
-    WELLS_FARGO("wellsFargo"),
-    CASH_APP("cash"),
-    APPLE("apple"),
-    BANK_OF_AMERICA("bankOfAmerica");
+    CHASE("CHASE"),
+    AMEX("AMEX"),
+    DISCOVER("DISCOVER"),
+    CITI("CITI"),
+    WELLS_FARGO("WELLS_FARGO"),
+    CASH_APP("CASH_APP"),
+    APPLE("APPLE"),
+    BANK_OF_AMERICA("BANK_OF_AMERICA"),
+    MINANCE("MINANCE");
     private final String name;
 
     BankName(String name) {
@@ -68,10 +79,10 @@ public class BankAccountPair {
   }
 
   public enum AccountType {
-    CHECKING("checking"),
-    SAVINGS("saving"),
-    CREDIT("credit"),
-    DEBIT("debit");
+    CHECKING("CHECKING"),
+    SAVINGS("SAVING"),
+    CREDIT("CREDIT"),
+    DEBIT("DEBIT");
     private final String type;
 
     AccountType(String type) {

@@ -1,5 +1,6 @@
 package today.ihelio.minance.csvpojos;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.quarkus.arc.All;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -9,8 +10,8 @@ import java.util.Map;
 
 @ApplicationScoped
 public class BankAccountCsvFactoryImpl implements BankAccountCsvFactory<BankAccountCsvTemplate> {
-  List<BankAccountCsvTemplate> templates;
-  Map<BankAccountPair, BankAccountCsvTemplate> templateMap;
+  private final List<BankAccountCsvTemplate> templates;
+  private final Map<BankAccountPair, BankAccountCsvTemplate> templateMap;
 
   @Inject
   public BankAccountCsvFactoryImpl(@All List<BankAccountCsvTemplate> templates) {
@@ -23,6 +24,14 @@ public class BankAccountCsvFactoryImpl implements BankAccountCsvFactory<BankAcco
       initializeMap();
     }
     return templateMap.get(bankAccountPair);
+  }
+
+  @VisibleForTesting
+  public List<BankAccountPair> getKeys() {
+    if (templateMap.size() == 0) {
+      initializeMap();
+    }
+    return templateMap.keySet().stream().toList();
   }
 
   private void initializeMap() {

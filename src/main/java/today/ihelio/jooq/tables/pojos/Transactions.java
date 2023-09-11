@@ -5,6 +5,7 @@ package today.ihelio.jooq.tables.pojos;
 
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 
@@ -29,10 +30,11 @@ public class Transactions implements Serializable {
     private String stateName;
     private String country;
     private String zipcode;
-    private Long amount;
+    private BigDecimal amount;
     private String bankName;
     private String accountName;
-    private String isDuplicate;
+    private String uploadTime;
+    private Boolean isDuplicate;
 
     public Transactions() {}
 
@@ -53,6 +55,7 @@ public class Transactions implements Serializable {
         this.amount = value.amount;
         this.bankName = value.bankName;
         this.accountName = value.accountName;
+        this.uploadTime = value.uploadTime;
         this.isDuplicate = value.isDuplicate;
     }
 
@@ -70,10 +73,11 @@ public class Transactions implements Serializable {
         String stateName,
         String country,
         String zipcode,
-        Long amount,
+        BigDecimal amount,
         String bankName,
         String accountName,
-        String isDuplicate
+        String uploadTime,
+        Boolean isDuplicate
     ) {
         this.transactionId = transactionId;
         this.accountId = accountId;
@@ -91,6 +95,7 @@ public class Transactions implements Serializable {
         this.amount = amount;
         this.bankName = bankName;
         this.accountName = accountName;
+        this.uploadTime = uploadTime;
         this.isDuplicate = isDuplicate;
     }
 
@@ -279,14 +284,14 @@ public class Transactions implements Serializable {
     /**
      * Getter for <code>minance.transactions.amount</code>.
      */
-    public Long getAmount() {
+    public BigDecimal getAmount() {
         return this.amount;
     }
 
     /**
      * Setter for <code>minance.transactions.amount</code>.
      */
-    public void setAmount(Long amount) {
+    public void setAmount(BigDecimal amount) {
         this.amount = amount;
     }
 
@@ -319,16 +324,30 @@ public class Transactions implements Serializable {
     }
 
     /**
+     * Getter for <code>minance.transactions.upload_time</code>.
+     */
+    public String getUploadTime() {
+        return this.uploadTime;
+    }
+
+    /**
+     * Setter for <code>minance.transactions.upload_time</code>.
+     */
+    public void setUploadTime(String uploadTime) {
+        this.uploadTime = uploadTime;
+    }
+
+    /**
      * Getter for <code>minance.transactions.is_duplicate</code>.
      */
-    public String getIsDuplicate() {
+    public Boolean getIsDuplicate() {
         return this.isDuplicate;
     }
 
     /**
      * Setter for <code>minance.transactions.is_duplicate</code>.
      */
-    public void setIsDuplicate(String isDuplicate) {
+    public void setIsDuplicate(Boolean isDuplicate) {
         this.isDuplicate = isDuplicate;
     }
 
@@ -437,6 +456,12 @@ public class Transactions implements Serializable {
         }
         else if (!this.accountName.equals(other.accountName))
             return false;
+        if (this.uploadTime == null) {
+            if (other.uploadTime != null)
+                return false;
+        }
+        else if (!this.uploadTime.equals(other.uploadTime))
+            return false;
         if (this.isDuplicate == null) {
             if (other.isDuplicate != null)
                 return false;
@@ -466,6 +491,7 @@ public class Transactions implements Serializable {
         result = prime * result + ((this.amount == null) ? 0 : this.amount.hashCode());
         result = prime * result + ((this.bankName == null) ? 0 : this.bankName.hashCode());
         result = prime * result + ((this.accountName == null) ? 0 : this.accountName.hashCode());
+        result = prime * result + ((this.uploadTime == null) ? 0 : this.uploadTime.hashCode());
         result = prime * result + ((this.isDuplicate == null) ? 0 : this.isDuplicate.hashCode());
         return result;
     }
@@ -490,6 +516,7 @@ public class Transactions implements Serializable {
         sb.append(", ").append(amount);
         sb.append(", ").append(bankName);
         sb.append(", ").append(accountName);
+        sb.append(", ").append(uploadTime);
         sb.append(", ").append(isDuplicate);
 
         sb.append(")");
