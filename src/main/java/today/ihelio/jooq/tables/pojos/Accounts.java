@@ -5,6 +5,7 @@ package today.ihelio.jooq.tables.pojos;
 
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 
 /**
@@ -20,7 +21,7 @@ public class Accounts implements Serializable {
     private String bankName;
     private String accountName;
     private String accountType;
-    private Long initBalance;
+    private BigDecimal initBalance;
 
     public Accounts() {}
 
@@ -39,7 +40,7 @@ public class Accounts implements Serializable {
         String bankName,
         String accountName,
         String accountType,
-        Long initBalance
+        BigDecimal initBalance
     ) {
         this.accountId = accountId;
         this.bankId = bankId;
@@ -122,14 +123,14 @@ public class Accounts implements Serializable {
     /**
      * Getter for <code>minance.accounts.init_balance</code>.
      */
-    public Long getInitBalance() {
+    public BigDecimal getInitBalance() {
         return this.initBalance;
     }
 
     /**
      * Setter for <code>minance.accounts.init_balance</code>.
      */
-    public void setInitBalance(Long initBalance) {
+    public void setInitBalance(BigDecimal initBalance) {
         this.initBalance = initBalance;
     }
 

@@ -16,7 +16,7 @@ $(document).ready(function (e) {
     let body = {
       bankName: bankName,
     };
-    callApi("/1.0/minance/bank/create", "POST", body)
+    callApi("http://localhost:8080/1.0/minance/bank/create", "POST", body)
         .then((response) => {
           $("#msgBox").text(bankName + " Created!");
           $("#bankForm").trigger("reset");
@@ -32,7 +32,7 @@ $(document).ready(function (e) {
     event.preventDefault();
 
     let bankName = $("#bankForm").val();
-    callApi("/1.0/minance/bank/delete/" + bankName, "DELETE").then((response) => {
+    callApi("http://localhost:8080/1.0/minance/bank/delete/" + bankName, "DELETE").then((response) => {
       $("#msgBox").text(bankName + " Deleted!");
       $("#bankForm").trigger("reset");
       getAllData("bank").then((data) => dt.load(data));

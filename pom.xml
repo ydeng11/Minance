@@ -86,6 +86,17 @@
       <version>31.1-jre</version>
     </dependency>
     <dependency>
+      <groupId>com.google.auto.value</groupId>
+      <artifactId>auto-value</artifactId>
+      <version>1.10.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.auto.value</groupId>
+      <artifactId>auto-value-annotations</artifactId>
+      <version>1.10.2</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-rest-client</artifactId>
     </dependency>
@@ -104,6 +115,12 @@
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-junit5-mockito</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.24.2</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.quarkiverse.jooq</groupId>
@@ -254,6 +271,12 @@
               <inputSchema>minance</inputSchema>
               <recordVersionFields>REC_VERSION</recordVersionFields>
               <recordTimestampFields>REC_TIMESTAMP</recordTimestampFields>
+              <forcedTypes>
+                <forcedType>
+                  <name>BOOLEAN</name>
+                  <includeExpression>is_duplicate</includeExpression>
+                </forcedType>
+              </forcedTypes>
             </database>
             <target>
               <packageName>today.ihelio.jooq</packageName>

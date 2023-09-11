@@ -104,7 +104,7 @@ async function callApi(url = "", method = "", data = {}) {
   return response; // parses JSON response into native JavaScript objects
 }
 
-// Example POST method implementation:
+
 async function callApiFormData(url = "", method = "", data = {}) {
   // Default options are marked with *
   const response = await fetch(url, {
@@ -113,8 +113,7 @@ async function callApiFormData(url = "", method = "", data = {}) {
     cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
     credentials: "omit", // include, *same-origin, omit
     headers: {
-      accept: 'application/json', "Content-Type": "application/json", // 'Content-Type':
-                                                                      // 'application/x-www-form-urlencoded',
+      accept: 'application/json',
     }, redirect: "follow", // manual, *follow, error
     referrerPolicy: "no-referrer", // no-referrer, *no-referrer-when-downgrade, origin,
                                    // origin-when-cross-origin, same-origin, strict-origin,
@@ -125,7 +124,7 @@ async function callApiFormData(url = "", method = "", data = {}) {
 }
 
 function getAllData(endpoint) {
-  return callApi("/1.0/minance/" + endpoint + "/retrieveAll", "GET")
+  return callApi("http://localhost:8080/1.0/minance/" + endpoint + "/retrieveAll", "GET")
       .then((response) => response.json())
       .then((data) => {
         return data;

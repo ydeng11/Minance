@@ -1,4 +1,4 @@
-package today.ihelio.minance.healthchecks;
+package today.ihelio.minance.util;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.health.HealthCheck;

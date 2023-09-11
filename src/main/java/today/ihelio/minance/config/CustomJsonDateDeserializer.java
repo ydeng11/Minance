@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+@Deprecated
 public class CustomJsonDateDeserializer extends JsonDeserializer<Date> {
   @Override
   public Date deserialize(JsonParser jsonParser,

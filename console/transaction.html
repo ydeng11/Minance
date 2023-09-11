@@ -19,10 +19,10 @@
       <nav class="navbar navbar-default" role="navigation">
         <div class="navbar-header">
           <a class="navbar-brand" href="index.html">Home</a>
-          <a class="navbar-brand" href="bank.html">Bank</a>
+          <!-- <a class="navbar-brand" href="bank.html">Bank</a> -->
           <a class="navbar-brand" href="account.html">Account</a>
-          <a class="navbar-brand" href="schema.html">Csv Formatter</a>
           <a class="navbar-brand" href="transaction.html">Transaction</a>
+          <a class="navbar-brand" href="group_category.html">Group Category</a>
           <a class="navbar-brand" href="/metabase/">Visualization</a>
         </div>
       </nav>
@@ -38,26 +38,38 @@
             <select
                 aria-label="Select Bank"
                 class="form-select"
-                id="bankSelect"
-            >
+                id="bankSelect">
               <option selected>Select Bank</option>
               <option value="none">None</option>
             </select>
             <label for="bankSelect">Bank Name</label>
           </div>
           <br/>
+              <div class="form-floating">
+                <select class="form-select" id="accountTypeSelect" aria-label="Select Account Type">
+                  <option selected>Select AccountType</option>
+                  <option value="CREDIT">Credit Card</option>
+                  <option value="DEBIT">Debit Card</option>
+                  <option value="SAVING">Saving</option>
+                  <option value="CHECKING">Checking</option>
+                </select>
+                <label for="accountTypeSelect">Account Type</label>
+              </div>
+          <br/>
           <div class="form-floating">
-            <select
-                aria-label="Select Account"
-                class="form-select"
-                id="accountSelect"
-            >
+            <select aria-label="Select Account Name" class="form-select" id="accountNameSelect">
               <option selected>Select Account</option>
-              <option value="accountSelect">Account Name</option>
+              <option value="accountNameSelect">Account Name</option>
             </select>
-            <label for="accountSelect">Account Name</label>
+            <label for="accountNameSelect">Account Name</label>
           </div>
           <br/>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="" id="useMinanceFormat">
+            <label class="form-check-label" for="useMinanceFormat">
+              Use Minance Format
+            </label>
+          </div>
         </div>
         <div class="col-md-8 column">
           <div class="rawCsvTable">
@@ -100,22 +112,46 @@
             />
           </div>
           <div class="col-md-2 column">
-            <label class="visually-hidden" for="transactionIdToDelete"
-            >Type in Transaction Id</label
-            >
+            <label class="visually-hidden" for="transactionIdToDelete">Type in Transaction Id</label>
             <input
                 class="form-control"
                 id="transactionIdToDelete"
                 placeholder="Transaction Id"
-                type="text"
-            />
+                type="text"/>
           </div>
           <div class="col-auto">
             <button
                 class="btn btn-outline-dark"
                 id="deleteTransaction"
-                type="submit"
-            >
+                type="submit">
+              Delete
+            </button>
+          </div>
+        </form>
+        <br/>
+        <form class="row g-2">
+          <div class="col-md-1 column">
+            <input
+                class="form-control-plaintext"
+                id="transactionUploadTimeLabel"
+                readonly
+                type="text"
+                value="Upload Time"
+            />
+          </div>
+          <div class="col-md-2 column">
+            <label class="visually-hidden" for="transactionUploadTime">Type in Upload Time for batch delete</label>
+            <input
+                class="form-control"
+                id="transactionUploadTime"
+                placeholder="Upload Time"
+                type="text"/>
+          </div>
+          <div class="col-auto">
+            <button
+                class="btn btn-outline-dark"
+                id="batchDeleteTransactions"
+                type="submit">
               Delete
             </button>
           </div>

@@ -3,20 +3,22 @@ package today.ihelio.minance.service;
 import com.google.common.collect.ImmutableList;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.NotFoundException;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.jooq.DSLContext;
 import org.jooq.Field;
+import org.jooq.exception.DataAccessException;
 import today.ihelio.jooq.tables.pojos.Transactions;
 import today.ihelio.jooq.tables.records.TransactionsRecord;
-import today.ihelio.minance.exception.CustomException;
 
 import static today.ihelio.jooq.Tables.TRANSACTIONS;
 
 @ApplicationScoped
 public class TransactionService {
-  public static final List<Field<?>> INSERTABLE_FIELDS = ImmutableList.of(TRANSACTIONS.ACCOUNT_ID,
+  public static final List<Field<?>> INSERTABLE_FIELDS = ImmutableList.of(
+      TRANSACTIONS.UPLOAD_TIME,
+      TRANSACTIONS.ACCOUNT_ID,
       TRANSACTIONS.CATEGORY,
       TRANSACTIONS.DESCRIPTION,
       TRANSACTIONS.TRANSACTION_TYPE,
@@ -27,18 +29,20 @@ public class TransactionService {
       TRANSACTIONS.ADDRESS,
       TRANSACTIONS.BANK_NAME,
       TRANSACTIONS.ACCOUNT_NAME);
-  DSLContext dslContext;
+  private final DSLContext dslContext;
 
   @Inject
   public TransactionService(DSLContext dslContext) {
     this.dslContext = dslContext;
   }
 
-  public int create(List<Transactions> transactionsList) {
+  public int create(List<Transactions> transactionsList) throws SQLException {
     return dslContext.insertInto(TRANSACTIONS, INSERTABLE_FIELDS)
         .valuesOfRecords(transactionsList.stream().map(t -> {
           TransactionsRecord r = new TransactionsRecord(t);
-          return r.into(TRANSACTIONS.ACCOUNT_ID,
+          return r.into(
+              TRANSACTIONS.UPLOAD_TIME,
+              TRANSACTIONS.ACCOUNT_ID,
               TRANSACTIONS.CATEGORY,
               TRANSACTIONS.DESCRIPTION,
               TRANSACTIONS.TRANSACTION_TYPE,
@@ -51,15 +55,13 @@ public class TransactionService {
               TRANSACTIONS.ACCOUNT_NAME);
         }).collect(Collectors.toList()))
         .onDuplicateKeyUpdate()
-        .set(TRANSACTIONS.IS_DUPLICATE, "Y")
+        .set(TRANSACTIONS.IS_DUPLICATE, true)
         .execute();
   }
 
-  public int update(Transactions transactions) throws CustomException {
-    if (retrieve(transactions.getTransactionId()) == null) {
-      throw new CustomException(new NotFoundException("transaction not found"));
-    }
+  public int update(Transactions transactions) throws SQLException {
     return dslContext.update(TRANSACTIONS)
+        .set(TRANSACTIONS.UPLOAD_TIME, transactions.getUploadTime())
         .set(TRANSACTIONS.ACCOUNT_ID, transactions.getAccountId())
         .set(TRANSACTIONS.ACCOUNT_NAME, transactions.getAccountName())
         .set(TRANSACTIONS.BANK_NAME, transactions.getBankName())
@@ -75,13 +77,19 @@ public class TransactionService {
         .execute();
   }
 
-  public int delete(List<Integer> transactionIds) {
+  public int delete(List<Integer> transactionIds) throws SQLException {
     return dslContext.delete(TRANSACTIONS)
         .where(TRANSACTIONS.TRANSACTION_ID.in(transactionIds))
         .execute();
   }
 
-  public Transactions retrieve(int transactionId) {
+  public int deleteWithUploadTime(String uploadTime) throws SQLException {
+    return dslContext.delete(TRANSACTIONS)
+        .where(TRANSACTIONS.UPLOAD_TIME.eq(uploadTime))
+        .execute();
+  }
+
+  public Transactions retrieve(int transactionId) throws DataAccessException {
     return dslContext.select(TRANSACTIONS)
         .from(TRANSACTIONS)
         .where(TRANSACTIONS.TRANSACTION_ID.eq(transactionId))
@@ -89,7 +97,7 @@ public class TransactionService {
         .into(Transactions.class);
   }
 
-  public List<Transactions> retrieveByAccount(int accountId) {
+  public List<Transactions> retrieveByAccount(int accountId) throws DataAccessException {
     return dslContext.select(TRANSACTIONS)
         .from(TRANSACTIONS)
         .where(TRANSACTIONS.ACCOUNT_ID.eq(accountId))
@@ -97,10 +105,10 @@ public class TransactionService {
         .fetchInto(Transactions.class);
   }
 
-  public List<Transactions> retrieveDuplicate(Integer accountId) {
+  public List<Transactions> retrieveDuplicate(Integer accountId) throws DataAccessException {
     return dslContext.select(TRANSACTIONS)
         .from(TRANSACTIONS)
-        .where(TRANSACTIONS.IS_DUPLICATE.eq("Y"))
+        .where(TRANSACTIONS.IS_DUPLICATE.eq(true))
         .and(TRANSACTIONS.ACCOUNT_ID.eq(accountId))
         .orderBy(TRANSACTIONS.TRANSACTION_DATE)
         .fetchInto(Transactions.class);

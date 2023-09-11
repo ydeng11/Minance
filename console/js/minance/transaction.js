@@ -84,17 +84,21 @@ $(document).ready(function () {
           options += '<option value="' + item.accountName + '">' + item.accountName + "</option>";
         }
       });
-      $("#accountSelect").html(options);
+      $("#accountNameSelect").html(options);
     });
   });
 
-  let dt = dynamicTable.config("data-table", ["transactionId", "accountName", "bankName", "category", "description", "transactionType", "transactionDate", "postDate", "amount", "address", "memo",], ["Transaction Id", "Account Name", "Bank Name", "Category", "Description", "Transaction Type", "Transaction Date", "Post Date", "Amount", "Address", "Memo",], //set to null for field names instead of custom header names
+  let dt = dynamicTable.config("data-table", 
+  ["transactionId", "accountName", "bankName", "category", "description", "transactionType", "transactionDate", "postDate", "amount", "address", "memo", "uploadTime"], 
+  ["Transaction Id", "Account Name", "Bank Name", "Category", "Description", "Transaction Type", "Transaction Date", "Post Date", "Amount", "Address", "Memo", "Upload Time"], //set to null for field names instead of custom header names
       "There are no transaction to list...");
 
   $("#uploadActivities").on("click", function (event) {
     event.preventDefault();
     let bankName = $("#bankSelect").val();
-    let accountName = $("#accountSelect").val();
+    let accountName = $("#accountNameSelect").val();
+    let accountType = $("#accountTypeSelect").val();
+    let useMinanceFormat = $("#useMinanceFormat").checked ? "1" : "0";
     let files = document.querySelector("input[type=file]").files;
     if (files == null || files.length == 0) {
       return;
@@ -102,16 +106,20 @@ $(document).ready(function () {
     let body = new FormData();
     body.append("bankName", bankName);
     body.append("accountName", accountName);
+    body.append("accountType", accountType);
+    body.append("useMinanceFormat", useMinanceFormat);
     body.append("file", files[0]);
-    callApiFormData("/1.0/minance/transactions/batch_upload", "POST", body)
+    callApiFormData("http://localhost:8080/1.0/minance/transactions/upload_csv", "POST", body)
         .then((response) => {
           if (response.ok) {
-            $("#msgBox").text(accountName + " Created!");
+            $("#msgBox").text(response.body);
           }
-          callApi("/1.0/minance/transactions/retrieve/"
+          callApi("http://localhost:8080/1.0/minance/transactions/retrieve/"
               + bankName
               + "/"
               + accountName
+              + "/"
+              + accountType
               + "/y", "GET")
               .then((response) => {
                 if (response.ok) {
@@ -130,9 +138,21 @@ $(document).ready(function () {
 
     let txnId = $("#transactionIdToDelete").val();
 
-    callApi("/1.0/minance/transactions/delete/" + txnId, "DELETE").then((response) => {
+    callApi("http://localhost:8080/1.0/minance/transactions/delete/" + txnId, "DELETE").then((response) => {
       if (response.ok) {
         $("#msgBox").text(txnId + " Deleted!");
+      }
+    });
+  });
+
+  $("#batchDeleteTransactions").on("click", function (event) {
+    event.preventDefault();
+
+    let uploadTime = $("#transactionUploadTime").val();
+
+    callApi("http://localhost:8080/1.0/minance/transactions/delete/uploadTime/" + uploadTime, "DELETE").then((response) => {
+      if (response.ok) {
+        $("#msgBox").text("Deleted!");
       }
     });
   });
@@ -140,13 +160,16 @@ $(document).ready(function () {
   $("#retrieveRecords").on("click", function (event) {
     event.preventDefault();
     let bankName = $("#bankSelect").val();
-    let accountName = $("#accountSelect").val();
+    let accountName = $("#accountNameSelect").val();
+    let accountType = $("#accountTypeSelect").val();
     let filterDuplicate = $("#filterDuplicate").val();
 
-    callApi("/1.0/minance/transactions/retrieve/"
+    callApi("http://localhost:8080/1.0/minance/transactions/retrieve/"
         + bankName
         + "/"
         + accountName
+        + "/"
+        + accountType
         + "/"
         + filterDuplicate, "GET")
         .then((response) => {

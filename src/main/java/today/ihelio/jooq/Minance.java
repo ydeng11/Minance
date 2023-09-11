@@ -13,8 +13,9 @@ import org.jooq.impl.SchemaImpl;
 
 import today.ihelio.jooq.tables.Accounts;
 import today.ihelio.jooq.tables.Banks;
-import today.ihelio.jooq.tables.CsvColumnMapping;
 import today.ihelio.jooq.tables.FlywaySchemaHistory;
+import today.ihelio.jooq.tables.MinanceCategory;
+import today.ihelio.jooq.tables.RawCategoryToMinanceCategory;
 import today.ihelio.jooq.tables.Transactions;
 
 
@@ -42,14 +43,19 @@ public class Minance extends SchemaImpl {
     public final Banks BANKS = Banks.BANKS;
 
     /**
-     * The table <code>minance.csv_column_mapping</code>.
-     */
-    public final CsvColumnMapping CSV_COLUMN_MAPPING = CsvColumnMapping.CSV_COLUMN_MAPPING;
-
-    /**
      * The table <code>minance.flyway_schema_history</code>.
      */
     public final FlywaySchemaHistory FLYWAY_SCHEMA_HISTORY = FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY;
+
+    /**
+     * The table <code>minance.minance_category</code>.
+     */
+    public final MinanceCategory MINANCE_CATEGORY = MinanceCategory.MINANCE_CATEGORY;
+
+    /**
+     * The table <code>minance.raw_category_to_minance_category</code>.
+     */
+    public final RawCategoryToMinanceCategory RAW_CATEGORY_TO_MINANCE_CATEGORY = RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY;
 
     /**
      * The table <code>minance.transactions</code>.
@@ -74,8 +80,9 @@ public class Minance extends SchemaImpl {
         return Arrays.asList(
             Accounts.ACCOUNTS,
             Banks.BANKS,
-            CsvColumnMapping.CSV_COLUMN_MAPPING,
             FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY,
+            MinanceCategory.MINANCE_CATEGORY,
+            RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY,
             Transactions.TRANSACTIONS
         );
     }

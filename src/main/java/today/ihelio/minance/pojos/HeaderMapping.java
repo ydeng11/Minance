@@ -1,5 +1,6 @@
 package today.ihelio.minance.pojos;
 
+@Deprecated
 public class HeaderMapping {
   public String inputColumn;
   public String transactionColumn;

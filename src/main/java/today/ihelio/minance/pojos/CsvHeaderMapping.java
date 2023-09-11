@@ -2,6 +2,7 @@ package today.ihelio.minance.pojos;
 
 import java.util.List;
 
+@Deprecated
 public class CsvHeaderMapping {
   public int ccmId;
   public int accountId;
