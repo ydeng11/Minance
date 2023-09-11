@@ -4,6 +4,7 @@
 package today.ihelio.jooq.tables.daos;
 
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -132,14 +133,14 @@ public class AccountsDao extends DAOImpl<AccountsRecord, today.ihelio.jooq.table
      * Fetch records that have <code>init_balance BETWEEN lowerInclusive AND
      * upperInclusive</code>
      */
-    public List<today.ihelio.jooq.tables.pojos.Accounts> fetchRangeOfInitBalance(Long lowerInclusive, Long upperInclusive) {
+    public List<today.ihelio.jooq.tables.pojos.Accounts> fetchRangeOfInitBalance(BigDecimal lowerInclusive, BigDecimal upperInclusive) {
         return fetchRange(Accounts.ACCOUNTS.INIT_BALANCE, lowerInclusive, upperInclusive);
     }
 
     /**
      * Fetch records that have <code>init_balance IN (values)</code>
      */
-    public List<today.ihelio.jooq.tables.pojos.Accounts> fetchByInitBalance(Long... values) {
+    public List<today.ihelio.jooq.tables.pojos.Accounts> fetchByInitBalance(BigDecimal... values) {
         return fetch(Accounts.ACCOUNTS.INIT_BALANCE, values);
     }
 }

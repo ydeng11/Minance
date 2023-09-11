@@ -6,8 +6,9 @@ package today.ihelio.jooq;
 
 import today.ihelio.jooq.tables.Accounts;
 import today.ihelio.jooq.tables.Banks;
-import today.ihelio.jooq.tables.CsvColumnMapping;
 import today.ihelio.jooq.tables.FlywaySchemaHistory;
+import today.ihelio.jooq.tables.MinanceCategory;
+import today.ihelio.jooq.tables.RawCategoryToMinanceCategory;
 import today.ihelio.jooq.tables.Transactions;
 
 
@@ -28,14 +29,19 @@ public class Tables {
     public static final Banks BANKS = Banks.BANKS;
 
     /**
-     * The table <code>minance.csv_column_mapping</code>.
-     */
-    public static final CsvColumnMapping CSV_COLUMN_MAPPING = CsvColumnMapping.CSV_COLUMN_MAPPING;
-
-    /**
      * The table <code>minance.flyway_schema_history</code>.
      */
     public static final FlywaySchemaHistory FLYWAY_SCHEMA_HISTORY = FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY;
+
+    /**
+     * The table <code>minance.minance_category</code>.
+     */
+    public static final MinanceCategory MINANCE_CATEGORY = MinanceCategory.MINANCE_CATEGORY;
+
+    /**
+     * The table <code>minance.raw_category_to_minance_category</code>.
+     */
+    public static final RawCategoryToMinanceCategory RAW_CATEGORY_TO_MINANCE_CATEGORY = RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY;
 
     /**
      * The table <code>minance.transactions</code>.

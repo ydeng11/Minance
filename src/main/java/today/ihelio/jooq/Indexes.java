@@ -11,6 +11,7 @@ import org.jooq.impl.Internal;
 
 import today.ihelio.jooq.tables.Accounts;
 import today.ihelio.jooq.tables.FlywaySchemaHistory;
+import today.ihelio.jooq.tables.RawCategoryToMinanceCategory;
 
 
 /**
@@ -25,4 +26,5 @@ public class Indexes {
 
     public static final Index ACCOUNTS_BANK_ID = Internal.createIndex(DSL.name("bank_id"), Accounts.ACCOUNTS, new OrderField[] { Accounts.ACCOUNTS.BANK_ID }, false);
     public static final Index FLYWAY_SCHEMA_HISTORY_FLYWAY_SCHEMA_HISTORY_S_IDX = Internal.createIndex(DSL.name("flyway_schema_history_s_idx"), FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY, new OrderField[] { FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY.SUCCESS }, false);
+    public static final Index RAW_CATEGORY_TO_MINANCE_CATEGORY_MINANCE_CATEGORY_ID = Internal.createIndex(DSL.name("minance_category_id"), RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY, new OrderField[] { RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY.MINANCE_CATEGORY_ID }, false);
 }

@@ -5,20 +5,20 @@ function resetInput() {
 
 $(document).ready(function (e) {
   // find all the banks for the banks select
-  let bankMap;
-  getAllData("bank").then((data) => {
-    if (data.length == 0) {
-      return;
-    }
-    bankMap = Object.fromEntries(data);
-    let options = "<option selected>Select Bank</option>";
-    data.forEach((item) => (options += '<option value="'
-        + item.bankName
-        + '">'
-        + item.bankName
-        + "</option>"));
-    $("#bankSelect").html(options);
-  });
+  // let bankMap;
+  // getAllData("bank").then((data) => {
+  //   if (data.length == 0) {
+  //     return;
+  //   }
+  //   bankMap = Object.fromEntries(data);
+  //   let options = "<option selected>Select Bank</option>";
+  //   data.forEach((item) => (options += '<option value="'
+  //       + item.bankName
+  //       + '">'
+  //       + item.bankName
+  //       + "</option>"));
+  //   $("#bankSelect").html(options);
+  // });
 
   let dt = dynamicTable.config("data-table", ["accountId", "accountName", "accountType", "bankName", "initBalance"], ["Account Id", "Account Name", "Account Type", "Bank Name", "Init Balance"], //set to null for field names instead of custom header names
       "There are no banks to list...");
@@ -37,7 +37,7 @@ $(document).ready(function (e) {
       accountType: accountType,
       initBalance: initBalance,
     };
-    callApi("/1.0/minance/account/create", "POST", body)
+    callApi("http://localhost:8080/1.0/minance/account/create", "POST", body)
         .then((response) => {
           if (response.ok) {
             $("#msgBox").text(accountName + " Created!");
@@ -57,7 +57,7 @@ $(document).ready(function (e) {
     let bankName = $("#bankSelect").val();
     let accountName = $("#accountForm").val();
 
-    callApi("/1.0/minance/account/delete/"
+    callApi("http://localhost:8080/1.0/minance/account/delete/"
         + bankName
         + "/"
         + accountName, "DELETE").then((response) => {
