@@ -1,7 +1,7 @@
 version: "0.0.1"
 services:
   minance:
-    image: ydeng/minance:0.0.2
+    image: ydeng11/minance:0.0.2
     container_name: minance
     hostname: minance
     environment:
