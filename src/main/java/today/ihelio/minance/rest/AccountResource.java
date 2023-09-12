@@ -15,6 +15,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.sql.SQLException;
 import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
+import org.jooq.exception.DataAccessException;
 import today.ihelio.jooq.tables.pojos.Accounts;
 import today.ihelio.minance.csvpojos.BankAccountPair;
 import today.ihelio.minance.exception.CustomException;
@@ -31,12 +32,10 @@ import static today.ihelio.minance.csvpojos.BankAccountPair.checkEnumFormat;
 @ApplicationScoped
 public class AccountResource {
   private final AccountService accountService;
-  private final BankService bankService;
 
   @Inject
   public AccountResource(AccountService accountService, BankService bankService) {
     this.accountService = accountService;
-    this.bankService = bankService;
   }
 
   @POST
@@ -72,16 +71,27 @@ public class AccountResource {
     return Response.status(Response.Status.OK).build();
   }
 
+  @DELETE
+  @Path("/delete/{account_id}")
+  public Response deleteAccount(@PathParam("account_id") String accountId)
+      throws SQLException, CustomException {
+    if (accountService.delete(Integer.parseInt(accountId)) == 0) {
+      throw new CustomException(
+          new NotFoundException("account not found, please create this account instead!"));
+    }
+    return Response.status(Response.Status.OK).build();
+  }
+
   @GET
   @Path("/retrieveAll")
-  public Response retrieveAll() throws SQLException {
+  public Response retrieveAll() throws DataAccessException {
     return Response.status(Response.Status.OK).entity(accountService.retrieveAll()).build();
   }
 
   @GET
   @Path("/retrieveAccounts/{bank_name}")
   public Response retrieveAccountsByBank(@PathParam("bank_name") String bankName)
-      throws SQLException, CustomException {
+      throws DataAccessException, CustomException {
     checkEnumFormat(BankAccountPair.BankName.class, bankName);
     return Response.status(Response.Status.OK)
         .entity(accountService.retrieveAccountsByBank(BankAccountPair.BankName.valueOf(bankName)))
