@@ -1,7 +1,7 @@
 version: "0.0.1"
 services:
   minance:
-    image: ydeng11/minance:0.0.1-beta
+    image: ydeng/minance:0.0.2
     container_name: minance
     hostname: minance
     environment:
@@ -10,14 +10,14 @@ services:
       QUARKUS_DATASOURCE_PASSWORD: minance
       QUARKUS_DATASOURCE__DATASOURCE_NAME__DB_KIND: mysql
     ports:
-      - 8911:8080
+      - 8911:8888
     networks:
       - minance
     depends_on:
       minance-db:
         condition: service_healthy
     healthcheck:
-      test: curl -f http://localhost:8080/q/health/live || exit 1
+      test: curl -f http://localhost:8888/q/health/live || exit 1
       start_period: 1s
       interval: 30s
       timeout: 5s

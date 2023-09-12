@@ -37,7 +37,7 @@ import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.DISCOVER;
 public class TransactionServiceTest {
   private final String ACCOUNT_NAME_TEST1 = "test1";
   private final String ACCOUNT_NAME_TEST2 = "test2";
-  private final BigDecimal INIT_BALANCE = new BigDecimal("123.123");
+  private final BigDecimal INIT_BALANCE = new BigDecimal("123.12");
   @Inject BankService bankService;
   @Inject AccountService accountService;
   @Inject TransactionService transactionService;

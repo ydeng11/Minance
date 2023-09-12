@@ -4,8 +4,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.sql.SQLException;
 import java.util.List;
+import org.flywaydb.core.Flyway;
 import org.jooq.DSLContext;
 import org.jooq.exception.DataAccessException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import today.ihelio.jooq.tables.pojos.Banks;
 import today.ihelio.minance.csvpojos.BankAccountPair;
 
@@ -14,10 +17,22 @@ import static today.ihelio.jooq.Tables.BANKS;
 @ApplicationScoped
 public class BankService {
   private final DSLContext dslContext;
+  private final Flyway flyway;
 
   @Inject
-  public BankService(DSLContext dslContext) {
+  public BankService(DSLContext dslContext, Flyway flyway) {
     this.dslContext = dslContext;
+    this.flyway = flyway;
+  }
+
+  @BeforeEach
+  void setUp() {
+    flyway.migrate();
+  }
+
+  @AfterEach
+  void clean() {
+    flyway.clean();
   }
 
   public int create(BankAccountPair.BankName bank) throws SQLException {

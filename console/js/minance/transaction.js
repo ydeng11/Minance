@@ -88,9 +88,7 @@ $(document).ready(function () {
     });
   });
 
-  let dt = dynamicTable.config("data-table", 
-  ["transactionId", "accountName", "bankName", "category", "description", "transactionType", "transactionDate", "postDate", "amount", "address", "memo", "uploadTime"], 
-  ["Transaction Id", "Account Name", "Bank Name", "Category", "Description", "Transaction Type", "Transaction Date", "Post Date", "Amount", "Address", "Memo", "Upload Time"], //set to null for field names instead of custom header names
+  let dt = dynamicTable.config("data-table", ["transactionId", "accountName", "bankName", "category", "description", "transactionType", "transactionDate", "postDate", "amount", "address", "memo", "uploadTime"], ["Transaction Id", "Account Name", "Bank Name", "Category", "Description", "Transaction Type", "Transaction Date", "Post Date", "Amount", "Address", "Memo", "Upload Time"], //set to null for field names instead of custom header names
       "There are no transaction to list...");
 
   $("#uploadActivities").on("click", function (event) {
@@ -109,12 +107,12 @@ $(document).ready(function () {
     body.append("accountType", accountType);
     body.append("useMinanceFormat", useMinanceFormat);
     body.append("file", files[0]);
-    callApiFormData("http://localhost:8080/1.0/minance/transactions/upload_csv", "POST", body)
+    callApiFormData("/1.0/minance/transactions/upload_csv", "POST", body)
         .then((response) => {
           if (response.ok) {
             $("#msgBox").text(response.body);
           }
-          callApi("http://localhost:8080/1.0/minance/transactions/retrieve/"
+          callApi("/1.0/minance/transactions/retrieve/"
               + bankName
               + "/"
               + accountName
@@ -138,7 +136,7 @@ $(document).ready(function () {
 
     let txnId = $("#transactionIdToDelete").val();
 
-    callApi("http://localhost:8080/1.0/minance/transactions/delete/" + txnId, "DELETE").then((response) => {
+    callApi("/1.0/minance/transactions/delete/" + txnId, "DELETE").then((response) => {
       if (response.ok) {
         $("#msgBox").text(txnId + " Deleted!");
       }
@@ -150,7 +148,8 @@ $(document).ready(function () {
 
     let uploadTime = $("#transactionUploadTime").val();
 
-    callApi("http://localhost:8080/1.0/minance/transactions/delete/uploadTime/" + uploadTime, "DELETE").then((response) => {
+    callApi("/1.0/minance/transactions/delete/uploadTime/"
+        + uploadTime, "DELETE").then((response) => {
       if (response.ok) {
         $("#msgBox").text("Deleted!");
       }
@@ -164,7 +163,7 @@ $(document).ready(function () {
     let accountType = $("#accountTypeSelect").val();
     let filterDuplicate = $("#filterDuplicate").val();
 
-    callApi("http://localhost:8080/1.0/minance/transactions/retrieve/"
+    callApi("/1.0/minance/transactions/retrieve/"
         + bankName
         + "/"
         + accountName

@@ -74,12 +74,40 @@
                   <button type="submit" class="btn btn-outline-dark" id="createAccount">
                     Create
                   </button>
-                  <button type="submit" class="btn btn-outline-dark" id="deleteAccount">
+                  <!-- <button type="submit" class="btn btn-outline-dark" id="deleteAccount">
+                    Delete
+                  </button> -->
+                </div>
+              </form>
+              <br />
+              <form class="row g-2">
+                <div class="col-md-3 column">
+                  <input
+                      class="form-control-plaintext"
+                      id="accountIdToDeleteLabel"
+                      readonly
+                      type="text"
+                      value="Account Id"
+                  />
+                </div>
+                <div class="col-md-6 column">
+                  <label class="visually-hidden" for="accountIdToDelete">Type in Account Id</label>
+                  <input
+                      class="form-control"
+                      id="accountIdToDelete"
+                      placeholder="Type in Account Id"
+                      type="text"/>
+                </div>
+                <div class="col-auto">
+                  <button
+                      class="btn btn-outline-dark"
+                      id="deleteAccount"
+                      type="submit">
                     Delete
                   </button>
                 </div>
               </form>
-              <br />
+              <br/>
               <div class="col-md-4 column">
                 <p id = "msgBox"></p>
               </div>    
