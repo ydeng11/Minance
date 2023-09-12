@@ -14,7 +14,6 @@ import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CITI;
 @QuarkusTest
 public class AccountServiceTest {
   @Inject AccountService accountService;
-
   @Inject BankService bankService;
 
   @Test public void testAccountService_createAccount_illegalBank() throws Exception {
@@ -48,7 +47,7 @@ public class AccountServiceTest {
     accounts.setAccountName("test");
     accounts.setBankName("CITI");
     accounts.setAccountType("CREDIT");
-    BigDecimal balance = new BigDecimal("123.123");
+    BigDecimal balance = new BigDecimal("123.12");
     accounts.setInitBalance(balance);
     bankService.create(CITI);
     accountService.create(accounts);
@@ -59,7 +58,7 @@ public class AccountServiceTest {
     assertThat(newAccounts.getInitBalance()).isEqualTo(
         balance);
 
-    BigDecimal newBalance = new BigDecimal("999.123");
+    BigDecimal newBalance = new BigDecimal("999.12");
     newAccounts.setInitBalance(newBalance);
 
     accountService.update(newAccounts);

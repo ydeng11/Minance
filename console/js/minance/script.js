@@ -104,7 +104,6 @@ async function callApi(url = "", method = "", data = {}) {
   return response; // parses JSON response into native JavaScript objects
 }
 
-
 async function callApiFormData(url = "", method = "", data = {}) {
   // Default options are marked with *
   const response = await fetch(url, {
@@ -124,7 +123,7 @@ async function callApiFormData(url = "", method = "", data = {}) {
 }
 
 function getAllData(endpoint) {
-  return callApi("http://localhost:8080/1.0/minance/" + endpoint + "/retrieveAll", "GET")
+  return callApi("/1.0/minance/" + endpoint + "/retrieveAll", "GET")
       .then((response) => response.json())
       .then((data) => {
         return data;

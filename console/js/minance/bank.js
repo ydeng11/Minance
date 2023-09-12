@@ -5,7 +5,7 @@ function resetInput() {
 
 $(document).ready(function (e) {
   let dt = dynamicTable.config("data-table", ["bankId", "bankName"], ["Bank Id", "Bank Name"], //set to null for field names
-                                                                 // instead of custom header names
+      // instead of custom header names
       "There are no banks to list...");
   getAllData("bank").then((data) => dt.load(data));
 
@@ -16,7 +16,7 @@ $(document).ready(function (e) {
     let body = {
       bankName: bankName,
     };
-    callApi("http://localhost:8080/1.0/minance/bank/create", "POST", body)
+    callApi("/1.0/minance/bank/create", "POST", body)
         .then((response) => {
           $("#msgBox").text(bankName + " Created!");
           $("#bankForm").trigger("reset");
@@ -32,7 +32,7 @@ $(document).ready(function (e) {
     event.preventDefault();
 
     let bankName = $("#bankForm").val();
-    callApi("http://localhost:8080/1.0/minance/bank/delete/" + bankName, "DELETE").then((response) => {
+    callApi("/1.0/minance/bank/delete/" + bankName, "DELETE").then((response) => {
       $("#msgBox").text(bankName + " Deleted!");
       $("#bankForm").trigger("reset");
       getAllData("bank").then((data) => dt.load(data));

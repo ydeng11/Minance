@@ -37,7 +37,7 @@ $(document).ready(function (e) {
       accountType: accountType,
       initBalance: initBalance,
     };
-    callApi("http://localhost:8080/1.0/minance/account/create", "POST", body)
+    callApi("/1.0/minance/account/create", "POST", body)
         .then((response) => {
           if (response.ok) {
             $("#msgBox").text(accountName + " Created!");
@@ -51,20 +51,34 @@ $(document).ready(function (e) {
     resetInput();
   });
 
+  // $("#deleteAccount").on("click", function (event) {
+  //   event.preventDefault();
+
+  //   let bankName = $("#bankSelect").val();
+  //   let accountName = $("#accountForm").val();
+
+  //   callApi("/1.0/minance/account/delete/"
+  //       + bankName
+  //       + "/"
+  //       + accountName, "DELETE").then((response) => {
+  //     if (response.ok) {
+  //       $("#msgBox").text(accountName + " Deleted!");
+  //     }
+  //     $("#bankForm").trigger("reset");
+  //     getAllData("account").then((data) => dt.load(data));
+  //   });
+  //   resetInput();
+  // });
+
   $("#deleteAccount").on("click", function (event) {
     event.preventDefault();
 
-    let bankName = $("#bankSelect").val();
-    let accountName = $("#accountForm").val();
+    let accountId = $("#accountIdToDelete").val();
 
-    callApi("http://localhost:8080/1.0/minance/account/delete/"
-        + bankName
-        + "/"
-        + accountName, "DELETE").then((response) => {
+    callApi("/1.0/minance/account/delete/" + accountId, "DELETE").then((response) => {
       if (response.ok) {
-        $("#msgBox").text(accountName + " Deleted!");
+        $("#msgBox").text(accountId + " Deleted!");
       }
-      $("#bankForm").trigger("reset");
       getAllData("account").then((data) => dt.load(data));
     });
     resetInput();
