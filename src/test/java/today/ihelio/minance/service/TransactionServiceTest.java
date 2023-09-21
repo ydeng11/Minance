@@ -78,8 +78,8 @@ public class TransactionServiceTest {
   public void testUploadCsvForAllBankAccountType() throws Exception {
     testUploadCsv(AMEX, CREDIT, "testCsv/amex_credit.csv");
     testUploadCsv(APPLE, CREDIT, "testCsv/apple_credit.csv");
-    testUploadCsv(BANK_OF_AMERICA, CREDIT, "testCsv/boa_credit.csv");
-    testUploadCsv(BANK_OF_AMERICA, DEBIT, "testCsv/boa_debit.csv");
+    testUploadCsv(BANK_OF_AMERICA, CREDIT, "testCsv/boa.csv");
+    testUploadCsv(BANK_OF_AMERICA, DEBIT, "testCsv/boa.csv");
     testUploadCsv(CASH_APP, DEBIT, "testCsv/cash_app_debit.csv");
     testUploadCsv(CITI, CREDIT, "testCsv/citi_credit.csv");
     testUploadCsv(DISCOVER, CREDIT, "testCsv/discover_credit.csv");

@@ -19,15 +19,18 @@ public class BoaDebitCsvTemplate implements BankAccountCsvTemplate {
   @CsvBindByName(column = "Amount")
   public BigDecimal amount;
 
-  @CsvBindByName(column = "Running Bal.")
-  public double balance;
+  @CsvBindByName(column = "Category")
+  public String category;
 
-  @CsvBindByName(column = "Description")
+  @CsvBindByName(column = "Simple Description")
   public String description;
 
   @CsvDate(value = "MM/dd/yyyy")
   @CsvBindByName(column = "Date")
   public LocalDate date;
+
+  @CsvBindByName(column = "Memo")
+  public String memo;
 
   public BoaDebitCsvTemplate() {
   }
@@ -39,10 +42,12 @@ public class BoaDebitCsvTemplate implements BankAccountCsvTemplate {
 
   @Override public Transactions toTransactions() {
     Transactions transactions = new Transactions();
-    transactions.setAmount(amount);
+    transactions.setAmount(amount.negate());
+    transactions.setCategory(category);
     transactions.setDescription(description);
     transactions.setTransactionDate(date);
     transactions.setPostDate(date);
+    transactions.setMemo(memo);
     return transactions;
   }
 
@@ -50,9 +55,10 @@ public class BoaDebitCsvTemplate implements BankAccountCsvTemplate {
     return "BoaDebitCsvTemplate{" +
         "bankAccountPair=" + bankAccountPair +
         ", amount=" + amount +
-        ", balance=" + balance +
+        ", category='" + category + '\'' +
         ", description='" + description + '\'' +
         ", date=" + date +
+        ", memo='" + memo + '\'' +
         '}';
   }
 }

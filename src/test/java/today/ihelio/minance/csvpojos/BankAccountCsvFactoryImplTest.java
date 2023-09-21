@@ -87,7 +87,7 @@ class BankAccountCsvFactoryImplTest {
         BankAccountPair.of(BankAccountPair.BankName.BANK_OF_AMERICA,
             BankAccountPair.AccountType.CREDIT);
     ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-    InputStream file = classLoader.getResourceAsStream("testCsv/boa_credit.csv");
+    InputStream file = classLoader.getResourceAsStream("testCsv/boa.csv");
 
     Reader reader = new InputStreamReader(file);
 
@@ -107,8 +107,8 @@ class BankAccountCsvFactoryImplTest {
 
     assertThat(boaTransactions.get(0).toString(), equalTo(
         "BoaCreditCsvTemplate{bankAccountPair=BankAccountPair{bankName=BANK_OF_AMERICA, accountType=CREDIT},"
-            + " amount=-14.84, description='Amazon.com*T638W6VB0 Amzn.com/billWA', "
-            + "postDate=2023-07-25, address='Amzn.com/bill WA', referenceNumber='24692163206109402682751'}"));
+            + " amount=400.00, category='Refunds/Adjustments', description=' PENDING', "
+            + "date=2023-07-25, memo=' '}"));
   }
 
   @Test
@@ -117,7 +117,7 @@ class BankAccountCsvFactoryImplTest {
         BankAccountPair.of(BankAccountPair.BankName.BANK_OF_AMERICA,
             BankAccountPair.AccountType.DEBIT);
     ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-    InputStream file = classLoader.getResourceAsStream("testCsv/boa_debit.csv");
+    InputStream file = classLoader.getResourceAsStream("testCsv/boa.csv");
 
     Reader reader = new InputStreamReader(file);
 
@@ -137,8 +137,8 @@ class BankAccountCsvFactoryImplTest {
 
     assertThat(boaTransactions.get(0).toString(), equalTo(
         "BoaDebitCsvTemplate{bankAccountPair=BankAccountPair{bankName=BANK_OF_AMERICA, accountType=DEBIT},"
-            + " amount=-123.00, balance=4339.85, description='SYNCHRONY BANK DES:PAYMENT ID:XXXXXXXXXX12121 INDN:Helio D CO ID:XXXXX12121 WEB', "
-            + "date=2023-06-29}"));
+            + " amount=400.00, category='Refunds/Adjustments', description=' PENDING', "
+            + "date=2023-07-25, memo=' '}"));
   }
 
   @Test

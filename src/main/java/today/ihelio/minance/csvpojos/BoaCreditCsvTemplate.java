@@ -19,31 +19,20 @@ public class BoaCreditCsvTemplate implements BankAccountCsvTemplate {
   @CsvBindByName(column = "Amount")
   public BigDecimal amount;
 
-  @CsvBindByName(column = "Payee")
+  @CsvBindByName(column = "Category")
+  public String category;
+
+  @CsvBindByName(column = "Simple Description")
   public String description;
 
   @CsvDate(value = "MM/dd/yyyy")
-  @CsvBindByName(column = "Posted Date")
-  public LocalDate postDate;
+  @CsvBindByName(column = "Date")
+  public LocalDate date;
 
-  @CsvBindByName(column = "Address")
-  public String address;
-
-  @CsvBindByName(column = "Reference Number")
-  public String referenceNumber;
+  @CsvBindByName(column = "Memo")
+  public String memo;
 
   public BoaCreditCsvTemplate() {
-  }
-
-  @Override public Transactions toTransactions() {
-    Transactions transactions = new Transactions();
-    transactions.setAmount(amount.negate());
-    transactions.setDescription(description);
-    transactions.setTransactionDate(postDate);
-    transactions.setPostDate(postDate);
-    transactions.setAddress(address);
-    transactions.setMemo(referenceNumber);
-    return transactions;
   }
 
   @Override
@@ -51,14 +40,25 @@ public class BoaCreditCsvTemplate implements BankAccountCsvTemplate {
     return bankAccountPair;
   }
 
+  @Override public Transactions toTransactions() {
+    Transactions transactions = new Transactions();
+    transactions.setAmount(amount.negate());
+    transactions.setCategory(category);
+    transactions.setDescription(description);
+    transactions.setTransactionDate(date);
+    transactions.setPostDate(date);
+    transactions.setMemo(memo);
+    return transactions;
+  }
+
   @Override public String toString() {
     return "BoaCreditCsvTemplate{" +
         "bankAccountPair=" + bankAccountPair +
         ", amount=" + amount +
+        ", category='" + category + '\'' +
         ", description='" + description + '\'' +
-        ", postDate=" + postDate +
-        ", address='" + address + '\'' +
-        ", referenceNumber='" + referenceNumber + '\'' +
+        ", date=" + date +
+        ", memo='" + memo + '\'' +
         '}';
   }
 }
