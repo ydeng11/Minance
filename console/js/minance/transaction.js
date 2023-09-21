@@ -96,7 +96,7 @@ $(document).ready(function () {
     let bankName = $("#bankSelect").val();
     let accountName = $("#accountNameSelect").val();
     let accountType = $("#accountTypeSelect").val();
-    let useMinanceFormat = $("#useMinanceFormat").checked ? "1" : "0";
+    let useMinanceFormat = $("#useMinanceFormat")[0].checked ? 1 : 0;
     let files = document.querySelector("input[type=file]").files;
     if (files == null || files.length == 0) {
       return;
