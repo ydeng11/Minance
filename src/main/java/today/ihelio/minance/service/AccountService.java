@@ -17,11 +17,14 @@ import static today.ihelio.jooq.Tables.ACCOUNTS;
 public class AccountService {
   private final DSLContext dslContext;
   private final BankService bankService;
+  private final TransactionService transactionService;
 
   @Inject
-  public AccountService(DSLContext dslContext, BankService bankService) {
+  public AccountService(DSLContext dslContext, BankService bankService,
+      TransactionService transactionService) {
     this.dslContext = dslContext;
     this.bankService = bankService;
+    this.transactionService = transactionService;
   }
 
   public int create(Accounts account) throws SQLException,
@@ -57,7 +60,8 @@ public class AccountService {
         .execute();
   }
 
-  public int delete(int accountId) throws SQLException {
+  public int delete(int accountId) throws DataAccessException {
+    transactionService.clearTransactionsForAccount(accountId);
     return dslContext.delete(ACCOUNTS).where(ACCOUNTS.ACCOUNT_ID.eq(accountId)).execute();
   }
 

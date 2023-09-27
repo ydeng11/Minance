@@ -113,4 +113,10 @@ public class TransactionService {
         .orderBy(TRANSACTIONS.TRANSACTION_DATE)
         .fetchInto(Transactions.class);
   }
+
+  public int clearTransactionsForAccount(int accountId) throws DataAccessException {
+    return dslContext.delete(TRANSACTIONS)
+        .where(TRANSACTIONS.ACCOUNT_ID.eq(accountId))
+        .execute();
+  }
 }
