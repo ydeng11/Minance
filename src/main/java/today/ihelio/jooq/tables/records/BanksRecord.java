@@ -22,28 +22,28 @@ public class BanksRecord extends UpdatableRecordImpl<BanksRecord> implements Rec
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>minance.banks.bank_id</code>.
+     * Setter for <code>banks.bank_id</code>.
      */
     public void setBankId(Integer value) {
         set(0, value);
     }
 
     /**
-     * Getter for <code>minance.banks.bank_id</code>.
+     * Getter for <code>banks.bank_id</code>.
      */
     public Integer getBankId() {
         return (Integer) get(0);
     }
 
     /**
-     * Setter for <code>minance.banks.bank_name</code>.
+     * Setter for <code>banks.bank_name</code>.
      */
     public void setBankName(String value) {
         set(1, value);
     }
 
     /**
-     * Getter for <code>minance.banks.bank_name</code>.
+     * Getter for <code>banks.bank_name</code>.
      */
     public String getBankName() {
         return (String) get(1);

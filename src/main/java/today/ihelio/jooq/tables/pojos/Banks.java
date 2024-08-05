@@ -34,28 +34,28 @@ public class Banks implements Serializable {
     }
 
     /**
-     * Getter for <code>minance.banks.bank_id</code>.
+     * Getter for <code>banks.bank_id</code>.
      */
     public Integer getBankId() {
         return this.bankId;
     }
 
     /**
-     * Setter for <code>minance.banks.bank_id</code>.
+     * Setter for <code>banks.bank_id</code>.
      */
     public void setBankId(Integer bankId) {
         this.bankId = bankId;
     }
 
     /**
-     * Getter for <code>minance.banks.bank_name</code>.
+     * Getter for <code>banks.bank_name</code>.
      */
     public String getBankName() {
         return this.bankName;
     }
 
     /**
-     * Setter for <code>minance.banks.bank_name</code>.
+     * Setter for <code>banks.bank_name</code>.
      */
     public void setBankName(String bankName) {
         this.bankName = bankName;

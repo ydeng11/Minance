@@ -24,84 +24,84 @@ public class AccountsRecord extends UpdatableRecordImpl<AccountsRecord> implemen
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>minance.accounts.account_id</code>.
+     * Setter for <code>accounts.account_id</code>.
      */
     public void setAccountId(Integer value) {
         set(0, value);
     }
 
     /**
-     * Getter for <code>minance.accounts.account_id</code>.
+     * Getter for <code>accounts.account_id</code>.
      */
     public Integer getAccountId() {
         return (Integer) get(0);
     }
 
     /**
-     * Setter for <code>minance.accounts.bank_id</code>.
+     * Setter for <code>accounts.bank_id</code>.
      */
     public void setBankId(Integer value) {
         set(1, value);
     }
 
     /**
-     * Getter for <code>minance.accounts.bank_id</code>.
+     * Getter for <code>accounts.bank_id</code>.
      */
     public Integer getBankId() {
         return (Integer) get(1);
     }
 
     /**
-     * Setter for <code>minance.accounts.bank_name</code>.
+     * Setter for <code>accounts.bank_name</code>.
      */
     public void setBankName(String value) {
         set(2, value);
     }
 
     /**
-     * Getter for <code>minance.accounts.bank_name</code>.
+     * Getter for <code>accounts.bank_name</code>.
      */
     public String getBankName() {
         return (String) get(2);
     }
 
     /**
-     * Setter for <code>minance.accounts.account_name</code>.
+     * Setter for <code>accounts.account_name</code>.
      */
     public void setAccountName(String value) {
         set(3, value);
     }
 
     /**
-     * Getter for <code>minance.accounts.account_name</code>.
+     * Getter for <code>accounts.account_name</code>.
      */
     public String getAccountName() {
         return (String) get(3);
     }
 
     /**
-     * Setter for <code>minance.accounts.account_type</code>.
+     * Setter for <code>accounts.account_type</code>.
      */
     public void setAccountType(String value) {
         set(4, value);
     }
 
     /**
-     * Getter for <code>minance.accounts.account_type</code>.
+     * Getter for <code>accounts.account_type</code>.
      */
     public String getAccountType() {
         return (String) get(4);
     }
 
     /**
-     * Setter for <code>minance.accounts.init_balance</code>.
+     * Setter for <code>accounts.init_balance</code>.
      */
     public void setInitBalance(BigDecimal value) {
         set(5, value);
     }
 
     /**
-     * Getter for <code>minance.accounts.init_balance</code>.
+     * Getter for <code>accounts.init_balance</code>.
      */
     public BigDecimal getInitBalance() {
         return (BigDecimal) get(5);

@@ -12,21 +12,19 @@ import org.jooq.impl.Internal;
 
 import today.ihelio.jooq.tables.Accounts;
 import today.ihelio.jooq.tables.Banks;
-import today.ihelio.jooq.tables.FlywaySchemaHistory;
 import today.ihelio.jooq.tables.MinanceCategory;
 import today.ihelio.jooq.tables.RawCategoryToMinanceCategory;
 import today.ihelio.jooq.tables.Transactions;
 import today.ihelio.jooq.tables.records.AccountsRecord;
 import today.ihelio.jooq.tables.records.BanksRecord;
-import today.ihelio.jooq.tables.records.FlywaySchemaHistoryRecord;
 import today.ihelio.jooq.tables.records.MinanceCategoryRecord;
 import today.ihelio.jooq.tables.records.RawCategoryToMinanceCategoryRecord;
 import today.ihelio.jooq.tables.records.TransactionsRecord;
 
 
 /**
- * A class modelling foreign key relationships and constraints of tables in
- * minance.
+ * A class modelling foreign key relationships and constraints of tables in the
+ * default schema.
  */
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Keys {
@@ -35,22 +33,19 @@ public class Keys {
     // UNIQUE and PRIMARY KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final UniqueKey<AccountsRecord> KEY_ACCOUNTS_ACCOUNT_UNIQUE = Internal.createUniqueKey(Accounts.ACCOUNTS, DSL.name("KEY_accounts_account_unique"), new TableField[] { Accounts.ACCOUNTS.BANK_NAME, Accounts.ACCOUNTS.ACCOUNT_TYPE, Accounts.ACCOUNTS.ACCOUNT_NAME }, true);
-    public static final UniqueKey<AccountsRecord> KEY_ACCOUNTS_PRIMARY = Internal.createUniqueKey(Accounts.ACCOUNTS, DSL.name("KEY_accounts_PRIMARY"), new TableField[] { Accounts.ACCOUNTS.ACCOUNT_ID }, true);
-    public static final UniqueKey<BanksRecord> KEY_BANKS_PRIMARY = Internal.createUniqueKey(Banks.BANKS, DSL.name("KEY_banks_PRIMARY"), new TableField[] { Banks.BANKS.BANK_ID }, true);
-    public static final UniqueKey<BanksRecord> KEY_BANKS_UNIQUE_BANK = Internal.createUniqueKey(Banks.BANKS, DSL.name("KEY_banks_unique_bank"), new TableField[] { Banks.BANKS.BANK_NAME }, true);
-    public static final UniqueKey<FlywaySchemaHistoryRecord> KEY_FLYWAY_SCHEMA_HISTORY_PRIMARY = Internal.createUniqueKey(FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY, DSL.name("KEY_flyway_schema_history_PRIMARY"), new TableField[] { FlywaySchemaHistory.FLYWAY_SCHEMA_HISTORY.INSTALLED_RANK }, true);
-    public static final UniqueKey<MinanceCategoryRecord> KEY_MINANCE_CATEGORY_MINANCE_CATEGORY_UNIQUE = Internal.createUniqueKey(MinanceCategory.MINANCE_CATEGORY, DSL.name("KEY_minance_category_minance_category_unique"), new TableField[] { MinanceCategory.MINANCE_CATEGORY.CATEGORY }, true);
-    public static final UniqueKey<MinanceCategoryRecord> KEY_MINANCE_CATEGORY_PRIMARY = Internal.createUniqueKey(MinanceCategory.MINANCE_CATEGORY, DSL.name("KEY_minance_category_PRIMARY"), new TableField[] { MinanceCategory.MINANCE_CATEGORY.M_CATEGORY_ID }, true);
-    public static final UniqueKey<RawCategoryToMinanceCategoryRecord> KEY_RAW_CATEGORY_TO_MINANCE_CATEGORY_PRIMARY = Internal.createUniqueKey(RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY, DSL.name("KEY_raw_category_to_minance_category_PRIMARY"), new TableField[] { RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY.RC_TO_MC_ID }, true);
-    public static final UniqueKey<TransactionsRecord> KEY_TRANSACTIONS_PRIMARY = Internal.createUniqueKey(Transactions.TRANSACTIONS, DSL.name("KEY_transactions_PRIMARY"), new TableField[] { Transactions.TRANSACTIONS.TRANSACTION_ID }, true);
-    public static final UniqueKey<TransactionsRecord> KEY_TRANSACTIONS_TRANSACTION_UNIQUE = Internal.createUniqueKey(Transactions.TRANSACTIONS, DSL.name("KEY_transactions_transaction_unique"), new TableField[] { Transactions.TRANSACTIONS.ACCOUNT_ID, Transactions.TRANSACTIONS.CATEGORY, Transactions.TRANSACTIONS.TRANSACTION_TYPE, Transactions.TRANSACTIONS.TRANSACTION_DATE, Transactions.TRANSACTIONS.POST_DATE, Transactions.TRANSACTIONS.AMOUNT, Transactions.TRANSACTIONS.MEMO }, true);
+    public static final UniqueKey<AccountsRecord> ACCOUNTS__PK_ACCOUNTS = Internal.createUniqueKey(Accounts.ACCOUNTS, DSL.name("pk_accounts"), new TableField[] { Accounts.ACCOUNTS.ACCOUNT_ID }, true);
+    public static final UniqueKey<BanksRecord> BANKS__PK_BANKS = Internal.createUniqueKey(Banks.BANKS, DSL.name("pk_banks"), new TableField[] { Banks.BANKS.BANK_ID }, true);
+    public static final UniqueKey<BanksRecord> BANKS__UK_BANKS_32305237 = Internal.createUniqueKey(Banks.BANKS, DSL.name("uk_banks_32305237"), new TableField[] { Banks.BANKS.BANK_NAME }, true);
+    public static final UniqueKey<MinanceCategoryRecord> MINANCE_CATEGORY__PK_MINANCE_CATEGORY = Internal.createUniqueKey(MinanceCategory.MINANCE_CATEGORY, DSL.name("pk_minance_category"), new TableField[] { MinanceCategory.MINANCE_CATEGORY.M_CATEGORY_ID }, true);
+    public static final UniqueKey<MinanceCategoryRecord> MINANCE_CATEGORY__UK_MINANCE_CATEGORY_125424204 = Internal.createUniqueKey(MinanceCategory.MINANCE_CATEGORY, DSL.name("uk_minance_category_125424204"), new TableField[] { MinanceCategory.MINANCE_CATEGORY.CATEGORY }, true);
+    public static final UniqueKey<RawCategoryToMinanceCategoryRecord> RAW_CATEGORY_TO_MINANCE_CATEGORY__PK_RAW_CATEGORY_TO_MINANCE_CATEGORY = Internal.createUniqueKey(RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY, DSL.name("pk_raw_category_to_minance_category"), new TableField[] { RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY.RC_TO_MC_ID }, true);
+    public static final UniqueKey<TransactionsRecord> TRANSACTIONS__PK_TRANSACTIONS = Internal.createUniqueKey(Transactions.TRANSACTIONS, DSL.name("pk_transactions"), new TableField[] { Transactions.TRANSACTIONS.TRANSACTION_ID }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions
     // -------------------------------------------------------------------------
 
-    public static final ForeignKey<AccountsRecord, BanksRecord> ACCOUNTS_IBFK_1 = Internal.createForeignKey(Accounts.ACCOUNTS, DSL.name("accounts_ibfk_1"), new TableField[] { Accounts.ACCOUNTS.BANK_ID }, Keys.KEY_BANKS_PRIMARY, new TableField[] { Banks.BANKS.BANK_ID }, true);
-    public static final ForeignKey<RawCategoryToMinanceCategoryRecord, MinanceCategoryRecord> RAW_CATEGORY_TO_MINANCE_CATEGORY_IBFK_1 = Internal.createForeignKey(RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY, DSL.name("raw_category_to_minance_category_ibfk_1"), new TableField[] { RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY.MINANCE_CATEGORY_ID }, Keys.KEY_MINANCE_CATEGORY_PRIMARY, new TableField[] { MinanceCategory.MINANCE_CATEGORY.M_CATEGORY_ID }, true);
-    public static final ForeignKey<TransactionsRecord, AccountsRecord> TRANSACTIONS_IBFK_1 = Internal.createForeignKey(Transactions.TRANSACTIONS, DSL.name("transactions_ibfk_1"), new TableField[] { Transactions.TRANSACTIONS.ACCOUNT_ID }, Keys.KEY_ACCOUNTS_PRIMARY, new TableField[] { Accounts.ACCOUNTS.ACCOUNT_ID }, true);
+    public static final ForeignKey<AccountsRecord, BanksRecord> ACCOUNTS__FK_ACCOUNTS_PK_BANKS = Internal.createForeignKey(Accounts.ACCOUNTS, DSL.name("fk_accounts_pk_banks"), new TableField[] { Accounts.ACCOUNTS.BANK_ID }, Keys.BANKS__PK_BANKS, new TableField[] { Banks.BANKS.BANK_ID }, true);
+    public static final ForeignKey<RawCategoryToMinanceCategoryRecord, MinanceCategoryRecord> RAW_CATEGORY_TO_MINANCE_CATEGORY__FK_RAW_CATEGORY_TO_MINANCE_CATEGORY_PK_MINANCE_CATEGORY = Internal.createForeignKey(RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY, DSL.name("fk_raw_category_to_minance_category_pk_minance_category"), new TableField[] { RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY.MINANCE_CATEGORY_ID }, Keys.MINANCE_CATEGORY__PK_MINANCE_CATEGORY, new TableField[] { MinanceCategory.MINANCE_CATEGORY.M_CATEGORY_ID }, true);
+    public static final ForeignKey<TransactionsRecord, AccountsRecord> TRANSACTIONS__FK_TRANSACTIONS_PK_ACCOUNTS = Internal.createForeignKey(Transactions.TRANSACTIONS, DSL.name("fk_transactions_pk_accounts"), new TableField[] { Transactions.TRANSACTIONS.ACCOUNT_ID }, Keys.ACCOUNTS__PK_ACCOUNTS, new TableField[] { Accounts.ACCOUNTS.ACCOUNT_ID }, true);
 }

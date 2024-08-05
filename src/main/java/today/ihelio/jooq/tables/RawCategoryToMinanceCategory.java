@@ -12,7 +12,6 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Function3;
 import org.jooq.Identity;
-import org.jooq.Index;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
@@ -27,9 +26,8 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
-import today.ihelio.jooq.Indexes;
+import today.ihelio.jooq.DefaultSchema;
 import today.ihelio.jooq.Keys;
-import today.ihelio.jooq.Minance;
 import today.ihelio.jooq.tables.records.RawCategoryToMinanceCategoryRecord;
 
 
@@ -42,8 +40,7 @@ public class RawCategoryToMinanceCategory extends TableImpl<RawCategoryToMinance
     private static final long serialVersionUID = 1L;
 
     /**
-     * The reference instance of
-     * <code>minance.raw_category_to_minance_category</code>
+     * The reference instance of <code>raw_category_to_minance_category</code>
      */
     public static final RawCategoryToMinanceCategory RAW_CATEGORY_TO_MINANCE_CATEGORY = new RawCategoryToMinanceCategory();
 
@@ -56,20 +53,18 @@ public class RawCategoryToMinanceCategory extends TableImpl<RawCategoryToMinance
     }
 
     /**
-     * The column
-     * <code>minance.raw_category_to_minance_category.rc_to_mc_id</code>.
+     * The column <code>raw_category_to_minance_category.rc_to_mc_id</code>.
      */
-    public final TableField<RawCategoryToMinanceCategoryRecord, Integer> RC_TO_MC_ID = createField(DSL.name("rc_to_mc_id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<RawCategoryToMinanceCategoryRecord, Integer> RC_TO_MC_ID = createField(DSL.name("rc_to_mc_id"), SQLDataType.INTEGER.identity(true), this, "");
+
+    /**
+     * The column <code>raw_category_to_minance_category.raw_category</code>.
+     */
+    public final TableField<RawCategoryToMinanceCategoryRecord, String> RAW_CATEGORY = createField(DSL.name("raw_category"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
      * The column
-     * <code>minance.raw_category_to_minance_category.raw_category</code>.
-     */
-    public final TableField<RawCategoryToMinanceCategoryRecord, String> RAW_CATEGORY = createField(DSL.name("raw_category"), SQLDataType.VARCHAR(100).nullable(false), this, "");
-
-    /**
-     * The column
-     * <code>minance.raw_category_to_minance_category.minance_category_id</code>.
+     * <code>raw_category_to_minance_category.minance_category_id</code>.
      */
     public final TableField<RawCategoryToMinanceCategoryRecord, Integer> MINANCE_CATEGORY_ID = createField(DSL.name("minance_category_id"), SQLDataType.INTEGER.nullable(false), this, "");
 
@@ -82,24 +77,23 @@ public class RawCategoryToMinanceCategory extends TableImpl<RawCategoryToMinance
     }
 
     /**
-     * Create an aliased <code>minance.raw_category_to_minance_category</code>
-     * table reference
+     * Create an aliased <code>raw_category_to_minance_category</code> table
+     * reference
      */
     public RawCategoryToMinanceCategory(String alias) {
         this(DSL.name(alias), RAW_CATEGORY_TO_MINANCE_CATEGORY);
     }
 
     /**
-     * Create an aliased <code>minance.raw_category_to_minance_category</code>
-     * table reference
+     * Create an aliased <code>raw_category_to_minance_category</code> table
+     * reference
      */
     public RawCategoryToMinanceCategory(Name alias) {
         this(alias, RAW_CATEGORY_TO_MINANCE_CATEGORY);
     }
 
     /**
-     * Create a <code>minance.raw_category_to_minance_category</code> table
-     * reference
+     * Create a <code>raw_category_to_minance_category</code> table reference
      */
     public RawCategoryToMinanceCategory() {
         this(DSL.name("raw_category_to_minance_category"), null);
@@ -111,12 +105,7 @@ public class RawCategoryToMinanceCategory extends TableImpl<RawCategoryToMinance
 
     @Override
     public Schema getSchema() {
-        return aliased() ? null : Minance.MINANCE;
-    }
-
-    @Override
-    public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.RAW_CATEGORY_TO_MINANCE_CATEGORY_MINANCE_CATEGORY_ID);
+        return aliased() ? null : DefaultSchema.DEFAULT_SCHEMA;
     }
 
     @Override
@@ -126,23 +115,22 @@ public class RawCategoryToMinanceCategory extends TableImpl<RawCategoryToMinance
 
     @Override
     public UniqueKey<RawCategoryToMinanceCategoryRecord> getPrimaryKey() {
-        return Keys.KEY_RAW_CATEGORY_TO_MINANCE_CATEGORY_PRIMARY;
+        return Keys.RAW_CATEGORY_TO_MINANCE_CATEGORY__PK_RAW_CATEGORY_TO_MINANCE_CATEGORY;
     }
 
     @Override
     public List<ForeignKey<RawCategoryToMinanceCategoryRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.RAW_CATEGORY_TO_MINANCE_CATEGORY_IBFK_1);
+        return Arrays.asList(Keys.RAW_CATEGORY_TO_MINANCE_CATEGORY__FK_RAW_CATEGORY_TO_MINANCE_CATEGORY_PK_MINANCE_CATEGORY);
     }
 
     private transient MinanceCategory _minanceCategory;
 
     /**
-     * Get the implicit join path to the <code>minance.minance_category</code>
-     * table.
+     * Get the implicit join path to the <code>minance_category</code> table.
      */
     public MinanceCategory minanceCategory() {
         if (_minanceCategory == null)
-            _minanceCategory = new MinanceCategory(this, Keys.RAW_CATEGORY_TO_MINANCE_CATEGORY_IBFK_1);
+            _minanceCategory = new MinanceCategory(this, Keys.RAW_CATEGORY_TO_MINANCE_CATEGORY__FK_RAW_CATEGORY_TO_MINANCE_CATEGORY_PK_MINANCE_CATEGORY);
 
         return _minanceCategory;
     }

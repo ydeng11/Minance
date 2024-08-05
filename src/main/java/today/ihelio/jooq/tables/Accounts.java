@@ -13,7 +13,6 @@ import org.jooq.Field;
 import org.jooq.ForeignKey;
 import org.jooq.Function6;
 import org.jooq.Identity;
-import org.jooq.Index;
 import org.jooq.Name;
 import org.jooq.Record;
 import org.jooq.Records;
@@ -28,9 +27,8 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
-import today.ihelio.jooq.Indexes;
+import today.ihelio.jooq.DefaultSchema;
 import today.ihelio.jooq.Keys;
-import today.ihelio.jooq.Minance;
 import today.ihelio.jooq.tables.records.AccountsRecord;
 
 
@@ -43,7 +41,7 @@ public class Accounts extends TableImpl<AccountsRecord> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * The reference instance of <code>minance.accounts</code>
+     * The reference instance of <code>accounts</code>
      */
     public static final Accounts ACCOUNTS = new Accounts();
 
@@ -56,34 +54,34 @@ public class Accounts extends TableImpl<AccountsRecord> {
     }
 
     /**
-     * The column <code>minance.accounts.account_id</code>.
+     * The column <code>accounts.account_id</code>.
      */
-    public final TableField<AccountsRecord, Integer> ACCOUNT_ID = createField(DSL.name("account_id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<AccountsRecord, Integer> ACCOUNT_ID = createField(DSL.name("account_id"), SQLDataType.INTEGER.identity(true), this, "");
 
     /**
-     * The column <code>minance.accounts.bank_id</code>.
+     * The column <code>accounts.bank_id</code>.
      */
     public final TableField<AccountsRecord, Integer> BANK_ID = createField(DSL.name("bank_id"), SQLDataType.INTEGER.nullable(false), this, "");
 
     /**
-     * The column <code>minance.accounts.bank_name</code>.
+     * The column <code>accounts.bank_name</code>.
      */
-    public final TableField<AccountsRecord, String> BANK_NAME = createField(DSL.name("bank_name"), SQLDataType.VARCHAR(25).nullable(false), this, "");
+    public final TableField<AccountsRecord, String> BANK_NAME = createField(DSL.name("bank_name"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
-     * The column <code>minance.accounts.account_name</code>.
+     * The column <code>accounts.account_name</code>.
      */
-    public final TableField<AccountsRecord, String> ACCOUNT_NAME = createField(DSL.name("account_name"), SQLDataType.VARCHAR(25).nullable(false), this, "");
+    public final TableField<AccountsRecord, String> ACCOUNT_NAME = createField(DSL.name("account_name"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
-     * The column <code>minance.accounts.account_type</code>.
+     * The column <code>accounts.account_type</code>.
      */
-    public final TableField<AccountsRecord, String> ACCOUNT_TYPE = createField(DSL.name("account_type"), SQLDataType.VARCHAR(25).nullable(false), this, "");
+    public final TableField<AccountsRecord, String> ACCOUNT_TYPE = createField(DSL.name("account_type"), SQLDataType.CLOB.nullable(false), this, "");
 
     /**
-     * The column <code>minance.accounts.init_balance</code>.
+     * The column <code>accounts.init_balance</code>.
      */
-    public final TableField<AccountsRecord, BigDecimal> INIT_BALANCE = createField(DSL.name("init_balance"), SQLDataType.DECIMAL(9, 2), this, "");
+    public final TableField<AccountsRecord, BigDecimal> INIT_BALANCE = createField(DSL.name("init_balance"), SQLDataType.NUMERIC(9, 2), this, "");
 
     private Accounts(Name alias, Table<AccountsRecord> aliased) {
         this(alias, aliased, null);
@@ -94,21 +92,21 @@ public class Accounts extends TableImpl<AccountsRecord> {
     }
 
     /**
-     * Create an aliased <code>minance.accounts</code> table reference
+     * Create an aliased <code>accounts</code> table reference
      */
     public Accounts(String alias) {
         this(DSL.name(alias), ACCOUNTS);
     }
 
     /**
-     * Create an aliased <code>minance.accounts</code> table reference
+     * Create an aliased <code>accounts</code> table reference
      */
     public Accounts(Name alias) {
         this(alias, ACCOUNTS);
     }
 
     /**
-     * Create a <code>minance.accounts</code> table reference
+     * Create a <code>accounts</code> table reference
      */
     public Accounts() {
         this(DSL.name("accounts"), null);
@@ -120,12 +118,7 @@ public class Accounts extends TableImpl<AccountsRecord> {
 
     @Override
     public Schema getSchema() {
-        return aliased() ? null : Minance.MINANCE;
-    }
-
-    @Override
-    public List<Index> getIndexes() {
-        return Arrays.asList(Indexes.ACCOUNTS_BANK_ID);
+        return aliased() ? null : DefaultSchema.DEFAULT_SCHEMA;
     }
 
     @Override
@@ -135,27 +128,22 @@ public class Accounts extends TableImpl<AccountsRecord> {
 
     @Override
     public UniqueKey<AccountsRecord> getPrimaryKey() {
-        return Keys.KEY_ACCOUNTS_PRIMARY;
-    }
-
-    @Override
-    public List<UniqueKey<AccountsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_ACCOUNTS_ACCOUNT_UNIQUE);
+        return Keys.ACCOUNTS__PK_ACCOUNTS;
     }
 
     @Override
     public List<ForeignKey<AccountsRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.ACCOUNTS_IBFK_1);
+        return Arrays.asList(Keys.ACCOUNTS__FK_ACCOUNTS_PK_BANKS);
     }
 
     private transient Banks _banks;
 
     /**
-     * Get the implicit join path to the <code>minance.banks</code> table.
+     * Get the implicit join path to the <code>banks</code> table.
      */
     public Banks banks() {
         if (_banks == null)
-            _banks = new Banks(this, Keys.ACCOUNTS_IBFK_1);
+            _banks = new Banks(this, Keys.ACCOUNTS__FK_ACCOUNTS_PK_BANKS);
 
         return _banks;
     }

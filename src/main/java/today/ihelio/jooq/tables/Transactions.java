@@ -28,8 +28,8 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
+import today.ihelio.jooq.DefaultSchema;
 import today.ihelio.jooq.Keys;
-import today.ihelio.jooq.Minance;
 import today.ihelio.jooq.tables.records.TransactionsRecord;
 
 
@@ -42,7 +42,7 @@ public class Transactions extends TableImpl<TransactionsRecord> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * The reference instance of <code>minance.transactions</code>
+     * The reference instance of <code>transactions</code>
      */
     public static final Transactions TRANSACTIONS = new Transactions();
 
@@ -55,94 +55,94 @@ public class Transactions extends TableImpl<TransactionsRecord> {
     }
 
     /**
-     * The column <code>minance.transactions.transaction_id</code>.
+     * The column <code>transactions.transaction_id</code>.
      */
-    public final TableField<TransactionsRecord, Integer> TRANSACTION_ID = createField(DSL.name("transaction_id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<TransactionsRecord, Integer> TRANSACTION_ID = createField(DSL.name("transaction_id"), SQLDataType.INTEGER.identity(true), this, "");
 
     /**
-     * The column <code>minance.transactions.account_id</code>.
+     * The column <code>transactions.account_id</code>.
      */
     public final TableField<TransactionsRecord, Integer> ACCOUNT_ID = createField(DSL.name("account_id"), SQLDataType.INTEGER, this, "");
 
     /**
-     * The column <code>minance.transactions.category</code>.
+     * The column <code>transactions.category</code>.
      */
-    public final TableField<TransactionsRecord, String> CATEGORY = createField(DSL.name("category"), SQLDataType.VARCHAR(50), this, "");
+    public final TableField<TransactionsRecord, String> CATEGORY = createField(DSL.name("category"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.description</code>.
+     * The column <code>transactions.description</code>.
      */
-    public final TableField<TransactionsRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.VARCHAR(100), this, "");
+    public final TableField<TransactionsRecord, String> DESCRIPTION = createField(DSL.name("description"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.transaction_type</code>.
+     * The column <code>transactions.transaction_type</code>.
      */
-    public final TableField<TransactionsRecord, String> TRANSACTION_TYPE = createField(DSL.name("transaction_type"), SQLDataType.VARCHAR(50), this, "");
+    public final TableField<TransactionsRecord, String> TRANSACTION_TYPE = createField(DSL.name("transaction_type"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.transaction_date</code>.
+     * The column <code>transactions.transaction_date</code>.
      */
     public final TableField<TransactionsRecord, LocalDate> TRANSACTION_DATE = createField(DSL.name("transaction_date"), SQLDataType.LOCALDATE, this, "");
 
     /**
-     * The column <code>minance.transactions.post_date</code>.
+     * The column <code>transactions.post_date</code>.
      */
     public final TableField<TransactionsRecord, LocalDate> POST_DATE = createField(DSL.name("post_date"), SQLDataType.LOCALDATE, this, "");
 
     /**
-     * The column <code>minance.transactions.memo</code>.
+     * The column <code>transactions.memo</code>.
      */
-    public final TableField<TransactionsRecord, String> MEMO = createField(DSL.name("memo"), SQLDataType.VARCHAR(200), this, "");
+    public final TableField<TransactionsRecord, String> MEMO = createField(DSL.name("memo"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.address</code>.
+     * The column <code>transactions.address</code>.
      */
-    public final TableField<TransactionsRecord, String> ADDRESS = createField(DSL.name("address"), SQLDataType.VARCHAR(100), this, "");
+    public final TableField<TransactionsRecord, String> ADDRESS = createField(DSL.name("address"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.city</code>.
+     * The column <code>transactions.city</code>.
      */
-    public final TableField<TransactionsRecord, String> CITY = createField(DSL.name("city"), SQLDataType.VARCHAR(30), this, "");
+    public final TableField<TransactionsRecord, String> CITY = createField(DSL.name("city"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.state_name</code>.
+     * The column <code>transactions.state_name</code>.
      */
-    public final TableField<TransactionsRecord, String> STATE_NAME = createField(DSL.name("state_name"), SQLDataType.VARCHAR(30), this, "");
+    public final TableField<TransactionsRecord, String> STATE_NAME = createField(DSL.name("state_name"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.country</code>.
+     * The column <code>transactions.country</code>.
      */
-    public final TableField<TransactionsRecord, String> COUNTRY = createField(DSL.name("country"), SQLDataType.VARCHAR(10), this, "");
+    public final TableField<TransactionsRecord, String> COUNTRY = createField(DSL.name("country"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.zipcode</code>.
+     * The column <code>transactions.zipcode</code>.
      */
-    public final TableField<TransactionsRecord, String> ZIPCODE = createField(DSL.name("zipcode"), SQLDataType.VARCHAR(10), this, "");
+    public final TableField<TransactionsRecord, String> ZIPCODE = createField(DSL.name("zipcode"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.amount</code>.
+     * The column <code>transactions.amount</code>.
      */
-    public final TableField<TransactionsRecord, BigDecimal> AMOUNT = createField(DSL.name("amount"), SQLDataType.DECIMAL(9, 2), this, "");
+    public final TableField<TransactionsRecord, BigDecimal> AMOUNT = createField(DSL.name("amount"), SQLDataType.NUMERIC(9, 2), this, "");
 
     /**
-     * The column <code>minance.transactions.bank_name</code>.
+     * The column <code>transactions.bank_name</code>.
      */
-    public final TableField<TransactionsRecord, String> BANK_NAME = createField(DSL.name("bank_name"), SQLDataType.VARCHAR(50), this, "");
+    public final TableField<TransactionsRecord, String> BANK_NAME = createField(DSL.name("bank_name"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.account_name</code>.
+     * The column <code>transactions.account_name</code>.
      */
-    public final TableField<TransactionsRecord, String> ACCOUNT_NAME = createField(DSL.name("account_name"), SQLDataType.VARCHAR(50), this, "");
+    public final TableField<TransactionsRecord, String> ACCOUNT_NAME = createField(DSL.name("account_name"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.upload_time</code>.
+     * The column <code>transactions.upload_time</code>.
      */
-    public final TableField<TransactionsRecord, String> UPLOAD_TIME = createField(DSL.name("upload_time"), SQLDataType.VARCHAR(20), this, "");
+    public final TableField<TransactionsRecord, String> UPLOAD_TIME = createField(DSL.name("upload_time"), SQLDataType.CLOB, this, "");
 
     /**
-     * The column <code>minance.transactions.is_duplicate</code>.
+     * The column <code>transactions.is_duplicate</code>.
      */
-    public final TableField<TransactionsRecord, Boolean> IS_DUPLICATE = createField(DSL.name("is_duplicate"), SQLDataType.BOOLEAN.defaultValue(DSL.inline("0", SQLDataType.BOOLEAN)), this, "");
+    public final TableField<TransactionsRecord, Integer> IS_DUPLICATE = createField(DSL.name("is_duplicate"), SQLDataType.INTEGER.defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INTEGER)), this, "");
 
     private Transactions(Name alias, Table<TransactionsRecord> aliased) {
         this(alias, aliased, null);
@@ -153,21 +153,21 @@ public class Transactions extends TableImpl<TransactionsRecord> {
     }
 
     /**
-     * Create an aliased <code>minance.transactions</code> table reference
+     * Create an aliased <code>transactions</code> table reference
      */
     public Transactions(String alias) {
         this(DSL.name(alias), TRANSACTIONS);
     }
 
     /**
-     * Create an aliased <code>minance.transactions</code> table reference
+     * Create an aliased <code>transactions</code> table reference
      */
     public Transactions(Name alias) {
         this(alias, TRANSACTIONS);
     }
 
     /**
-     * Create a <code>minance.transactions</code> table reference
+     * Create a <code>transactions</code> table reference
      */
     public Transactions() {
         this(DSL.name("transactions"), null);
@@ -179,7 +179,7 @@ public class Transactions extends TableImpl<TransactionsRecord> {
 
     @Override
     public Schema getSchema() {
-        return aliased() ? null : Minance.MINANCE;
+        return aliased() ? null : DefaultSchema.DEFAULT_SCHEMA;
     }
 
     @Override
@@ -189,27 +189,22 @@ public class Transactions extends TableImpl<TransactionsRecord> {
 
     @Override
     public UniqueKey<TransactionsRecord> getPrimaryKey() {
-        return Keys.KEY_TRANSACTIONS_PRIMARY;
-    }
-
-    @Override
-    public List<UniqueKey<TransactionsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_TRANSACTIONS_TRANSACTION_UNIQUE);
+        return Keys.TRANSACTIONS__PK_TRANSACTIONS;
     }
 
     @Override
     public List<ForeignKey<TransactionsRecord, ?>> getReferences() {
-        return Arrays.asList(Keys.TRANSACTIONS_IBFK_1);
+        return Arrays.asList(Keys.TRANSACTIONS__FK_TRANSACTIONS_PK_ACCOUNTS);
     }
 
     private transient Accounts _accounts;
 
     /**
-     * Get the implicit join path to the <code>minance.accounts</code> table.
+     * Get the implicit join path to the <code>accounts</code> table.
      */
     public Accounts accounts() {
         if (_accounts == null)
-            _accounts = new Accounts(this, Keys.TRANSACTIONS_IBFK_1);
+            _accounts = new Accounts(this, Keys.TRANSACTIONS__FK_TRANSACTIONS_PK_ACCOUNTS);
 
         return _accounts;
     }
@@ -258,14 +253,14 @@ public class Transactions extends TableImpl<TransactionsRecord> {
     // -------------------------------------------------------------------------
 
     @Override
-    public Row18<Integer, Integer, String, String, String, LocalDate, LocalDate, String, String, String, String, String, String, BigDecimal, String, String, String, Boolean> fieldsRow() {
+    public Row18<Integer, Integer, String, String, String, LocalDate, LocalDate, String, String, String, String, String, String, BigDecimal, String, String, String, Integer> fieldsRow() {
         return (Row18) super.fieldsRow();
     }
 
     /**
      * Convenience mapping calling {@link SelectField#convertFrom(Function)}.
      */
-    public <U> SelectField<U> mapping(Function18<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super BigDecimal, ? super String, ? super String, ? super String, ? super Boolean, ? extends U> from) {
+    public <U> SelectField<U> mapping(Function18<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super BigDecimal, ? super String, ? super String, ? super String, ? super Integer, ? extends U> from) {
         return convertFrom(Records.mapping(from));
     }
 
@@ -273,7 +268,7 @@ public class Transactions extends TableImpl<TransactionsRecord> {
      * Convenience mapping calling {@link SelectField#convertFrom(Class,
      * Function)}.
      */
-    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super BigDecimal, ? super String, ? super String, ? super String, ? super Boolean, ? extends U> from) {
+    public <U> SelectField<U> mapping(Class<U> toType, Function18<? super Integer, ? super Integer, ? super String, ? super String, ? super String, ? super LocalDate, ? super LocalDate, ? super String, ? super String, ? super String, ? super String, ? super String, ? super String, ? super BigDecimal, ? super String, ? super String, ? super String, ? super Integer, ? extends U> from) {
         return convertFrom(toType, Records.mapping(from));
     }
 }

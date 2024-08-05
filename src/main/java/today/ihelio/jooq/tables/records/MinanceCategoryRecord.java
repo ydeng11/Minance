@@ -22,28 +22,28 @@ public class MinanceCategoryRecord extends UpdatableRecordImpl<MinanceCategoryRe
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for <code>minance.minance_category.m_category_id</code>.
+     * Setter for <code>minance_category.m_category_id</code>.
      */
     public void setMCategoryId(Integer value) {
         set(0, value);
     }
 
     /**
-     * Getter for <code>minance.minance_category.m_category_id</code>.
+     * Getter for <code>minance_category.m_category_id</code>.
      */
     public Integer getMCategoryId() {
         return (Integer) get(0);
     }
 
     /**
-     * Setter for <code>minance.minance_category.category</code>.
+     * Setter for <code>minance_category.category</code>.
      */
     public void setCategory(String value) {
         set(1, value);
     }
 
     /**
-     * Getter for <code>minance.minance_category.category</code>.
+     * Getter for <code>minance_category.category</code>.
      */
     public String getCategory() {
         return (String) get(1);

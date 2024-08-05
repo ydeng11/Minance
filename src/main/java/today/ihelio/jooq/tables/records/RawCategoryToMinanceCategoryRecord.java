@@ -22,32 +22,28 @@ public class RawCategoryToMinanceCategoryRecord extends UpdatableRecordImpl<RawC
     private static final long serialVersionUID = 1L;
 
     /**
-     * Setter for
-     * <code>minance.raw_category_to_minance_category.rc_to_mc_id</code>.
+     * Setter for <code>raw_category_to_minance_category.rc_to_mc_id</code>.
      */
     public void setRcToMcId(Integer value) {
         set(0, value);
     }
 
     /**
-     * Getter for
-     * <code>minance.raw_category_to_minance_category.rc_to_mc_id</code>.
+     * Getter for <code>raw_category_to_minance_category.rc_to_mc_id</code>.
      */
     public Integer getRcToMcId() {
         return (Integer) get(0);
     }
 
     /**
-     * Setter for
-     * <code>minance.raw_category_to_minance_category.raw_category</code>.
+     * Setter for <code>raw_category_to_minance_category.raw_category</code>.
      */
     public void setRawCategory(String value) {
         set(1, value);
     }
 
     /**
-     * Getter for
-     * <code>minance.raw_category_to_minance_category.raw_category</code>.
+     * Getter for <code>raw_category_to_minance_category.raw_category</code>.
      */
     public String getRawCategory() {
         return (String) get(1);
@@ -55,7 +51,7 @@ public class RawCategoryToMinanceCategoryRecord extends UpdatableRecordImpl<RawC
 
     /**
      * Setter for
-     * <code>minance.raw_category_to_minance_category.minance_category_id</code>.
+     * <code>raw_category_to_minance_category.minance_category_id</code>.
      */
     public void setMinanceCategoryId(Integer value) {
         set(2, value);
@@ -63,7 +59,7 @@ public class RawCategoryToMinanceCategoryRecord extends UpdatableRecordImpl<RawC
 
     /**
      * Getter for
-     * <code>minance.raw_category_to_minance_category.minance_category_id</code>.
+     * <code>raw_category_to_minance_category.minance_category_id</code>.
      */
     public Integer getMinanceCategoryId() {
         return (Integer) get(2);

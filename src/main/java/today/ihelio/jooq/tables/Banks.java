@@ -26,8 +26,8 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
+import today.ihelio.jooq.DefaultSchema;
 import today.ihelio.jooq.Keys;
-import today.ihelio.jooq.Minance;
 import today.ihelio.jooq.tables.records.BanksRecord;
 
 
@@ -40,7 +40,7 @@ public class Banks extends TableImpl<BanksRecord> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * The reference instance of <code>minance.banks</code>
+     * The reference instance of <code>banks</code>
      */
     public static final Banks BANKS = new Banks();
 
@@ -53,14 +53,14 @@ public class Banks extends TableImpl<BanksRecord> {
     }
 
     /**
-     * The column <code>minance.banks.bank_id</code>.
+     * The column <code>banks.bank_id</code>.
      */
-    public final TableField<BanksRecord, Integer> BANK_ID = createField(DSL.name("bank_id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<BanksRecord, Integer> BANK_ID = createField(DSL.name("bank_id"), SQLDataType.INTEGER.identity(true), this, "");
 
     /**
-     * The column <code>minance.banks.bank_name</code>.
+     * The column <code>banks.bank_name</code>.
      */
-    public final TableField<BanksRecord, String> BANK_NAME = createField(DSL.name("bank_name"), SQLDataType.VARCHAR(50), this, "");
+    public final TableField<BanksRecord, String> BANK_NAME = createField(DSL.name("bank_name"), SQLDataType.CLOB, this, "");
 
     private Banks(Name alias, Table<BanksRecord> aliased) {
         this(alias, aliased, null);
@@ -71,21 +71,21 @@ public class Banks extends TableImpl<BanksRecord> {
     }
 
     /**
-     * Create an aliased <code>minance.banks</code> table reference
+     * Create an aliased <code>banks</code> table reference
      */
     public Banks(String alias) {
         this(DSL.name(alias), BANKS);
     }
 
     /**
-     * Create an aliased <code>minance.banks</code> table reference
+     * Create an aliased <code>banks</code> table reference
      */
     public Banks(Name alias) {
         this(alias, BANKS);
     }
 
     /**
-     * Create a <code>minance.banks</code> table reference
+     * Create a <code>banks</code> table reference
      */
     public Banks() {
         this(DSL.name("banks"), null);
@@ -97,7 +97,7 @@ public class Banks extends TableImpl<BanksRecord> {
 
     @Override
     public Schema getSchema() {
-        return aliased() ? null : Minance.MINANCE;
+        return aliased() ? null : DefaultSchema.DEFAULT_SCHEMA;
     }
 
     @Override
@@ -107,12 +107,12 @@ public class Banks extends TableImpl<BanksRecord> {
 
     @Override
     public UniqueKey<BanksRecord> getPrimaryKey() {
-        return Keys.KEY_BANKS_PRIMARY;
+        return Keys.BANKS__PK_BANKS;
     }
 
     @Override
     public List<UniqueKey<BanksRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_BANKS_UNIQUE_BANK);
+        return Arrays.asList(Keys.BANKS__UK_BANKS_32305237);
     }
 
     @Override

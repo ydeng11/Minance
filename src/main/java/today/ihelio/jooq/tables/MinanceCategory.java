@@ -26,8 +26,8 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
+import today.ihelio.jooq.DefaultSchema;
 import today.ihelio.jooq.Keys;
-import today.ihelio.jooq.Minance;
 import today.ihelio.jooq.tables.records.MinanceCategoryRecord;
 
 
@@ -40,7 +40,7 @@ public class MinanceCategory extends TableImpl<MinanceCategoryRecord> {
     private static final long serialVersionUID = 1L;
 
     /**
-     * The reference instance of <code>minance.minance_category</code>
+     * The reference instance of <code>minance_category</code>
      */
     public static final MinanceCategory MINANCE_CATEGORY = new MinanceCategory();
 
@@ -53,14 +53,14 @@ public class MinanceCategory extends TableImpl<MinanceCategoryRecord> {
     }
 
     /**
-     * The column <code>minance.minance_category.m_category_id</code>.
+     * The column <code>minance_category.m_category_id</code>.
      */
-    public final TableField<MinanceCategoryRecord, Integer> M_CATEGORY_ID = createField(DSL.name("m_category_id"), SQLDataType.INTEGER.nullable(false).identity(true), this, "");
+    public final TableField<MinanceCategoryRecord, Integer> M_CATEGORY_ID = createField(DSL.name("m_category_id"), SQLDataType.INTEGER.identity(true), this, "");
 
     /**
-     * The column <code>minance.minance_category.category</code>.
+     * The column <code>minance_category.category</code>.
      */
-    public final TableField<MinanceCategoryRecord, String> CATEGORY = createField(DSL.name("category"), SQLDataType.VARCHAR(20).nullable(false), this, "");
+    public final TableField<MinanceCategoryRecord, String> CATEGORY = createField(DSL.name("category"), SQLDataType.CLOB.nullable(false), this, "");
 
     private MinanceCategory(Name alias, Table<MinanceCategoryRecord> aliased) {
         this(alias, aliased, null);
@@ -71,21 +71,21 @@ public class MinanceCategory extends TableImpl<MinanceCategoryRecord> {
     }
 
     /**
-     * Create an aliased <code>minance.minance_category</code> table reference
+     * Create an aliased <code>minance_category</code> table reference
      */
     public MinanceCategory(String alias) {
         this(DSL.name(alias), MINANCE_CATEGORY);
     }
 
     /**
-     * Create an aliased <code>minance.minance_category</code> table reference
+     * Create an aliased <code>minance_category</code> table reference
      */
     public MinanceCategory(Name alias) {
         this(alias, MINANCE_CATEGORY);
     }
 
     /**
-     * Create a <code>minance.minance_category</code> table reference
+     * Create a <code>minance_category</code> table reference
      */
     public MinanceCategory() {
         this(DSL.name("minance_category"), null);
@@ -97,7 +97,7 @@ public class MinanceCategory extends TableImpl<MinanceCategoryRecord> {
 
     @Override
     public Schema getSchema() {
-        return aliased() ? null : Minance.MINANCE;
+        return aliased() ? null : DefaultSchema.DEFAULT_SCHEMA;
     }
 
     @Override
@@ -107,12 +107,12 @@ public class MinanceCategory extends TableImpl<MinanceCategoryRecord> {
 
     @Override
     public UniqueKey<MinanceCategoryRecord> getPrimaryKey() {
-        return Keys.KEY_MINANCE_CATEGORY_PRIMARY;
+        return Keys.MINANCE_CATEGORY__PK_MINANCE_CATEGORY;
     }
 
     @Override
     public List<UniqueKey<MinanceCategoryRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.KEY_MINANCE_CATEGORY_MINANCE_CATEGORY_UNIQUE);
+        return Arrays.asList(Keys.MINANCE_CATEGORY__UK_MINANCE_CATEGORY_125424204);
     }
 
     @Override

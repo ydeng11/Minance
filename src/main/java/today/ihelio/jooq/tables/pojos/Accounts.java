@@ -51,84 +51,84 @@ public class Accounts implements Serializable {
     }
 
     /**
-     * Getter for <code>minance.accounts.account_id</code>.
+     * Getter for <code>accounts.account_id</code>.
      */
     public Integer getAccountId() {
         return this.accountId;
     }
 
     /**
-     * Setter for <code>minance.accounts.account_id</code>.
+     * Setter for <code>accounts.account_id</code>.
      */
     public void setAccountId(Integer accountId) {
         this.accountId = accountId;
     }
 
     /**
-     * Getter for <code>minance.accounts.bank_id</code>.
+     * Getter for <code>accounts.bank_id</code>.
      */
     public Integer getBankId() {
         return this.bankId;
     }
 
     /**
-     * Setter for <code>minance.accounts.bank_id</code>.
+     * Setter for <code>accounts.bank_id</code>.
      */
     public void setBankId(Integer bankId) {
         this.bankId = bankId;
     }
 
     /**
-     * Getter for <code>minance.accounts.bank_name</code>.
+     * Getter for <code>accounts.bank_name</code>.
      */
     public String getBankName() {
         return this.bankName;
     }
 
     /**
-     * Setter for <code>minance.accounts.bank_name</code>.
+     * Setter for <code>accounts.bank_name</code>.
      */
     public void setBankName(String bankName) {
         this.bankName = bankName;
     }
 
     /**
-     * Getter for <code>minance.accounts.account_name</code>.
+     * Getter for <code>accounts.account_name</code>.
      */
     public String getAccountName() {
         return this.accountName;
     }
 
     /**
-     * Setter for <code>minance.accounts.account_name</code>.
+     * Setter for <code>accounts.account_name</code>.
      */
     public void setAccountName(String accountName) {
         this.accountName = accountName;
     }
 
     /**
-     * Getter for <code>minance.accounts.account_type</code>.
+     * Getter for <code>accounts.account_type</code>.
      */
     public String getAccountType() {
         return this.accountType;
     }
 
     /**
-     * Setter for <code>minance.accounts.account_type</code>.
+     * Setter for <code>accounts.account_type</code>.
      */
     public void setAccountType(String accountType) {
         this.accountType = accountType;
     }
 
     /**
-     * Getter for <code>minance.accounts.init_balance</code>.
+     * Getter for <code>accounts.init_balance</code>.
      */
     public BigDecimal getInitBalance() {
         return this.initBalance;
     }
 
     /**
-     * Setter for <code>minance.accounts.init_balance</code>.
+     * Setter for <code>accounts.init_balance</code>.
      */
     public void setInitBalance(BigDecimal initBalance) {
         this.initBalance = initBalance;

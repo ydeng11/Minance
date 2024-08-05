@@ -314,14 +314,14 @@ public class TransactionsDao extends DAOImpl<TransactionsRecord, today.ihelio.jo
      * Fetch records that have <code>is_duplicate BETWEEN lowerInclusive AND
      * upperInclusive</code>
      */
-    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfIsDuplicate(Boolean lowerInclusive, Boolean upperInclusive) {
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchRangeOfIsDuplicate(Integer lowerInclusive, Integer upperInclusive) {
         return fetchRange(Transactions.TRANSACTIONS.IS_DUPLICATE, lowerInclusive, upperInclusive);
     }
 
     /**
      * Fetch records that have <code>is_duplicate IN (values)</code>
      */
-    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByIsDuplicate(Boolean... values) {
+    public List<today.ihelio.jooq.tables.pojos.Transactions> fetchByIsDuplicate(Integer... values) {
         return fetch(Transactions.TRANSACTIONS.IS_DUPLICATE, values);
     }
 }

@@ -38,32 +38,28 @@ public class RawCategoryToMinanceCategory implements Serializable {
     }
 
     /**
-     * Getter for
-     * <code>minance.raw_category_to_minance_category.rc_to_mc_id</code>.
+     * Getter for <code>raw_category_to_minance_category.rc_to_mc_id</code>.
      */
     public Integer getRcToMcId() {
         return this.rcToMcId;
     }
 
     /**
-     * Setter for
-     * <code>minance.raw_category_to_minance_category.rc_to_mc_id</code>.
+     * Setter for <code>raw_category_to_minance_category.rc_to_mc_id</code>.
      */
     public void setRcToMcId(Integer rcToMcId) {
         this.rcToMcId = rcToMcId;
     }
 
     /**
-     * Getter for
-     * <code>minance.raw_category_to_minance_category.raw_category</code>.
+     * Getter for <code>raw_category_to_minance_category.raw_category</code>.
      */
     public String getRawCategory() {
         return this.rawCategory;
     }
 
     /**
-     * Setter for
-     * <code>minance.raw_category_to_minance_category.raw_category</code>.
+     * Setter for <code>raw_category_to_minance_category.raw_category</code>.
      */
     public void setRawCategory(String rawCategory) {
         this.rawCategory = rawCategory;
@@ -71,7 +67,7 @@ public class RawCategoryToMinanceCategory implements Serializable {
 
     /**
      * Getter for
-     * <code>minance.raw_category_to_minance_category.minance_category_id</code>.
+     * <code>raw_category_to_minance_category.minance_category_id</code>.
      */
     public Integer getMinanceCategoryId() {
         return this.minanceCategoryId;
@@ -79,7 +75,7 @@ public class RawCategoryToMinanceCategory implements Serializable {
 
     /**
      * Setter for
-     * <code>minance.raw_category_to_minance_category.minance_category_id</code>.
+     * <code>raw_category_to_minance_category.minance_category_id</code>.
      */
     public void setMinanceCategoryId(Integer minanceCategoryId) {
         this.minanceCategoryId = minanceCategoryId;
