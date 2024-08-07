@@ -166,7 +166,7 @@ public class TransactionResource {
 		if (account == null) {
 			return Response.status(Response.Status.NOT_FOUND).build();
 		}
-		if (isDuplicate == "y") {
+		if (isDuplicate.equals("y")) {
 			return Response.status(Response.Status.OK)
 					.entity(transactionService.retrieveDuplicate(account.getAccountId()))
 					.build();

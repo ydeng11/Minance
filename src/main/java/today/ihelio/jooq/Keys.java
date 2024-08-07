@@ -26,7 +26,7 @@ import today.ihelio.jooq.tables.records.TransactionsRecord;
  * A class modelling foreign key relationships and constraints of tables in the
  * default schema.
  */
-@SuppressWarnings({ "all", "unchecked", "rawtypes" })
+@SuppressWarnings({ "all", "unchecked", "rawtypes", "this-escape" })
 public class Keys {
 
     // -------------------------------------------------------------------------
@@ -34,12 +34,14 @@ public class Keys {
     // -------------------------------------------------------------------------
 
     public static final UniqueKey<AccountsRecord> ACCOUNTS__PK_ACCOUNTS = Internal.createUniqueKey(Accounts.ACCOUNTS, DSL.name("pk_accounts"), new TableField[] { Accounts.ACCOUNTS.ACCOUNT_ID }, true);
+    public static final UniqueKey<AccountsRecord> ACCOUNTS__UK_ACCOUNTS_108045521 = Internal.createUniqueKey(Accounts.ACCOUNTS, DSL.name("uk_accounts_108045521"), new TableField[] { Accounts.ACCOUNTS.BANK_NAME, Accounts.ACCOUNTS.ACCOUNT_TYPE, Accounts.ACCOUNTS.ACCOUNT_NAME }, true);
     public static final UniqueKey<BanksRecord> BANKS__PK_BANKS = Internal.createUniqueKey(Banks.BANKS, DSL.name("pk_banks"), new TableField[] { Banks.BANKS.BANK_ID }, true);
     public static final UniqueKey<BanksRecord> BANKS__UK_BANKS_32305237 = Internal.createUniqueKey(Banks.BANKS, DSL.name("uk_banks_32305237"), new TableField[] { Banks.BANKS.BANK_NAME }, true);
     public static final UniqueKey<MinanceCategoryRecord> MINANCE_CATEGORY__PK_MINANCE_CATEGORY = Internal.createUniqueKey(MinanceCategory.MINANCE_CATEGORY, DSL.name("pk_minance_category"), new TableField[] { MinanceCategory.MINANCE_CATEGORY.M_CATEGORY_ID }, true);
     public static final UniqueKey<MinanceCategoryRecord> MINANCE_CATEGORY__UK_MINANCE_CATEGORY_125424204 = Internal.createUniqueKey(MinanceCategory.MINANCE_CATEGORY, DSL.name("uk_minance_category_125424204"), new TableField[] { MinanceCategory.MINANCE_CATEGORY.CATEGORY }, true);
     public static final UniqueKey<RawCategoryToMinanceCategoryRecord> RAW_CATEGORY_TO_MINANCE_CATEGORY__PK_RAW_CATEGORY_TO_MINANCE_CATEGORY = Internal.createUniqueKey(RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY, DSL.name("pk_raw_category_to_minance_category"), new TableField[] { RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY.RC_TO_MC_ID }, true);
     public static final UniqueKey<TransactionsRecord> TRANSACTIONS__PK_TRANSACTIONS = Internal.createUniqueKey(Transactions.TRANSACTIONS, DSL.name("pk_transactions"), new TableField[] { Transactions.TRANSACTIONS.TRANSACTION_ID }, true);
+    public static final UniqueKey<TransactionsRecord> TRANSACTIONS__UK_TRANSACTIONS_6933421 = Internal.createUniqueKey(Transactions.TRANSACTIONS, DSL.name("uk_transactions_6933421"), new TableField[] { Transactions.TRANSACTIONS.ACCOUNT_ID, Transactions.TRANSACTIONS.CATEGORY, Transactions.TRANSACTIONS.TRANSACTION_TYPE, Transactions.TRANSACTIONS.TRANSACTION_DATE, Transactions.TRANSACTIONS.POST_DATE, Transactions.TRANSACTIONS.AMOUNT, Transactions.TRANSACTIONS.MEMO }, true);
 
     // -------------------------------------------------------------------------
     // FOREIGN KEY definitions
