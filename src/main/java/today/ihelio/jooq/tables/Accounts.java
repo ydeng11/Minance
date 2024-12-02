@@ -168,7 +168,7 @@ public class Accounts extends TableImpl<AccountsRecord> {
 
     @Override
     public List<UniqueKey<AccountsRecord>> getUniqueKeys() {
-        return Arrays.asList(Keys.ACCOUNTS__UK_ACCOUNTS_108045521);
+        return Arrays.asList(Keys.ACCOUNTS__UK_ACCOUNTS_70892193);
     }
 
     @Override

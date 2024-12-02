@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS accounts
     account_type TEXT    NOT NULL,
     init_balance DECIMAL(9, 2),
     FOREIGN KEY (bank_id) REFERENCES banks (bank_id),
-    UNIQUE (bank_name, account_type, account_name)
+    UNIQUE (bank_name, account_name)
 );
 
 CREATE TABLE IF NOT EXISTS transactions

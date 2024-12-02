@@ -83,17 +83,16 @@ public class AccountService {
 				.fetchInto(Accounts.class);
 	}
 
-	public Accounts findAccountByBankTypeAccountName(String bankName, String accountType,
-	                                                 String accountName)
+	public Optional<Accounts> findAccountByBankAndAccountName(String bankName,
+	                                                          String accountName)
 			throws DataAccessException {
 		Banks banks = bankService.findBankByName(BankAccountPair.BankName.valueOf(bankName));
 		return dslContext
 				.select(ACCOUNTS)
 				.from(ACCOUNTS)
 				.where(ACCOUNTS.BANK_ID.eq(banks.getBankId())
-						.and(ACCOUNTS.ACCOUNT_TYPE.eq(accountType))
 						.and(ACCOUNTS.ACCOUNT_NAME.eq(accountName)))
-				.fetchOne().into(Accounts.class);
+				.fetchOptionalInto(Accounts.class);
 	}
 
 	public List<Accounts> retrieveAccountsByBank(BankAccountPair.BankName bankName)

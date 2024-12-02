@@ -43,8 +43,7 @@ public class BankService {
 		return dslContext.select(BANKS)
 				.from(BANKS)
 				.where(BANKS.BANK_ID.eq(bankId))
-				.fetchOne()
-				.into(Banks.class);
+				.fetchOptionalInto(Banks.class).orElse(null);
 	}
 
 	public List<Banks> retrieveAll() throws DataAccessException {

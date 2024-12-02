@@ -52,40 +52,57 @@ public class AccountResource {
 	}
 
 	@DELETE
-	@Path("/delete/{bank_name}/{account_name}")
-	public Response deleteAccount(@PathParam("bank_name") String bankName,
-	                              @PathParam("account_name") String accountName) throws SQLException, CustomException {
-		if (accountService.delete(bankName, accountName) == 0) {
-			throw new CustomException(
-					new NotFoundException("account not found, please create this account instead!"));
-		}
-		return Response.status(Response.Status.OK).build();
-	}
+	@Path("/delete")
+	public Response deleteAccount(@QueryParam("bank-name") String bankName,
+	                              @QueryParam("account-name") String accountName,
+	                              @QueryParam("account-id") String accountId) throws SQLException, CustomException {
 
-	@DELETE
-	@Path("/delete/{account_id}")
-	public Response deleteAccount(@PathParam("account_id") String accountId)
-			throws SQLException, CustomException {
-		if (accountService.delete(Integer.parseInt(accountId)) == 0) {
-			throw new CustomException(
-					new NotFoundException("account not found, please create this account instead!"));
+		int deleteCount = 0;
+
+		if (accountId != null && !accountId.isEmpty()) {
+			deleteCount = accountService.delete(Integer.parseInt(accountId));
+		} else if (bankName != null && !bankName.isEmpty() && accountName != null && !accountName.isEmpty()) {
+			deleteCount = accountService.delete(bankName, accountName);
+		} else {
+			throw new CustomException(new IllegalArgumentException("Either account-id or bank-name and account-name must be provided"));
 		}
+
+		if (deleteCount == 0) {
+			throw new CustomException(new NotFoundException("account not found, please create this account instead!"));
+		}
+
 		return Response.status(Response.Status.OK).build();
 	}
 
 	@GET
-	@Path("/retrieveAll")
+	@Path("/listAll")
 	public Response retrieveAll() throws DataAccessException {
 		return Response.status(Response.Status.OK).entity(accountService.retrieveAll()).build();
 	}
 
 	@GET
-	@Path("/retrieveAccounts/{bank_name}")
-	public Response retrieveAccountsByBank(@PathParam("bank_name") String bankName)
+	@Path("/listAccountsForBank")
+	public Response retrieveAccountsByBank(@QueryParam("bank-name") String bankName)
 			throws DataAccessException, CustomException {
 		checkEnumFormat(BankAccountPair.BankName.class, bankName);
 		return Response.status(Response.Status.OK)
 				.entity(accountService.retrieveAccountsByBank(BankAccountPair.BankName.valueOf(bankName)))
+				.build();
+	}
+
+	@GET
+	@Path("/supportedBanks")
+	public Response retrieveSupportedBanks() throws DataAccessException {
+		return Response.status(Response.Status.OK)
+				.entity(BankAccountPair.BankName.values())
+				.build();
+	}
+
+	@GET
+	@Path("/supportedAccountTypes")
+	public Response retrieveSupportedAccountTypes() throws DataAccessException {
+		return Response.status(Response.Status.OK)
+				.entity(BankAccountPair.AccountType.values())
 				.build();
 	}
 }

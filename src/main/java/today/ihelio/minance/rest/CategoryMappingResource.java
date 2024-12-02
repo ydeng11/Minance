@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.graalvm.collections.Pair;
 import org.jooq.exception.DataAccessException;
 import today.ihelio.jooq.tables.pojos.MinanceCategory;
 import today.ihelio.minance.exception.CustomException;
@@ -31,10 +32,10 @@ public class CategoryMappingResource {
 	}
 
 	@POST
-	@Path("/create")
-	public Response createMinanceCategory(MinanceCategory minanceCategory)
+	@Path("/create/{category}")
+	public Response createMinanceCategory(@PathParam("category") String minanceCategory)
 			throws CustomException, DataAccessException {
-		if (categoryMappingService.create(minanceCategory) == 0) {
+		if (categoryMappingService.createNewMinanceCategory(minanceCategory) == 0) {
 			throw new CustomException(new RecordAlreadyExistingException("category already created!"));
 		}
 		return Response.status(OK)
@@ -63,19 +64,24 @@ public class CategoryMappingResource {
 				.build();
 	}
 
+	@GET
+	@Path("/retrieve/{minance-category}")
+	public Response getLinkedCategoryForMinanceCat(@PathParam("minance-category") String minanceCat) throws DataAccessException {
+		List<CategoryMappingService.RawCategory> linkedCategories = categoryMappingService.getRawCategoriesForMinanceCategory(minanceCat);
+		return Response.status(OK)
+				.entity(linkedCategories)
+				.build();
+	}
+
 	@POST
 	@Path("/linkCategory")
 	public Response linkMinanceCategory(CategoryMapping categoryMapping)
 			throws CustomException, DataAccessException {
-		if (categoryMappingService.linkToMinanceCategory(categoryMapping.minanceCategory,
-				categoryMapping.listRawCategories) == 0) {
-			throw new CustomException(
-					new IllegalArgumentException(
-							String.format("cannot link %s to %s, minance category might be invalid!",
-									categoryMapping.listRawCategories, categoryMapping.minanceCategory)));
-		}
+		Pair<Integer, Integer> executionPair = categoryMappingService.linkToMinanceCategory(categoryMapping.minanceCategory,
+				categoryMapping.listRawCategories);
+
 		return Response.status(OK)
-				.entity(String.format(" %s is linked to %s!", categoryMapping.listRawCategories,
+				.entity(String.format("%d categories added to and %d categories are removed from %s!", executionPair.getLeft(), executionPair.getRight(),
 						categoryMapping.minanceCategory))
 				.build();
 	}
@@ -90,13 +96,17 @@ public class CategoryMappingResource {
 				.build();
 	}
 
-	private static class CategoryMapping {
-		List<String> listRawCategories;
-		String minanceCategory;
+	public static class CategoryMapping {
+		public List<String> listRawCategories;
+		public String minanceCategory;
+
+		public CategoryMapping() {
+		}
 
 		@JsonCreator
-		public CategoryMapping(@JsonProperty List<String> listRawCategories,
-		                       @JsonProperty String minanceCategory) {
+		public CategoryMapping(
+				@JsonProperty("listRawCategories") List<String> listRawCategories,
+				@JsonProperty("minanceCategory") String minanceCategory) {
 			this.listRawCategories = listRawCategories;
 			this.minanceCategory = minanceCategory;
 		}

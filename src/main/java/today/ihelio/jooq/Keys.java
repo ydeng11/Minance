@@ -34,7 +34,7 @@ public class Keys {
     // -------------------------------------------------------------------------
 
     public static final UniqueKey<AccountsRecord> ACCOUNTS__PK_ACCOUNTS = Internal.createUniqueKey(Accounts.ACCOUNTS, DSL.name("pk_accounts"), new TableField[] { Accounts.ACCOUNTS.ACCOUNT_ID }, true);
-    public static final UniqueKey<AccountsRecord> ACCOUNTS__UK_ACCOUNTS_108045521 = Internal.createUniqueKey(Accounts.ACCOUNTS, DSL.name("uk_accounts_108045521"), new TableField[] { Accounts.ACCOUNTS.BANK_NAME, Accounts.ACCOUNTS.ACCOUNT_TYPE, Accounts.ACCOUNTS.ACCOUNT_NAME }, true);
+    public static final UniqueKey<AccountsRecord> ACCOUNTS__UK_ACCOUNTS_70892193 = Internal.createUniqueKey(Accounts.ACCOUNTS, DSL.name("uk_accounts_70892193"), new TableField[] { Accounts.ACCOUNTS.BANK_NAME, Accounts.ACCOUNTS.ACCOUNT_NAME }, true);
     public static final UniqueKey<BanksRecord> BANKS__PK_BANKS = Internal.createUniqueKey(Banks.BANKS, DSL.name("pk_banks"), new TableField[] { Banks.BANKS.BANK_ID }, true);
     public static final UniqueKey<BanksRecord> BANKS__UK_BANKS_32305237 = Internal.createUniqueKey(Banks.BANKS, DSL.name("uk_banks_32305237"), new TableField[] { Banks.BANKS.BANK_NAME }, true);
     public static final UniqueKey<MinanceCategoryRecord> MINANCE_CATEGORY__PK_MINANCE_CATEGORY = Internal.createUniqueKey(MinanceCategory.MINANCE_CATEGORY, DSL.name("pk_minance_category"), new TableField[] { MinanceCategory.MINANCE_CATEGORY.M_CATEGORY_ID }, true);

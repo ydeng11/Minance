@@ -30,6 +30,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -68,10 +69,8 @@ public class TransactionResource {
 	public Response uploadTransactions(@RestForm("csv") FileUpload file,
 	                                   @RestForm @PartType(MediaType.APPLICATION_JSON) TransactionsUploadForm form)
 			throws SQLException, CustomException {
-
 		String bankName = form.bankName;
 		String accountName = form.accountName;
-		String accountType = form.accountType;
 		String useMinanceFormat = form.useMinanceFormat;
 		var now = LocalDateTime.now();
 
@@ -80,9 +79,9 @@ public class TransactionResource {
 			throw new CustomException(new NotFoundException("No Bank Found"));
 		}
 
-		Accounts account =
-				accountService.findAccountByBankTypeAccountName(bankName, accountType, accountName);
-		if (account == null) {
+		Optional<Accounts> account =
+				accountService.findAccountByBankAndAccountName(bankName, accountName);
+		if (account.isEmpty()) {
 			throw new CustomException(new NotFoundException("No Account Found"));
 		}
 
@@ -91,7 +90,7 @@ public class TransactionResource {
 			if ("1".equals(useMinanceFormat)) {
 				bankAccountPair = MINANCE_BANK_ACCOUNT;
 			} else {
-				bankAccountPair = makeBankAccountPair(bankName, account.getAccountType());
+				bankAccountPair = makeBankAccountPair(bankName, account.get().getAccountType());
 			}
 		} catch (IllegalArgumentException e) {
 			throw new CustomException(
@@ -115,8 +114,8 @@ public class TransactionResource {
 							Collectors.toList());
 
 			transactions.forEach(t -> {
-						t.setAccountId(account.getAccountId());
-						t.setAccountName(account.getAccountName());
+						t.setAccountId(account.get().getAccountId());
+						t.setAccountName(account.get().getAccountName());
 						t.setBankName(banks.getBankName());
 						t.setUploadTime(now.format(formatter));
 					}
@@ -156,25 +155,47 @@ public class TransactionResource {
 	}
 
 	@GET
-	@Path("/retrieve/{bank_name}/{account_name}/{account_type}/{duplicate}")
+	@Path("/retrieve/{bank_name}/{account_name}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response retrieveTransactionsForAccount(@PathParam("bank_name") String bankName,
-	                                               @PathParam("account_name") String accountName, @PathParam("account_type") String accountType,
-	                                               @PathParam("duplicate") String isDuplicate) throws DataAccessException {
-		Accounts account =
-				accountService.findAccountByBankTypeAccountName(bankName, accountType, accountName);
-		if (account == null) {
-			return Response.status(Response.Status.NOT_FOUND).build();
+	                                               @PathParam("account_name") String accountName,
+	                                               @QueryParam("duplicate") String isDuplicate) throws DataAccessException {
+		Optional<Accounts> account =
+				accountService.findAccountByBankAndAccountName(bankName, accountName);
+		if (account.isEmpty()) {
+			return Response.status(Response.Status.NOT_FOUND)
+					.entity("Account not found for the specified bank and account name.")
+					.build();
 		}
-		if (isDuplicate.equals("y")) {
+
+		// Retrieve transactions based on the 'duplicate' query parameter
+		if ("y".equalsIgnoreCase(isDuplicate)) {
 			return Response.status(Response.Status.OK)
-					.entity(transactionService.retrieveDuplicate(account.getAccountId()))
+					.entity(transactionService.retrieveDuplicate(account.get().getAccountId()))
 					.build();
 		} else {
 			return Response.status(Response.Status.OK)
-					.entity(transactionService.retrieveByAccount(account.getAccountId()))
+					.entity(transactionService.retrieveByAccount(account.get().getAccountId()))
 					.build();
 		}
+	}
+
+	@GET
+	@Path("/retrieve")
+	public Response retrieveTransactions() throws DataAccessException {
+		return Response.status(Response.Status.OK)
+				.entity(transactionService.retrieve())
+				.build();
+	}
+
+	@GET
+	@Path("/retrieve/{start}/{end}")
+	public Response retrieveTransactionsBetweenStartAndEnd(@PathParam("start") String start, @PathParam("end") String end) throws DataAccessException {
+		LocalDate startDate = LocalDate.parse(start);
+		LocalDate endDate = LocalDate.parse(end);
+		return Response.status(Response.Status.OK)
+				.entity(transactionService.retrieveBetweenStartAndEnd(startDate, endDate))
+				.build();
 	}
 
 	@DELETE
@@ -188,6 +209,27 @@ public class TransactionResource {
 			return Response.status(OK).build();
 		}
 	}
+
+	@DELETE
+	@Path("/delete")
+	@Consumes(MediaType.APPLICATION_JSON)
+	public Response deleteTransactions(List<Integer> transactionIds) throws SQLException, CustomException {
+		if (transactionIds == null || transactionIds.isEmpty()) {
+			throw CustomException.from(new IllegalArgumentException("No transaction IDs provided"));
+		}
+
+		int deleteCount = transactionService.delete(transactionIds);
+
+		if (deleteCount == 0) {
+			throw CustomException.from(new IllegalArgumentException(
+					"None of the provided transaction IDs were found: " + transactionIds));
+		}
+
+		return Response.status(Response.Status.OK)
+				.entity("Successfully deleted " + deleteCount + " transactions.")
+				.build();
+	}
+
 
 	@DELETE
 	@Path("/delete/uploadTime/{uploadAt}")

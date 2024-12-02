@@ -5,9 +5,10 @@ import com.opencsv.bean.CsvToBean;
 import com.opencsv.bean.CsvToBeanBuilder;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import org.junit.jupiter.api.BeforeAll;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import today.ihelio.jooq.tables.pojos.Accounts;
 import today.ihelio.jooq.tables.pojos.Transactions;
 import today.ihelio.minance.csvpojos.BankAccountCsvFactory;
@@ -20,6 +21,7 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,7 +30,7 @@ import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.*;
 
 @QuarkusTest
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+//@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TransactionServiceTest {
 	private final String ACCOUNT_NAME_TEST1 = "test1";
 	private final String ACCOUNT_NAME_TEST2 = "test2";
@@ -41,9 +43,12 @@ public class TransactionServiceTest {
 	TransactionService transactionService;
 	@Inject
 	BankAccountCsvFactory<BankAccountCsvTemplate> bankAccountCsvFactory;
+	@Inject
+	Flyway flyway;
 
-	@BeforeAll
+	@BeforeEach
 	public void setUp() throws Exception {
+		flyway.migrate();
 		bankService.create(CITI);
 		bankService.create(AMEX);
 		bankService.create(BANK_OF_AMERICA);
@@ -54,11 +59,11 @@ public class TransactionServiceTest {
 
 		List<BankAccountPair> bankAccountPairList = bankAccountCsvFactory.getKeys();
 
-		bankAccountPairList.stream().forEach((t) -> {
+		bankAccountPairList.forEach((t) -> {
 					Accounts tempAccounts = new Accounts();
 					tempAccounts.setBankName(t.getBankName().getName());
 					tempAccounts.setAccountType(t.getAccountType().getType());
-					tempAccounts.setAccountName(ACCOUNT_NAME_TEST1);
+					tempAccounts.setAccountName(ACCOUNT_NAME_TEST1 + "-" + t.getAccountType().getType());
 					tempAccounts.setInitBalance(INIT_BALANCE);
 					try {
 						accountService.create(tempAccounts);
@@ -71,6 +76,11 @@ public class TransactionServiceTest {
 		accountService.create(
 				new Accounts(null, null, CITI.getName(), ACCOUNT_NAME_TEST2, CREDIT.getType(),
 						INIT_BALANCE));
+	}
+
+	@AfterEach
+	public void tearDown() throws Exception {
+		flyway.clean();
 	}
 
 	@Test
@@ -93,20 +103,20 @@ public class TransactionServiceTest {
 		var category = "testBuy";
 		var amount = BigDecimal.valueOf(121.11);
 		var transactions = makeTransactions(date, description, category, uploadTime, amount);
-		Accounts accounts =
-				accountService.findAccountByBankTypeAccountName(CITI.getName(), CREDIT.getType(),
+		Optional<Accounts> accounts =
+				accountService.findAccountByBankAndAccountName(CITI.getName(),
 						ACCOUNT_NAME_TEST2);
-		transactions.setAccountId(accounts.getAccountId());
+		transactions.setAccountId(accounts.get().getAccountId());
 
 		assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
 
 		List<Transactions> savedTransactions =
-				transactionService.retrieveByAccount(accounts.getAccountId());
+				transactionService.retrieveByAccount(accounts.get().getAccountId());
 
 		assertThat(
 				transactionService.delete(
-						ImmutableList.of(savedTransactions.get(0).getTransactionId()))).isEqualTo(1);
-		assertThat(transactionService.retrieveByAccount(accounts.getAccountId()).size()).isEqualTo(0);
+						ImmutableList.of(savedTransactions.getFirst().getTransactionId()))).isEqualTo(1);
+		assertThat(transactionService.retrieveByAccount(accounts.get().getAccountId()).size()).isEqualTo(0);
 	}
 
 	@Test
@@ -117,10 +127,10 @@ public class TransactionServiceTest {
 		var category = "testBuy";
 		var amount = BigDecimal.valueOf(11.11);
 		var transactions = makeTransactions(date, description, category, uploadTime, amount);
-		Accounts accounts =
-				accountService.findAccountByBankTypeAccountName(CITI.getName(), CREDIT.getType(),
+		Optional<Accounts> accounts =
+				accountService.findAccountByBankAndAccountName(CITI.getName(),
 						ACCOUNT_NAME_TEST2);
-		transactions.setAccountId(accounts.getAccountId());
+		transactions.setAccountId(accounts.get().getAccountId());
 		assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
 		assertThat(transactionService.deleteWithUploadTime(uploadTime)).isEqualTo(1);
 	}
@@ -133,15 +143,15 @@ public class TransactionServiceTest {
 		var category = "testBuy";
 		var amount = BigDecimal.valueOf(121.11);
 		var transactions = makeTransactions(date, description, category, uploadTime, amount);
-		Accounts accounts =
-				accountService.findAccountByBankTypeAccountName(CITI.getName(), CREDIT.getType(),
+		Optional<Accounts> accounts =
+				accountService.findAccountByBankAndAccountName(CITI.getName(),
 						ACCOUNT_NAME_TEST2);
-		transactions.setAccountId(accounts.getAccountId());
+		transactions.setAccountId(accounts.get().getAccountId());
 
 		assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
 
 		List<Transactions> transactionsList =
-				transactionService.retrieveByAccount(accounts.getAccountId());
+				transactionService.retrieveByAccount(accounts.get().getAccountId());
 		Transactions updateTransactions = transactionsList.get(0);
 		var newAmount = BigDecimal.valueOf(22.22);
 		updateTransactions.setAmount(newAmount);
@@ -156,9 +166,9 @@ public class TransactionServiceTest {
 	public void testUploadCsv(BankAccountPair.BankName bankName,
 	                          BankAccountPair.AccountType accountType, String filePath) throws Exception {
 		int accountId =
-				accountService.findAccountByBankTypeAccountName(bankName.getName(), accountType.getType(),
-								ACCOUNT_NAME_TEST1)
-						.getAccountId();
+				accountService.findAccountByBankAndAccountName(bankName.getName(),
+								ACCOUNT_NAME_TEST1 + "-" + accountType.getType())
+						.get().getAccountId();
 
 		BankAccountPair bankAccountPair = BankAccountPair.of(bankName, accountType);
 		ClassLoader classLoader = TransactionServiceTest.class.getClassLoader();
