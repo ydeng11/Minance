@@ -2,19 +2,9 @@ package today.ihelio.minance.rest;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.NotFoundException;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.sql.SQLException;
-import org.eclipse.microprofile.rest.client.inject.RegisterRestClient;
 import org.jooq.exception.DataAccessException;
 import today.ihelio.jooq.tables.pojos.Accounts;
 import today.ihelio.minance.csvpojos.BankAccountPair;
@@ -23,78 +13,96 @@ import today.ihelio.minance.exception.RecordAlreadyExistingException;
 import today.ihelio.minance.service.AccountService;
 import today.ihelio.minance.service.BankService;
 
+import java.sql.SQLException;
+
 import static today.ihelio.minance.csvpojos.BankAccountPair.checkEnumFormat;
 
 @Path("/1.0/minance/account")
-@RegisterRestClient
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @ApplicationScoped
 public class AccountResource {
-  private final AccountService accountService;
+	private final AccountService accountService;
 
-  @Inject
-  public AccountResource(AccountService accountService, BankService bankService) {
-    this.accountService = accountService;
-  }
+	@Inject
+	public AccountResource(AccountService accountService, BankService bankService) {
+		this.accountService = accountService;
+	}
 
-  @POST
-  @Path("/create")
-  public Response createAccount(Accounts accounts)
-      throws SQLException, CustomException {
-    if (accountService.create(accounts) == 0) {
-      throw new CustomException(new RecordAlreadyExistingException("account already exited"));
-    }
-    return Response.status(Response.Status.CREATED)
-        .entity(accounts)
-        .build();
-  }
+	@POST
+	@Path("/create")
+	public Response createAccount(Accounts accounts)
+			throws SQLException, CustomException {
+		if (accountService.create(accounts) == 0) {
+			throw new CustomException(new RecordAlreadyExistingException("account already exited"));
+		}
+		return Response.status(Response.Status.CREATED)
+				.entity(accounts)
+				.build();
+	}
 
-  @PUT
-  @Path("/update")
-  public Response updateAccount(Accounts updatedAccount) throws SQLException, CustomException {
-    if (accountService.update(updatedAccount) == 0) {
-      throw new CustomException(
-          new NotFoundException("account not found, please create this account instead!"));
-    }
-    return Response.ok(updatedAccount).build();
-  }
+	@PUT
+	@Path("/update")
+	public Response updateAccount(Accounts updatedAccount) throws SQLException, CustomException {
+		if (accountService.update(updatedAccount) == 0) {
+			throw new CustomException(
+					new NotFoundException("account not found, please create this account instead!"));
+		}
+		return Response.ok(updatedAccount).build();
+	}
 
-  @DELETE
-  @Path("/delete/{bank_name}/{account_name}")
-  public Response deleteAccount(@PathParam("bank_name") String bankName,
-      @PathParam("account_name") String accountName) throws SQLException, CustomException {
-    if (accountService.delete(bankName, accountName) == 0) {
-      throw new CustomException(
-          new NotFoundException("account not found, please create this account instead!"));
-    }
-    return Response.status(Response.Status.OK).build();
-  }
+	@DELETE
+	@Path("/delete")
+	public Response deleteAccount(@QueryParam("bank-name") String bankName,
+	                              @QueryParam("account-name") String accountName,
+	                              @QueryParam("account-id") String accountId) throws SQLException, CustomException {
 
-  @DELETE
-  @Path("/delete/{account_id}")
-  public Response deleteAccount(@PathParam("account_id") String accountId)
-      throws SQLException, CustomException {
-    if (accountService.delete(Integer.parseInt(accountId)) == 0) {
-      throw new CustomException(
-          new NotFoundException("account not found, please create this account instead!"));
-    }
-    return Response.status(Response.Status.OK).build();
-  }
+		int deleteCount = 0;
 
-  @GET
-  @Path("/retrieveAll")
-  public Response retrieveAll() throws DataAccessException {
-    return Response.status(Response.Status.OK).entity(accountService.retrieveAll()).build();
-  }
+		if (accountId != null && !accountId.isEmpty()) {
+			deleteCount = accountService.delete(Integer.parseInt(accountId));
+		} else if (bankName != null && !bankName.isEmpty() && accountName != null && !accountName.isEmpty()) {
+			deleteCount = accountService.delete(bankName, accountName);
+		} else {
+			throw new CustomException(new IllegalArgumentException("Either account-id or bank-name and account-name must be provided"));
+		}
 
-  @GET
-  @Path("/retrieveAccounts/{bank_name}")
-  public Response retrieveAccountsByBank(@PathParam("bank_name") String bankName)
-      throws DataAccessException, CustomException {
-    checkEnumFormat(BankAccountPair.BankName.class, bankName);
-    return Response.status(Response.Status.OK)
-        .entity(accountService.retrieveAccountsByBank(BankAccountPair.BankName.valueOf(bankName)))
-        .build();
-  }
+		if (deleteCount == 0) {
+			throw new CustomException(new NotFoundException("account not found, please create this account instead!"));
+		}
+
+		return Response.status(Response.Status.OK).build();
+	}
+
+	@GET
+	@Path("/listAll")
+	public Response retrieveAll() throws DataAccessException {
+		return Response.status(Response.Status.OK).entity(accountService.retrieveAll()).build();
+	}
+
+	@GET
+	@Path("/listAccountsForBank")
+	public Response retrieveAccountsByBank(@QueryParam("bank-name") String bankName)
+			throws DataAccessException, CustomException {
+		checkEnumFormat(BankAccountPair.BankName.class, bankName);
+		return Response.status(Response.Status.OK)
+				.entity(accountService.retrieveAccountsByBank(BankAccountPair.BankName.valueOf(bankName)))
+				.build();
+	}
+
+	@GET
+	@Path("/supportedBanks")
+	public Response retrieveSupportedBanks() throws DataAccessException {
+		return Response.status(Response.Status.OK)
+				.entity(BankAccountPair.BankName.values())
+				.build();
+	}
+
+	@GET
+	@Path("/supportedAccountTypes")
+	public Response retrieveSupportedAccountTypes() throws DataAccessException {
+		return Response.status(Response.Status.OK)
+				.entity(BankAccountPair.AccountType.values())
+				.build();
+	}
 }

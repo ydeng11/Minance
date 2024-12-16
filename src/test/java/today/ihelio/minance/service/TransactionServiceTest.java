@@ -5,223 +5,232 @@ import com.opencsv.bean.CsvToBean;
 import com.opencsv.bean.CsvToBeanBuilder;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.junit.jupiter.api.BeforeAll;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import today.ihelio.jooq.tables.pojos.Accounts;
 import today.ihelio.jooq.tables.pojos.Transactions;
 import today.ihelio.minance.csvpojos.BankAccountCsvFactory;
 import today.ihelio.minance.csvpojos.BankAccountCsvTemplate;
 import today.ihelio.minance.csvpojos.BankAccountPair;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.AMEX;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.APPLE;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.BANK_OF_AMERICA;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CASH_APP;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CHASE;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CITI;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.DISCOVER;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.*;
 
 @QuarkusTest
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+//@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TransactionServiceTest {
-  private final String ACCOUNT_NAME_TEST1 = "test1";
-  private final String ACCOUNT_NAME_TEST2 = "test2";
-  private final BigDecimal INIT_BALANCE = new BigDecimal("123.12");
-  @Inject BankService bankService;
-  @Inject AccountService accountService;
-  @Inject TransactionService transactionService;
-  @Inject BankAccountCsvFactory<BankAccountCsvTemplate> bankAccountCsvFactory;
+	private final String ACCOUNT_NAME_TEST1 = "test1";
+	private final String ACCOUNT_NAME_TEST2 = "test2";
+	private final BigDecimal INIT_BALANCE = new BigDecimal("123.12");
+	@Inject
+	BankService bankService;
+	@Inject
+	AccountService accountService;
+	@Inject
+	TransactionService transactionService;
+	@Inject
+	BankAccountCsvFactory<BankAccountCsvTemplate> bankAccountCsvFactory;
+	@Inject
+	Flyway flyway;
 
-  @BeforeAll
-  public void setUp() throws Exception {
-    bankService.create(CITI);
-    bankService.create(AMEX);
-    bankService.create(BANK_OF_AMERICA);
-    bankService.create(APPLE);
-    bankService.create(CASH_APP);
-    bankService.create(CHASE);
-    bankService.create(DISCOVER);
+	@BeforeEach
+	public void setUp() throws Exception {
+		flyway.migrate();
+		bankService.create(CITI);
+		bankService.create(AMEX);
+		bankService.create(BANK_OF_AMERICA);
+		bankService.create(APPLE);
+		bankService.create(CASH_APP);
+		bankService.create(CHASE);
+		bankService.create(DISCOVER);
 
-    List<BankAccountPair> bankAccountPairList = bankAccountCsvFactory.getKeys();
+		List<BankAccountPair> bankAccountPairList = bankAccountCsvFactory.getKeys();
 
-    bankAccountPairList.stream().forEach((t) -> {
-          Accounts tempAccounts = new Accounts();
-          tempAccounts.setBankName(t.getBankName().getName());
-          tempAccounts.setAccountType(t.getAccountType().getType());
-          tempAccounts.setAccountName(ACCOUNT_NAME_TEST1);
-          tempAccounts.setInitBalance(INIT_BALANCE);
-          try {
-            accountService.create(tempAccounts);
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
-        }
-    );
+		bankAccountPairList.forEach((t) -> {
+					Accounts tempAccounts = new Accounts();
+					tempAccounts.setBankName(t.getBankName().getName());
+					tempAccounts.setAccountType(t.getAccountType().getType());
+					tempAccounts.setAccountName(ACCOUNT_NAME_TEST1 + "-" + t.getAccountType().getType());
+					tempAccounts.setInitBalance(INIT_BALANCE);
+					try {
+						accountService.create(tempAccounts);
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
+				}
+		);
 
-    accountService.create(
-        new Accounts(null, null, CITI.getName(), ACCOUNT_NAME_TEST2, CREDIT.getType(),
-            INIT_BALANCE));
-  }
+		accountService.create(
+				new Accounts(null, null, CITI.getName(), ACCOUNT_NAME_TEST2, CREDIT.getType(),
+						INIT_BALANCE));
+	}
 
-  @Test
-  public void testUploadCsvForAllBankAccountType() throws Exception {
-    testUploadCsv(AMEX, CREDIT, "testCsv/amex_credit.csv");
-    testUploadCsv(APPLE, CREDIT, "testCsv/apple_credit.csv");
-    testUploadCsv(BANK_OF_AMERICA, CREDIT, "testCsv/boa.csv");
-    testUploadCsv(BANK_OF_AMERICA, DEBIT, "testCsv/boa.csv");
-    testUploadCsv(CASH_APP, DEBIT, "testCsv/cash_app_debit.csv");
-    testUploadCsv(CITI, CREDIT, "testCsv/citi_credit.csv");
-    testUploadCsv(DISCOVER, CREDIT, "testCsv/discover_credit.csv");
-    testUploadCsv(CHASE, CREDIT, "testCsv/chase_credit.csv");
-  }
+	@AfterEach
+	public void tearDown() throws Exception {
+		flyway.clean();
+	}
 
-  @Test
-  public void testCreateDeleteTransactions() throws Exception {
-    var uploadTime = "20230101123011";
-    var date = LocalDate.of(1999, 12, 11);
-    var description = "testDescription";
-    var category = "testBuy";
-    var amount = BigDecimal.valueOf(121.11);
-    var transactions = makeTransactions(date, description, category, uploadTime, amount);
-    Accounts accounts =
-        accountService.findAccountByBankTypeAccountName(CITI.getName(), CREDIT.getType(),
-            ACCOUNT_NAME_TEST2);
-    transactions.setAccountId(accounts.getAccountId());
+	@Test
+	public void testUploadCsvForAllBankAccountType() throws Exception {
+		testUploadCsv(AMEX, CREDIT, "testCsv/amex_credit.csv");
+		testUploadCsv(APPLE, CREDIT, "testCsv/apple_credit.csv");
+		testUploadCsv(BANK_OF_AMERICA, CREDIT, "testCsv/boa.csv");
+		testUploadCsv(BANK_OF_AMERICA, DEBIT, "testCsv/boa.csv");
+		testUploadCsv(CASH_APP, DEBIT, "testCsv/cash_app_debit.csv");
+		testUploadCsv(CITI, CREDIT, "testCsv/citi_credit.csv");
+		testUploadCsv(DISCOVER, CREDIT, "testCsv/discover_credit.csv");
+		testUploadCsv(CHASE, CREDIT, "testCsv/chase_credit.csv");
+	}
 
-    assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
+	@Test
+	public void testCreateDeleteTransactions() throws Exception {
+		var uploadTime = "20230101123011";
+		var date = LocalDate.of(1999, 12, 11);
+		var description = "testDescription";
+		var category = "testBuy";
+		var amount = BigDecimal.valueOf(121.11);
+		var transactions = makeTransactions(date, description, category, uploadTime, amount);
+		Optional<Accounts> accounts =
+				accountService.findAccountByBankAndAccountName(CITI.getName(),
+						ACCOUNT_NAME_TEST2);
+		transactions.setAccountId(accounts.get().getAccountId());
 
-    List<Transactions> savedTransactions =
-        transactionService.retrieveByAccount(accounts.getAccountId());
+		assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
 
-    assertThat(
-        transactionService.delete(
-            ImmutableList.of(savedTransactions.get(0).getTransactionId()))).isEqualTo(1);
-    assertThat(transactionService.retrieveByAccount(accounts.getAccountId()).size()).isEqualTo(0);
-  }
+		List<Transactions> savedTransactions =
+				transactionService.retrieveByAccount(accounts.get().getAccountId());
 
-  @Test
-  public void testDeleteByUploadTime() throws Exception {
-    var uploadTime = "20230101123011";
-    var date = LocalDate.of(1999, 11, 11);
-    var description = "testDescription";
-    var category = "testBuy";
-    var amount = BigDecimal.valueOf(11.11);
-    var transactions = makeTransactions(date, description, category, uploadTime, amount);
-    Accounts accounts =
-        accountService.findAccountByBankTypeAccountName(CITI.getName(), CREDIT.getType(),
-            ACCOUNT_NAME_TEST2);
-    transactions.setAccountId(accounts.getAccountId());
-    assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
-    assertThat(transactionService.deleteWithUploadTime(uploadTime)).isEqualTo(1);
-  }
+		assertThat(
+				transactionService.delete(
+						ImmutableList.of(savedTransactions.getFirst().getTransactionId()))).isEqualTo(1);
+		assertThat(transactionService.retrieveByAccount(accounts.get().getAccountId()).size()).isEqualTo(0);
+	}
 
-  @Test
-  public void testCreateUpdateTransactions() throws Exception {
-    var uploadTime = "20230101123011";
-    var date = LocalDate.of(1999, 12, 11);
-    var description = "testDescription";
-    var category = "testBuy";
-    var amount = BigDecimal.valueOf(121.11);
-    var transactions = makeTransactions(date, description, category, uploadTime, amount);
-    Accounts accounts =
-        accountService.findAccountByBankTypeAccountName(CITI.getName(), CREDIT.getType(),
-            ACCOUNT_NAME_TEST2);
-    transactions.setAccountId(accounts.getAccountId());
+	@Test
+	public void testDeleteByUploadTime() throws Exception {
+		var uploadTime = "20230101123011";
+		var date = LocalDate.of(1999, 11, 11);
+		var description = "testDescription";
+		var category = "testBuy";
+		var amount = BigDecimal.valueOf(11.11);
+		var transactions = makeTransactions(date, description, category, uploadTime, amount);
+		Optional<Accounts> accounts =
+				accountService.findAccountByBankAndAccountName(CITI.getName(),
+						ACCOUNT_NAME_TEST2);
+		transactions.setAccountId(accounts.get().getAccountId());
+		assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
+		assertThat(transactionService.deleteWithUploadTime(uploadTime)).isEqualTo(1);
+	}
 
-    assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
+	@Test
+	public void testCreateUpdateTransactions() throws Exception {
+		var uploadTime = "20230101123011";
+		var date = LocalDate.of(1999, 12, 11);
+		var description = "testDescription";
+		var category = "testBuy";
+		var amount = BigDecimal.valueOf(121.11);
+		var transactions = makeTransactions(date, description, category, uploadTime, amount);
+		Optional<Accounts> accounts =
+				accountService.findAccountByBankAndAccountName(CITI.getName(),
+						ACCOUNT_NAME_TEST2);
+		transactions.setAccountId(accounts.get().getAccountId());
 
-    List<Transactions> transactionsList =
-        transactionService.retrieveByAccount(accounts.getAccountId());
-    Transactions updateTransactions = transactionsList.get(0);
-    var newAmount = BigDecimal.valueOf(22.22);
-    updateTransactions.setAmount(newAmount);
+		assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
 
-    assertThat(
-        transactionService.update(updateTransactions)).isEqualTo(1);
-    assertThat(
-        transactionService.retrieve(updateTransactions.getTransactionId()).getAmount()).isEqualTo(
-        newAmount);
-  }
+		List<Transactions> transactionsList =
+				transactionService.retrieveByAccount(accounts.get().getAccountId());
+		Transactions updateTransactions = transactionsList.get(0);
+		var newAmount = BigDecimal.valueOf(22.22);
+		updateTransactions.setAmount(newAmount);
 
-  public void testUploadCsv(BankAccountPair.BankName bankName,
-      BankAccountPair.AccountType accountType, String filePath) throws Exception {
-    int accountId =
-        accountService.findAccountByBankTypeAccountName(bankName.getName(), accountType.getType(),
-                ACCOUNT_NAME_TEST1)
-            .getAccountId();
+		assertThat(
+				transactionService.update(updateTransactions)).isEqualTo(1);
+		assertThat(
+				transactionService.retrieve(updateTransactions.getTransactionId()).get().getAmount()).isEqualTo(
+				newAmount);
+	}
 
-    BankAccountPair bankAccountPair = BankAccountPair.of(bankName, accountType);
-    ClassLoader classLoader = TransactionServiceTest.class.getClassLoader();
-    InputStream file = classLoader.getResourceAsStream(filePath);
+	public void testUploadCsv(BankAccountPair.BankName bankName,
+	                          BankAccountPair.AccountType accountType, String filePath) throws Exception {
+		int accountId =
+				accountService.findAccountByBankAndAccountName(bankName.getName(),
+								ACCOUNT_NAME_TEST1 + "-" + accountType.getType())
+						.get().getAccountId();
 
-    Reader reader = new InputStreamReader(file);
+		BankAccountPair bankAccountPair = BankAccountPair.of(bankName, accountType);
+		ClassLoader classLoader = TransactionServiceTest.class.getClassLoader();
+		InputStream file = classLoader.getResourceAsStream(filePath);
 
-    BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+		Reader reader = new InputStreamReader(file);
 
-    CsvToBean<BankAccountCsvTemplate> csvReader =
-        new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-            .withType(template.getClass())
-            .withSeparator(',')
-            .withIgnoreLeadingWhiteSpace(true)
-            .withIgnoreEmptyLine(true)
-            .build();
+		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
 
-    List<? extends BankAccountCsvTemplate> rawTransactions = csvReader.parse();
+		CsvToBean<BankAccountCsvTemplate> csvReader =
+				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
+						.withType(template.getClass())
+						.withSeparator(',')
+						.withIgnoreLeadingWhiteSpace(true)
+						.withIgnoreEmptyLine(true)
+						.build();
 
-    List<Transactions> transactions =
-        rawTransactions.stream().map(BankAccountCsvTemplate::toTransactions).collect(
-            Collectors.toList());
+		List<? extends BankAccountCsvTemplate> rawTransactions = csvReader.parse();
 
-    assertThat(transactions.size()).isGreaterThan(0);
-    transactions.forEach(t -> {
-          t.setAccountId(accountId);
-          t.setAccountName(ACCOUNT_NAME_TEST1);
-          t.setBankName(bankName.getName());
-          t.setIsDuplicate(false);
-        }
-    );
+		List<Transactions> transactions =
+				rawTransactions.stream().map(BankAccountCsvTemplate::toTransactions).collect(
+						Collectors.toList());
 
-    transactionService.create(transactions);
+		assertThat(transactions.size()).isGreaterThan(0);
+		transactions.forEach(t -> {
+					t.setAccountId(accountId);
+					t.setAccountName(ACCOUNT_NAME_TEST1);
+					t.setBankName(bankName.getName());
+					t.setIsDuplicate(0);
+				}
+		);
 
-    List<Transactions> newTransactions = transactionService.retrieveByAccount(accountId);
-    checkTransactions(transactions, newTransactions);
-  }
+		transactionService.create(transactions);
 
-  private Transactions makeTransactions(LocalDate date, String description, String category,
-      String uploadTime, BigDecimal amount) {
-    Transactions transactions = new Transactions();
-    transactions.setTransactionDate(date.minusDays(1));
-    transactions.setPostDate(date);
-    transactions.setDescription(description);
-    transactions.setCategory(category);
-    transactions.setUploadTime(uploadTime);
-    transactions.setAmount(amount);
-    return transactions;
-  }
+		List<Transactions> newTransactions = transactionService.retrieveByAccount(accountId);
+		checkTransactions(transactions, newTransactions);
+	}
 
-  private void checkTransactions(List<Transactions> oldTransactions,
-      List<Transactions> newTransactions) {
-    oldTransactions.sort((t1, t2) -> t1.getAmount().compareTo(t2.getAmount()));
-    newTransactions.sort((t1, t2) -> t1.getAmount().compareTo(t2.getAmount()));
+	private Transactions makeTransactions(LocalDate date, String description, String category,
+	                                      String uploadTime, BigDecimal amount) {
+		Transactions transactions = new Transactions();
+		transactions.setTransactionDate(date.minusDays(1));
+		transactions.setPostDate(date);
+		transactions.setDescription(description);
+		transactions.setCategory(category);
+		transactions.setUploadTime(uploadTime);
+		transactions.setAmount(amount);
+		return transactions;
+	}
 
-    for (int i = 0; i < oldTransactions.size(); i++) {
-      Transactions t1 = oldTransactions.get(i);
-      Transactions t2 = newTransactions.get(i);
-      t1.setTransactionId(t2.getTransactionId());
-      t1.setAmount(t1.getAmount().stripTrailingZeros());
-      t2.setAmount(t2.getAmount().stripTrailingZeros());
-      assertThat(t1).isEqualTo(t2);
-    }
-  }
+	private void checkTransactions(List<Transactions> oldTransactions,
+	                               List<Transactions> newTransactions) {
+		oldTransactions.sort((t1, t2) -> t1.getAmount().compareTo(t2.getAmount()));
+		newTransactions.sort((t1, t2) -> t1.getAmount().compareTo(t2.getAmount()));
+
+		for (int i = 0; i < oldTransactions.size(); i++) {
+			Transactions t1 = oldTransactions.get(i);
+			Transactions t2 = newTransactions.get(i);
+			t1.setTransactionId(t2.getTransactionId());
+			t1.setAmount(t1.getAmount().stripTrailingZeros());
+			t2.setAmount(t2.getAmount().stripTrailingZeros());
+			assertThat(t1).isEqualTo(t2);
+		}
+	}
 }
