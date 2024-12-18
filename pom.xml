@@ -1,19 +1,17 @@
-<?xml version="1.0"?>
-<project
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
-        xmlns="http://maven.apache.org/POM/4.0.0">
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>today.ihelio</groupId>
     <artifactId>minance</artifactId>
-    <version>0.0.2</version>
+    <version>1.0.0</version>
     <properties>
         <compiler-plugin.version>3.13.0</compiler-plugin.version>
         <jackson.version>2.14.2</jackson.version>
         <maven.compiler.release>22</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <quarkus-bom.version>3.2.0.Final</quarkus-bom.version>
+        <quarkus-bom.version>3.12.0</quarkus-bom.version>
         <quarkus-jooq.version>2.0.1</quarkus-jooq.version>
         <jooq.version>3.19.10</jooq.version>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
@@ -21,8 +19,9 @@
         <quarkus.platform.version>3.12.0</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.0.0</surefire-plugin.version>
-        <skip.jooq.generation>false</skip.jooq.generation>
-        <flyway.skip>false</flyway.skip>
+        <skip.jooq.generation>true</skip.jooq.generation>
+        <flyway.skip>true</flyway.skip>
+        <database.path>${env.DATA}</database.path>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -43,6 +42,11 @@
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-rest-jsonb</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkiverse.quinoa</groupId>
+            <artifactId>quarkus-quinoa</artifactId>
+            <version>2.4.9</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -133,7 +137,6 @@
             <artifactId>flyway-core</artifactId>
             <version>11.0.1</version>
         </dependency>
-
         <dependency>
             <groupId>com.opencsv</groupId>
             <artifactId>opencsv</artifactId>
@@ -143,6 +146,16 @@
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.46.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+            <version>3.1.0</version>
         </dependency>
     </dependencies>
     <build>
@@ -194,8 +207,7 @@
                             <systemPropertyVariables>
                                 <native.image.path>${project.build.directory}/${project.build.finalName}-runner
                                 </native.image.path>
-                                <java.util.logging.manager>org.jboss.logmanager.LogManager
-                                </java.util.logging.manager>
+                                <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                                 <maven.home>${maven.home}</maven.home>
                             </systemPropertyVariables>
                         </configuration>
@@ -219,7 +231,7 @@
                     <cleanDisabled>false</cleanDisabled>
                     <baselineOnMigrate>true</baselineOnMigrate>
                     <driver>org.sqlite.JDBC</driver>
-                    <url>jdbc:sqlite:${env.HOME}/data.db</url>
+                    <url>jdbc:sqlite:${database.path}/data.db</url>
                     <user>root</user>
                     <password>root</password>
                     <locations>
@@ -244,14 +256,15 @@
                     <skip>${skip.jooq.generation}</skip>
                     <jdbc>
                         <driver>org.sqlite.JDBC</driver>
-                        <url>jdbc:sqlite:/tmp/data.db</url>
-                        <url>jdbc:sqlite:${env.HOME}/data.db</url>
+                        <url>jdbc:sqlite:${database.path}/data.db</url>
                         <user>root</user>
                         <password>root</password>
                     </jdbc>
                     <generator>
                         <generate>
                             <daos>true</daos>
+                            <jpaAnnotations>false</jpaAnnotations>
+                            <jpaVersion>none</jpaVersion>
                         </generate>
                         <database>
                             <name>org.jooq.meta.sqlite.SQLiteDatabase</name>

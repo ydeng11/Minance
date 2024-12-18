@@ -42,3 +42,4 @@ nb-configuration.xml
 
 #Quarkus
 .quarkus
+.quinoa
