@@ -1,9 +1,13 @@
 # Minance
 
-Yet another personal finance management service. It is open source and installed in local so you
-don't have to wrorry about the
-security issue. I understand it is tedious to download the transactions and import but
-everything is trade-off. And I think we could still add the api to each bank later if
-we really need the auto-import.
+Yet another personal finance management service.
 
-Anyway it is still in progress.
+## What it provides
+
+- Simple UI and functions
+- Easy import of transactions in CSV format
+- Privacy
+
+## How to use
+
+The code is there, you could do whatever you want to it. I suggest to host it in docker.

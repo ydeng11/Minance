@@ -1,17 +1,14 @@
-version: "0.0.1"
+version: "3.8"
 services:
   minance:
-    image: ydeng11/minance:0.0.2
+    image: ydeng11/minance:latest
     container_name: minance
     hostname: minance
     ports:
-      - 8911:8888
-    healthcheck:
-      test: curl -f http://localhost:8888/q/health/live || exit 1
-      start_period: 1s
-      interval: 30s
-      timeout: 5s
-      retries: 5
-
+      - "8080:8080"
+    volumes:
+      - minance-data:/deployments/data
+    user: "185"
 volumes:
-  mysql-data:
+  minance-data:
+    driver: local
