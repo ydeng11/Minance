@@ -1,9 +1,7 @@
-Date,Category,Amount,Memo,Simple Description
-07/25/2023,Refunds/Adjustments,400.00, , PENDING
-07/22/2023,General Merchandise,-107.83, , Amazon Marketplace
-07/19/2023,General Merchandise,-5.34, , Amazon Marketplace
-07/18/2023,Dues and Subscriptions,-20.00, , CHATGPT SUBSCRIPTION OPENAI.COM CA
-07/14/2023,Service Charges/Fees,-8.00, , Monthly Maintenance Fee
-07/12/2023,Interest,0.01, , Interest Income
-07/10/2023,General Merchandise,-320.99, , Amazon
-07/10/2023,Credit Card Payments,-38.50,"", Payment to Discover Bank
+Status,Date,Original Description,Split Type,Category,Currency,Amount,User Description,Memo,Classification,Account Name,Simple Description
+posted,09/19/2023,AMAZON RETA* EN44T2YC3   WWW.AMAZON.COWA,,Refunds/Adjustments,USD,-16.72,,,Personal,Bank of America - Credit Card - Customized Cash Rewards Visa Signature,Amazon
+posted,09/17/2023,REI #221 BOCA RATON      BOCA RATON   FL,,General Merchandise,USD,96.3,,,Personal,Bank of America - Credit Card - Customized Cash Rewards Visa Signature,REI
+posted,09/17/2023,MATTRESS FACT      HTTPSLATEXMATAZ,,Home Improvement,USD,-284.05,,,Personal,Bank of America - Credit Card - Customized Cash Rewards Visa Signature,LATEX MATTRESS FACT HTTPSLATEXMATAZ
+posted,09/17/2023,CASH REWARDS STATEMENT CREDIT,,Rewards,USD,287.96,,,Personal,Bank of America - Credit Card - Customized Cash Rewards Visa Signature,CASH REWARDS STATEMENT CREDIT
+posted,09/16/2023,REI.COM  xxx-xxx-xxxx    xxx-xxx-4840 WA,,General Merchandise,USD,"-1,712.0",,,Personal,Bank of America - Credit Card - Customized Cash Rewards Visa Signature,REI
+posted,09/12/2023,REI.COM  xxx-xxx-xxxx    xxx-xxx-4840 WA,,General Merchandise,USD,-32.03,,,Personal,Bank of America - Credit Card - Customized Cash Rewards Visa Signature,REI
