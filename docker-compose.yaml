@@ -5,10 +5,9 @@ services:
     container_name: minance
     hostname: minance
     ports:
-      - "8080:8080"
+      - "18080:8080"
     volumes:
-      - minance-data:/deployments/data
+      - /path_to_folder/:/deployments/data
     user: "185"
-volumes:
-  minance-data:
-    driver: local
+    network_mode: bridge
+
