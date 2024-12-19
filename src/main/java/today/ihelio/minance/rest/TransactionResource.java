@@ -19,7 +19,6 @@ import today.ihelio.minance.csvpojos.BankAccountCsvFactory;
 import today.ihelio.minance.csvpojos.BankAccountCsvTemplate;
 import today.ihelio.minance.csvpojos.BankAccountPair;
 import today.ihelio.minance.exception.CustomException;
-import today.ihelio.minance.pojos.TransactionsUploadForm;
 import today.ihelio.minance.service.AccountService;
 import today.ihelio.minance.service.BankService;
 import today.ihelio.minance.service.TransactionService;

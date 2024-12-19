@@ -99,12 +99,14 @@ class BankAccountCsvFactoryImplTest {
 
 		List<? extends BankAccountCsvTemplate> boaTransactions = csvReader.parse();
 		assertThat(boaTransactions.size(),
-				equalTo(8));
+				equalTo(6));
 
 		assertThat(boaTransactions.get(0).toString(), equalTo(
-				"BoaCreditCsvTemplate{bankAccountPair=BankAccountPair{bankName=BANK_OF_AMERICA, accountType=CREDIT},"
-						+ " amount=400.00, category='Refunds/Adjustments', description=' PENDING', "
-						+ "date=2023-07-25, memo=' '}"));
+				"BoaCreditCsvTemplate{status='posted', date=2023-09-19, " +
+						"originalDescription='AMAZON RETA* EN44T2YC3   WWW.AMAZON.COWA', splitType='', " +
+						"category='Refunds/Adjustments', currency='USD', amount=-16.72, userDescription='', " +
+						"memo='', classification='Personal', " +
+						"accountName='Bank of America - Credit Card - Customized Cash Rewards Visa Signature', simpleDescription='Amazon'}"));
 	}
 
 	@Test
@@ -129,12 +131,14 @@ class BankAccountCsvFactoryImplTest {
 
 		List<? extends BankAccountCsvTemplate> boaTransactions = csvReader.parse();
 		assertThat(boaTransactions.size(),
-				equalTo(8));
+				equalTo(6));
 
 		assertThat(boaTransactions.get(0).toString(), equalTo(
-				"BoaDebitCsvTemplate{bankAccountPair=BankAccountPair{bankName=BANK_OF_AMERICA, accountType=DEBIT},"
-						+ " amount=400.00, category='Refunds/Adjustments', description=' PENDING', "
-						+ "date=2023-07-25, memo=' '}"));
+				"BoaDebitCsvTemplate{status='posted', date=2023-09-19, " +
+						"originalDescription='AMAZON RETA* EN44T2YC3   WWW.AMAZON.COWA', splitType='', " +
+						"category='Refunds/Adjustments', currency='USD', amount=-16.72, userDescription='', " +
+						"memo='', classification='Personal', " +
+						"accountName='Bank of America - Credit Card - Customized Cash Rewards Visa Signature', simpleDescription='Amazon'}"));
 	}
 
 	@Test
