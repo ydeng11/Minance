@@ -1,4 +1,4 @@
-package today.ihelio.minance.pojos;
+package today.ihelio.minance.rest;
 
 public class TransactionsUploadForm {
 
