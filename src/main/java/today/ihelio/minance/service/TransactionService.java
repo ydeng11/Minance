@@ -60,8 +60,7 @@ public class TransactionService {
 							TRANSACTIONS.BANK_NAME,
 							TRANSACTIONS.ACCOUNT_NAME);
 				}).collect(Collectors.toList()))
-				.onDuplicateKeyUpdate()
-				.set(TRANSACTIONS.IS_DUPLICATE, 1)
+				.onDuplicateKeyIgnore()
 				.execute();
 	}
 
