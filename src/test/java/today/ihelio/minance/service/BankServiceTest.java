@@ -52,7 +52,7 @@ public class BankServiceTest {
 
 	@Test
 	public void testBankService_RetrieveNonexistentBanks() throws Exception {
-		Banks citi = bankService.findBankByName(CITI);
+		Banks citi = bankService.findBankByName(CITI).get();
 		assertThat(citi).isNull();
 	}
 }

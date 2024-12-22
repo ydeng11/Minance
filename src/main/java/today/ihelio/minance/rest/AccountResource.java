@@ -31,11 +31,16 @@ public class AccountResource {
 
 	@POST
 	@Path("/create")
-	public Response createAccount(Accounts accounts)
-			throws SQLException, CustomException {
-		if (accountService.create(accounts) == 0) {
-			throw new CustomException(new RecordAlreadyExistingException("account already exited"));
+	public Response createAccount(Accounts accounts) throws CustomException {
+		try {
+			if (accountService.create(accounts) == 0) {
+				throw new CustomException(new RecordAlreadyExistingException("account already exited"));
+			}
+		} catch (CustomException e) {
+			throw CustomException.from(
+					new IllegalArgumentException(accounts.getBankName() + " is not allowed!", e));
 		}
+
 		return Response.status(Response.Status.CREATED)
 				.entity(accounts)
 				.build();
