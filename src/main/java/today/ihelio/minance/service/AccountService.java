@@ -29,20 +29,20 @@ public class AccountService {
 		this.transactionService = transactionService;
 	}
 
-	public int create(Accounts account) throws SQLException,
-			CustomException {
-		BankAccountPair.BankName bankName;
-		try {
-			bankName = BankAccountPair.BankName.valueOf(account.getBankName());
-		} catch (IllegalArgumentException e) {
-			throw CustomException.from(
-					new IllegalArgumentException(account.getBankName() + " is not allowed!", e));
-		}
-		Banks banks = bankService.findBankByName(bankName);
-		if (banks == null) {
-			bankService.create(bankName);
-			banks = bankService.findBankByName(bankName);
-		}
+	public int create(Accounts account) throws CustomException {
+		BankAccountPair.BankName bankName = BankAccountPair.BankName.validateAndGet(account.getBankName());
+
+		Optional<Banks> banksOptional = bankService.findBankByName(bankName);
+		Banks banks = banksOptional.orElseGet(() -> {
+			try {
+				bankService.create(bankName);
+			} catch (SQLException e) {
+				throw new IllegalStateException("Failed to create bank: " + bankName, e);
+			}
+			return bankService.findBankByName(bankName)
+					.orElseThrow(() -> new IllegalStateException("Failed to create bank: " + bankName));
+		});
+
 		return dslContext.insertInto(ACCOUNTS, ACCOUNTS.BANK_ID, ACCOUNTS.BANK_NAME,
 						ACCOUNTS.ACCOUNT_NAME, ACCOUNTS.ACCOUNT_TYPE, ACCOUNTS.INIT_BALANCE)
 				.values(banks.getBankId(), account.getBankName(), account.getAccountName(),
@@ -85,31 +85,34 @@ public class AccountService {
 
 	public Optional<Accounts> findAccountByBankAndAccountName(String bankName,
 	                                                          String accountName)
-			throws DataAccessException {
-		Banks banks = bankService.findBankByName(BankAccountPair.BankName.valueOf(bankName));
-		return dslContext
-				.select(ACCOUNTS)
-				.from(ACCOUNTS)
-				.where(ACCOUNTS.BANK_ID.eq(banks.getBankId())
-						.and(ACCOUNTS.ACCOUNT_NAME.eq(accountName)))
-				.fetchOptionalInto(Accounts.class);
+			throws DataAccessException, CustomException {
+		return bankService.findBankByName(BankAccountPair.BankName.validateAndGet(bankName))
+				.flatMap(banks -> dslContext
+						.select(ACCOUNTS)
+						.from(ACCOUNTS)
+						.where(ACCOUNTS.BANK_ID.eq(banks.getBankId())
+								.and(ACCOUNTS.ACCOUNT_NAME.eq(accountName)))
+						.fetchOptionalInto(Accounts.class));
 	}
 
 	public List<Accounts> retrieveAccountsByBank(BankAccountPair.BankName bankName)
 			throws DataAccessException {
-		Banks banks = bankService.findBankByName(bankName);
-		return dslContext
-				.select(ACCOUNTS)
-				.from(ACCOUNTS)
-				.where(ACCOUNTS.BANK_ID.eq(banks.getBankId()))
-				.orderBy(ACCOUNTS.ACCOUNT_ID)
-				.fetchInto(Accounts.class);
+		return bankService.findBankByName(bankName)
+				.map(banks -> dslContext
+						.select(ACCOUNTS)
+						.from(ACCOUNTS)
+						.where(ACCOUNTS.BANK_ID.eq(banks.getBankId()))
+						.orderBy(ACCOUNTS.ACCOUNT_ID)
+						.fetchInto(Accounts.class))
+				.orElse(List.of());
 	}
 
-	public int delete(String bankName, String accountName) throws SQLException {
-		Banks banks = bankService.findBankByName(BankAccountPair.BankName.valueOf(bankName));
-		return dslContext.delete(ACCOUNTS)
-				.where(ACCOUNTS.ACCOUNT_NAME.eq(accountName)).and(ACCOUNTS.BANK_ID.eq(banks.getBankId()))
-				.execute();
+	public int delete(String bankName, String accountName) throws SQLException, CustomException {
+		return bankService.findBankByName(BankAccountPair.BankName.validateAndGet(bankName))
+				.map(banks -> dslContext.delete(ACCOUNTS)
+						.where(ACCOUNTS.ACCOUNT_NAME.eq(accountName))
+						.and(ACCOUNTS.BANK_ID.eq(banks.getBankId()))
+						.execute())
+				.orElse(0); // Return 0 if bank not found (no rows deleted)
 	}
 }
