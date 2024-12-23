@@ -1,8 +1,8 @@
 package today.ihelio.minance.csvpojos;
 
-import today.ihelio.minance.exception.CustomException;
-
 import java.util.Objects;
+
+import today.ihelio.minance.exception.CustomException;
 
 public class BankAccountPair {
 	private final BankName bankName;
@@ -78,6 +78,15 @@ public class BankAccountPair {
 
 		public String getName() {
 			return name;
+		}
+
+		public static BankName validateAndGet(String bankName) throws CustomException {
+			try {
+				return valueOf(bankName);
+			} catch (IllegalArgumentException e) {
+				throw CustomException.from(
+						new IllegalArgumentException(bankName + " is not allowed!", e));
+			}
 		}
 	}
 

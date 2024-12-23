@@ -9,6 +9,7 @@ import today.ihelio.minance.csvpojos.BankAccountPair;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 
 import static today.ihelio.jooq.Tables.BANKS;
 
@@ -21,11 +22,12 @@ public class BankService {
 		this.dslContext = dslContext;
 	}
 
-	public int create(BankAccountPair.BankName bank) throws SQLException {
-		return dslContext.insertInto(BANKS, BANKS.BANK_NAME)
+	public Optional<Banks> create(BankAccountPair.BankName bank) throws SQLException {
+		return Optional.ofNullable(dslContext.insertInto(BANKS, BANKS.BANK_NAME)
 				.values(bank.getName())
 				.onDuplicateKeyIgnore()
-				.execute();
+				.returning()
+				.fetchOneInto(Banks.class));
 	}
 
 	public int delete(BankAccountPair.BankName bank) throws SQLException {
@@ -39,11 +41,11 @@ public class BankService {
 				.execute();
 	}
 
-	public Banks retrieve(int bankId) throws DataAccessException {
+	public Optional<Banks> retrieve(int bankId) throws DataAccessException {
 		return dslContext.select(BANKS)
 				.from(BANKS)
 				.where(BANKS.BANK_ID.eq(bankId))
-				.fetchOptionalInto(Banks.class).orElse(null);
+				.fetchOptionalInto(Banks.class);
 	}
 
 	public List<Banks> retrieveAll() throws DataAccessException {
@@ -54,11 +56,12 @@ public class BankService {
 				.fetchInto(Banks.class);
 	}
 
-	public Banks findBankByName(BankAccountPair.BankName bankName) throws DataAccessException {
-		return
+	public Optional<Banks> findBankByName(BankAccountPair.BankName bankName) throws DataAccessException {
+		return Optional.ofNullable(
 				dslContext.select(BANKS)
 						.from(BANKS)
 						.where(BANKS.BANK_NAME.eq(bankName.getName()))
-						.fetchOneInto(Banks.class);
+						.fetchOneInto(Banks.class)
+		);
 	}
 }
