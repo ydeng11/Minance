@@ -1,13 +1,79 @@
 # Minance
 
-Yet another personal finance management service.
+A modern personal finance management service built with Quarkus and React.
 
-## What it provides
+## Features
 
-- Simple UI and functions
-- Easy import of transactions in CSV format
-- Privacy
+- Clean and intuitive user interface
+- CSV transaction import support
+- Privacy-focused design
+- Expense visualization and tracking
+- Multi-bank account management
 
-## How to use
+## Tech Stack
 
-The code is there, you could do whatever you want to it. I suggest to host it in docker.
+- Backend: Quarkus
+- Frontend: React + TypeScript + Vite
+- Database: PostgreSQL
+- Build Tool: Maven
+
+## Development
+
+### Prerequisites
+
+- Java 21+
+- Node.js 18+
+- Docker (optional)
+- Maven
+
+### Running Locally
+
+1. Start the development server:
+
+```bash
+quarkus dev
+```
+
+2. The application will be available at:
+
+- Backend API: http://localhost:8080
+- Frontend: http://localhost:3000
+
+### Building for Production
+
+Create a production build:
+
+```bash
+quarkus build --no-tests
+```
+
+For native executable (requires GraalVM):
+
+```bash
+quarkus build --native --no-tests
+```
+
+### Docker Support
+
+Build multi-platform Docker image:
+
+```bash
+docker build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm -t minance:latest .
+```
+
+## License
+
+MIT License - See [LICENSE](LICENSE) for details
+
+## Project Structure
+
+```
+minance/
+├── src/
+│   ├── main/
+│   │   ├── java/          # Backend code
+│   │   ├── resources/     # Configuration files
+│   │   ├── webui/        # Frontend React application
+│   │   └── docker/       # Docker configurations
+│   └── test/             # Test files
+```
