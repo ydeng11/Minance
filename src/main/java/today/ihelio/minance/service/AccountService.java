@@ -30,15 +30,8 @@ public class AccountService {
 	}
 
 	public int create(Accounts account) throws CustomException {
-		BankAccountPair.BankName bankName;
-		try {
-			bankName = BankAccountPair.BankName.valueOf(account.getBankName());
-		} catch (IllegalArgumentException e) {
-			throw CustomException.from(
-					new IllegalArgumentException(account.getBankName() + " is not allowed!", e));
-		}
+		BankAccountPair.BankName bankName = BankAccountPair.BankName.validateAndGet(account.getBankName());
 
-		// Get or create the bank
 		Optional<Banks> banksOptional = bankService.findBankByName(bankName);
 		Banks banks = banksOptional.orElseGet(() -> {
 			try {
@@ -92,8 +85,8 @@ public class AccountService {
 
 	public Optional<Accounts> findAccountByBankAndAccountName(String bankName,
 	                                                          String accountName)
-			throws DataAccessException {
-		return bankService.findBankByName(BankAccountPair.BankName.valueOf(bankName))
+			throws DataAccessException, CustomException {
+		return bankService.findBankByName(BankAccountPair.BankName.validateAndGet(bankName))
 				.flatMap(banks -> dslContext
 						.select(ACCOUNTS)
 						.from(ACCOUNTS)
@@ -114,8 +107,8 @@ public class AccountService {
 				.orElse(List.of());
 	}
 
-	public int delete(String bankName, String accountName) throws SQLException {
-		return bankService.findBankByName(BankAccountPair.BankName.valueOf(bankName))
+	public int delete(String bankName, String accountName) throws SQLException, CustomException {
+		return bankService.findBankByName(BankAccountPair.BankName.validateAndGet(bankName))
 				.map(banks -> dslContext.delete(ACCOUNTS)
 						.where(ACCOUNTS.ACCOUNT_NAME.eq(accountName))
 						.and(ACCOUNTS.BANK_ID.eq(banks.getBankId()))

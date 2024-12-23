@@ -11,7 +11,6 @@ import today.ihelio.minance.csvpojos.BankAccountPair;
 import today.ihelio.minance.exception.CustomException;
 import today.ihelio.minance.exception.RecordAlreadyExistingException;
 import today.ihelio.minance.service.AccountService;
-import today.ihelio.minance.service.BankService;
 
 import java.sql.SQLException;
 
@@ -25,20 +24,15 @@ public class AccountResource {
 	private final AccountService accountService;
 
 	@Inject
-	public AccountResource(AccountService accountService, BankService bankService) {
+	public AccountResource(AccountService accountService) {
 		this.accountService = accountService;
 	}
 
 	@POST
 	@Path("/create")
 	public Response createAccount(Accounts accounts) throws CustomException {
-		try {
-			if (accountService.create(accounts) == 0) {
-				throw new CustomException(new RecordAlreadyExistingException("account already exited"));
-			}
-		} catch (CustomException e) {
-			throw CustomException.from(
-					new IllegalArgumentException(accounts.getBankName() + " is not allowed!", e));
+		if (accountService.create(accounts) == 0) {
+			throw new CustomException(new RecordAlreadyExistingException("account already exited"));
 		}
 
 		return Response.status(Response.Status.CREATED)
