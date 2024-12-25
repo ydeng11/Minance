@@ -1,32 +1,10 @@
 package today.ihelio.minance.rest;
 
-import com.google.common.collect.ImmutableList;
-import com.opencsv.bean.CsvToBean;
-import com.opencsv.bean.CsvToBeanBuilder;
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
-import org.jboss.resteasy.reactive.PartType;
-import org.jboss.resteasy.reactive.RestForm;
-import org.jboss.resteasy.reactive.multipart.FileUpload;
-import org.jooq.exception.DataAccessException;
-import today.ihelio.jooq.tables.pojos.Accounts;
-import today.ihelio.jooq.tables.pojos.Banks;
-import today.ihelio.jooq.tables.pojos.Transactions;
-import today.ihelio.minance.csvpojos.BankAccountCsvFactory;
-import today.ihelio.minance.csvpojos.BankAccountCsvTemplate;
-import today.ihelio.minance.csvpojos.BankAccountPair;
-import today.ihelio.minance.exception.CustomException;
-import today.ihelio.minance.service.AccountService;
-import today.ihelio.minance.service.BankService;
-import today.ihelio.minance.service.TransactionService;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -36,9 +14,42 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.jboss.resteasy.reactive.PartType;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
+import org.jooq.exception.DataAccessException;
+
+import com.google.common.collect.ImmutableList;
+import com.opencsv.bean.CsvToBean;
+import com.opencsv.bean.CsvToBeanBuilder;
+
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import static jakarta.ws.rs.core.Response.Status.OK;
+import today.ihelio.jooq.tables.pojos.Accounts;
+import today.ihelio.jooq.tables.pojos.Banks;
+import today.ihelio.jooq.tables.pojos.Transactions;
+import today.ihelio.minance.csvpojos.BankAccountCsvFactory;
+import today.ihelio.minance.csvpojos.BankAccountCsvTemplate;
+import today.ihelio.minance.csvpojos.BankAccountPair;
 import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.MINANCE;
+import today.ihelio.minance.exception.CustomException;
+import today.ihelio.minance.service.AccountService;
+import today.ihelio.minance.service.BankService;
+import today.ihelio.minance.service.TransactionService;
 import static today.ihelio.minance.util.TransactionUtil.makeBankAccountPair;
 
 @Path("/1.0/minance/transactions")
@@ -73,10 +84,8 @@ public class TransactionResource {
 		String useMinanceFormat = form.useMinanceFormat;
 		var now = LocalDateTime.now();
 
-		Banks banks = bankService.findBankByName(BankAccountPair.BankName.valueOf(bankName));
-		if (banks == null) {
-			throw new CustomException(new NotFoundException("No Bank Found"));
-		}
+		Banks banks = bankService.findBankByName(BankAccountPair.BankName.validateAndGet(bankName))
+								 .orElseThrow(() -> new CustomException(new NotFoundException("No Bank Found")));
 
 		Optional<Accounts> account =
 				accountService.findAccountByBankAndAccountName(bankName, accountName);
@@ -98,8 +107,8 @@ public class TransactionResource {
 		}
 
 		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
-		try (InputStream io = Files.newInputStream(file.uploadedFile())) {
-			Reader reader = new InputStreamReader(io);
+		try (InputStream io = Files.newInputStream(file.uploadedFile());
+			 Reader reader = new InputStreamReader(io, StandardCharsets.UTF_8)) {
 			CsvToBean<BankAccountCsvTemplate> csvReader =
 					new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
 							.withType(template.getClass())
@@ -158,7 +167,7 @@ public class TransactionResource {
 	@Consumes(MediaType.APPLICATION_JSON)
 	public Response retrieveTransactionsForAccount(@PathParam("bank_name") String bankName,
 	                                               @PathParam("account_name") String accountName,
-	                                               @QueryParam("duplicate") String isDuplicate) throws DataAccessException {
+	                                               @QueryParam("duplicate") String isDuplicate) throws DataAccessException, CustomException {
 		Optional<Accounts> account =
 				accountService.findAccountByBankAndAccountName(bankName, accountName);
 		if (account.isEmpty()) {

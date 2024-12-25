@@ -43,3 +43,6 @@ nb-configuration.xml
 #Quarkus
 .quarkus
 .quinoa
+
+# Cursor
+.cursorrules
