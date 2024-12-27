@@ -70,6 +70,7 @@ public class BoaDebitCsvTemplate implements BankAccountCsvTemplate {
 		String sanitizedAmount = amount.replace(",", "");
 		transactions.setAmount(new BigDecimal(sanitizedAmount).negate());
 		transactions.setCategory(category);
+		transactions.setTransactionType("Unknown");
 		transactions.setDescription(originalDescription);
 		transactions.setTransactionDate(date);
 		transactions.setPostDate(date);
