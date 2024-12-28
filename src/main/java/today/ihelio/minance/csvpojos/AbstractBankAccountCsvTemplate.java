@@ -31,7 +31,7 @@ public abstract class AbstractBankAccountCsvTemplate {
 
 		Transactions transaction = new Transactions();
 		transaction.setAmount(normalizeAmount(getAmount()));
-		transaction.setCategory(normalizeCategory());
+		transaction.setCategory(getCategory());
 		transaction.setDescription(getDescription());
 		transaction.setTransactionDate(getTransactionDate());
 		transaction.setTransactionType(getTransactionType());
@@ -95,21 +95,6 @@ public abstract class AbstractBankAccountCsvTemplate {
 	 */
 	protected BigDecimal normalizeAmount(BigDecimal amount) {
 		return amount;
-	}
-
-	/**
-	 * Normalize the transaction category.
-	 * Override this method to handle bank-specific category mapping.
-	 *
-	 * @return The normalized category
-	 */
-	protected String normalizeCategory() {
-		String category = getCategory();
-		// Handle common case where payment transactions have empty category
-		if (category.isEmpty() && PAYMENT.equals(getTransactionType())) {
-			return PAYMENT;
-		}
-		return category;
 	}
 
 	/**
