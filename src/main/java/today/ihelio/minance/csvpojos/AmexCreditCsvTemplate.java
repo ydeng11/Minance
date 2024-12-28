@@ -4,7 +4,6 @@ import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
 import com.opencsv.bean.CsvIgnore;
 import jakarta.enterprise.context.Dependent;
-import today.ihelio.jooq.tables.pojos.Transactions;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,12 +12,9 @@ import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.AMEX;
 
 @Dependent
-public class AmexCreditCsvTemplate implements BankAccountCsvTemplate {
+public class AmexCreditCsvTemplate extends AbstractBankAccountCsvTemplate {
 	@CsvIgnore
-	public final BankAccountPair bankAccountPair =
-			BankAccountPair.of(AMEX, CREDIT);
-	@CsvIgnore
-	private final String PAYMENT = "Payment";
+	private static final BankAccountPair BANK_ACCOUNT_PAIR = BankAccountPair.of(AMEX, CREDIT);
 
 	@CsvBindByName(column = "Amount")
 	public BigDecimal amount;
@@ -35,6 +31,7 @@ public class AmexCreditCsvTemplate implements BankAccountCsvTemplate {
 
 	@CsvBindByName(column = "Address")
 	public String address;
+
 	@CsvBindByName(column = "City/State")
 	public String cityZip;
 
@@ -52,39 +49,31 @@ public class AmexCreditCsvTemplate implements BankAccountCsvTemplate {
 
 	@Override
 	public BankAccountPair getBankAccount() {
-		return bankAccountPair;
+		return BANK_ACCOUNT_PAIR;
 	}
 
 	@Override
-	public Transactions toTransactions() {
-		Transactions transactions = new Transactions();
-		transactions.setAmount(amount);
-		if (category.isEmpty()) {
-			transactions.setCategory(PAYMENT);
-		} else {
-			transactions.setCategory(category);
-		}
-		transactions.setDescription(description);
-		transactions.setTransactionDate(date);
-		transactions.setPostDate(date);
-		transactions.setAddress(address);
-		transactions.setMemo(reference);
-		return transactions;
+	public BigDecimal getAmount() {
+		return amount;
 	}
 
 	@Override
-	public String toString() {
-		return "AmexCreditCsvTemplate{" +
-				"bankAccountPair=" + bankAccountPair +
-				", amount=" + amount +
-				", category='" + category + '\'' +
-				", description='" + description + '\'' +
-				", date=" + date +
-				", address='" + address + '\'' +
-				", cityZip='" + cityZip + '\'' +
-				", state='" + state + '\'' +
-				", country='" + country + '\'' +
-				", reference='" + reference + '\'' +
-				'}';
+	public String getCategory() {
+		return category.isEmpty() ? PAYMENT : category;
+	}
+
+	@Override
+	public String getDescription() {
+		return description;
+	}
+
+	@Override
+	public LocalDate getTransactionDate() {
+		return date;
+	}
+
+	@Override
+	public String getMemo() {
+		return reference != null ? reference : "";
 	}
 }
