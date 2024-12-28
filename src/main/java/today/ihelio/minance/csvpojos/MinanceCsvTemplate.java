@@ -65,6 +65,11 @@ public class MinanceCsvTemplate extends AbstractBankAccountCsvTemplate {
 	}
 
 	@Override
+	protected String getTransactionType() {
+		return transactionType;
+	}
+
+	@Override
 	public LocalDate getTransactionDate() {
 		return transactionDate;
 	}
@@ -77,10 +82,5 @@ public class MinanceCsvTemplate extends AbstractBankAccountCsvTemplate {
 	@Override
 	public String getMemo() {
 		return memo;
-	}
-
-	@Override
-	protected BigDecimal normalizeAmount(BigDecimal amount) {
-		return amount.negate();
 	}
 }

@@ -71,58 +71,61 @@ public class TransactionResource {
 			throws SQLException, CustomException {
 		String bankName = form.bankName;
 		String accountName = form.accountName;
-		String useMinanceFormat = form.useMinanceFormat;
-		var now = LocalDateTime.now();
+		LocalDateTime now = LocalDateTime.now();
 
 		Banks banks = bankService.findBankByName(BankAccountPair.BankName.validateAndGet(bankName))
 				.orElseThrow(() -> new CustomException(new NotFoundException("No Bank Found")));
 
-		Optional<Accounts> account =
-				accountService.findAccountByBankAndAccountName(bankName, accountName);
-		if (account.isEmpty()) {
-			throw new CustomException(new NotFoundException("No Account Found"));
-		}
+		Accounts account = accountService.findAccountByBankAndAccountName(bankName, accountName)
+				.orElseThrow(() -> new CustomException(new NotFoundException("No Account Found")));
 
-		BankAccountPair bankAccountPair;
-		try {
-			if ("1".equals(useMinanceFormat)) {
-				bankAccountPair = MINANCE_BANK_ACCOUNT;
-			} else {
-				bankAccountPair = makeBankAccountPair(bankName, account.get().getAccountType());
-			}
-		} catch (IllegalArgumentException e) {
-			throw new CustomException(
-					String.format("cannot make BankAccountPair from %s and %s", bankName,
-							accountName), e);
-		}
+		BankAccountPair bankAccountPair = makeBankAccountPair(bankName, account.getAccountType());
 
-		AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+		List<? extends AbstractBankAccountCsvTemplate> rawTransactions = null;
+
 		try (InputStream io = Files.newInputStream(file.uploadedFile());
 		     Reader reader = new InputStreamReader(io, StandardCharsets.UTF_8)) {
-			CsvToBean<AbstractBankAccountCsvTemplate> csvReader =
-					new CsvToBeanBuilder<AbstractBankAccountCsvTemplate>(reader)
-							.withType(template.getClass())
-							.withSeparator(',')
-							.withIgnoreLeadingWhiteSpace(true)
-							.withIgnoreEmptyLine(true)
-							.build();
-			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = csvReader.parse();
-			List<Transactions> transactions =
-					rawTransactions.stream().map(AbstractBankAccountCsvTemplate::toTransactions).collect(
-							Collectors.toList());
-
-			transactions.forEach(t -> {
-						t.setAccountId(account.get().getAccountId());
-						t.setAccountName(account.get().getAccountName());
-						t.setBankName(banks.getBankName());
-						t.setUploadTime(now.format(formatter));
-					}
-			);
-			int numUploaded = transactionService.create(transactions);
-			return Response.status(OK).entity(numUploaded + " transactions uploaded").build();
-		} catch (IOException e) {
-			throw new RuntimeException("Fail to save the csv file!", e);
+			rawTransactions = parseWithTemplate(reader, bankAccountCsvFactory.get(bankAccountPair));
+		} catch (RuntimeException | IOException ignore) {
 		}
+
+		if (rawTransactions == null || rawTransactions.isEmpty()) {
+			try (InputStream retryIo = Files.newInputStream(file.uploadedFile());
+			     Reader retryReader = new InputStreamReader(retryIo, StandardCharsets.UTF_8)) {
+				rawTransactions = parseWithTemplate(retryReader, bankAccountCsvFactory.get(MINANCE_BANK_ACCOUNT));
+			} catch (IOException ioException) {
+				throw new RuntimeException("Fail to save the csv file!", ioException);
+			}
+		}
+
+		if (rawTransactions == null || rawTransactions.isEmpty()) {
+			throw new RuntimeException("Failed to parse the csv file!");
+		}
+
+		List<Transactions> transactions = rawTransactions.stream()
+				.map(AbstractBankAccountCsvTemplate::toTransactions)
+				.peek(t -> {
+					t.setAccountId(account.getAccountId());
+					t.setAccountName(account.getAccountName());
+					t.setBankName(banks.getBankName());
+					t.setUploadTime(now.format(formatter));
+				})
+				.collect(Collectors.toList());
+
+		int numUploaded = transactionService.create(transactions);
+		return Response.status(Response.Status.OK).entity(numUploaded + " transactions uploaded").build();
+	}
+
+	private <T extends AbstractBankAccountCsvTemplate> List<T> parseWithTemplate(Reader reader, T template) {
+		CsvToBean<T> csvReader = new CsvToBeanBuilder<T>(reader)
+				.withType((Class<? extends T>) template.getClass())
+				.withSeparator(',')
+				.withIgnoreLeadingWhiteSpace(true)
+				.withIgnoreEmptyLine(true)
+				.build();
+		List<T> transactions = csvReader.parse();
+		validateParsedTransactions(transactions);
+		return transactions;
 	}
 
 	@POST
@@ -238,6 +241,12 @@ public class TransactionResource {
 					"Didn't find any records uploaded at: " + uploadAt));
 		} else {
 			return Response.status(OK).entity("deleted").build();
+		}
+	}
+
+	private <T extends AbstractBankAccountCsvTemplate> void validateParsedTransactions(List<T> transactions) {
+		for (T transaction : transactions) {
+			transaction.validate();
 		}
 	}
 }

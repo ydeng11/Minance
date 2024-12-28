@@ -113,7 +113,7 @@ public abstract class AbstractBankAccountCsvTemplate {
 	 *
 	 * @throws IllegalStateException if the record is invalid
 	 */
-	protected void validate() {
+	public void validate() {
 		if (getAmount() == null) {
 			throw new IllegalStateException("Amount is required");
 		}
