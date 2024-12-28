@@ -59,7 +59,7 @@ public class ChaseCreditCsvTemplate extends AbstractBankAccountCsvTemplate {
 
 	@Override
 	public String getCategory() {
-		return category;
+		return category.isEmpty() && PAYMENT.equals(transactionType) ? PAYMENT : category;
 	}
 
 	@Override

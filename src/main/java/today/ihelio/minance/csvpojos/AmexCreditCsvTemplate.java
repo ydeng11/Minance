@@ -59,7 +59,7 @@ public class AmexCreditCsvTemplate extends AbstractBankAccountCsvTemplate {
 
 	@Override
 	public String getCategory() {
-		return category;
+		return category.isEmpty() ? PAYMENT : category;
 	}
 
 	@Override
