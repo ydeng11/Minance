@@ -4,7 +4,6 @@ import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
 import com.opencsv.bean.CsvIgnore;
 import jakarta.enterprise.context.Dependent;
-import today.ihelio.jooq.tables.pojos.Transactions;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,11 +12,9 @@ import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.BANK_OF_AMERICA;
 
 @Dependent
-public class BoaDebitCsvTemplate implements BankAccountCsvTemplate {
-
+public class BoaDebitCsvTemplate extends AbstractBankAccountCsvTemplate {
 	@CsvIgnore
-	public final BankAccountPair bankAccountPair =
-			BankAccountPair.of(BANK_OF_AMERICA, DEBIT);
+	private static final BankAccountPair BANK_ACCOUNT_PAIR = BankAccountPair.of(BANK_OF_AMERICA, DEBIT);
 
 	@CsvBindByName(column = "Status")
 	public String status;
@@ -61,38 +58,40 @@ public class BoaDebitCsvTemplate implements BankAccountCsvTemplate {
 
 	@Override
 	public BankAccountPair getBankAccount() {
-		return bankAccountPair;
+		return BANK_ACCOUNT_PAIR;
 	}
 
 	@Override
-	public Transactions toTransactions() {
-		Transactions transactions = new Transactions();
+	public BigDecimal getAmount() {
+		if (amount == null || amount.isEmpty()) {
+			return BigDecimal.ZERO;
+		}
 		String sanitizedAmount = amount.replace(",", "");
-		transactions.setAmount(new BigDecimal(sanitizedAmount).negate());
-		transactions.setCategory(category);
-		transactions.setTransactionType("Unknown");
-		transactions.setDescription(originalDescription);
-		transactions.setTransactionDate(date);
-		transactions.setPostDate(date);
-		transactions.setMemo(memo);
-		return transactions;
+		return new BigDecimal(sanitizedAmount);
 	}
 
 	@Override
-	public String toString() {
-		return "BoaDebitCsvTemplate{" +
-				"status='" + status + '\'' +
-				", date=" + date +
-				", originalDescription='" + originalDescription + '\'' +
-				", splitType='" + splitType + '\'' +
-				", category='" + category + '\'' +
-				", currency='" + currency + '\'' +
-				", amount=" + amount +
-				", userDescription='" + userDescription + '\'' +
-				", memo='" + memo + '\'' +
-				", classification='" + classification + '\'' +
-				", accountName='" + accountName + '\'' +
-				", simpleDescription='" + simpleDescription + '\'' +
-				'}';
+	protected BigDecimal normalizeAmount(BigDecimal amount) {
+		return amount.negate();
+	}
+
+	@Override
+	public String getCategory() {
+		return category;
+	}
+
+	@Override
+	public String getDescription() {
+		return originalDescription;
+	}
+
+	@Override
+	public LocalDate getTransactionDate() {
+		return date;
+	}
+
+	@Override
+	public String getMemo() {
+		return memo != null ? memo : "";
 	}
 }

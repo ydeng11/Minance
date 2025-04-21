@@ -4,66 +4,63 @@ import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
 import com.opencsv.bean.CsvIgnore;
 import jakarta.enterprise.context.Dependent;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import today.ihelio.jooq.tables.pojos.Transactions;
 
 import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CITI;
 
 @Dependent
-public class CitiCreditCsvTemplate implements BankAccountCsvTemplate {
-  @CsvIgnore
-  public final BankAccountPair bankAccountPair =
-      BankAccountPair.of(CITI, CREDIT);
-  @CsvBindByName(column = "Debit")
-  public BigDecimal debit;
+public class CitiCreditCsvTemplate extends AbstractBankAccountCsvTemplate {
+	@CsvIgnore
+	private static final BankAccountPair BANK_ACCOUNT_PAIR =
+			BankAccountPair.of(CITI, CREDIT);
 
-  @CsvBindByName(column = "Credit")
-  public BigDecimal credit;
+	@CsvBindByName(column = "Debit")
+	public BigDecimal debit;
 
-  @CsvBindByName(column = "Description")
-  public String description;
+	@CsvBindByName(column = "Credit")
+	public BigDecimal credit;
 
-  @CsvDate(value = "MM/dd/yyyy")
-  @CsvBindByName(column = "Date")
-  public LocalDate date;
+	@CsvBindByName(column = "Description")
+	public String description;
 
-  @CsvBindByName(column = "Status")
-  public String status;
-  @CsvBindByName(column = "Member Name")
-  public String memberName;
+	@CsvDate(value = "MM/dd/yyyy")
+	@CsvBindByName(column = "Date")
+	public LocalDate date;
 
-  public CitiCreditCsvTemplate() {
-  }
+	@CsvBindByName(column = "Status")
+	public String status;
 
-  @Override
-  public BankAccountPair getBankAccount() {
-    return bankAccountPair;
-  }
+	@CsvBindByName(column = "Member Name")
+	public String memberName;
 
-  @Override public Transactions toTransactions() {
-    Transactions transactions = new Transactions();
-    if (debit != null) {
-      transactions.setAmount(debit);
-    } else {
-      transactions.setAmount(credit);
-    }
-    transactions.setTransactionDate(date);
-    transactions.setPostDate(date);
-    transactions.setDescription(description);
-    return transactions;
-  }
+	public CitiCreditCsvTemplate() {
+	}
 
-  @Override public String toString() {
-    return "CitiCreditCsvTemplate{" +
-        "bankAccountPair=" + bankAccountPair +
-        ", debit=" + debit +
-        ", credit=" + credit +
-        ", description='" + description + '\'' +
-        ", date=" + date +
-        ", status='" + status + '\'' +
-        ", memberName='" + memberName + '\'' +
-        '}';
-  }
+	@Override
+	public BankAccountPair getBankAccount() {
+		return BANK_ACCOUNT_PAIR;
+	}
+
+	@Override
+	public BigDecimal getAmount() {
+		return debit != null ? debit : credit;
+	}
+
+	@Override
+	public String getCategory() {
+		return "";  // Citi doesn't provide categories
+	}
+
+	@Override
+	public String getDescription() {
+		return description;
+	}
+
+	@Override
+	public LocalDate getTransactionDate() {
+		return date;
+	}
 }

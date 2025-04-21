@@ -1,5 +1,28 @@
 package today.ihelio.minance.rest;
 
+import com.google.common.collect.ImmutableList;
+import com.opencsv.bean.CsvToBean;
+import com.opencsv.bean.CsvToBeanBuilder;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import org.jboss.resteasy.reactive.PartType;
+import org.jboss.resteasy.reactive.RestForm;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
+import org.jooq.exception.DataAccessException;
+import today.ihelio.jooq.tables.pojos.Accounts;
+import today.ihelio.jooq.tables.pojos.Banks;
+import today.ihelio.jooq.tables.pojos.Transactions;
+import today.ihelio.minance.csvpojos.AbstractBankAccountCsvTemplate;
+import today.ihelio.minance.csvpojos.BankAccountCsvFactory;
+import today.ihelio.minance.csvpojos.BankAccountPair;
+import today.ihelio.minance.exception.CustomException;
+import today.ihelio.minance.service.AccountService;
+import today.ihelio.minance.service.BankService;
+import today.ihelio.minance.service.TransactionService;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -14,42 +37,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.jboss.resteasy.reactive.PartType;
-import org.jboss.resteasy.reactive.RestForm;
-import org.jboss.resteasy.reactive.multipart.FileUpload;
-import org.jooq.exception.DataAccessException;
-
-import com.google.common.collect.ImmutableList;
-import com.opencsv.bean.CsvToBean;
-import com.opencsv.bean.CsvToBeanBuilder;
-
-import jakarta.inject.Inject;
-import jakarta.inject.Singleton;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.NotFoundException;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.PUT;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 import static jakarta.ws.rs.core.Response.Status.OK;
-import today.ihelio.jooq.tables.pojos.Accounts;
-import today.ihelio.jooq.tables.pojos.Banks;
-import today.ihelio.jooq.tables.pojos.Transactions;
-import today.ihelio.minance.csvpojos.BankAccountCsvFactory;
-import today.ihelio.minance.csvpojos.BankAccountCsvTemplate;
-import today.ihelio.minance.csvpojos.BankAccountPair;
 import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.MINANCE;
-import today.ihelio.minance.exception.CustomException;
-import today.ihelio.minance.service.AccountService;
-import today.ihelio.minance.service.BankService;
-import today.ihelio.minance.service.TransactionService;
 import static today.ihelio.minance.util.TransactionUtil.makeBankAccountPair;
 
 @Path("/1.0/minance/transactions")
@@ -60,13 +50,13 @@ public class TransactionResource {
 	private final TransactionService transactionService;
 	private final AccountService accountService;
 	private final BankService bankService;
-	private final BankAccountCsvFactory<BankAccountCsvTemplate> bankAccountCsvFactory;
+	private final BankAccountCsvFactory bankAccountCsvFactory;
 	private final DateTimeFormatter formatter;
 
 	@Inject
 	public TransactionResource(TransactionService transactionService, AccountService accountService,
 	                           BankService bankService,
-	                           BankAccountCsvFactory<BankAccountCsvTemplate> bankAccountCsvFactory) {
+	                           BankAccountCsvFactory bankAccountCsvFactory) {
 		this.transactionService = transactionService;
 		this.accountService = accountService;
 		this.bankService = bankService;
@@ -81,58 +71,61 @@ public class TransactionResource {
 			throws SQLException, CustomException {
 		String bankName = form.bankName;
 		String accountName = form.accountName;
-		String useMinanceFormat = form.useMinanceFormat;
-		var now = LocalDateTime.now();
+		LocalDateTime now = LocalDateTime.now();
 
 		Banks banks = bankService.findBankByName(BankAccountPair.BankName.validateAndGet(bankName))
-								 .orElseThrow(() -> new CustomException(new NotFoundException("No Bank Found")));
+				.orElseThrow(() -> new CustomException(new NotFoundException("No Bank Found")));
 
-		Optional<Accounts> account =
-				accountService.findAccountByBankAndAccountName(bankName, accountName);
-		if (account.isEmpty()) {
-			throw new CustomException(new NotFoundException("No Account Found"));
-		}
+		Accounts account = accountService.findAccountByBankAndAccountName(bankName, accountName)
+				.orElseThrow(() -> new CustomException(new NotFoundException("No Account Found")));
 
-		BankAccountPair bankAccountPair;
-		try {
-			if ("1".equals(useMinanceFormat)) {
-				bankAccountPair = MINANCE_BANK_ACCOUNT;
-			} else {
-				bankAccountPair = makeBankAccountPair(bankName, account.get().getAccountType());
-			}
-		} catch (IllegalArgumentException e) {
-			throw new CustomException(
-					String.format("cannot make BankAccountPair from %s and %s", bankName,
-							accountName), e);
-		}
+		BankAccountPair bankAccountPair = makeBankAccountPair(bankName, account.getAccountType());
 
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+		List<? extends AbstractBankAccountCsvTemplate> rawTransactions = null;
+
 		try (InputStream io = Files.newInputStream(file.uploadedFile());
-			 Reader reader = new InputStreamReader(io, StandardCharsets.UTF_8)) {
-			CsvToBean<BankAccountCsvTemplate> csvReader =
-					new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-							.withType(template.getClass())
-							.withSeparator(',')
-							.withIgnoreLeadingWhiteSpace(true)
-							.withIgnoreEmptyLine(true)
-							.build();
-			List<? extends BankAccountCsvTemplate> rawTransactions = csvReader.parse();
-			List<Transactions> transactions =
-					rawTransactions.stream().map(BankAccountCsvTemplate::toTransactions).collect(
-							Collectors.toList());
-
-			transactions.forEach(t -> {
-						t.setAccountId(account.get().getAccountId());
-						t.setAccountName(account.get().getAccountName());
-						t.setBankName(banks.getBankName());
-						t.setUploadTime(now.format(formatter));
-					}
-			);
-			int numUploaded = transactionService.create(transactions);
-			return Response.status(OK).entity(numUploaded + " transactions uploaded").build();
-		} catch (IOException e) {
-			throw new RuntimeException("Fail to save the csv file!", e);
+		     Reader reader = new InputStreamReader(io, StandardCharsets.UTF_8)) {
+			rawTransactions = parseWithTemplate(reader, bankAccountCsvFactory.get(bankAccountPair));
+		} catch (RuntimeException | IOException ignore) {
 		}
+
+		if (rawTransactions == null || rawTransactions.isEmpty()) {
+			try (InputStream retryIo = Files.newInputStream(file.uploadedFile());
+			     Reader retryReader = new InputStreamReader(retryIo, StandardCharsets.UTF_8)) {
+				rawTransactions = parseWithTemplate(retryReader, bankAccountCsvFactory.get(MINANCE_BANK_ACCOUNT));
+			} catch (IOException ioException) {
+				throw new RuntimeException("Fail to save the csv file!", ioException);
+			}
+		}
+
+		if (rawTransactions == null || rawTransactions.isEmpty()) {
+			throw new RuntimeException("Failed to parse the csv file!");
+		}
+
+		List<Transactions> transactions = rawTransactions.stream()
+				.map(AbstractBankAccountCsvTemplate::toTransactions)
+				.peek(t -> {
+					t.setAccountId(account.getAccountId());
+					t.setAccountName(account.getAccountName());
+					t.setBankName(banks.getBankName());
+					t.setUploadTime(now.format(formatter));
+				})
+				.collect(Collectors.toList());
+
+		int numUploaded = transactionService.create(transactions);
+		return Response.status(Response.Status.OK).entity(numUploaded + " transactions uploaded").build();
+	}
+
+	private <T extends AbstractBankAccountCsvTemplate> List<T> parseWithTemplate(Reader reader, T template) {
+		CsvToBean<T> csvReader = new CsvToBeanBuilder<T>(reader)
+				.withType((Class<? extends T>) template.getClass())
+				.withSeparator(',')
+				.withIgnoreLeadingWhiteSpace(true)
+				.withIgnoreEmptyLine(true)
+				.build();
+		List<T> transactions = csvReader.parse();
+		validateParsedTransactions(transactions);
+		return transactions;
 	}
 
 	@POST
@@ -248,6 +241,12 @@ public class TransactionResource {
 					"Didn't find any records uploaded at: " + uploadAt));
 		} else {
 			return Response.status(OK).entity("deleted").build();
+		}
+	}
+
+	private <T extends AbstractBankAccountCsvTemplate> void validateParsedTransactions(List<T> transactions) {
+		for (T transaction : transactions) {
+			transaction.validate();
 		}
 	}
 }
