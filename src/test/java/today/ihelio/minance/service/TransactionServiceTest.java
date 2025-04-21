@@ -11,8 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import today.ihelio.jooq.tables.pojos.Accounts;
 import today.ihelio.jooq.tables.pojos.Transactions;
+import today.ihelio.minance.csvpojos.AbstractBankAccountCsvTemplate;
 import today.ihelio.minance.csvpojos.BankAccountCsvFactory;
-import today.ihelio.minance.csvpojos.BankAccountCsvTemplate;
 import today.ihelio.minance.csvpojos.BankAccountPair;
 
 import java.io.InputStream;
@@ -35,14 +35,19 @@ public class TransactionServiceTest {
 	private final String ACCOUNT_NAME_TEST1 = "test1";
 	private final String ACCOUNT_NAME_TEST2 = "test2";
 	private final BigDecimal INIT_BALANCE = new BigDecimal("123.12");
+
 	@Inject
 	BankService bankService;
+
 	@Inject
 	AccountService accountService;
+
 	@Inject
 	TransactionService transactionService;
+
 	@Inject
-	BankAccountCsvFactory<BankAccountCsvTemplate> bankAccountCsvFactory;
+	BankAccountCsvFactory bankAccountCsvFactory;
+
 	@Inject
 	Flyway flyway;
 
@@ -176,20 +181,20 @@ public class TransactionServiceTest {
 
 		Reader reader = new InputStreamReader(file);
 
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+		AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
 
-		CsvToBean<BankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
+		CsvToBean<AbstractBankAccountCsvTemplate> csvReader =
+				new CsvToBeanBuilder<AbstractBankAccountCsvTemplate>(reader)
 						.withType(template.getClass())
 						.withSeparator(',')
 						.withIgnoreLeadingWhiteSpace(true)
 						.withIgnoreEmptyLine(true)
 						.build();
 
-		List<? extends BankAccountCsvTemplate> rawTransactions = csvReader.parse();
+		List<? extends AbstractBankAccountCsvTemplate> rawTransactions = csvReader.parse();
 
 		List<Transactions> transactions =
-				rawTransactions.stream().map(BankAccountCsvTemplate::toTransactions).collect(
+				rawTransactions.stream().map(AbstractBankAccountCsvTemplate::toTransactions).collect(
 						Collectors.toList());
 
 		assertThat(transactions.size()).isGreaterThan(0);

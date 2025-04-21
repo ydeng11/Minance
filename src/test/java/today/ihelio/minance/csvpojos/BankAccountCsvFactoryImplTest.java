@@ -1,287 +1,306 @@
 package today.ihelio.minance.csvpojos;
 
-import com.opencsv.bean.CsvToBean;
-import com.opencsv.bean.CsvToBeanBuilder;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import today.ihelio.jooq.tables.pojos.Transactions;
 
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
+import static org.assertj.core.api.Assertions.assertThat;
+import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
+import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.*;
 
 @QuarkusTest
 class BankAccountCsvFactoryImplTest {
 	@Inject
-	BankAccountCsvFactory<BankAccountCsvTemplate> bankAccountCsvFactory;
+	BankAccountCsvFactory bankAccountCsvFactory;
 
-	@Test
-	void checkChaseCredit_CsvParse() {
-		BankAccountPair bankAccountPair =
-				BankAccountPair.of(BankAccountPair.BankName.CHASE, BankAccountPair.AccountType.CREDIT);
-		ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-		InputStream file = classLoader.getResourceAsStream("testCsv/chase_credit.csv");
-
-		Reader reader = new InputStreamReader(file);
-
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
-
-		CsvToBean<BankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-						.withType(template.getClass())
-						.withSeparator(',')
-						.withIgnoreLeadingWhiteSpace(true)
-						.withIgnoreEmptyLine(true)
-						.build();
-
-		List<? extends BankAccountCsvTemplate> chaseTransactions = csvReader.parse();
-		assertThat(chaseTransactions.size(),
-				equalTo(8));
-
-		assertThat(chaseTransactions.get(0).toString(), equalTo(
-				"ChaseCreditCsvTemplate{bankAccountPair=BankAccountPair{bankName=CHASE, accountType=CREDIT},"
-						+ " amount=-12.59, category='Entertainment', description='GOOGLE *YouTubePremium', transactionType='Sale', "
-						+ "transactionDate=2011-03-14, postDate=2011-03-14, memo=''}"));
+	private void assertTransactionEquals(Transactions actual, Transactions expected) {
+		assertThat(actual.getAmount()).isEqualTo(expected.getAmount());
+		assertThat(actual.getCategory()).isEqualTo(expected.getCategory());
+		assertThat(actual.getDescription()).isEqualTo(expected.getDescription());
+		assertThat(actual.getTransactionDate()).isEqualTo(expected.getTransactionDate());
+		assertThat(actual.getPostDate()).isEqualTo(expected.getPostDate());
+		assertThat(actual.getMemo()).isEqualTo(expected.getMemo());
 	}
 
-	@Test
-	void checkDiscoverCredit_CsvParse() {
-		BankAccountPair bankAccountPair =
-				BankAccountPair.of(BankAccountPair.BankName.DISCOVER, BankAccountPair.AccountType.CREDIT);
-		ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-		InputStream file = classLoader.getResourceAsStream("testCsv/discover_credit.csv");
+	@Nested
+	class ChaseCreditTests {
+		private final BankAccountPair CHASE_CREDIT = BankAccountPair.of(CHASE, CREDIT);
 
-		Reader reader = new InputStreamReader(file);
+		@Test
+		void parsesTransactionsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(CHASE_CREDIT);
 
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> transactions = CsvTestUtils.parseCsvFile(
+					"testCsv/chase_credit.csv", template);
 
-		CsvToBean<BankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-						.withType(template.getClass())
-						.withSeparator(',')
-						.withIgnoreLeadingWhiteSpace(true)
-						.withIgnoreEmptyLine(true)
-						.build();
+			// Then
+			assertThat(transactions).hasSize(8);
 
-		List<? extends BankAccountCsvTemplate> discoverTransactions = csvReader.parse();
-		assertThat(discoverTransactions.size(),
-				equalTo(8));
+			Transactions expected = TestTransactionData.builder()
+					.amount(new BigDecimal("12.59"))
+					.category("Entertainment")
+					.description("GOOGLE *YouTubePremium")
+					.transactionDate(LocalDate.of(2011, 3, 14))
+					.postDate(LocalDate.of(2011, 3, 14))
+					.memo("")
+					.build();
 
-		assertThat(discoverTransactions.get(0).toString(), equalTo(
-				"DiscoverCreditCsvTemplate{bankAccountPair=BankAccountPair{bankName=DISCOVER, accountType=CREDIT},"
-						+ " amount=294.64, category='Restaurants', description='DRAGON CITY', "
-						+ "transactionDate=1999-04-09, postDate=1999-04-09}"));
+			assertTransactionEquals(transactions.getFirst().toTransactions(), expected);
+		}
+
+		@Test
+		void handlesPaymentTransactions() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(CHASE_CREDIT);
+
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> transactions = CsvTestUtils.parseCsvFile(
+					"testCsv/chase_credit.csv", template);
+
+			// Then
+			Transactions payment = transactions.getFirst().toTransactions();
+			assertThat(payment.getCategory()).isEqualTo("Entertainment");
+		}
 	}
 
-	@Test
-	void checkBoaCredit_CsvParse() {
-		BankAccountPair bankAccountPair =
-				BankAccountPair.of(BankAccountPair.BankName.BANK_OF_AMERICA,
-						BankAccountPair.AccountType.CREDIT);
-		ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-		InputStream file = classLoader.getResourceAsStream("testCsv/boa.csv");
+	@Nested
+	class DiscoverCreditTests {
+		private final BankAccountPair DISCOVER_CREDIT = BankAccountPair.of(DISCOVER, CREDIT);
 
-		Reader reader = new InputStreamReader(file);
+		@Test
+		void parsesTransactionsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(DISCOVER_CREDIT);
 
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> transactions = CsvTestUtils.parseCsvFile(
+					"testCsv/discover_credit.csv", template);
 
-		CsvToBean<BankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-						.withType(template.getClass())
-						.withSeparator(',')
-						.withIgnoreLeadingWhiteSpace(true)
-						.withIgnoreEmptyLine(true)
-						.build();
+			// Then
+			assertThat(transactions).hasSize(8);
 
-		List<? extends BankAccountCsvTemplate> boaTransactions = csvReader.parse();
-		assertThat(boaTransactions.size(),
-				equalTo(6));
+			Transactions expected = TestTransactionData.builder()
+					.amount(new BigDecimal("294.64"))
+					.category("Restaurants")
+					.description("DRAGON CITY")
+					.transactionDate(LocalDate.of(1999, 4, 9))
+					.postDate(LocalDate.of(1999, 4, 9))
+					.memo("")
+					.build();
 
-		assertThat(boaTransactions.get(0).toString(), equalTo(
-				"BoaCreditCsvTemplate{status='posted', date=2023-09-19, " +
-						"originalDescription='AMAZON RETA* EN44T2YC3   WWW.AMAZON.COWA', splitType='', " +
-						"category='Refunds/Adjustments', currency='USD', amount=-16.72, userDescription='', " +
-						"memo='', classification='Personal', " +
-						"accountName='Bank of America - Credit Card - Customized Cash Rewards Visa Signature', simpleDescription='Amazon'}"));
+			assertTransactionEquals(transactions.getFirst().toTransactions(), expected);
+		}
 	}
 
-	@Test
-	void checkBoaDebit_CsvParse() {
-		BankAccountPair bankAccountPair =
-				BankAccountPair.of(BankAccountPair.BankName.BANK_OF_AMERICA,
-						BankAccountPair.AccountType.DEBIT);
-		ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-		InputStream file = classLoader.getResourceAsStream("testCsv/boa.csv");
+	@Nested
+	class BoaCreditTests {
+		private final BankAccountPair BOA_CREDIT = BankAccountPair.of(BANK_OF_AMERICA, CREDIT);
 
-		Reader reader = new InputStreamReader(file);
+		@Test
+		void parsesTransactionsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(BOA_CREDIT);
 
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> transactions = CsvTestUtils.parseCsvFile(
+					"testCsv/boa.csv", template);
 
-		CsvToBean<BankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-						.withType(template.getClass())
-						.withSeparator(',')
-						.withIgnoreLeadingWhiteSpace(true)
-						.withIgnoreEmptyLine(true)
-						.build();
+			// Then
+			assertThat(transactions).hasSize(6);
 
-		List<? extends BankAccountCsvTemplate> boaTransactions = csvReader.parse();
-		assertThat(boaTransactions.size(),
-				equalTo(6));
+			Transactions expected = TestTransactionData.builder()
+					.amount(new BigDecimal("16.72"))
+					.category("Refunds/Adjustments")
+					.description("AMAZON RETA* EN44T2YC3   WWW.AMAZON.COWA")
+					.transactionDate(LocalDate.of(2023, 9, 19))
+					.postDate(LocalDate.of(2023, 9, 19))
+					.memo("")
+					.build();
 
-		assertThat(boaTransactions.get(0).toString(), equalTo(
-				"BoaDebitCsvTemplate{status='posted', date=2023-09-19, " +
-						"originalDescription='AMAZON RETA* EN44T2YC3   WWW.AMAZON.COWA', splitType='', " +
-						"category='Refunds/Adjustments', currency='USD', amount=-16.72, userDescription='', " +
-						"memo='', classification='Personal', " +
-						"accountName='Bank of America - Credit Card - Customized Cash Rewards Visa Signature', simpleDescription='Amazon'}"));
+			assertTransactionEquals(transactions.getFirst().toTransactions(), expected);
+		}
 	}
 
-	@Test
-	void checkAmexCredit_CsvParse() {
-		BankAccountPair bankAccountPair =
-				BankAccountPair.of(BankAccountPair.BankName.AMEX, BankAccountPair.AccountType.CREDIT);
-		ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-		InputStream file = classLoader.getResourceAsStream("testCsv/amex_credit.csv");
+	@Nested
+	class BoaDebitTests {
+		private final BankAccountPair BOA_DEBIT = BankAccountPair.of(BANK_OF_AMERICA, DEBIT);
 
-		Reader reader = new InputStreamReader(file);
+		@Test
+		void parsesTransactionsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(BOA_DEBIT);
 
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> transactions = CsvTestUtils.parseCsvFile(
+					"testCsv/boa.csv", template);
 
-		CsvToBean<BankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-						.withType(template.getClass())
-						.withSeparator(',')
-						.withIgnoreLeadingWhiteSpace(true)
-						.withIgnoreEmptyLine(true)
-						.build();
+			// Then
+			assertThat(transactions).hasSize(6);
 
-		List<? extends BankAccountCsvTemplate> amexTransactions = csvReader.parse();
-		assertThat(amexTransactions.size(),
-				equalTo(8));
+			Transactions expected = TestTransactionData.builder()
+					.amount(new BigDecimal("16.72"))
+					.category("Refunds/Adjustments")
+					.description("AMAZON RETA* EN44T2YC3   WWW.AMAZON.COWA")
+					.transactionDate(LocalDate.of(2023, 9, 19))
+					.postDate(LocalDate.of(2023, 9, 19))
+					.memo("")
+					.build();
 
-		assertThat(amexTransactions.get(0).toString(), equalTo(
-				"AmexCreditCsvTemplate{bankAccountPair=BankAccountPair{bankName=AMEX, accountType=CREDIT},"
-						+ " amount=52.52, category='Merchandise & Supplies-Groceries', description='SUNRISE MANAGEMENT ISUNRISE             FL', date=2023-07-23, "
-						+ "address='10065 SUNSET STRIP', cityZip='SUNRISE\n33322', state='FL', country='UNITED STATES', reference='3256750613472558'}"));
+			assertTransactionEquals(transactions.getFirst().toTransactions(), expected);
+		}
 	}
 
-	@Test
-	void checkCitiCredit_CsvParse() {
-		BankAccountPair bankAccountPair =
-				BankAccountPair.of(BankAccountPair.BankName.CITI, BankAccountPair.AccountType.CREDIT);
-		ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-		InputStream file = classLoader.getResourceAsStream("testCsv/citi_credit.csv");
+	@Nested
+	class AmexCreditTests {
+		private final BankAccountPair AMEX_CREDIT = BankAccountPair.of(AMEX, CREDIT);
 
-		Reader reader = new InputStreamReader(file);
+		@Test
+		void parsesTransactionsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(AMEX_CREDIT);
 
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> transactions = CsvTestUtils.parseCsvFile(
+					"testCsv/amex_credit.csv", template);
 
-		CsvToBean<BankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-						.withType(template.getClass())
-						.withSeparator(',')
-						.withIgnoreLeadingWhiteSpace(true)
-						.withIgnoreEmptyLine(true)
-						.build();
+			// Then
+			assertThat(transactions).hasSize(8);
 
-		List<? extends BankAccountCsvTemplate> citiTransactions = csvReader.parse();
-		assertThat(citiTransactions.size(),
-				equalTo(8));
+			Transactions expected = TestTransactionData.builder()
+					.amount(new BigDecimal("52.52"))
+					.category("Merchandise & Supplies-Groceries")
+					.description("SUNRISE MANAGEMENT ISUNRISE             FL")
+					.transactionDate(LocalDate.of(2023, 7, 23))
+					.postDate(LocalDate.of(2023, 7, 23))
+					.memo("3256750613472558")
+					.build();
 
-		assertThat(citiTransactions.get(0).toString(), equalTo(
-				"CitiCreditCsvTemplate{bankAccountPair=BankAccountPair{bankName=CITI, accountType=CREDIT},"
-						+ " debit=null, credit=-371.77, description='AUTOPAY 000000000007557RAUTOPAY AUTO-PMT', "
-						+ "date=2023-05-09, status='Cleared', memberName='HELIO D'}"));
+			assertTransactionEquals(transactions.getFirst().toTransactions(), expected);
+		}
 	}
 
-	@Test
-	void checkAppleCredit_CsvParse() {
-		BankAccountPair bankAccountPair =
-				BankAccountPair.of(BankAccountPair.BankName.APPLE, BankAccountPair.AccountType.CREDIT);
-		ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-		InputStream file = classLoader.getResourceAsStream("testCsv/apple_credit.csv");
+	@Nested
+	class CitiCreditTests {
+		private final BankAccountPair CITI_CREDIT = BankAccountPair.of(CITI, CREDIT);
 
-		Reader reader = new InputStreamReader(file);
+		@Test
+		void parsesTransactionsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(CITI_CREDIT);
 
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> transactions = CsvTestUtils.parseCsvFile(
+					"testCsv/citi_credit.csv", template);
 
-		CsvToBean<BankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-						.withType(template.getClass())
-						.withSeparator(',')
-						.withIgnoreLeadingWhiteSpace(true)
-						.withIgnoreEmptyLine(true)
-						.build();
+			// Then
+			assertThat(transactions).hasSize(8);
 
-		List<? extends BankAccountCsvTemplate> appleTransactions = csvReader.parse();
-		assertThat(appleTransactions.size(),
-				equalTo(8));
+			Transactions expected = TestTransactionData.builder()
+					.amount(new BigDecimal("-371.77"))
+					.category("")
+					.description("AUTOPAY 000000000007557RAUTOPAY AUTO-PMT")
+					.transactionDate(LocalDate.of(2023, 5, 9))
+					.postDate(LocalDate.of(2023, 5, 9))
+					.memo("")
+					.build();
 
-		assertThat(appleTransactions.get(0).toString(), equalTo(
-				"AppleCreditCsvTemplate{bankAccountPair=BankAccountPair{bankName=APPLE, accountType=CREDIT},"
-						+ " amount=120.00, category='Restaurants', transactionType='Purchase', description='CY CHINESE RESTAURANT 1242 NE 163RD ST NORTH MIAMI B33162 FL USA', merchant='CY Chinese Restaurant', "
-						+ "transactionDate=2023-07-30, clearingDate=2023-07-31, memberName='Helio D'}"));
+			assertTransactionEquals(transactions.getFirst().toTransactions(), expected);
+		}
 	}
 
-	@Test
-	void checkCashAppDebit_CsvParse() {
-		BankAccountPair bankAccountPair =
-				BankAccountPair.of(BankAccountPair.BankName.CASH_APP, BankAccountPair.AccountType.DEBIT);
-		ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-		InputStream file = classLoader.getResourceAsStream("testCsv/cash_app_debit.csv");
+	@Nested
+	class AppleCreditTests {
+		private final BankAccountPair APPLE_CREDIT = BankAccountPair.of(APPLE, CREDIT);
 
-		Reader reader = new InputStreamReader(file);
+		@Test
+		void parsesTransactionsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(APPLE_CREDIT);
 
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> transactions = CsvTestUtils.parseCsvFile(
+					"testCsv/apple_credit.csv", template);
 
-		CsvToBean<BankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-						.withType(template.getClass())
-						.withSeparator(',')
-						.withIgnoreLeadingWhiteSpace(true)
-						.withIgnoreEmptyLine(true)
-						.build();
+			// Then
+			assertThat(transactions).hasSize(8);
 
-		List<? extends BankAccountCsvTemplate> cashAppTransactions = csvReader.parse();
-		assertThat(cashAppTransactions.size(),
-				equalTo(8));
+			Transactions expected = TestTransactionData.builder()
+					.amount(new BigDecimal("120.00"))
+					.category("Restaurants")
+					.description("CY CHINESE RESTAURANT 1242 NE 163RD ST NORTH MIAMI B33162 FL USA")
+					.transactionDate(LocalDate.of(2023, 7, 30))
+					.postDate(LocalDate.of(2023, 7, 31))
+					.memo("")
+					.build();
 
-		assertThat(cashAppTransactions.get(0).toString(), equalTo(
-				"CashAppDebitCsvTemplate{bankAccountPair=BankAccountPair{bankName=CASH_APP, accountType=DEBIT},"
-						+ " currency='USD', amount=7.06, transactionType='Bitcoin Boost', fee=0.0, netAmount=7.06, assetType='BTC', assetPrice=26358.04, assetAmount=0.00026785, "
-						+ "status='COMPLETED', transactionId='atqvua', date=2023-06-07, notes='#boost sale of USD 7.06', senderOrReceiver='', account='Your Cash'}"));
+			assertTransactionEquals(transactions.getFirst().toTransactions(), expected);
+		}
 	}
 
-	@Test
-	void checkMinanceCreditDebit_CsvParse() {
-		BankAccountPair bankAccountPair =
-				BankAccountPair.of(BankAccountPair.BankName.MINANCE, BankAccountPair.AccountType.CREDIT);
-		ClassLoader classLoader = BankAccountCsvFactoryImplTest.class.getClassLoader();
-		InputStream file = classLoader.getResourceAsStream("testCsv/minance_credit_debit.csv");
+	@Nested
+	class CashAppDebitTests {
+		private final BankAccountPair CASH_APP_DEBIT = BankAccountPair.of(CASH_APP, DEBIT);
 
-		Reader reader = new InputStreamReader(file);
+		@Test
+		void parsesTransactionsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(CASH_APP_DEBIT);
 
-		BankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> transactions = CsvTestUtils.parseCsvFile(
+					"testCsv/cash_app_debit.csv", template);
 
-		CsvToBean<BankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<BankAccountCsvTemplate>(reader)
-						.withType(template.getClass())
-						.withSeparator(',')
-						.withIgnoreLeadingWhiteSpace(true)
-						.withIgnoreEmptyLine(true)
-						.build();
+			// Then
+			assertThat(transactions).hasSize(8);
 
-		List<? extends BankAccountCsvTemplate> transactions = csvReader.parse();
-		assertThat(transactions.size(), equalTo(8));
+			Transactions expected = TestTransactionData.builder()
+					.amount(new BigDecimal("7.06"))
+					.category("")
+					.description("#boost sale of USD 7.06")
+					.transactionDate(LocalDate.of(2023, 6, 7))
+					.postDate(LocalDate.of(2023, 6, 7))
+					.memo("")
+					.build();
 
-		assertThat(transactions.get(0).toString(), equalTo(
-				"MinanceCsvTemplate{bankAccountPair=BankAccountPair{bankName=MINANCE, accountType=CREDIT},"
-						+ " amount=-12.59, category='Entertainment', description='GOOGLE *YouTubePremium', transactionType='Sale', "
-						+ "transactionDate=2011-03-14, postDate=2011-03-14, memo=''}"));
+			assertTransactionEquals(transactions.getFirst().toTransactions(), expected);
+		}
+	}
+
+	@Nested
+	class MinanceCreditDebitTests {
+		private final BankAccountPair MINANCE_CREDIT = BankAccountPair.of(MINANCE, CREDIT);
+
+		@Test
+		void parsesTransactionsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(MINANCE_CREDIT);
+
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> transactions = CsvTestUtils.parseCsvFile(
+					"testCsv/minance_credit_debit.csv", template);
+
+			// Then
+			assertThat(transactions).hasSize(8);
+
+			Transactions expected = TestTransactionData.builder()
+					.amount(new BigDecimal("12.59"))
+					.category("Entertainment")
+					.description("GOOGLE *YouTubePremium")
+					.transactionDate(LocalDate.of(2011, 3, 14))
+					.postDate(LocalDate.of(2011, 3, 14))
+					.memo("")
+					.build();
+
+			assertTransactionEquals(transactions.getFirst().toTransactions(), expected);
+		}
 	}
 }
