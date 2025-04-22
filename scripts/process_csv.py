@@ -1,3 +1,4 @@
+#!/usr/bin/env uv run
 import argparse
 from enum import Enum
 import pandas as pd
@@ -73,5 +74,5 @@ if __name__ == "__main__":
     parser.add_argument("--bank_type", type=str, required=True, help="The bank type")
 
     args = parser.parse_args()
-    
+
     main(args.file_path, args.bank_type)
