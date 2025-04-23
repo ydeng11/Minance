@@ -1,72 +1,95 @@
 # Minance
 
-A personal expense analysis tool built with Quarkus and React.
+Modern personal finance analytics platform built with Quarkus and React.
 
-![image](https://github.com/user-attachments/assets/77d75d24-90b5-4d6d-91f1-8e9546eae563)
-
+![Application Screenshot](https://github.com/user-attachments/assets/77d75d24-90b5-4d6d-91f1-8e9546eae563)
 
 ## Features
 
-- Clean and intuitive user interface
-- CSV transaction import support
-- Privacy-focused design
-- Expense visualization and tracking
-- Multi-bank account management
+- Privacy-focused personal finance management
+- Multi-account transaction tracking
+- Native support for major bank CSV formats (Chase, Discover, Bank of America, Citi, Amex)
+- Extensible import framework for additional financial institutions
+- Custom category creation to standardize transactions across different banks
+- Advanced expense visualization and analytics
+- Merchant spending pattern analysis
+- Optimized for credit card and tap pay transaction analysis
+- Clean, responsive user interface
 
-## Tech Stack
+## Technology Stack
 
-- Backend: Quarkus
-- Frontend: React + TypeScript + Vite
-- Database: PostgreSQL
-- Build Tool: Maven
+| Component | Technologies |
+|-----------|-------------|
+| Backend   | Quarkus, Java 21+ |
+| Frontend  | React, TypeScript, Vite |
+| Database  | PostgreSQL |
+| Build     | Maven |
+| Deployment| Docker-ready |
 
-## Development
+## Development Setup
 
 ### Prerequisites
 
 - Java 21+
 - Node.js 18+
-- Docker (optional)
 - Maven
+- PostgreSQL
+- Docker (optional)
 
 ### Running Locally
 
-1. Start the development server:
-
+Backend development server:
 ```bash
 quarkus dev
 ```
 
-2. The application will be available at:
+Access points:
+- API: http://localhost:8080
+- UI: http://localhost:3000
 
-- Backend API: http://localhost:8080
-- Frontend: http://localhost:3000
+### Production Build
 
-### Building for Production
-
-Create a production build:
-
+Standard build:
 ```bash
 quarkus build --no-tests
 ```
 
-For native executable (requires GraalVM):
-
+Native executable (requires GraalVM):
 ```bash
 quarkus build --native --no-tests
 ```
 
-### Docker Support
+### Docker Deployment
 
-Build multi-platform Docker image:
-
+Multi-platform image build:
 ```bash
 docker build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm -t minance:latest .
 ```
 
-## License
+### Docker Compose Example
 
-MIT License - See [LICENSE](LICENSE) for details
+For a persistent deployment with PostgreSQL, create a `docker-compose.yml` file:
+
+```yaml
+version: "3.8"
+
+services:
+  minance:
+    image: ydeng11/minance:latest
+    container_name: minance
+    ports:
+      - "8080:8080"
+    volumes:
+      - /your/path/to/minance/data:/deployments/data:rw
+```
+
+Start the application stack:
+
+```bash
+docker-compose up -d
+```
+
+Then you can access `Minance` as http://localhost:8080
 
 ## Project Structure
 
@@ -74,9 +97,13 @@ MIT License - See [LICENSE](LICENSE) for details
 minance/
 ├── src/
 │   ├── main/
-│   │   ├── java/          # Backend code
-│   │   ├── resources/     # Configuration files
-│   │   ├── webui/        # Frontend React application
-│   │   └── docker/       # Docker configurations
-│   └── test/             # Test files
+│   │   ├── java/        # Backend services and API
+│   │   ├── resources/   # Configuration files
+│   │   ├── webui/       # React frontend application
+│   │   └── docker/      # Container configurations
+│   └── test/            # Test suite
 ```
+
+## License
+
+MIT License - See [LICENSE](LICENSE) for details
