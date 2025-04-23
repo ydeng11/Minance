@@ -1,6 +1,9 @@
 # Minance
 
-A modern personal finance management service built with Quarkus and React.
+A personal expense analysis tool built with Quarkus and React.
+
+![image](https://github.com/user-attachments/assets/77d75d24-90b5-4d6d-91f1-8e9546eae563)
+
 
 ## Features
 
