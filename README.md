@@ -89,7 +89,7 @@ Start the application stack:
 docker-compose up -d
 ```
 
-Then you can access `Minance` as http://localhost:8080
+Then you can access `Minance` as http://localhost:8080.
 
 ## Project Structure
 
