@@ -2,7 +2,7 @@
 
 Modern personal finance analytics platform built with Quarkus and React.
 
-![Application Screenshot](https://github.com/user-attachments/assets/77d75d24-90b5-4d6d-91f1-8e9546eae563)
+![Demo](https://github.com/user-attachments/assets/bfd0d669-e2b8-484e-a9c7-5f1301d9481b)
 
 ## Features
 
