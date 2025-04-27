@@ -66,6 +66,11 @@ Multi-platform image build:
 docker build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm -t minance:latest .
 ```
 
+### Docker Run Example
+```bash
+docker run -d --name minance -p 8080:8080 -v /path/to/your/data:/deployments/data:rw ydeng11/minance:latest
+```
+
 ### Docker Compose Example
 
 For a persistent deployment with PostgreSQL, create a `docker-compose.yml` file:
