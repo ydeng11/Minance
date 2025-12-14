@@ -56,6 +56,11 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+      - name: Setup test database directory
+        run: |
+          mkdir -p /tmp
+          touch /tmp/minance-test.db
+          chmod 666 /tmp/minance-test.db
       - name: Run tests
         run: ./mvnw -B test
         continue-on-error: false

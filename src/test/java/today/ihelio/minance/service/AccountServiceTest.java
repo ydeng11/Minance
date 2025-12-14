@@ -2,6 +2,9 @@ package today.ihelio.minance.service;
 
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import today.ihelio.jooq.tables.pojos.Accounts;
 import today.ihelio.minance.exception.CustomException;
@@ -18,6 +21,19 @@ public class AccountServiceTest {
 	AccountService accountService;
 	@Inject
 	BankService bankService;
+	@Inject
+	Flyway flyway;
+
+	@BeforeEach
+	void setUp() {
+		flyway.clean();
+		flyway.migrate();
+	}
+
+	@AfterEach
+	void clean() {
+		flyway.clean();
+	}
 
 	@Test
 	public void testAccountService_createAccount_illegalBank() throws Exception {
