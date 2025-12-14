@@ -1,19 +1,15 @@
 package today.ihelio.minance.service;
 
-import com.google.common.collect.ImmutableList;
-import com.opencsv.bean.CsvToBean;
-import com.opencsv.bean.CsvToBeanBuilder;
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
-import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import today.ihelio.jooq.tables.pojos.Accounts;
-import today.ihelio.jooq.tables.pojos.Transactions;
-import today.ihelio.minance.csvpojos.AbstractBankAccountCsvTemplate;
-import today.ihelio.minance.csvpojos.BankAccountCsvFactory;
-import today.ihelio.minance.csvpojos.BankAccountPair;
+import static org.assertj.core.api.Assertions.assertThat;
+import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
+import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.AMEX;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.APPLE;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.BANK_OF_AMERICA;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CASH_APP;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CHASE;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CITI;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.DISCOVER;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -24,13 +20,24 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
-import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.*;
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import com.google.common.collect.ImmutableList;
+import com.opencsv.bean.CsvToBean;
+import com.opencsv.bean.CsvToBeanBuilder;
+
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import today.ihelio.jooq.tables.pojos.Accounts;
+import today.ihelio.jooq.tables.pojos.Transactions;
+import today.ihelio.minance.csvpojos.AbstractBankAccountCsvTemplate;
+import today.ihelio.minance.csvpojos.BankAccountCsvFactory;
+import today.ihelio.minance.csvpojos.BankAccountPair;
 
 @QuarkusTest
-//@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TransactionServiceTest {
 	private final String ACCOUNT_NAME_TEST1 = "test1";
 	private final String ACCOUNT_NAME_TEST2 = "test2";
@@ -65,18 +72,17 @@ public class TransactionServiceTest {
 		List<BankAccountPair> bankAccountPairList = bankAccountCsvFactory.getKeys();
 
 		bankAccountPairList.forEach((t) -> {
-					Accounts tempAccounts = new Accounts();
-					tempAccounts.setBankName(t.getBankName().getName());
-					tempAccounts.setAccountType(t.getAccountType().getType());
-					tempAccounts.setAccountName(ACCOUNT_NAME_TEST1 + "-" + t.getAccountType().getType());
-					tempAccounts.setInitBalance(INIT_BALANCE);
-					try {
-						accountService.create(tempAccounts);
-					} catch (Exception e) {
-						throw new RuntimeException(e);
-					}
-				}
-		);
+			Accounts tempAccounts = new Accounts();
+			tempAccounts.setBankName(t.getBankName().getName());
+			tempAccounts.setAccountType(t.getAccountType().getType());
+			tempAccounts.setAccountName(ACCOUNT_NAME_TEST1 + "-" + t.getAccountType().getType());
+			tempAccounts.setInitBalance(INIT_BALANCE);
+			try {
+				accountService.create(tempAccounts);
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		});
 
 		accountService.create(
 				new Accounts(null, null, CITI.getName(), ACCOUNT_NAME_TEST2, CREDIT.getType(),
@@ -108,19 +114,18 @@ public class TransactionServiceTest {
 		var category = "testBuy";
 		var amount = BigDecimal.valueOf(121.11);
 		var transactions = makeTransactions(date, description, category, uploadTime, amount);
-		Optional<Accounts> accounts =
-				accountService.findAccountByBankAndAccountName(CITI.getName(),
-						ACCOUNT_NAME_TEST2);
+		Optional<Accounts> accounts = accountService.findAccountByBankAndAccountName(CITI.getName(),
+				ACCOUNT_NAME_TEST2);
 		transactions.setAccountId(accounts.get().getAccountId());
 
 		assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
 
-		List<Transactions> savedTransactions =
-				transactionService.retrieveByAccount(accounts.get().getAccountId());
+		List<Transactions> savedTransactions = transactionService.retrieveByAccount(accounts.get().getAccountId());
 
 		assertThat(
 				transactionService.delete(
-						ImmutableList.of(savedTransactions.getFirst().getTransactionId()))).isEqualTo(1);
+						ImmutableList.of(savedTransactions.getFirst().getTransactionId())))
+				.isEqualTo(1);
 		assertThat(transactionService.retrieveByAccount(accounts.get().getAccountId()).size()).isEqualTo(0);
 	}
 
@@ -132,9 +137,8 @@ public class TransactionServiceTest {
 		var category = "testBuy";
 		var amount = BigDecimal.valueOf(11.11);
 		var transactions = makeTransactions(date, description, category, uploadTime, amount);
-		Optional<Accounts> accounts =
-				accountService.findAccountByBankAndAccountName(CITI.getName(),
-						ACCOUNT_NAME_TEST2);
+		Optional<Accounts> accounts = accountService.findAccountByBankAndAccountName(CITI.getName(),
+				ACCOUNT_NAME_TEST2);
 		transactions.setAccountId(accounts.get().getAccountId());
 		assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
 		assertThat(transactionService.deleteWithUploadTime(uploadTime)).isEqualTo(1);
@@ -148,15 +152,13 @@ public class TransactionServiceTest {
 		var category = "testBuy";
 		var amount = BigDecimal.valueOf(121.11);
 		var transactions = makeTransactions(date, description, category, uploadTime, amount);
-		Optional<Accounts> accounts =
-				accountService.findAccountByBankAndAccountName(CITI.getName(),
-						ACCOUNT_NAME_TEST2);
+		Optional<Accounts> accounts = accountService.findAccountByBankAndAccountName(CITI.getName(),
+				ACCOUNT_NAME_TEST2);
 		transactions.setAccountId(accounts.get().getAccountId());
 
 		assertThat(transactionService.create(ImmutableList.of(transactions))).isEqualTo(1);
 
-		List<Transactions> transactionsList =
-				transactionService.retrieveByAccount(accounts.get().getAccountId());
+		List<Transactions> transactionsList = transactionService.retrieveByAccount(accounts.get().getAccountId());
 		Transactions updateTransactions = transactionsList.get(0);
 		var newAmount = BigDecimal.valueOf(22.22);
 		updateTransactions.setAmount(newAmount);
@@ -165,15 +167,14 @@ public class TransactionServiceTest {
 				transactionService.update(updateTransactions)).isEqualTo(1);
 		assertThat(
 				transactionService.retrieve(updateTransactions.getTransactionId()).get().getAmount()).isEqualTo(
-				newAmount);
+						newAmount);
 	}
 
 	public void testUploadCsv(BankAccountPair.BankName bankName,
-	                          BankAccountPair.AccountType accountType, String filePath) throws Exception {
-		int accountId =
-				accountService.findAccountByBankAndAccountName(bankName.getName(),
-								ACCOUNT_NAME_TEST1 + "-" + accountType.getType())
-						.get().getAccountId();
+			BankAccountPair.AccountType accountType, String filePath) throws Exception {
+		int accountId = accountService.findAccountByBankAndAccountName(bankName.getName(),
+				ACCOUNT_NAME_TEST1 + "-" + accountType.getType())
+				.get().getAccountId();
 
 		BankAccountPair bankAccountPair = BankAccountPair.of(bankName, accountType);
 		ClassLoader classLoader = TransactionServiceTest.class.getClassLoader();
@@ -183,28 +184,27 @@ public class TransactionServiceTest {
 
 		AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(bankAccountPair);
 
-		CsvToBean<AbstractBankAccountCsvTemplate> csvReader =
-				new CsvToBeanBuilder<AbstractBankAccountCsvTemplate>(reader)
-						.withType(template.getClass())
-						.withSeparator(',')
-						.withIgnoreLeadingWhiteSpace(true)
-						.withIgnoreEmptyLine(true)
-						.build();
+		CsvToBean<AbstractBankAccountCsvTemplate> csvReader = new CsvToBeanBuilder<AbstractBankAccountCsvTemplate>(
+				reader)
+				.withType(template.getClass())
+				.withSeparator(',')
+				.withIgnoreLeadingWhiteSpace(true)
+				.withIgnoreEmptyLine(true)
+				.build();
 
 		List<? extends AbstractBankAccountCsvTemplate> rawTransactions = csvReader.parse();
 
-		List<Transactions> transactions =
-				rawTransactions.stream().map(AbstractBankAccountCsvTemplate::toTransactions).collect(
+		List<Transactions> transactions = rawTransactions.stream().map(AbstractBankAccountCsvTemplate::toTransactions)
+				.collect(
 						Collectors.toList());
 
 		assertThat(transactions.size()).isGreaterThan(0);
 		transactions.forEach(t -> {
-					t.setAccountId(accountId);
-					t.setAccountName(ACCOUNT_NAME_TEST1);
-					t.setBankName(bankName.getName());
-					t.setIsDuplicate(0);
-				}
-		);
+			t.setAccountId(accountId);
+			t.setAccountName(ACCOUNT_NAME_TEST1);
+			t.setBankName(bankName.getName());
+			t.setIsDuplicate(0);
+		});
 
 		transactionService.create(transactions);
 
@@ -213,7 +213,7 @@ public class TransactionServiceTest {
 	}
 
 	private Transactions makeTransactions(LocalDate date, String description, String category,
-	                                      String uploadTime, BigDecimal amount) {
+			String uploadTime, BigDecimal amount) {
 		Transactions transactions = new Transactions();
 		transactions.setTransactionDate(date.minusDays(1));
 		transactions.setPostDate(date);
@@ -225,7 +225,7 @@ public class TransactionServiceTest {
 	}
 
 	private void checkTransactions(List<Transactions> oldTransactions,
-	                               List<Transactions> newTransactions) {
+			List<Transactions> newTransactions) {
 		oldTransactions.sort((t1, t2) -> t1.getAmount().compareTo(t2.getAmount()));
 		newTransactions.sort((t1, t2) -> t1.getAmount().compareTo(t2.getAmount()));
 

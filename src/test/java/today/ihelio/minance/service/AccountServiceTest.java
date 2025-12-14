@@ -76,4 +76,19 @@ public class AccountServiceTest {
 		accountService.delete(newAccounts.getAccountId());
 		assertThat(accountService.retrieveAll().size()).isEqualTo(0);
 	}
+
+	@Test
+	public void testAccountService_deleteByBankAndName() throws Exception {
+		bankService.create(CITI);
+		Accounts account = new Accounts();
+		account.setAccountName("delete-me");
+		account.setBankName("CITI");
+		account.setAccountType("CREDIT");
+		account.setInitBalance(BigDecimal.TEN);
+
+		accountService.create(account);
+
+		assertThat(accountService.delete("CITI", "delete-me")).isEqualTo(1);
+		assertThat(accountService.delete("CITI", "delete-me")).isEqualTo(0);
+	}
 }

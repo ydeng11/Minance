@@ -1,27 +1,28 @@
 package today.ihelio.minance.service;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Preconditions;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import org.graalvm.collections.Pair;
-import org.jooq.DSLContext;
-import org.jooq.exception.DataAccessException;
-import today.ihelio.jooq.Tables;
-import today.ihelio.jooq.tables.pojos.MinanceCategory;
-import today.ihelio.jooq.tables.records.RawCategoryToMinanceCategoryRecord;
-import today.ihelio.minance.exception.CustomException;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.tuple.Pair;
+import org.jooq.DSLContext;
+import org.jooq.exception.DataAccessException;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Preconditions;
+
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import today.ihelio.jooq.Tables;
 import static today.ihelio.jooq.Tables.TRANSACTIONS;
 import static today.ihelio.jooq.tables.MinanceCategory.MINANCE_CATEGORY;
 import static today.ihelio.jooq.tables.RawCategoryToMinanceCategory.RAW_CATEGORY_TO_MINANCE_CATEGORY;
+import today.ihelio.jooq.tables.pojos.MinanceCategory;
+import today.ihelio.jooq.tables.records.RawCategoryToMinanceCategoryRecord;
+import today.ihelio.minance.exception.CustomException;
 
 @ApplicationScoped
 public class CategoryMappingService {
@@ -82,7 +83,7 @@ public class CategoryMappingService {
 				}).collect(Collectors.toList()))
 				.execute();
 
-		return Pair.create(numDeletion, numAddition);
+		return Pair.of(numDeletion, numAddition);
 	}
 
 	public List<RawCategory> getRawCategoriesForMinanceCategory(String minanceCategory) {
@@ -139,7 +140,7 @@ public class CategoryMappingService {
 				.filter(rawCategory -> !newSet.contains(rawCategory))
 				.collect(Collectors.toList());
 
-		return Pair.create(toRemove, toAdd);
+		return Pair.of(toRemove, toAdd);
 	}
 
 
