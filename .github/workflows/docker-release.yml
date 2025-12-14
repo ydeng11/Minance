@@ -37,6 +37,13 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Extracted version: $VERSION"
 
+      - name: Get commit SHA
+        id: commit
+        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          echo "sha=$COMMIT_SHA" >> $GITHUB_OUTPUT
+          echo "Commit SHA: $COMMIT_SHA"
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -62,10 +69,15 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:edge
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.commit.outputs.sha }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
 
       - name: Image digest
-        run: echo "Image pushed successfully with tags: latest and ${{ steps.version.outputs.version }}"
+        run: |
+          echo "Image pushed successfully with tags:"
+          echo "  - edge"
+          echo "  - ${{ steps.version.outputs.version }}"
+          echo "  - ${{ steps.commit.outputs.sha }} (commit SHA)"
