@@ -324,4 +324,43 @@ class VisualizationE2ETest extends BaseE2ETest {
 			page.close();
 		}
 	}
+
+	@Test
+	void shouldOnlyShowExpenseCategoriesInFilter() {
+		Page page = context.newPage();
+		try {
+			VisualizationPage vizPage = new VisualizationPage(page, appUrl.toString());
+			vizPage.navigateTo();
+
+			// Ensure we're on the Expense Analysis tab
+			vizPage.clickExpenseAnalysisTab();
+			page.waitForTimeout(1000);
+
+			// Open the category filter dropdown
+			vizPage.openCategoryFilter();
+
+			// Verify expense categories ARE visible in the filter
+			// These categories have transactions with positive amounts (expenses) in seeded data
+			Assertions.assertTrue(vizPage.isCategoryInFilter("Dining"),
+					"Dining category should be visible in filter (expense category)");
+			Assertions.assertTrue(vizPage.isCategoryInFilter("Travel"),
+					"Travel category should be visible in filter (expense category)");
+			Assertions.assertTrue(vizPage.isCategoryInFilter("Groceries"),
+					"Groceries category should be visible in filter (expense category)");
+			Assertions.assertTrue(vizPage.isCategoryInFilter("Health & Wellness"),
+					"Health & Wellness category should be visible in filter (expense category)");
+
+			// Verify non-expense categories are NOT visible in the filter
+			// These categories only have negative amounts (payments/income) in seeded data
+			Assertions.assertFalse(vizPage.isCategoryInFilter("Transfers"),
+					"Transfers category should NOT be visible (non-expense category)");
+			Assertions.assertFalse(vizPage.isCategoryInFilter("Other Income"),
+					"Other Income category should NOT be visible (income category)");
+
+			// Close the dropdown
+			vizPage.closeCategoryFilter();
+		} finally {
+			page.close();
+		}
+	}
 }

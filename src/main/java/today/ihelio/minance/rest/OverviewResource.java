@@ -96,11 +96,10 @@ public class OverviewResource {
                 continue;
             }
 
-            // For expenses: negative amounts for debit accounts, positive for credit
-            // accounts
-            // Total expenses: sum of all negative amounts (expenses)
-            if (amount.compareTo(BigDecimal.ZERO) < 0) {
-                totalExpenses = totalExpenses.add(amount.abs());
+            // Total expenses: sum of all POSITIVE amounts (charges, debits, bills, purchases)
+            // NEGATIVE amounts are payments/transfers/income
+            if (amount.compareTo(BigDecimal.ZERO) > 0) {
+                totalExpenses = totalExpenses.add(amount);
             }
 
             // Credit total: sum of all amounts from CREDIT accounts
