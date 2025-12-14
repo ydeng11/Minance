@@ -9,7 +9,7 @@ import com.microsoft.playwright.Page;
 
 import io.quarkiverse.playwright.WithPlaywright;
 import io.quarkiverse.quinoa.testing.QuinoaTestProfiles;
-import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 import today.ihelio.minance.webui.pages.CategoriesPage;
 
@@ -17,7 +17,7 @@ import today.ihelio.minance.webui.pages.CategoriesPage;
  * E2E tests for the Categories management page.
  * Tests category linking, grouping, and persistence.
  */
-@QuarkusTest
+@QuarkusIntegrationTest
 @TestProfile(QuinoaTestProfiles.Enable.class)
 @WithPlaywright
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

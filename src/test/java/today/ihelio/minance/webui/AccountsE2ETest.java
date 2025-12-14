@@ -8,7 +8,7 @@ import com.microsoft.playwright.Page;
 
 import io.quarkiverse.playwright.WithPlaywright;
 import io.quarkiverse.quinoa.testing.QuinoaTestProfiles;
-import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 import today.ihelio.minance.webui.pages.AccountsPage;
 
@@ -16,7 +16,7 @@ import today.ihelio.minance.webui.pages.AccountsPage;
  * E2E tests for the Accounts management page.
  * Tests account viewing and management functionality.
  */
-@QuarkusTest
+@QuarkusIntegrationTest
 @TestProfile(QuinoaTestProfiles.Enable.class)
 @WithPlaywright
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

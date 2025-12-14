@@ -12,7 +12,7 @@ import com.microsoft.playwright.options.WaitForSelectorState;
 
 import io.quarkiverse.playwright.WithPlaywright;
 import io.quarkiverse.quinoa.testing.QuinoaTestProfiles;
-import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 import today.ihelio.minance.webui.pages.VisualizationPage;
 
@@ -21,7 +21,7 @@ import today.ihelio.minance.webui.pages.VisualizationPage;
  * Tests expense analysis, merchant analytics, date range selection, and chart
  * rendering.
  */
-@QuarkusTest
+@QuarkusIntegrationTest
 @TestProfile(QuinoaTestProfiles.Enable.class)
 @WithPlaywright
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

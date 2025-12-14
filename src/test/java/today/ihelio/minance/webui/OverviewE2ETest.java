@@ -9,7 +9,7 @@ import com.microsoft.playwright.Response;
 
 import io.quarkiverse.playwright.WithPlaywright;
 import io.quarkiverse.quinoa.testing.QuinoaTestProfiles;
-import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 import today.ihelio.minance.webui.pages.OverviewPage;
 
@@ -17,7 +17,7 @@ import today.ihelio.minance.webui.pages.OverviewPage;
  * E2E tests for the Overview page.
  * Tests overview tiles, API data loading, and transaction table.
  */
-@QuarkusTest
+@QuarkusIntegrationTest
 @TestProfile(QuinoaTestProfiles.Enable.class)
 @WithPlaywright
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

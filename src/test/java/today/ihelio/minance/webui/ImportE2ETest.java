@@ -13,14 +13,14 @@ import com.microsoft.playwright.options.AriaRole;
 
 import io.quarkiverse.playwright.WithPlaywright;
 import io.quarkiverse.quinoa.testing.QuinoaTestProfiles;
-import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusIntegrationTest;
 import io.quarkus.test.junit.TestProfile;
 
 /**
  * E2E tests for CSV import workflow.
  * Tests import dialog, file upload, and transaction verification.
  */
-@QuarkusTest
+@QuarkusIntegrationTest
 @TestProfile(QuinoaTestProfiles.Enable.class)
 @WithPlaywright
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -63,14 +63,14 @@ class ImportE2ETest extends BaseE2ETest {
 			waitForLoading(page);
 
 			// Open import dialog
-			var importButton = page.getByRole(AriaRole.BUTTON, 
+			var importButton = page.getByRole(AriaRole.BUTTON,
 					new Page.GetByRoleOptions().setName("Import Transactions"));
-			
+
 			if (!importButton.isVisible()) {
 				// Try alternative selector
 				importButton = page.getByText("Import Transactions");
 			}
-			
+
 			importButton.click();
 			page.waitForTimeout(1000);
 
@@ -81,7 +81,7 @@ class ImportE2ETest extends BaseE2ETest {
 				boolean hasFormFields = page.locator("input[type='file']").isVisible() ||
 						page.locator("select").first().isVisible() ||
 						page.getByRole(AriaRole.COMBOBOX).count() > 0;
-				
+
 				Assertions.assertTrue(hasFormFields,
 						"Import dialog should be open with form fields");
 			} else {
@@ -91,7 +91,7 @@ class ImportE2ETest extends BaseE2ETest {
 						dialogContent.contains("account") ||
 						dialogContent.contains("csv") ||
 						page.locator("input[type='file']").isVisible();
-				
+
 				Assertions.assertTrue(hasImportContent,
 						"Import dialog should have import-related fields");
 			}
@@ -119,9 +119,9 @@ class ImportE2ETest extends BaseE2ETest {
 					// Look for any button or select that mentions bank
 					var bankSelector = page.locator("button, select").filter(
 							new Locator.FilterOptions().setHasText(
-									java.util.regex.Pattern.compile("bank", 
+									java.util.regex.Pattern.compile("bank",
 											java.util.regex.Pattern.CASE_INSENSITIVE)));
-					
+
 					if (bankSelector.count() > 0) {
 						bankSelector.first().click();
 						page.waitForTimeout(300);
@@ -152,15 +152,15 @@ class ImportE2ETest extends BaseE2ETest {
 			var importButton = page.getByText("Import Transactions");
 			Assertions.assertTrue(importButton.isVisible(),
 					"Import Transactions button should be visible");
-			
+
 			importButton.click();
 			page.waitForTimeout(1000);
-			
+
 			// Check dialog opened (look for file input or any form field)
 			boolean dialogOpened = page.locator("input[type='file']").isVisible() ||
 					page.getByText("Bank").isVisible() ||
 					page.getByText("Account").isVisible();
-			
+
 			Assertions.assertTrue(dialogOpened,
 					"Import dialog should open when button is clicked");
 		} finally {
@@ -180,7 +180,7 @@ class ImportE2ETest extends BaseE2ETest {
 			Path csvPath = Paths.get(TEST_CSV_DIR, "chase_credit.csv");
 			Assertions.assertTrue(csvPath.toFile().exists(),
 					"Test CSV file should exist at: " + csvPath);
-			
+
 			// Open import dialog
 			var importButton = page.getByText("Import Transactions");
 			if (importButton.isVisible()) {
@@ -216,7 +216,7 @@ class ImportE2ETest extends BaseE2ETest {
 			var importButton = page.getByText("Import Transactions");
 			Assertions.assertTrue(importButton.isVisible(),
 					"Import feature should be accessible");
-			
+
 			// Note: Full import workflow testing requires proper dialog interaction
 			// which is better tested in the TypeScript E2E suite where selectors
 			// are more stable across UI framework changes
@@ -237,7 +237,7 @@ class ImportE2ETest extends BaseE2ETest {
 			var expenseTable = page.getByTestId("expense-table");
 			Assertions.assertTrue(expenseTable.isVisible(),
 					"Expense table should be present for displaying transactions");
-			
+
 			// Full CSV import and transaction verification is tested in TypeScript E2E tests
 			// This test verifies the infrastructure is in place
 		} finally {

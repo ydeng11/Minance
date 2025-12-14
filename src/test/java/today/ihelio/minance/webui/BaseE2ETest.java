@@ -1,6 +1,10 @@
 package today.ihelio.minance.webui;
 
+import java.net.URI;
 import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 import org.junit.jupiter.api.BeforeAll;
 
@@ -10,17 +14,11 @@ import com.microsoft.playwright.options.WaitForSelectorState;
 
 import io.quarkiverse.playwright.InjectPlaywright;
 import io.quarkus.test.common.http.TestHTTPResource;
-import jakarta.inject.Inject;
-import today.ihelio.minance.service.AccountService;
-import today.ihelio.minance.service.BankService;
-import today.ihelio.minance.service.CategoryMappingService;
-import today.ihelio.minance.service.TransactionService;
-import today.ihelio.minance.testutil.TestDataResource;
 
 /**
  * Base class for all E2E tests providing shared infrastructure.
  * All E2E test classes should extend this class and must include:
- * - @QuarkusTest
+ * - @QuarkusIntegrationTest
  * - @TestProfile(QuinoaTestProfiles.Enable.class)
  * - @WithPlaywright
  * - @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -33,30 +31,32 @@ public abstract class BaseE2ETest {
 	@TestHTTPResource("/")
 	protected URL appUrl;
 
-	@Inject
-	protected BankService bankService;
-
-	@Inject
-	protected AccountService accountService;
-
-	@Inject
-	protected CategoryMappingService categoryMappingService;
-
-	@Inject
-	protected TransactionService transactionService;
-
-	@Inject
-	protected TestDataResource testDataResource;
-
 	@BeforeAll
 	void seedDatabase() {
-		testDataResource.seedDatabase();
-		// Ensure seeding completes and database is ready
-		// Small delay to ensure all database operations are committed
 		try {
+			// Call the test seed endpoint via HTTP
+			String seedUrl = appUrl.toString().replaceAll("/$", "") + "/test/seed";
+			HttpClient client = HttpClient.newHttpClient();
+			HttpRequest request = HttpRequest.newBuilder()
+					.uri(URI.create(seedUrl))
+					.POST(HttpRequest.BodyPublishers.noBody())
+					.build();
+
+			HttpResponse<String> response = client.send(request,
+					HttpResponse.BodyHandlers.ofString());
+
+			if (response.statusCode() != 200) {
+				throw new RuntimeException("Failed to seed database: HTTP " + response.statusCode());
+			}
+
+			// Ensure seeding completes and database is ready
+			// Small delay to ensure all database operations are committed
 			Thread.sleep(100);
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
+			throw new RuntimeException("Database seeding was interrupted", e);
+		} catch (Exception e) {
+			throw new RuntimeException("Failed to seed database via HTTP", e);
 		}
 	}
 

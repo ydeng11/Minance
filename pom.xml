@@ -18,7 +18,7 @@
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.30.3</quarkus.platform.version>
         <quarkus.quinoa.version>2.7.1</quarkus.quinoa.version>
-        <skipITs>true</skipITs>
+        <skipITs>false</skipITs>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
         <skip.jooq.generation>true</skip.jooq.generation>
         <flyway.skip>true</flyway.skip>
@@ -233,6 +233,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
                 <configuration>
+                    <excludes>
+                        <exclude>**/*E2ETest.java</exclude>
+                    </excludes>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
@@ -250,12 +253,17 @@
                             <goal>verify</goal>
                         </goals>
                         <configuration>
+                            <includes>
+                                <include>**/*IT.java</include>
+                                <include>**/*E2ETest.java</include>
+                            </includes>
                             <systemPropertyVariables>
                                 <native.image.path>${project.build.directory}/${project.build.finalName}-runner
                                 </native.image.path>
                                 <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                                 <maven.home>${maven.home}</maven.home>
                             </systemPropertyVariables>
+                            <argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine>
                         </configuration>
                     </execution>
                 </executions>
