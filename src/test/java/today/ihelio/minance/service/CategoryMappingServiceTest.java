@@ -3,8 +3,9 @@ package today.ihelio.minance.service;
 import com.google.common.collect.ImmutableList;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
+
+import org.apache.commons.lang3.tuple.Pair;
 import org.flywaydb.core.Flyway;
-import org.graalvm.collections.Pair;
 import org.jooq.DSLContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
