@@ -1,0 +1,201 @@
+name: Version Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        options:
+          - release
+          - next-snapshot
+      release_version:
+        description: 'Release version (e.g., 1.0.0) - only for release action'
+        required: false
+        type: string
+      next_version:
+        description: 'Next snapshot version (e.g., 1.0.1-SNAPSHOT) - only for next-snapshot action'
+        required: false
+        type: string
+
+env:
+  QUARKUS_ANALYTICS_DISABLED: 'true'
+
+jobs:
+  release:
+    name: Release Version
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'release'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 22
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Get current version
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+      - name: Determine release version
+        id: release_version
+        run: |
+          if [ -n "${{ github.event.inputs.release_version }}" ]; then
+            RELEASE_VERSION="${{ github.event.inputs.release_version }}"
+          else
+            # Auto-determine from current version (remove -SNAPSHOT if present)
+            CURRENT="${{ steps.current_version.outputs.current_version }}"
+            RELEASE_VERSION=$(echo "$CURRENT" | sed 's/-SNAPSHOT$//')
+          fi
+          echo "release_version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+          echo "Release version: $RELEASE_VERSION"
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+      - name: Set release version
+        run: |
+          CURRENT="${{ steps.current_version.outputs.current_version }}"
+          RELEASE="${{ steps.release_version.outputs.release_version }}"
+          if [[ "$CURRENT" == *"-SNAPSHOT"* ]]; then
+            ./mvnw versions:set -DremoveSnapshot -DnewVersion=$RELEASE
+          else
+            ./mvnw versions:set -DnewVersion=$RELEASE
+          fi
+
+      - name: Build release artifact
+        run: ./mvnw clean package -DskipTests
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./src/main/docker/Dockerfile.jvm
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            docker.io/ydeng11/minance:${{ steps.release_version.outputs.release_version }}
+            docker.io/ydeng11/minance:latest
+          cache-from: type=registry,ref=docker.io/ydeng11/minance:buildcache
+          cache-to: type=registry,ref=docker.io/ydeng11/minance:buildcache,mode=max
+
+      - name: Commit release version
+        run: |
+          git add pom.xml
+          git commit -m "[RELEASE] ${{ steps.release_version.outputs.release_version }}"
+          git tag -a "v${{ steps.release_version.outputs.release_version }}" -m "Release version ${{ steps.release_version.outputs.release_version }}"
+
+      - name: Push release commit and tag
+        run: |
+          git push origin main
+          git push origin "v${{ steps.release_version.outputs.release_version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v${{ steps.release_version.outputs.release_version }}"
+          name: "Release ${{ steps.release_version.outputs.release_version }}"
+          body: "Release version ${{ steps.release_version.outputs.release_version }}"
+          draft: false
+          prerelease: false
+
+  next-snapshot:
+    name: Set Next Snapshot Version
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action == 'next-snapshot'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 22
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Get current version
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+
+      - name: Determine next snapshot version
+        id: next_version
+        run: |
+          if [ -n "${{ github.event.inputs.next_version }}" ]; then
+            NEXT_VERSION="${{ github.event.inputs.next_version }}"
+          else
+            # Auto-increment patch version
+            CURRENT="${{ steps.current_version.outputs.current_version }}"
+            # Remove -SNAPSHOT if present
+            BASE_VERSION=$(echo "$CURRENT" | sed 's/-SNAPSHOT$//')
+            # Increment patch version (e.g., 1.0.0 -> 1.0.1)
+            IFS='.' read -ra VERSION_PARTS <<< "$BASE_VERSION"
+            MAJOR="${VERSION_PARTS[0]}"
+            MINOR="${VERSION_PARTS[1]}"
+            PATCH="${VERSION_PARTS[2]}"
+            PATCH=$((PATCH + 1))
+            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}-SNAPSHOT"
+          fi
+          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+          echo "Next snapshot version: $NEXT_VERSION"
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+      - name: Set next snapshot version
+        run: |
+          ./mvnw versions:set -DnewVersion=${{ steps.next_version.outputs.next_version }}
+
+      - name: Commit next snapshot version
+        run: |
+          git add pom.xml
+          git commit -m "[CI] Set next snapshot version ${{ steps.next_version.outputs.next_version }}"
+          git push origin main

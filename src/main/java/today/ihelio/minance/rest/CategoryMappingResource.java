@@ -7,7 +7,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import org.graalvm.collections.Pair;
+
+import org.apache.commons.lang3.tuple.Pair;
 import org.jooq.exception.DataAccessException;
 import today.ihelio.jooq.tables.pojos.MinanceCategory;
 import today.ihelio.minance.exception.CustomException;
