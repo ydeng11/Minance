@@ -122,18 +122,18 @@ public class OverviewResourceTest {
                 LocalDate yesterday = today.minusDays(1);
                 LocalDate lastMonth = today.minusMonths(1);
 
-                // Create transactions in current period
+                // Create transactions in current period (positive amounts = expenses)
                 List<Transactions> currentPeriodTransactions = List.of(
-                                createTransaction(creditAccountId, today, new BigDecimal("-100.00"), "CREDIT"),
-                                createTransaction(creditAccountId, yesterday, new BigDecimal("-50.00"), "CREDIT"),
-                                createTransaction(debitAccountId, today, new BigDecimal("-75.00"), "DEBIT"),
-                                createTransaction(debitAccountId, yesterday, new BigDecimal("-25.00"), "DEBIT"));
+                                createTransaction(creditAccountId, today, new BigDecimal("100.00"), "CREDIT"),
+                                createTransaction(creditAccountId, yesterday, new BigDecimal("50.00"), "CREDIT"),
+                                createTransaction(debitAccountId, today, new BigDecimal("75.00"), "DEBIT"),
+                                createTransaction(debitAccountId, yesterday, new BigDecimal("25.00"), "DEBIT"));
                 transactionService.create(currentPeriodTransactions);
 
-                // Create transactions in previous period
+                // Create transactions in previous period (positive amounts = expenses)
                 List<Transactions> previousPeriodTransactions = List.of(
-                                createTransaction(creditAccountId, lastMonth, new BigDecimal("-30.00"), "CREDIT"),
-                                createTransaction(debitAccountId, lastMonth, new BigDecimal("-20.00"), "DEBIT"));
+                                createTransaction(creditAccountId, lastMonth, new BigDecimal("30.00"), "CREDIT"),
+                                createTransaction(debitAccountId, lastMonth, new BigDecimal("20.00"), "DEBIT"));
                 transactionService.create(previousPeriodTransactions);
 
                 LocalDate startDate = today.minusDays(7);
@@ -173,17 +173,17 @@ public class OverviewResourceTest {
                 LocalDate startDate = today.minusDays(30);
                 LocalDate endDate = today;
 
-                // Create transactions in current period
+                // Create transactions in current period (positive amounts = expenses)
                 transactionService.create(List.of(
-                                createTransaction(creditAccountId, today, new BigDecimal("-200.00"), "CREDIT"),
-                                createTransaction(debitAccountId, today, new BigDecimal("-100.00"), "DEBIT")));
+                                createTransaction(creditAccountId, today, new BigDecimal("200.00"), "CREDIT"),
+                                createTransaction(debitAccountId, today, new BigDecimal("100.00"), "DEBIT")));
 
-                // Create transactions in previous period (less amount)
+                // Create transactions in previous period (less amount, positive = expenses)
                 LocalDate previousEnd = startDate.minusDays(1);
                 LocalDate previousStart = previousEnd.minusDays(30);
                 transactionService.create(List.of(
-                                createTransaction(creditAccountId, previousEnd, new BigDecimal("-100.00"), "CREDIT"),
-                                createTransaction(debitAccountId, previousEnd, new BigDecimal("-50.00"), "DEBIT")));
+                                createTransaction(creditAccountId, previousEnd, new BigDecimal("100.00"), "CREDIT"),
+                                createTransaction(debitAccountId, previousEnd, new BigDecimal("50.00"), "DEBIT")));
 
                 given()
                                 .queryParam("startDate", startDate.toString())
@@ -204,16 +204,16 @@ public class OverviewResourceTest {
                 LocalDate startDate = today.minusDays(7);
                 LocalDate endDate = today;
 
-                // Create credit transactions
+                // Create credit transactions (positive amounts = expenses)
                 transactionService.create(List.of(
-                                createTransaction(creditAccountId, today, new BigDecimal("-150.00"), "CREDIT"),
-                                createTransaction(creditAccountId, today.minusDays(1), new BigDecimal("-50.00"),
+                                createTransaction(creditAccountId, today, new BigDecimal("150.00"), "CREDIT"),
+                                createTransaction(creditAccountId, today.minusDays(1), new BigDecimal("50.00"),
                                                 "CREDIT")));
 
-                // Create debit transactions
+                // Create debit transactions (positive amounts = expenses)
                 transactionService.create(List.of(
-                                createTransaction(debitAccountId, today, new BigDecimal("-200.00"), "DEBIT"),
-                                createTransaction(debitAccountId, today.minusDays(1), new BigDecimal("-100.00"),
+                                createTransaction(debitAccountId, today, new BigDecimal("200.00"), "DEBIT"),
+                                createTransaction(debitAccountId, today.minusDays(1), new BigDecimal("100.00"),
                                                 "DEBIT")));
 
                 var response = given()
@@ -239,23 +239,23 @@ public class OverviewResourceTest {
         }
 
         @Test
-        public void testGetOverviewSummaryOnlyCountsNegativeAmountsAsExpenses() throws Exception {
+        public void testGetOverviewSummaryOnlyCountsPositiveAmountsAsExpenses() throws Exception {
                 LocalDate today = LocalDate.now();
                 LocalDate startDate = today.minusDays(7);
                 LocalDate endDate = today;
 
-                // Create transactions with both negative (expenses) and positive (income)
-                // amounts
+                // Create transactions with both positive (expenses) and negative (income/payments)
+                // amounts - matching actual data model
                 transactionService.create(List.of(
-                                // Expenses (negative amounts) - should be counted in totalExpenses
-                                createTransaction(debitAccountId, today, new BigDecimal("-100.00"), "DEBIT"),
-                                createTransaction(debitAccountId, today.minusDays(1), new BigDecimal("-50.00"),
+                                // Expenses (POSITIVE amounts) - should be counted in totalExpenses
+                                createTransaction(debitAccountId, today, new BigDecimal("100.00"), "DEBIT"),
+                                createTransaction(debitAccountId, today.minusDays(1), new BigDecimal("50.00"),
                                                 "DEBIT"),
-                                // Income (positive amounts) - should NOT be counted in totalExpenses
-                                createTransaction(debitAccountId, today.minusDays(2), new BigDecimal("500.00"),
+                                // Income/Payments (NEGATIVE amounts) - should NOT be counted in totalExpenses
+                                createTransaction(debitAccountId, today.minusDays(2), new BigDecimal("-500.00"),
                                                 "DEBIT"), // Salary/income
-                                createTransaction(creditAccountId, today, new BigDecimal("-75.00"), "CREDIT"),
-                                createTransaction(creditAccountId, today.minusDays(1), new BigDecimal("200.00"),
+                                createTransaction(creditAccountId, today, new BigDecimal("75.00"), "CREDIT"),
+                                createTransaction(creditAccountId, today.minusDays(1), new BigDecimal("-200.00"),
                                                 "CREDIT") // Payment/refund
                 ));
 
@@ -275,19 +275,19 @@ public class OverviewResourceTest {
                 BigDecimal debitTotal = new BigDecimal(response.jsonPath().getString("debitTotal"));
                 Long transactionCount = response.jsonPath().getLong("transactionCount");
 
-                // Total expenses should only include negative amounts: 100 + 50 + 75 = 225
+                // Total expenses should only include POSITIVE amounts: 100 + 50 + 75 = 225
                 assertTrue(totalExpenses.compareTo(new BigDecimal("225.00")) == 0,
-                                "Total expenses should only include negative amounts, not positive income. Expected 225.00, got: "
+                                "Total expenses should only include positive amounts, not negative income/payments. Expected 225.00, got: "
                                                 + totalExpenses);
 
-                // Credit total should include both positive and negative: -75 + 200 = 125
-                assertTrue(creditTotal.compareTo(new BigDecimal("125.00")) == 0,
-                                "Credit total should include both positive and negative amounts. Expected 125.00, got: "
+                // Credit total should include both positive and negative: 75 + (-200) = -125
+                assertTrue(creditTotal.compareTo(new BigDecimal("-125.00")) == 0,
+                                "Credit total should include both positive and negative amounts. Expected -125.00, got: "
                                                 + creditTotal);
 
-                // Debit total should include both positive and negative: -100 + -50 + 500 = 350
-                assertTrue(debitTotal.compareTo(new BigDecimal("350.00")) == 0,
-                                "Debit total should include both positive and negative amounts. Expected 350.00, got: "
+                // Debit total should include both positive and negative: 100 + 50 + (-500) = -350
+                assertTrue(debitTotal.compareTo(new BigDecimal("-350.00")) == 0,
+                                "Debit total should include both positive and negative amounts. Expected -350.00, got: "
                                                 + debitTotal);
 
                 // Should have 5 transactions total
@@ -300,17 +300,17 @@ public class OverviewResourceTest {
                 LocalDate startDate = today.minusDays(7);
                 LocalDate endDate = today;
 
-                // Create transactions within date range
+                // Create transactions within date range (positive amounts = expenses)
                 transactionService.create(List.of(
-                                createTransaction(debitAccountId, today, new BigDecimal("-100.00"), "DEBIT"),
-                                createTransaction(debitAccountId, today.minusDays(3), new BigDecimal("-50.00"),
+                                createTransaction(debitAccountId, today, new BigDecimal("100.00"), "DEBIT"),
+                                createTransaction(debitAccountId, today.minusDays(3), new BigDecimal("50.00"),
                                                 "DEBIT")));
 
                 // Create transactions outside date range (should not be counted)
                 transactionService.create(List.of(
-                                createTransaction(debitAccountId, today.minusDays(10), new BigDecimal("-200.00"),
+                                createTransaction(debitAccountId, today.minusDays(10), new BigDecimal("200.00"),
                                                 "DEBIT"), // Before startDate
-                                createTransaction(debitAccountId, today.plusDays(1), new BigDecimal("-300.00"),
+                                createTransaction(debitAccountId, today.plusDays(1), new BigDecimal("300.00"),
                                                 "DEBIT"))); // After endDate
 
                 var response = given()
