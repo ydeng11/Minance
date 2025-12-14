@@ -134,4 +134,42 @@ public class VisualizationPage extends BasePage {
 	public boolean isAnalyticsHeadingVisible() {
 		return getHeading("Analytics").isVisible();
 	}
+
+	/**
+	 * Get the category filter button (multi-select dropdown).
+	 */
+	public Locator getCategoryFilterButton() {
+		return page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Select categories"));
+	}
+
+	/**
+	 * Open the category filter dropdown.
+	 */
+	public void openCategoryFilter() {
+		getCategoryFilterButton().click();
+		page.waitForTimeout(300); // Wait for dropdown to open
+	}
+
+	/**
+	 * Check if a category is available in the category filter dropdown.
+	 * The dropdown must be open before calling this method.
+	 */
+	public boolean isCategoryInFilter(String categoryName) {
+		try {
+			// Look for the category in the dropdown using CommandItem role
+			return page.getByRole(AriaRole.OPTION)
+					.filter(new Locator.FilterOptions().setHasText(categoryName))
+					.count() > 0;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Close the category filter dropdown by pressing Escape.
+	 */
+	public void closeCategoryFilter() {
+		page.keyboard().press("Escape");
+		page.waitForTimeout(200);
+	}
 }
