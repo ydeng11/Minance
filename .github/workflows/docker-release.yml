@@ -78,14 +78,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-
-      - name: Build Web UI
-        run: |
-          npm ci --prefix src/main/webui
-          npm run build --prefix src/main/webui
+        # Node.js is required for Quinoa to build the frontend during Maven package
 
       - name: Build application
         run: ./mvnw package -DskipTests
+        # Quinoa automatically builds the frontend (npm install + npm run build) during this step
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
