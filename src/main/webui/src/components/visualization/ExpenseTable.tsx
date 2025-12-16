@@ -249,7 +249,8 @@ export function ExpenseTable() {
                     columnDefs={columnDefs}
                     defaultColDef={defaultColDef}
                     animateRows={true}
-                    rowSelection={{ mode: 'multiRow' }}
+                    // Ensure header "Select All" respects current filtering
+                    rowSelection={{ mode: 'multiRow', selectAll: 'filtered' }}
                     pagination={true}
                     paginationPageSize={20}
                     suppressMenuHide={true}
