@@ -17,7 +17,8 @@ const buildTransactions = () => {
         transactionId: index + 1,
         transactionDate: `2025-01-${String(index + 1).padStart(2, "0")}`,
         description: `Merchant ${index + 1}`,
-        amount: -(index + 1) * 10,
+        // POSITIVE amounts are expenses (spending)
+        amount: (index + 1) * 10,
         category: index % 2 === 0 ? "Dining" : "Travel",
         accountName: "Test Account",
         bankName: "Test Bank",
@@ -29,7 +30,7 @@ const duplicateTransactions = [
         transactionId: 100,
         transactionDate: "2025-02-01",
         description: "Merchant 1",
-        amount: -200,
+        amount: 200,
         category: "Dining",
         accountName: "Test Account",
         bankName: "Test Bank",
@@ -38,8 +39,18 @@ const duplicateTransactions = [
         transactionId: 101,
         transactionDate: "2025-02-05",
         description: "Merchant 1",
-        amount: -50,
+        amount: 50,
         category: "Dining",
+        accountName: "Test Account",
+        bankName: "Test Bank",
+    },
+    // Negative amounts are income/payments/transfers and should NOT count as spending.
+    {
+        transactionId: 102,
+        transactionDate: "2025-02-10",
+        description: "Merchant 1",
+        amount: -999,
+        category: "Income",
         accountName: "Test Account",
         bankName: "Test Bank",
     },
@@ -100,7 +111,8 @@ describe("useMerchantAnalytics", () => {
         const hook = renderHook();
         const topMerchant = hook.current!.merchantData[0];
 
-        // Merchant 1 has the highest total (10 + 200 + 50 = 260) due to duplicate transactions
+        // Merchant 1 has the highest total (10 + 200 + 50 = 260).
+        // The negative income transaction is ignored.
         expect(topMerchant.merchant).toBe("Merchant 1");
         expect(topMerchant.totalSpent).toBe(260);
         expect(topMerchant.transactionCount).toBe(3);
@@ -192,7 +204,7 @@ describe("useMerchantAnalytics", () => {
 
     it("reports lack of transactions when the dataset is empty", () => {
         transactions = [];
-        dateRangeSpy.mockReturnValue({ data: [] } as ReturnType<typeof dateRangeQuery.useDateRangeQuery>);
+        dateRangeSpy.mockReturnValue({ data: [] } as unknown as ReturnType<typeof dateRangeQuery.useDateRangeQuery>);
         storeSpy.mockReturnValue({
             transactions,
             setTransactions: vi.fn(),
