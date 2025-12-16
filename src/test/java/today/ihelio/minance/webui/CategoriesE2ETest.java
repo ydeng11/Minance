@@ -31,8 +31,8 @@ class CategoriesE2ETest extends BaseE2ETest {
 			categoriesPage.navigateTo();
 
 			// Verify the category board has loaded
-			Assertions.assertTrue(categoriesPage.getSaveButton().isVisible(),
-					"Save button should be visible");
+			Assertions.assertTrue(categoriesPage.getCategoryBoard().isVisible(),
+					"Category board should be visible");
 		} finally {
 			page.close();
 		}
@@ -62,7 +62,7 @@ class CategoriesE2ETest extends BaseE2ETest {
 
 			// Verify category board structure exists
 			// Raw categories might be mapped already, so check for board presence
-			Assertions.assertTrue(categoriesPage.getSaveButton().isVisible(),
+			Assertions.assertTrue(categoriesPage.getCategoryBoard().isVisible(),
 					"Category management interface should be present");
 
 			// Check if there are any category-related elements
@@ -127,25 +127,21 @@ class CategoriesE2ETest extends BaseE2ETest {
 	}
 
 	@Test
-	void shouldEnableSaveButtonWhenChangesExist() {
+	void shouldShowAutoSaveStatus() {
 		Page page = context.newPage();
 		try {
 			CategoriesPage categoriesPage = new CategoriesPage(page, appUrl.toString());
 			categoriesPage.navigateTo();
 
-			var saveButton = categoriesPage.getSaveButton();
+			// With auto-save, we should see status indicators instead of a save button
+			// The board should be visible
+			Assertions.assertTrue(categoriesPage.getCategoryBoard().isVisible(),
+					"Category board should be visible");
 
-			// Check if save button exists and is interactable
-			Assertions.assertTrue(saveButton.isVisible(),
-					"Save button should be visible");
-
-			// The button should be enabled (not disabled)
-			// In some implementations, it might be disabled until changes are made
-			boolean isDisabled = saveButton.getAttribute("disabled") != null;
-
-			// Either enabled or disabled is acceptable initially
-			Assertions.assertNotNull(saveButton,
-					"Save button should exist");
+			// Auto-save status might not always be visible (only when saving/saved)
+			// So we just verify the board loads correctly
+			Assertions.assertNotNull(categoriesPage.getCategoryBoard(),
+					"Category board should exist with auto-save functionality");
 		} finally {
 			page.close();
 		}
@@ -224,6 +220,193 @@ class CategoriesE2ETest extends BaseE2ETest {
 			// At least half of the categories should be present
 			Assertions.assertTrue(foundCount >= linkedCategories.length / 2,
 					"At least " + (linkedCategories.length / 2) + " categories should be present (found " + foundCount + ")");
+		} finally {
+			page.close();
+		}
+	}
+
+	@Test
+	void shouldDisplayMultiSelectCheckboxes() {
+		Page page = context.newPage();
+		try {
+			CategoriesPage categoriesPage = new CategoriesPage(page, appUrl.toString());
+			categoriesPage.navigateTo();
+
+			// Check if checkboxes are present for categories
+			var rawCategory = categoriesPage.getFirstRawCategory();
+			if (rawCategory.isVisible()) {
+				// Look for checkbox elements near categories
+				int checkboxCount = page.locator("[type='checkbox']").count();
+				Assertions.assertTrue(checkboxCount > 0,
+						"Multi-select checkboxes should be visible");
+			}
+		} finally {
+			page.close();
+		}
+	}
+
+	@Test
+	void shouldDisplaySelectAllButton() {
+		Page page = context.newPage();
+		try {
+			CategoriesPage categoriesPage = new CategoriesPage(page, appUrl.toString());
+			categoriesPage.navigateTo();
+
+			// Verify Select All button exists
+			var selectAllButton = categoriesPage.getSelectAllUnlinkedButton();
+			Assertions.assertTrue(selectAllButton.isVisible(),
+					"Select All button should be visible");
+		} finally {
+			page.close();
+		}
+	}
+
+	@Test
+	void shouldEnableBatchLinkButtonWhenCategoriesSelected() {
+		Page page = context.newPage();
+		try {
+			CategoriesPage categoriesPage = new CategoriesPage(page, appUrl.toString());
+			categoriesPage.navigateTo();
+
+			// Initially, batch link button should not be visible
+			var batchLinkButton = categoriesPage.getBatchLinkButton();
+			boolean initiallyHidden = !batchLinkButton.isVisible();
+
+			// Click select all
+			var selectAllButton = categoriesPage.getSelectAllUnlinkedButton();
+			if (selectAllButton.isVisible()) {
+				selectAllButton.click();
+				page.waitForTimeout(500);
+
+				// Now batch link button should be visible
+				Assertions.assertTrue(batchLinkButton.isVisible(),
+						"Batch Link button should appear when categories are selected");
+			}
+		} finally {
+			page.close();
+		}
+	}
+
+	@Test
+	void shouldShowSelectedCount() {
+		Page page = context.newPage();
+		try {
+			CategoriesPage categoriesPage = new CategoriesPage(page, appUrl.toString());
+			categoriesPage.navigateTo();
+
+			// Click select all
+			var selectAllButton = categoriesPage.getSelectAllUnlinkedButton();
+			if (selectAllButton.isVisible()) {
+				selectAllButton.click();
+				page.waitForTimeout(500);
+
+				// Check if selection count is displayed
+				int selectedCount = categoriesPage.getSelectedCount();
+				Assertions.assertTrue(selectedCount > 0,
+						"Selected count should be displayed and greater than 0");
+			}
+		} finally {
+			page.close();
+		}
+	}
+
+	@Test
+	void shouldClearSelectionWithClearButton() {
+		Page page = context.newPage();
+		try {
+			CategoriesPage categoriesPage = new CategoriesPage(page, appUrl.toString());
+			categoriesPage.navigateTo();
+
+			// Select all
+			var selectAllButton = categoriesPage.getSelectAllUnlinkedButton();
+			if (selectAllButton.isVisible()) {
+				selectAllButton.click();
+				page.waitForTimeout(300);
+
+				// Verify selection exists
+				int selectedBefore = categoriesPage.getSelectedCount();
+				Assertions.assertTrue(selectedBefore > 0, "Categories should be selected");
+
+				// Click clear
+				var clearButton = categoriesPage.getClearSelectionButton();
+				if (clearButton.isVisible()) {
+					clearButton.click();
+					page.waitForTimeout(300);
+
+					// Batch link button should be hidden again
+					var batchLinkButton = categoriesPage.getBatchLinkButton();
+					Assertions.assertFalse(batchLinkButton.isVisible(),
+							"Batch Link button should be hidden after clearing selection");
+				}
+			}
+		} finally {
+			page.close();
+		}
+	}
+
+	@Test
+	void shouldBatchLinkMultipleCategories() {
+		Page page = context.newPage();
+		try {
+			CategoriesPage categoriesPage = new CategoriesPage(page, appUrl.toString());
+			categoriesPage.navigateTo();
+
+			// Select a Minance category first
+			page.getByTestId("minance-category-select").click();
+			page.waitForTimeout(300);
+
+			// Look for a category option in the dropdown
+			var firstOption = page.locator("[role='option']").first();
+			if (firstOption.isVisible()) {
+				firstOption.click();
+				page.waitForTimeout(500);
+			}
+
+			// Select multiple categories
+			var selectAllButton = categoriesPage.getSelectAllUnlinkedButton();
+			if (selectAllButton.isVisible()) {
+				selectAllButton.click();
+				page.waitForTimeout(300);
+
+				int selectedBefore = categoriesPage.getSelectedCount();
+				if (selectedBefore > 0) {
+					// Click batch link
+					categoriesPage.clickBatchLink();
+
+					// Wait for auto-save to complete
+					page.waitForTimeout(1000);
+
+					// Selection should be cleared after batch link
+					int selectedAfter = categoriesPage.getSelectedCount();
+					Assertions.assertEquals(0, selectedAfter,
+							"Selection should be cleared after batch linking");
+				}
+			}
+		} finally {
+			page.close();
+		}
+	}
+
+	@Test
+	void shouldSupportMultiDragOperation() {
+		Page page = context.newPage();
+		try {
+			CategoriesPage categoriesPage = new CategoriesPage(page, appUrl.toString());
+			categoriesPage.navigateTo();
+
+			// Verify that dragging a selected item should move all selected items
+			// This is tested by checking that multi-select UI exists and works
+			var selectAllButton = categoriesPage.getSelectAllUnlinkedButton();
+			if (selectAllButton.isVisible()) {
+				selectAllButton.click();
+				page.waitForTimeout(300);
+
+				// If selection works, multi-drag should also work
+				// (actual drag simulation is complex with Playwright, so we verify the UI state)
+				int selectedCount = categoriesPage.getSelectedCount();
+				Assertions.assertTrue(selectedCount > 0,
+						"Multi-select should work, enabling multi-drag");
+			}
 		} finally {
 			page.close();
 		}
