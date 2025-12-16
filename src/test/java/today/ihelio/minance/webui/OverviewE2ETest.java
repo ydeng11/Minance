@@ -4,8 +4,11 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
+import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.Response;
+import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.WaitForSelectorState;
 
 import io.quarkiverse.playwright.WithPlaywright;
 import io.quarkiverse.quinoa.testing.QuinoaTestProfiles;
@@ -202,6 +205,96 @@ class OverviewE2ETest extends BaseE2ETest {
 			Assertions.assertFalse(cardText.contains("...") && !cardText.contains("$"),
 					"Total Expenses card should not be in loading state");
 		} finally {
+			page.close();
+		}
+	}
+
+	@Test
+	void shouldSelectAllOnlyFilteredRowsInExpenseTable() {
+		Page page = context.newPage();
+		try {
+			OverviewPage overviewPage = new OverviewPage(page, appUrl.toString());
+			overviewPage.navigateTo();
+
+			// Set a deterministic filter via localStorage, then reload so ExpenseTable applies it on grid ready
+			page.evaluate("""
+					() => {
+					  localStorage.setItem('expense-table-filter-state', JSON.stringify({
+					    description: { filterType: 'text', type: 'contains', filter: 'ROSETTA' }
+					  }));
+					}
+					""");
+			page.reload();
+			page.waitForLoadState();
+			waitForLoading(page);
+
+			// Wait for the AG Grid root to be visible
+			Locator gridRoot = page.locator("[data-testid='expense-table'] .ag-root");
+			gridRoot.waitFor(new Locator.WaitForOptions()
+					.setState(WaitForSelectorState.VISIBLE)
+					.setTimeout(30000));
+
+			// Wait for filtering to take effect by waiting for the matching text to appear
+			page.getByText("ROSETTA").first().waitFor(new Locator.WaitForOptions()
+					.setState(WaitForSelectorState.VISIBLE)
+					.setTimeout(30000));
+
+			// Sanity: verify the grid is actually filtered down (via paging summary "of N")
+			Locator pagingSummary = page.locator("[data-testid='expense-table'] .ag-paging-row-summary-panel");
+			if (pagingSummary.count() == 0) {
+				pagingSummary = page.locator("[data-testid='expense-table'] .ag-paging-panel");
+			}
+			pagingSummary.waitFor(new Locator.WaitForOptions()
+					.setState(WaitForSelectorState.VISIBLE)
+					.setTimeout(10000));
+
+			String pagingText = pagingSummary.textContent();
+			java.util.regex.Matcher totalMatcher = java.util.regex.Pattern.compile("\\bof\\s+(\\d+)\\b")
+					.matcher(pagingText);
+			Assertions.assertTrue(totalMatcher.find(),
+					"Paging summary should include total row count (e.g. 'of 39'), got: " + pagingText);
+			int filteredTotal = Integer.parseInt(totalMatcher.group(1));
+			Assertions.assertEquals(1, filteredTotal,
+					"Preloaded filter should reduce the table to exactly 1 row (ROSETTA)");
+
+			// Click the header "Select All" checkbox
+			Locator headerSelectAll = page
+					.locator("[data-testid='expense-table'] .ag-header-select-all input")
+					.first();
+			headerSelectAll.waitFor(new Locator.WaitForOptions()
+					.setState(WaitForSelectorState.VISIBLE)
+					.setTimeout(10000));
+			headerSelectAll.click();
+
+			// Assert the selection count matches the filtered visible rows, not the full dataset
+			Locator deleteSelectedButton = page.getByRole(AriaRole.BUTTON,
+					new Page.GetByRoleOptions().setName(java.util.regex.Pattern.compile("Delete Selected",
+							java.util.regex.Pattern.CASE_INSENSITIVE)));
+			deleteSelectedButton.waitFor(new Locator.WaitForOptions()
+					.setState(WaitForSelectorState.VISIBLE)
+					.setTimeout(10000));
+
+			String deleteText = deleteSelectedButton.textContent();
+			java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\((\\d+)\\)")
+					.matcher(deleteText);
+			Assertions.assertTrue(matcher.find(),
+					"Delete Selected button should include a selected row count, got: " + deleteText);
+
+			int selectedCount = Integer.parseInt(matcher.group(1));
+			Assertions.assertEquals(filteredTotal, selectedCount,
+					"Select All should select only the filtered rows");
+		} finally {
+			// Cleanup filter state so other E2E tests are unaffected
+			try {
+				page.evaluate("""
+						() => {
+						  localStorage.removeItem('expense-table-filter-state');
+						  localStorage.removeItem('expense-table-last-date-range');
+						}
+						""");
+			} catch (Exception ignored) {
+				// Ignore cleanup failures
+			}
 			page.close();
 		}
 	}
