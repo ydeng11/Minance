@@ -71,4 +71,7 @@ git add pom.xml
 git commit -m "[CI] Set next snapshot version $NEXT_VERSION" || print_warn "No changes to commit"
 
 print_info "Next snapshot version $NEXT_VERSION is set!"
-print_warn "Don't forget to: git push origin main"
+print_warn "Don't forget to:"
+echo "  1. git checkout -b release/next-snapshot-$NEXT_VERSION"
+echo "  2. git push origin release/next-snapshot-$NEXT_VERSION"
+echo "  3. Open a pull request from release/next-snapshot-$NEXT_VERSION to main"
