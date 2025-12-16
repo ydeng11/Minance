@@ -55,8 +55,10 @@ export const useMerchantAnalytics = () => {
             // Skip excluded merchants
             if (excludedMerchants.includes(merchant)) return;
 
-            // Skip transactions with no amount
-            if (transaction.amount === 0) return;
+            // Merchant spending analytics should only include expenses.
+            // Convention across the app: POSITIVE amounts are expenses (spending),
+            // NEGATIVE amounts are income/payments/transfers/refunds.
+            if (transaction.amount <= 0) return;
 
             // Initialize merchant data if not exists
             if (!merchantMap.has(merchant)) {
@@ -73,12 +75,12 @@ export const useMerchantAnalytics = () => {
             const data = merchantMap.get(merchant)!;
 
             // Increment merchant stats
-            data.totalSpent += Math.abs(transaction.amount);
+            data.totalSpent += transaction.amount;
             data.transactionCount += 1;
 
             // Track spending by category
             const category = transaction.category || 'Uncategorized';
-            data.categories[category] = (data.categories[category] || 0) + Math.abs(transaction.amount);
+            data.categories[category] = (data.categories[category] || 0) + transaction.amount;
 
             // Update last transaction date if newer
             if (new Date(transaction.transactionDate) > new Date(data.lastTransaction)) {
