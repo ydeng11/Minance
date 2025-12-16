@@ -118,8 +118,11 @@ jobs:
 
       - name: Push release commit and tag
         run: |
-          git push origin main
+          # Create and push a release branch
+          git checkout -b release/${{ steps.release_version.outputs.release_version }}
+          git push origin release/${{ steps.release_version.outputs.release_version }}
           git push origin "v${{ steps.release_version.outputs.release_version }}"
+          echo "::notice::Please open a pull request from release/${{ steps.release_version.outputs.release_version }} to main."
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -198,4 +201,7 @@ jobs:
         run: |
           git add pom.xml
           git commit -m "[CI] Set next snapshot version ${{ steps.next_version.outputs.next_version }}"
-          git push origin main
+          # Create and push a release branch
+          git checkout -b release/next-snapshot-${{ steps.next_version.outputs.next_version }}
+          git push origin release/next-snapshot-${{ steps.next_version.outputs.next_version }}
+          echo "::notice::Please open a pull request from release/next-snapshot-${{ steps.next_version.outputs.next_version }} to main."
