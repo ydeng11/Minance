@@ -77,6 +77,16 @@ public class PayPalDebitCsvTemplate extends AbstractBankAccountCsvTemplate {
 	}
 
 	@Override
+	protected BigDecimal normalizeAmount(BigDecimal amount) {
+		if (amount == null) {
+			return null;
+		}
+		// Invert sign: deposits become negative, expenses become positive
+		// This allows tracking balance where deposits reduce balance and expenses increase balance
+		return amount.negate();
+	}
+
+	@Override
 	public String getCategory() {
 		return name != null && !name.isEmpty() ? name : type;
 	}
@@ -125,5 +135,15 @@ public class PayPalDebitCsvTemplate extends AbstractBankAccountCsvTemplate {
 			memo.append("Transaction ID: ").append(transactionId);
 		}
 		return memo.toString();
+	}
+
+	@Override
+	public void validate() {
+		// Only process completed transactions
+		if (status == null || !status.equalsIgnoreCase("Completed")) {
+			throw new IllegalStateException("Only completed transactions are processed. Status: " + status);
+		}
+		// Call parent validation
+		super.validate();
 	}
 }
