@@ -69,6 +69,7 @@ public class BankAccountPair {
 		CASH_APP("CASH_APP"),
 		APPLE("APPLE"),
 		BANK_OF_AMERICA("BANK_OF_AMERICA"),
+		PAYPAL("PAYPAL"),
 		MINANCE("MINANCE");
 		private final String name;
 
