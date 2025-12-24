@@ -303,4 +303,148 @@ class BankAccountCsvFactoryImplTest {
 			assertTransactionEquals(transactions.getFirst().toTransactions(), expected);
 		}
 	}
+
+	@Nested
+	class PayPalDebitTests {
+		private final BankAccountPair PAYPAL_DEBIT = BankAccountPair.of(BankAccountPair.BankName.PAYPAL, DEBIT);
+
+		@Test
+		void parsesTransactionsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(PAYPAL_DEBIT);
+
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = CsvTestUtils.parseCsvFile(
+					"testCsv/paypal_balance_debit.csv", template);
+
+			// Filter to only completed transactions (validate() throws exception for non-completed)
+			List<? extends AbstractBankAccountCsvTemplate> completedTransactions = rawTransactions.stream()
+					.filter(t -> {
+						try {
+							t.validate();
+							return true;
+						} catch (IllegalStateException e) {
+							return false;
+						}
+					})
+					.toList();
+
+			// Then - assert no pending transactions are saved
+			// CSV has 55 rows total, but only completed ones should pass validation
+			assertThat(completedTransactions).isNotEmpty();
+
+			// Verify all parsed transactions are completed (no pending/denied)
+			completedTransactions.forEach(t -> {
+				PayPalDebitCsvTemplate paypalTemplate = (PayPalDebitCsvTemplate) t;
+				assertThat(paypalTemplate.status).isEqualToIgnoringCase("Completed");
+			});
+
+			// Verify first completed transaction (Rakuten deposit)
+			// CSV: Total = 7.91 (deposit), should be inverted to -7.91
+			Transactions firstTransaction = completedTransactions.getFirst().toTransactions();
+			Transactions expectedFirst = TestTransactionData.builder()
+					.amount(new BigDecimal("-7.91")) // Inverted: deposit becomes negative
+					.category("Rakuten")
+					.description("Rakuten - Mass Pay Payment")
+					.transactionDate(LocalDate.of(2024, 2, 14))
+					.postDate(LocalDate.of(2024, 2, 14))
+					.memo("Status: Completed | Transaction ID: f792993a-c348-447f-a2c1-15cf2ee2e394")
+					.build();
+			assertTransactionEquals(firstTransaction, expectedFirst);
+
+			// Verify an expense transaction (Taxi Technologies)
+			// Find first expense transaction (negative amount in CSV becomes positive)
+			PayPalDebitCsvTemplate expenseTemplate = completedTransactions.stream()
+					.map(t -> (PayPalDebitCsvTemplate) t)
+					.filter(t -> t.name != null && t.name.contains("Taxi Technologies"))
+					.findFirst()
+					.orElseThrow();
+
+			Transactions expenseTransaction = expenseTemplate.toTransactions();
+			// CSV: Total = -49.61 (expense), should be inverted to 49.61
+			assertThat(expenseTransaction.getAmount()).isEqualTo(new BigDecimal("49.61"));
+			assertThat(expenseTransaction.getCategory()).isEqualTo("Taxi Technologies, Inc");
+			assertThat(expenseTransaction.getDescription()).contains("Taxi Technologies");
+		}
+
+		@Test
+		void filtersOutPendingTransactions() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(PAYPAL_DEBIT);
+
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = CsvTestUtils.parseCsvFile(
+					"testCsv/paypal_balance_debit.csv", template);
+
+			// Filter to only completed transactions
+			List<? extends AbstractBankAccountCsvTemplate> completedTransactions = rawTransactions.stream()
+					.filter(t -> {
+						try {
+							t.validate();
+							return true;
+						} catch (IllegalStateException e) {
+							return false;
+						}
+					})
+					.toList();
+
+			// Then - verify no pending transactions
+			// All pending transactions should be filtered out
+			assertThat(completedTransactions.stream()
+					.map(t -> (PayPalDebitCsvTemplate) t)
+					.filter(t -> t.status != null && t.status.equalsIgnoreCase("Pending"))
+					.count()).isEqualTo(0);
+
+			// Verify we have some completed transactions
+			assertThat(completedTransactions.size()).isGreaterThan(0);
+			assertThat(completedTransactions.size()).isLessThan(rawTransactions.size());
+		}
+
+		@Test
+		void invertsAmountSignsCorrectly() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(PAYPAL_DEBIT);
+
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = CsvTestUtils.parseCsvFile(
+					"testCsv/paypal_balance_debit.csv", template);
+
+			// Filter to only completed transactions
+			List<? extends AbstractBankAccountCsvTemplate> completedTransactions = rawTransactions.stream()
+					.filter(t -> {
+						try {
+							t.validate();
+							return true;
+						} catch (IllegalStateException e) {
+							return false;
+						}
+					})
+					.toList();
+
+			// Then - verify amounts are inverted
+			// Deposits (positive in CSV) should become negative
+			PayPalDebitCsvTemplate depositTemplate = completedTransactions.stream()
+					.map(t -> (PayPalDebitCsvTemplate) t)
+					.filter(t -> t.total != null && t.total.compareTo(BigDecimal.ZERO) > 0)
+					.findFirst()
+					.orElseThrow();
+
+			Transactions depositTransaction = depositTemplate.toTransactions();
+			// Original CSV amount is positive, should be inverted to negative
+			assertThat(depositTransaction.getAmount()).isLessThan(BigDecimal.ZERO);
+			assertThat(depositTransaction.getAmount()).isEqualTo(depositTemplate.total.negate());
+
+			// Expenses (negative in CSV) should become positive
+			PayPalDebitCsvTemplate expenseTemplate = completedTransactions.stream()
+					.map(t -> (PayPalDebitCsvTemplate) t)
+					.filter(t -> t.total != null && t.total.compareTo(BigDecimal.ZERO) < 0)
+					.findFirst()
+					.orElseThrow();
+
+			Transactions expenseTransaction = expenseTemplate.toTransactions();
+			// Original CSV amount is negative, should be inverted to positive
+			assertThat(expenseTransaction.getAmount()).isGreaterThan(BigDecimal.ZERO);
+			assertThat(expenseTransaction.getAmount()).isEqualTo(expenseTemplate.total.negate());
+		}
+	}
 }
