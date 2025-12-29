@@ -1,19 +1,27 @@
 package today.ihelio.minance.csvpojos;
 
-import io.quarkus.test.junit.QuarkusTest;
-import jakarta.inject.Inject;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import today.ihelio.jooq.tables.pojos.Transactions;
+import static org.assertj.core.api.Assertions.assertThat;
+import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
+import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.AMEX;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.APPLE;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.BANK_OF_AMERICA;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CASH_APP;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CHASE;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CITI;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.DISCOVER;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.MINANCE;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
-import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
-import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.*;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import today.ihelio.jooq.tables.pojos.Transactions;
 
 @QuarkusTest
 class BankAccountCsvFactoryImplTest {
@@ -315,9 +323,10 @@ class BankAccountCsvFactoryImplTest {
 
 			// When
 			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = CsvTestUtils.parseCsvFile(
-					"testCsv/paypal_balance_debit.csv", template);
+					"testCsv/paypal_balance_debit_correct.csv", template);
 
-			// Filter to only completed transactions (validate() throws exception for non-completed)
+			// Filter to only completed transactions (validate() throws exception for
+			// non-completed)
 			List<? extends AbstractBankAccountCsvTemplate> completedTransactions = rawTransactions.stream()
 					.filter(t -> {
 						try {
@@ -374,7 +383,7 @@ class BankAccountCsvFactoryImplTest {
 
 			// When
 			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = CsvTestUtils.parseCsvFile(
-					"testCsv/paypal_balance_debit.csv", template);
+					"testCsv/paypal_balance_debit_incorrect.csv", template);
 
 			// Filter to only completed transactions
 			List<? extends AbstractBankAccountCsvTemplate> completedTransactions = rawTransactions.stream()
@@ -407,7 +416,7 @@ class BankAccountCsvFactoryImplTest {
 
 			// When
 			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = CsvTestUtils.parseCsvFile(
-					"testCsv/paypal_balance_debit.csv", template);
+					"testCsv/paypal_balance_debit_correct.csv", template);
 
 			// Filter to only completed transactions
 			List<? extends AbstractBankAccountCsvTemplate> completedTransactions = rawTransactions.stream()
@@ -425,26 +434,118 @@ class BankAccountCsvFactoryImplTest {
 			// Deposits (positive in CSV) should become negative
 			PayPalDebitCsvTemplate depositTemplate = completedTransactions.stream()
 					.map(t -> (PayPalDebitCsvTemplate) t)
-					.filter(t -> t.total != null && t.total.compareTo(BigDecimal.ZERO) > 0)
+					.filter(t -> {
+						if (t.total == null || t.total.isEmpty()) {
+							return false;
+						}
+						String sanitized = t.total.replace(",", "");
+						BigDecimal totalValue = new BigDecimal(sanitized);
+						return totalValue.compareTo(BigDecimal.ZERO) > 0;
+					})
 					.findFirst()
 					.orElseThrow();
 
 			Transactions depositTransaction = depositTemplate.toTransactions();
 			// Original CSV amount is positive, should be inverted to negative
 			assertThat(depositTransaction.getAmount()).isLessThan(BigDecimal.ZERO);
-			assertThat(depositTransaction.getAmount()).isEqualTo(depositTemplate.total.negate());
+			// Verify the amount matches the inverted total
+			String sanitizedTotal = depositTemplate.total.replace(",", "");
+			BigDecimal expectedAmount = new BigDecimal(sanitizedTotal).negate();
+			assertThat(depositTransaction.getAmount()).isEqualTo(expectedAmount);
 
 			// Expenses (negative in CSV) should become positive
 			PayPalDebitCsvTemplate expenseTemplate = completedTransactions.stream()
 					.map(t -> (PayPalDebitCsvTemplate) t)
-					.filter(t -> t.total != null && t.total.compareTo(BigDecimal.ZERO) < 0)
+					.filter(t -> {
+						if (t.total == null || t.total.isEmpty()) {
+							return false;
+						}
+						String sanitized = t.total.replace(",", "");
+						BigDecimal totalValue = new BigDecimal(sanitized);
+						return totalValue.compareTo(BigDecimal.ZERO) < 0;
+					})
 					.findFirst()
 					.orElseThrow();
 
 			Transactions expenseTransaction = expenseTemplate.toTransactions();
 			// Original CSV amount is negative, should be inverted to positive
 			assertThat(expenseTransaction.getAmount()).isGreaterThan(BigDecimal.ZERO);
-			assertThat(expenseTransaction.getAmount()).isEqualTo(expenseTemplate.total.negate());
+			// Verify the amount matches the inverted total
+			String sanitizedExpenseTotal = expenseTemplate.total.replace(",", "");
+			BigDecimal expectedExpenseAmount = new BigDecimal(sanitizedExpenseTotal).negate();
+			assertThat(expenseTransaction.getAmount()).isEqualTo(expectedExpenseAmount);
+		}
+
+		@Test
+		void handlesCommaSeparatedNumbers() {
+			// Given - PayPal CSV files with comma-separated numbers
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(PAYPAL_DEBIT);
+
+			// Test with correct CSV file (only completed transactions)
+			List<? extends AbstractBankAccountCsvTemplate> correctTransactions = CsvTestUtils.parseCsvFile(
+					"testCsv/paypal_balance_debit_correct.csv", template);
+
+			// Find transaction with comma-separated number: "-1,099.56"
+			PayPalDebitCsvTemplate commaSeparatedTransaction = correctTransactions.stream()
+					.map(t -> (PayPalDebitCsvTemplate) t)
+					.filter(t -> t.total != null && t.total.contains(","))
+					.findFirst()
+					.orElseThrow(() -> new AssertionError("Expected to find transaction with comma-separated number"));
+
+			// Verify the comma-separated number is parsed correctly
+			assertThat(commaSeparatedTransaction.total).isEqualTo("-1,099.56");
+			BigDecimal parsedAmount = commaSeparatedTransaction.getAmount();
+			assertThat(parsedAmount).isEqualTo(new BigDecimal("-1099.56"));
+
+			// Verify conversion to transaction works correctly (amount should be inverted)
+			Transactions transaction = commaSeparatedTransaction.toTransactions();
+			// Negative amount in CSV becomes positive after inversion
+			assertThat(transaction.getAmount()).isEqualTo(new BigDecimal("1099.56"));
+			assertThat(transaction.getCategory()).isEqualTo("ORIENTAL MARKET");
+			assertThat(transaction.getTransactionDate()).isEqualTo(LocalDate.of(2024, 9, 6));
+
+			// Test with incorrect CSV file (has pending transactions that should be
+			// filtered)
+			List<? extends AbstractBankAccountCsvTemplate> incorrectTransactions = CsvTestUtils.parseCsvFile(
+					"testCsv/paypal_balance_debit_incorrect.csv", template);
+
+			// Filter to only completed transactions
+			List<? extends AbstractBankAccountCsvTemplate> completedIncorrectTransactions = incorrectTransactions
+					.stream()
+					.filter(t -> {
+						try {
+							t.validate();
+							return true;
+						} catch (IllegalStateException e) {
+							return false;
+						}
+					})
+					.toList();
+
+			// Find the comma-separated transaction in the incorrect file
+			PayPalDebitCsvTemplate commaSeparatedFromIncorrect = completedIncorrectTransactions.stream()
+					.map(t -> (PayPalDebitCsvTemplate) t)
+					.filter(t -> t.total != null && t.total.contains(","))
+					.findFirst()
+					.orElseThrow(() -> new AssertionError("Expected to find transaction with comma-separated number"));
+
+			// Verify it parses correctly even from the file with pending transactions
+			assertThat(commaSeparatedFromIncorrect.total).isEqualTo("-1,099.56");
+			BigDecimal parsedFromIncorrect = commaSeparatedFromIncorrect.getAmount();
+			assertThat(parsedFromIncorrect).isEqualTo(new BigDecimal("-1099.56"));
+
+			// Verify numbers without commas still work (test with a regular transaction)
+			PayPalDebitCsvTemplate regularTransaction = correctTransactions.stream()
+					.map(t -> (PayPalDebitCsvTemplate) t)
+					.filter(t -> t.total != null && !t.total.contains(","))
+					.findFirst()
+					.orElseThrow(
+							() -> new AssertionError("Expected to find transaction without comma-separated number"));
+
+			// Verify regular numbers parse correctly
+			BigDecimal regularAmount = regularTransaction.getAmount();
+			String sanitizedTotal = regularTransaction.total.replace(",", "");
+			assertThat(regularAmount).isEqualTo(new BigDecimal(sanitizedTotal));
 		}
 	}
 }

@@ -40,13 +40,13 @@ public class PayPalDebitCsvTemplate extends AbstractBankAccountCsvTemplate {
 	public String currency;
 
 	@CsvBindByName(column = "Amount")
-	public BigDecimal amount;
+	public String amount;
 
 	@CsvBindByName(column = "Fees")
-	public BigDecimal fees;
+	public String fees;
 
 	@CsvBindByName(column = "Total")
-	public BigDecimal total;
+	public String total;
 
 	@CsvBindByName(column = "Exchange Rate")
 	public String exchangeRate;
@@ -55,7 +55,7 @@ public class PayPalDebitCsvTemplate extends AbstractBankAccountCsvTemplate {
 	public String receiptId;
 
 	@CsvBindByName(column = "Balance")
-	public BigDecimal balance;
+	public String balance;
 
 	@CsvBindByName(column = "Transaction ID")
 	public String transactionId;
@@ -73,7 +73,12 @@ public class PayPalDebitCsvTemplate extends AbstractBankAccountCsvTemplate {
 
 	@Override
 	public BigDecimal getAmount() {
-		return total; // Use Total (net amount after fees) instead of Amount
+		if (total == null || total.isEmpty()) {
+			return BigDecimal.ZERO;
+		}
+		// Remove comma thousands separators before parsing
+		String sanitizedTotal = total.replace(",", "");
+		return new BigDecimal(sanitizedTotal);
 	}
 
 	@Override
