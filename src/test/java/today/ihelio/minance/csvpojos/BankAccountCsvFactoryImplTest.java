@@ -323,7 +323,7 @@ class BankAccountCsvFactoryImplTest {
 
 			// When
 			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = CsvTestUtils.parseCsvFile(
-					"testCsv/paypal_balance_debit.csv", template);
+					"testCsv/paypal_balance_debit_correct.csv", template);
 
 			// Filter to only completed transactions (validate() throws exception for
 			// non-completed)
@@ -383,7 +383,7 @@ class BankAccountCsvFactoryImplTest {
 
 			// When
 			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = CsvTestUtils.parseCsvFile(
-					"testCsv/paypal_balance_debit.csv", template);
+					"testCsv/paypal_balance_debit_correct.csv", template);
 
 			// Filter to only completed transactions
 			List<? extends AbstractBankAccountCsvTemplate> completedTransactions = rawTransactions.stream()
@@ -416,7 +416,7 @@ class BankAccountCsvFactoryImplTest {
 
 			// When
 			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = CsvTestUtils.parseCsvFile(
-					"testCsv/paypal_balance_debit.csv", template);
+					"testCsv/paypal_balance_debit_correct.csv", template);
 
 			// Filter to only completed transactions
 			List<? extends AbstractBankAccountCsvTemplate> completedTransactions = rawTransactions.stream()
