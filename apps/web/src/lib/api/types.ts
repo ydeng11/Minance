@@ -378,6 +378,29 @@ export interface MigrationRun {
   };
 }
 
+export interface SqliteFoundationStatus {
+  backend: "json" | "sqlite";
+  jsonFilePath: string;
+  sqliteFilePath: string;
+  sqliteSchemaPath: string;
+  autoInit: boolean;
+  initializeAttempted: boolean;
+  sqliteCliAvailable: boolean;
+  schemaFileExists: boolean;
+  sqliteFileExists: boolean;
+  schemaVersion: string | null;
+  migrationsApplied: number;
+  ready: boolean;
+  lastError: string | null;
+}
+
+export interface StorageStatusResponse {
+  storage: {
+    backend: "json" | "sqlite";
+    sqlite: SqliteFoundationStatus;
+  };
+}
+
 export interface ApiErrorPayload {
   error?: {
     message?: string;

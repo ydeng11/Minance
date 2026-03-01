@@ -48,7 +48,13 @@ Useful variants:
 - `npm run e2e:ci` for CI-style execution and HTML report output.
 
 ## Notes
-- Data persists in `services/api/data/store.json`.
+- Data defaults to JSON persistence at `services/api/data/store.json` (`MINANCE_STORE_BACKEND=json`).
+- SQLite foundation bootstrap is available for cutover prep:
+  - `MINANCE_STORE_BACKEND=sqlite` to require SQLite readiness at startup.
+  - `MINANCE_SQLITE_FILE` to select the SQLite file path (default `services/api/data/minance.sqlite`).
+  - `MINANCE_SQLITE_SCHEMA_FILE` to select the schema file (default `services/api/sql/schema.sql`).
+  - `MINANCE_SQLITE_AUTO_INIT=false` to disable startup schema initialization.
+- Authenticated storage status can be inspected via `GET /v1/system/storage`.
 - E2E runs use isolated storage via `MINANCE_DATA_FILE=services/api/tmp/e2e-store.json`.
 - API now reads `.env.local` automatically for local development settings.
 - Dev/test account is auto-seeded when `NODE_ENV` is not `production`:

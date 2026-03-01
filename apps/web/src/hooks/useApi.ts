@@ -10,6 +10,7 @@ import {
   importsApi,
   migrationApi,
   savedViewsApi,
+  systemApi,
   transactionsApi
 } from "@/lib/api/endpoints";
 
@@ -26,6 +27,9 @@ export function useApi() {
         rotateCredential: aiApi.rotateCredential.bind(null, request),
         deleteCredential: aiApi.deleteCredential.bind(null, request),
         savePreferences: aiApi.savePreferences.bind(null, request)
+      },
+      system: {
+        storage: () => systemApi.storage(request)
       },
       analytics: {
         overview: analyticsApi.overview.bind(null, request),

@@ -13,7 +13,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
 | Area | Copilot-style expectation | Self-host decision | Current implementation (2026-03-01) | Fallback / Notes |
 |---|---|---|---|---|
 | Authentication and sessions | Email/password auth, session refresh, user profile | Supported | `POST /v1/auth/signup`, `POST /v1/auth/login`, `POST /v1/auth/refresh`, `GET/DELETE /v1/users/me` | Local session/token storage in app data file. |
-| Canonical data store | Durable relational storage | Supported (migration in progress) | JSON store (`services/api/data/store.json`) is active | Planned default backend is SQLite; see [JSON-to-SQLite runbook](./json-to-sqlite-migration-runbook.md). |
+| Canonical data store | Durable relational storage | Supported (migration in progress) | JSON store (`services/api/data/store.json`) is active, with SQLite foundation bootstrap and status endpoint (`GET /v1/system/storage`) | Planned default backend is SQLite; see [JSON-to-SQLite runbook](./json-to-sqlite-migration-runbook.md). |
 | CSV import and mapping | Bank CSV ingestion with review, mapping, diagnostics | Supported | Implemented import workflow (`/v1/imports*`) with processed-row editor and dedupe | Deterministic parser + manual mapping/editing when heuristics/AI confidence is low. |
 | Legacy Minance migration | Import from legacy Minance SQLite DB | Supported | `POST /v1/migrations/minance/sqlite` and migration report endpoint are implemented | Requires host `sqlite3` CLI. If unavailable, operator uses CSV import path. |
 | Transactions lifecycle | Create/edit/delete and filter transactions | Partially supported | Manual CRUD and query filters are implemented (`/v1/transactions*`) | Bulk operations, review workflows, and parity details tracked by open parity tasks. |
@@ -33,7 +33,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
 - Required runtime dependencies:
   - Node.js runtime for web/API.
 - Optional dependencies:
-  - `sqlite3` CLI for legacy migration flow and upcoming SQLite operations.
+  - `sqlite3` CLI for legacy migration flow and SQLite foundation bootstrap/validation.
   - AI provider APIs (OpenAI/OpenRouter/Anthropic/Google) only when the operator/user configures BYOK keys.
 - Explicitly non-required for baseline operation:
   - Proprietary bank-link providers.
@@ -43,6 +43,10 @@ This document defines how Minance Next maps Copilot-style product expectations t
 ## Default Self-Host Behavior
 
 - Data path defaults to `services/api/data/store.json` (`MINANCE_DATA_FILE` can override).
+- SQLite foundation defaults:
+  - `MINANCE_SQLITE_FILE=services/api/data/minance.sqlite`
+  - `MINANCE_SQLITE_SCHEMA_FILE=services/api/sql/schema.sql`
+  - startup auto-init enabled unless `MINANCE_SQLITE_AUTO_INIT=false`
 - App remains usable without any AI keys:
   - import, manual transaction CRUD, analytics, categories, and migration UI continue to function.
 - Development defaults:

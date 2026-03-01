@@ -3,7 +3,7 @@ import path from "node:path";
 import http from "node:http";
 import { URL } from "node:url";
 
-import { PORT, WEB_DIR } from "./config.js";
+import { PORT, WEB_DIR, STORE_BACKEND } from "./config.js";
 import { sendJson, sendError, sendNoContent, parseJsonBody } from "./utils.js";
 import { signup, login, refresh, requireAuth, deleteUser, ensureDevTestAccount } from "./auth.js";
 import {
@@ -50,6 +50,7 @@ import {
   deleteSavedView
 } from "./savedViews.js";
 import { createId, nowIso, normalizeText } from "./utils.js";
+import { ensureSqliteFoundation, getSqliteFoundationStatus } from "./sqlite-foundation.js";
 
 const contentTypeByExt = {
   ".html": "text/html; charset=utf-8",
@@ -171,6 +172,17 @@ async function handleApiRequest(req, res, url) {
       const user = requireUser(req);
       deleteUser(user.id);
       sendNoContent(res);
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/system/storage") {
+      requireUser(req);
+      sendJson(res, 200, {
+        storage: {
+          backend: STORE_BACKEND,
+          sqlite: getSqliteFoundationStatus()
+        }
+      });
       return;
     }
 
@@ -653,6 +665,22 @@ const devTestAccount = ensureDevTestAccount();
 if (devTestAccount.enabled) {
   const status = devTestAccount.created ? "created" : "available";
   console.log(`Dev/test account ${status}: ${devTestAccount.email}`);
+}
+
+let sqliteFoundation = null;
+try {
+  sqliteFoundation = ensureSqliteFoundation();
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}
+
+if (sqliteFoundation?.ready) {
+  console.log(
+    `SQLite foundation ready (${sqliteFoundation.migrationsApplied} migration entries) at ${sqliteFoundation.sqliteFilePath}`
+  );
+} else if (sqliteFoundation?.lastError) {
+  console.warn(`SQLite foundation is not ready: ${sqliteFoundation.lastError}`);
 }
 
 if (process.env.NODE_ENV !== "production") {

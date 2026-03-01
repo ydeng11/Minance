@@ -18,6 +18,7 @@ import type {
   Provider,
   ProviderPreferences,
   SavedView,
+  StorageStatusResponse,
   Transaction,
   TransactionsResponse,
   User
@@ -48,6 +49,10 @@ export const authApi = {
     request<AuthResponse>("/v1/auth/login", { method: "POST", auth: false, body: { email, password } }),
   me: (request: ApiRequest) => request<{ user: User }>("/v1/users/me"),
   deleteMe: (request: ApiRequest) => request<null>("/v1/users/me", { method: "DELETE" })
+};
+
+export const systemApi = {
+  storage: (request: ApiRequest) => request<StorageStatusResponse>("/v1/system/storage")
 };
 
 export const aiApi = {

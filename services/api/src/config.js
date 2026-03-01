@@ -44,10 +44,45 @@ function loadDotEnvLocal() {
 
 loadDotEnvLocal();
 
+function resolvePathFromRoot(configuredPath, fallbackPath) {
+  const raw = configuredPath || fallbackPath;
+  if (!raw) {
+    throw new Error("Path configuration is required");
+  }
+  return path.isAbsolute(raw) ? raw : path.join(ROOT_DIR, raw);
+}
+
+function parseBoolean(value, defaultValue) {
+  if (value == null) {
+    return defaultValue;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === "true") {
+    return true;
+  }
+  if (normalized === "false") {
+    return false;
+  }
+  return defaultValue;
+}
+
+function normalizeStoreBackend(value) {
+  const normalized = String(value || "json").trim().toLowerCase();
+  return normalized === "sqlite" ? "sqlite" : "json";
+}
+
 const configuredDataFile = process.env.MINANCE_DATA_FILE || "services/api/data/store.json";
-export const DATA_FILE = path.isAbsolute(configuredDataFile)
-  ? configuredDataFile
-  : path.join(ROOT_DIR, configuredDataFile);
+const configuredSqliteFile = process.env.MINANCE_SQLITE_FILE || "services/api/data/minance.sqlite";
+const configuredSqliteSchema = process.env.MINANCE_SQLITE_SCHEMA_FILE || "services/api/sql/schema.sql";
+
+export const DATA_FILE = resolvePathFromRoot(configuredDataFile, "services/api/data/store.json");
+export const SQLITE_FILE = resolvePathFromRoot(configuredSqliteFile, "services/api/data/minance.sqlite");
+export const SQLITE_SCHEMA_FILE = resolvePathFromRoot(
+  configuredSqliteSchema,
+  "services/api/sql/schema.sql"
+);
+export const STORE_BACKEND = normalizeStoreBackend(process.env.MINANCE_STORE_BACKEND || "json");
+export const SQLITE_AUTO_INIT = parseBoolean(process.env.MINANCE_SQLITE_AUTO_INIT, true);
 export const TMP_DIR = path.join(__dirname, "../tmp");
 export const WEB_DIR = path.join(ROOT_DIR, "apps/web");
 

@@ -11,6 +11,7 @@ This runbook defines a deterministic, idempotent migration path from the current
 ## Current Baseline
 
 - Active store: `services/api/data/store.json` (or `MINANCE_DATA_FILE` override).
+- SQLite foundation bootstrap exists in API startup (`MINANCE_SQLITE_FILE`, `MINANCE_SQLITE_SCHEMA_FILE`, `MINANCE_SQLITE_AUTO_INIT`) and status is observable via `GET /v1/system/storage`.
 - Active write paths: auth, imports, transactions, categories/rules, AI settings, assistant queries, saved views, migration runs, audit events.
 - Legacy Minance SQLite import endpoint already exists (`/v1/migrations/minance/sqlite`) and is separate from this JSON-to-SQLite cutover.
 
