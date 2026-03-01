@@ -89,6 +89,21 @@ test("category rollup groups debit amounts", () => {
   assert.equal(categories[0].category, "Transport");
 });
 
+test("coarse category rollup groups by strategy buckets", () => {
+  resetStoreForTests(structuredClone(baseStore));
+  const categories = getCategoryRollup("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "coarse"
+  });
+
+  assert.equal(categories.length, 2);
+  assert.equal(categories[0].category, "Essential");
+  assert.equal(categories[0].amount, 400);
+  assert.equal(categories[1].category, "Extra");
+  assert.equal(categories[1].amount, 10);
+});
+
 test("anomaly detector surfaces high outlier", () => {
   resetStoreForTests(structuredClone(baseStore));
   const anomalies = getAnomalies("user_1", { start: "2025-12-01", end: "2026-01-31" });

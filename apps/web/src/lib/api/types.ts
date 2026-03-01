@@ -166,6 +166,10 @@ export interface Transaction {
   direction: "debit" | "credit";
   category_raw: string | null;
   category_final: string;
+  category_coarse?: string | null;
+  category_coarse_key?: string | null;
+  category_emoji?: string;
+  category_coarse_emoji?: string;
   category_confidence: number;
   category_strategy: string | null;
   needs_category_review: boolean;
@@ -190,6 +194,7 @@ export interface AppliedRangeMeta {
 export interface AnalyticsMeta {
   appliedRange: AppliedRangeMeta;
   dataBounds: DateBoundsMeta;
+  categoryView?: "granular" | "coarse";
 }
 
 export interface TransactionsResponse {
@@ -207,7 +212,15 @@ export interface OverviewResponse {
     transactionCount: number;
   };
   trend: Array<{ month: string; spend: number; income: number; net: number }>;
-  topCategories: Array<{ category: string; amount: number }>;
+  topCategories: Array<{
+    category: string;
+    amount: number;
+    count?: number;
+    share?: number;
+    emoji?: string;
+    coarseKey?: string;
+    excluded?: boolean;
+  }>;
   topMerchants: Array<{ merchant: string; amount: number; share: number; rank: number; concentrationIndex: number }>;
   meta: AnalyticsMeta;
 }
@@ -225,6 +238,9 @@ export interface AnomalyItem {
   merchant: string;
   amount: number;
   category: string;
+  categoryGranular?: string;
+  categoryCoarse?: string;
+  emoji?: string;
   reason: string;
 }
 
@@ -263,7 +279,36 @@ export interface Category {
   id: string;
   userId: string;
   name: string;
+  emoji?: string;
+  coarseKey?: string | null;
   isSystem: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CategoryStrategyCoarse {
+  key: string;
+  name: string;
+  emoji: string;
+  isExcluded: boolean;
+  order: number;
+}
+
+export interface CategoryStrategyGranular {
+  name: string;
+  emoji: string;
+  coarseKey: string;
+  aliases: string[];
+  isSystem: boolean;
+}
+
+export interface CategoryStrategy {
+  id: string;
+  userId: string;
+  sourceUrl: string;
+  version: string;
+  coarseCategories: CategoryStrategyCoarse[];
+  granularCategories: CategoryStrategyGranular[];
   createdAt: string;
   updatedAt: string;
 }

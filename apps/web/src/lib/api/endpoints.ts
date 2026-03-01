@@ -3,6 +3,7 @@ import type {
   AssistantQuery,
   AuthResponse,
   Category,
+  CategoryStrategy,
   CommitImportResponse,
   Credential,
   AiTrainingStatus,
@@ -105,6 +106,7 @@ export const transactionsApi = {
       query?: string;
       category?: string;
       range?: string;
+      category_view?: "granular" | "coarse";
       needs_category_review?: boolean;
       limit?: number;
       offset?: number;
@@ -123,17 +125,17 @@ export const transactionsApi = {
 };
 
 export const analyticsApi = {
-  overview: (request: ApiRequest, params: { range?: string; start?: string; end?: string }) =>
+  overview: (request: ApiRequest, params: { range?: string; start?: string; end?: string; category_view?: "granular" | "coarse" }) =>
     request<OverviewResponse>(`/v1/analytics/overview${buildQuery(params)}`),
-  categories: (request: ApiRequest, params: { range?: string; start?: string; end?: string }) =>
+  categories: (request: ApiRequest, params: { range?: string; start?: string; end?: string; category_view?: "granular" | "coarse" }) =>
     request<{ items: Array<{ category: string; amount: number }> }>(`/v1/analytics/categories${buildQuery(params)}`),
-  merchants: (request: ApiRequest, params: { range?: string; start?: string; end?: string }) =>
+  merchants: (request: ApiRequest, params: { range?: string; start?: string; end?: string; category_view?: "granular" | "coarse" }) =>
     request<{ items: Array<{ merchant: string; amount: number; share: number; rank: number; concentrationIndex: number }> }>(
       `/v1/analytics/merchants${buildQuery(params)}`
     ),
-  heatmap: (request: ApiRequest, params: { range?: string; start?: string; end?: string }) =>
+  heatmap: (request: ApiRequest, params: { range?: string; start?: string; end?: string; category_view?: "granular" | "coarse" }) =>
     request<{ items: HeatmapItem[] }>(`/v1/analytics/heatmap${buildQuery(params)}`),
-  anomalies: (request: ApiRequest, params: { range?: string; start?: string; end?: string }) =>
+  anomalies: (request: ApiRequest, params: { range?: string; start?: string; end?: string; category_view?: "granular" | "coarse" }) =>
     request<{ items: AnomalyItem[] }>(`/v1/analytics/anomalies${buildQuery(params)}`)
 };
 
@@ -147,8 +149,16 @@ export const assistantApi = {
 
 export const categoriesApi = {
   list: (request: ApiRequest) => request<{ categories: Category[] }>("/v1/categories"),
-  add: (request: ApiRequest, name: string) =>
-    request<{ category: Category }>("/v1/categories", { method: "POST", body: { name } }),
+  getStrategy: (request: ApiRequest) => request<{ strategy: CategoryStrategy }>("/v1/category-strategy"),
+  saveStrategy: (
+    request: ApiRequest,
+    strategy: {
+      coarseCategories?: CategoryStrategy["coarseCategories"];
+      granularCategories?: CategoryStrategy["granularCategories"];
+    }
+  ) => request<{ strategy: CategoryStrategy }>("/v1/category-strategy", { method: "PUT", body: strategy }),
+  add: (request: ApiRequest, body: { name: string; emoji?: string; coarseKey?: string }) =>
+    request<{ category: Category }>("/v1/categories", { method: "POST", body }),
   addRule: (request: ApiRequest, body: { pattern: string; category: string; type?: string; priority?: number }) =>
     request<{ rule: Record<string, unknown> }>("/v1/category-rules", { method: "POST", body })
 };

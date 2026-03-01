@@ -39,6 +39,8 @@ export function useApi() {
       },
       categories: {
         list: () => categoriesApi.list(request),
+        getStrategy: () => categoriesApi.getStrategy(request),
+        saveStrategy: categoriesApi.saveStrategy.bind(null, request),
         add: categoriesApi.add.bind(null, request),
         addRule: categoriesApi.addRule.bind(null, request)
       },

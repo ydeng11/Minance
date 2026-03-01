@@ -52,3 +52,21 @@ test("buildMerchantMemory picks most frequent category for merchant", () => {
 
   assert.equal(memory.coffee123, "Dining");
 });
+
+test("categorizeTransaction maps Jeep/Honda merchants to Auto", () => {
+  const transaction = {
+    merchant_normalized: "american honda finance",
+    description: "Honda Financial Services",
+    memo: "",
+    direction: "debit",
+    category_raw: "Automotive"
+  };
+
+  const result = categorizeTransaction({
+    transaction,
+    userRules: [],
+    merchantMemory: {}
+  });
+
+  assert.equal(result.category, "Auto");
+});

@@ -2,6 +2,7 @@ import { loadStore, saveStore, addAuditEvent } from "./store.js";
 import { parseDate, toDecimal, nowIso, createId, normalizeText, stableHash } from "./utils.js";
 import { normalizeMerchant } from "./categorization.js";
 import { filterUserTransactions, getUserDataBounds, buildAppliedRange } from "./analytics.js";
+import { createCategoryResolver, ensureCategoryStrategyForUser } from "./category-strategy.js";
 
 function ensureAccount(store, userId, accountId, accountName) {
   if (accountId) {
@@ -49,6 +50,17 @@ function dedupeFingerprint(userId, accountKey, merchantNormalized, amount, trans
       memo ? stableHash(String(memo)) : ""
     ].join("|")
   );
+}
+
+function resolveTransactionCategory(resolveCategory, transaction) {
+  return resolveCategory({
+    categoryFinal: transaction.category_final,
+    categoryRaw: transaction.category_raw,
+    merchantNormalized: transaction.merchant_normalized,
+    merchantRaw: transaction.merchant_raw,
+    description: transaction.description,
+    memo: transaction.memo
+  });
 }
 
 function normalizeManualInput(input) {
@@ -130,6 +142,8 @@ export function listTransactions(userId, filters = {}) {
     effectiveFilters.range = "all";
   }
 
+  const strategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(strategy);
   let txns = filterUserTransactions(userId, effectiveFilters);
 
   if (effectiveFilters.source_type) {
@@ -152,13 +166,24 @@ export function listTransactions(userId, filters = {}) {
   const total = txns.length;
   const limit = Math.max(1, Math.min(500, Number(effectiveFilters.limit || 100)));
   const offset = Math.max(0, Number(effectiveFilters.offset || 0));
+  const items = txns.slice(offset, offset + limit).map((entry) => {
+    const categoryMeta = resolveTransactionCategory(resolveCategory, entry);
+    return {
+      ...entry,
+      category_coarse: categoryMeta.categoryCoarse,
+      category_coarse_key: categoryMeta.categoryCoarseKey,
+      category_emoji: categoryMeta.categoryEmoji,
+      category_coarse_emoji: categoryMeta.categoryCoarseEmoji
+    };
+  });
 
   return {
     total,
-    items: txns.slice(offset, offset + limit),
+    items,
     meta: {
       appliedRange: buildAppliedRange(effectiveFilters),
-      dataBounds: getUserDataBounds(userId)
+      dataBounds: getUserDataBounds(userId),
+      categoryView: effectiveFilters.category_view || effectiveFilters.categoryView || "granular"
     }
   };
 }
@@ -167,6 +192,10 @@ export function createManualTransaction(userId, payload) {
   const store = loadStore();
   const normalized = normalizeManualInput(payload);
   const account = ensureAccount(store, userId, payload.account_id, payload.account_name);
+  const strategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(strategy);
+  const categoryMeta = resolveTransactionCategory(resolveCategory, normalized);
+  normalized.category_final = categoryMeta.categoryGranular;
 
   const tx = {
     id: createId("txn"),
@@ -176,6 +205,8 @@ export function createManualTransaction(userId, payload) {
     source_type: "manual",
     source_file_id: null,
     ...normalized,
+    category_coarse: categoryMeta.categoryCoarse,
+    category_emoji: categoryMeta.categoryEmoji,
     category_strategy: "manual",
     needs_category_review: false,
     dedupe_fingerprint: dedupeFingerprint(
@@ -206,6 +237,10 @@ export function updateTransaction(userId, transactionId, payload) {
 
   const previousCategory = tx.category_final;
   const normalized = normalizeManualInput({ ...tx, ...payload });
+  const strategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(strategy);
+  const categoryMeta = resolveTransactionCategory(resolveCategory, normalized);
+  normalized.category_final = categoryMeta.categoryGranular;
   const account = ensureAccount(
     store,
     userId,
@@ -225,6 +260,8 @@ export function updateTransaction(userId, transactionId, payload) {
   tx.direction = normalized.direction;
   tx.category_raw = normalized.category_raw;
   tx.category_final = normalized.category_final;
+  tx.category_coarse = categoryMeta.categoryCoarse;
+  tx.category_emoji = categoryMeta.categoryEmoji;
   tx.category_confidence = Number(payload.category_confidence ?? tx.category_confidence ?? 1);
   tx.memo = normalized.memo;
   tx.needs_category_review = false;

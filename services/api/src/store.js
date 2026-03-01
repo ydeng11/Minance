@@ -10,6 +10,7 @@ const defaultStore = {
   accounts: [],
   transactions: [],
   categories: [],
+  categoryStrategies: [],
   categoryRules: [],
   imports: [],
   importRowsRaw: [],

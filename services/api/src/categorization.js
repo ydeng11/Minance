@@ -2,6 +2,33 @@ import { CATEGORY_KEYWORDS } from "../../../packages/domain/src/constants.js";
 import { normalizeText, clamp } from "./utils.js";
 import { resolveTrainingCategory } from "./training.js";
 
+const AUTO_HINT_PATTERN = /\b(jeep|honda|honda finance|honda financial|american honda)\b/i;
+
+function applyAutoCanonicalization(result, transaction) {
+  if (!result?.category) {
+    return result;
+  }
+
+  const normalizedCategory = normalizeText(result.category);
+  const text = normalizeText(
+    `${transaction.merchant_normalized || ""} ${transaction.description || ""} ${transaction.memo || ""} ${transaction.category_raw || ""}`
+  );
+  const shouldUseAuto = normalizedCategory === "automotive" || AUTO_HINT_PATTERN.test(text);
+
+  if (!shouldUseAuto) {
+    return result;
+  }
+
+  if (result.category === "Auto") {
+    return result;
+  }
+
+  return {
+    ...result,
+    category: "Auto"
+  };
+}
+
 export function normalizeMerchant(raw) {
   const normalized = normalizeText(raw)
     .replace(/\b(sq|pos|purchase|debit|card|payment|txn)\b/g, "")
@@ -94,12 +121,12 @@ function applyKeywordModel(transaction) {
 export function categorizeTransaction({ transaction, userRules, merchantMemory }) {
   const byRule = applyRule(userRules, transaction);
   if (byRule) {
-    return byRule;
+    return applyAutoCanonicalization(byRule, transaction);
   }
 
   const byMemory = applyMerchantMemory(merchantMemory, transaction);
   if (byMemory) {
-    return byMemory;
+    return applyAutoCanonicalization(byMemory, transaction);
   }
 
   const byTraining = resolveTrainingCategory({
@@ -109,10 +136,10 @@ export function categorizeTransaction({ transaction, userRules, merchantMemory }
     memo: transaction.memo
   });
   if (byTraining) {
-    return byTraining;
+    return applyAutoCanonicalization(byTraining, transaction);
   }
 
-  return applyKeywordModel(transaction);
+  return applyAutoCanonicalization(applyKeywordModel(transaction), transaction);
 }
 
 export function buildMerchantMemory(transactions) {
