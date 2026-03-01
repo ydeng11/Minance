@@ -11,6 +11,7 @@ export const SEED_ACCOUNT = {
 };
 
 export const CSV_FIXTURE_PATH = path.resolve(__dirname, "../fixtures/transactions.csv");
+export const POSITIVE_EXPENSE_FIXTURE_PATH = path.resolve(__dirname, "../fixtures/positive-expense-inference.csv");
 
 const PROVIDER_ORDER = ["openrouter", "openai", "anthropic", "google"];
 
@@ -36,7 +37,7 @@ function providerTestKey(provider) {
   return `playwright-${suffix}-test-key`;
 }
 
-async function appApi(page, routePath, options = {}) {
+export async function appApi(page, routePath, options = {}) {
   const method = options.method || "GET";
   const body = options.body || null;
 

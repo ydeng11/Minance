@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { createApiClient, type RequestOptions } from "@/lib/api/client";
 import { authApi } from "@/lib/api/endpoints";
 import { TOKEN_STORAGE_KEY } from "@/lib/constants";
@@ -51,14 +51,11 @@ function persistTokens(tokens: Tokens | null) {
 }
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<SessionStatus>("loading");
+  const [tokens, setTokensState] = useState<Tokens | null>(() => readStoredTokens());
+  const [status, setStatus] = useState<SessionStatus>(tokens ? "loading" : "unauthenticated");
   const [user, setUser] = useState<User | null>(null);
-  const [tokens, setTokensState] = useState<Tokens | null>(null);
-
-  const tokensRef = useRef<Tokens | null>(null);
 
   const setTokens = useCallback((nextTokens: Tokens | null) => {
-    tokensRef.current = nextTokens;
     setTokensState(nextTokens);
     persistTokens(nextTokens);
   }, []);
@@ -72,11 +69,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const client = useMemo(
     () =>
       createApiClient({
-        getTokens: () => tokensRef.current,
+        getTokens: () => tokens,
         setTokens,
         onAuthFailure
       }),
-    [onAuthFailure, setTokens]
+    [onAuthFailure, setTokens, tokens]
   );
 
   const refreshUser = useCallback(async () => {
@@ -112,13 +109,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [setTokens]);
 
   useEffect(() => {
-    const nextTokens = readStoredTokens();
-    if (!nextTokens) {
-      setStatus("unauthenticated");
+    if (!tokens) {
       return;
     }
-
-    setTokens(nextTokens);
 
     authApi
       .me(client.request)
@@ -129,7 +122,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         onAuthFailure();
       });
-  }, [client.request, onAuthFailure, setTokens]);
+  }, [client.request, onAuthFailure, tokens]);
 
   const value = useMemo<SessionContextValue>(
     () => ({
