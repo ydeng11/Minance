@@ -223,7 +223,7 @@ async function handleApiRequest(req, res, url) {
     if (req.method === "POST" && pathname === "/v1/imports") {
       const user = requireUser(req);
       const body = await parseJsonBody(req);
-      const result = createImportJob({
+      const result = await createImportJob({
         userId: user.id,
         fileName: body.fileName,
         csvText: body.csvText
@@ -254,7 +254,7 @@ async function handleApiRequest(req, res, url) {
     if (req.method === "POST" && mappingParams) {
       const user = requireUser(req);
       const body = await parseJsonBody(req);
-      const importJob = updateImportMapping(user.id, mappingParams.id, body.mapping);
+      const importJob = await updateImportMapping(user.id, mappingParams.id, body.mapping);
       sendJson(res, 200, { importJob });
       return;
     }
@@ -283,7 +283,7 @@ async function handleApiRequest(req, res, url) {
     const reprocessParams = matchPath(pathname, "/v1/imports/:id/reprocess");
     if (req.method === "POST" && reprocessParams) {
       const user = requireUser(req);
-      const result = reprocessImportRows(user.id, reprocessParams.id);
+      const result = await reprocessImportRows(user.id, reprocessParams.id);
       sendJson(res, 200, result);
       return;
     }
@@ -604,16 +604,27 @@ const devTestAccount = ensureDevTestAccount();
 if (devTestAccount.enabled) {
   const status = devTestAccount.created ? "created" : "available";
   console.log(`Dev/test account ${status}: ${devTestAccount.email}`);
+}
 
-  if (devTestAccount.user?.id) {
-    const aiSeed = ensureDevOpenRouterCredential(devTestAccount.user.id);
+if (process.env.NODE_ENV !== "production") {
+  const store = loadStore();
+  let seededUsers = 0;
+  let warned = false;
+
+  for (const user of store.users) {
+    const aiSeed = ensureDevOpenRouterCredential(user.id);
     if (aiSeed.enabled) {
       if (aiSeed.createdCredential || aiSeed.updatedPreferences) {
-        console.log("Seeded dev OpenRouter credential from .env.local");
+        seededUsers += 1;
       }
-    } else if (aiSeed.reason !== "missing_env_key") {
+    } else if (!warned && aiSeed.reason !== "missing_env_key" && aiSeed.reason !== "production") {
       console.warn(`Skipped dev OpenRouter seed: ${aiSeed.reason}`);
+      warned = true;
     }
+  }
+
+  if (seededUsers > 0) {
+    console.log(`Seeded dev OpenRouter credential/default for ${seededUsers} user(s) from .env.local`);
   }
 }
 

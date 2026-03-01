@@ -1,5 +1,6 @@
 import { DEFAULT_CATEGORIES } from "../../../../packages/domain/src/constants.js";
 import { getTrainingPromptContext } from "../training.js";
+import { IMPORT_DIRECTION_FEW_SHOT_EXAMPLES } from "./import-direction-examples.js";
 
 const CATEGORY_GUIDANCE = [
   "Groceries: supermarkets, markets, wholesale food stores, and household food purchases.",
@@ -141,4 +142,37 @@ export function buildMerchantExemplars(transactions = [], maxItems = 24) {
     .slice(0, maxItems);
 
   return items;
+}
+
+export function buildImportDirectionPrompt({
+  sample,
+  deterministicInference
+}) {
+  const systemPrompt = [
+    "You infer transaction direction conventions for CSV imports.",
+    "You must return JSON only.",
+    "Expense-majority (most rows are expenses) is a soft prior, not an absolute rule.",
+    "Never force all rows into one direction when explicit row signals disagree.",
+    "Output schema:",
+    '{"amount_mode":"single_amount|split_debit_credit","sign_convention":"negative_is_debit|positive_is_debit|split_columns","confidence_internal":0.0,"reason_short":"<1 sentence>","warnings":["<optional warning>"]}'
+  ].join("\n");
+
+  const userPrompt = [
+    "Few-shot examples from known fixtures:",
+    safeJson(IMPORT_DIRECTION_FEW_SHOT_EXAMPLES),
+    "",
+    "Deterministic baseline result:",
+    safeJson(deterministicInference),
+    "",
+    "Current file sample and signals:",
+    safeJson(sample),
+    "",
+    "Rules:",
+    "- Respect split debit/credit columns when clearly present.",
+    "- If amount_mode is single_amount, choose sign convention that best matches keyword evidence.",
+    "- Keep confidence_internal in [0,1].",
+    "- Keep reason_short concise and factual."
+  ].join("\n");
+
+  return { systemPrompt, userPrompt };
 }

@@ -346,6 +346,10 @@ export function requireAiFeature(userId, feature) {
 }
 
 export function ensureDevOpenRouterCredential(userId) {
+  if (process.env.NODE_ENV === "production") {
+    return { enabled: false, reason: "production" };
+  }
+
   const apiKey = String(process.env.OPENROUTER_API_KEY || "").trim();
   if (!apiKey) {
     return { enabled: false, reason: "missing_env_key" };
@@ -397,13 +401,19 @@ export function ensureDevOpenRouterCredential(userId) {
     };
     store.aiProviderPreferences.push(preferences);
     updatedPreferences = true;
-  } else if (!preferences.defaultProvider) {
-    preferences.defaultProvider = "openrouter";
-    if (!preferences.defaultModel) {
-      preferences.defaultModel = AI_PROVIDERS.openrouter.models[0] || null;
+  } else {
+    const openrouterDefaultModel = AI_PROVIDERS.openrouter.models[0] || null;
+    const hasOpenrouterModel = AI_PROVIDERS.openrouter.models.includes(preferences.defaultModel || "");
+    if (preferences.defaultProvider !== "openrouter" || !hasOpenrouterModel) {
+      preferences.defaultProvider = "openrouter";
+      preferences.defaultModel = openrouterDefaultModel;
+      preferences.updatedAt = now;
+      updatedPreferences = true;
     }
+  }
+
+  if (updatedPreferences && preferences.updatedAt !== now) {
     preferences.updatedAt = now;
-    updatedPreferences = true;
   }
 
   if (!createdCredential && !updatedPreferences) {

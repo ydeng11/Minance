@@ -1,0 +1,16 @@
+[    1012ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3001/chat:0
+[    1226ms] TypeError: Cannot read properties of undefined (reading 'trim')
+    at ChatPage (http://localhost:3001/_next/static/chunks/next-app_src_app_chat_page_tsx_aef07256._.js:206:54)
+    at Object.react_stack_bottom_frame (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_react-dom_58757315._.js:14826:24)
+    at renderWithHooks (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_react-dom_58757315._.js:4651:24)
+    at updateFunctionComponent (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_react-dom_58757315._.js:6112:21)
+    at beginWork (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_react-dom_58757315._.js:6708:24)
+    at runWithFiberInDEV (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_react-dom_58757315._.js:965:74)
+    at performUnitOfWork (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_react-dom_58757315._.js:9562:97)
+    at workLoopSync (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_react-dom_58757315._.js:9456:40)
+    at renderRootSync (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_react-dom_58757315._.js:9440:13)
+    at performWorkOnRoot (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_react-dom_58757315._.js:9105:47)
+    at performWorkOnRootViaSchedulerTask (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_react-dom_58757315._.js:10230:9)
+    at MessagePort.performWorkUntilDeadline (http://localhost:3001/_next/static/chunks/36f10_next_dist_compiled_b223e414._.js:2647:64)
+[    4256ms] [WARNING] The resource http://localhost:3001/_next/static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/chat:0
+[    4256ms] [WARNING] The resource http://localhost:3001/_next/static/chunks/%5Broot-of-the-server%5D__7d42db33._.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3001/chat:0

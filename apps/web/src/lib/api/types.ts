@@ -67,6 +67,13 @@ export interface ImportJob {
   mappingAverageConfidence: number;
   warnings: string[];
   aiSuggested: boolean;
+  directionInference?: {
+    amountMode: "single_amount" | "split_debit_credit";
+    signConvention: "negative_is_debit" | "positive_is_debit" | "split_columns";
+    strategy: string;
+    confidence: number;
+    warnings: string[];
+  };
   commitSummary: CommitImportResponse["summary"] | null;
 }
 
@@ -99,6 +106,9 @@ export interface ProcessedRow {
     description: string;
     amount: number | null;
     direction: "debit" | "credit";
+    direction_confidence?: number;
+    direction_strategy?: string | null;
+    needs_direction_review?: boolean;
     currency: string;
     account_name: string;
     category_raw: string | null;
@@ -278,7 +288,14 @@ export interface CommitImportResponse {
     invalidRows: number;
     excludedRows: number;
     lowConfidenceRows: number;
+    lowDirectionConfidenceRows?: number;
     llmCategorization: {
+      attempted: number;
+      succeeded: number;
+      failed: number;
+      fallbackUsed: number;
+    };
+    llmDirectionInference?: {
       attempted: number;
       succeeded: number;
       failed: number;

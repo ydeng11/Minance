@@ -1,0 +1,16 @@
+- main [ref=e2]:
+  - generic [ref=e4]:
+    - heading "Minance Next" [level=1] [ref=e5]
+    - paragraph [ref=e6]: Privacy-first money intelligence without bank linking.
+    - generic [ref=e7]:
+      - button "Login" [ref=e8] [cursor=pointer]
+      - button "Sign up" [ref=e9] [cursor=pointer]
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - text: Email
+        - textbox "Email" [ref=e12]
+      - generic [ref=e13]:
+        - text: Password
+        - textbox "Password" [ref=e14]
+      - button "Login" [ref=e15] [cursor=pointer]
+    - paragraph [ref=e16]

@@ -1,0 +1,79 @@
+- main [ref=e2]:
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - navigation [ref=e20]:
+        - generic [ref=e23]: Minance
+        - button "Dashboard" [ref=e24] [cursor=pointer]
+        - button "Imports" [ref=e25] [cursor=pointer]
+        - button "Transactions" [ref=e26] [cursor=pointer]
+        - button "Assistant" [ref=e27] [cursor=pointer]
+        - button "AI Settings" [ref=e28] [cursor=pointer]
+        - button "Migration" [ref=e29] [cursor=pointer]
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - heading "Minance Next" [level=2] [ref=e33]
+          - paragraph [ref=e34]: dev@minance.local
+        - generic [ref=e35]:
+          - button "Refresh" [ref=e36] [cursor=pointer]
+          - button "Log out" [ref=e37] [cursor=pointer]
+      - generic [ref=e38]:
+        - paragraph [ref=e39]
+        - article [ref=e40]:
+          - generic [ref=e41]:
+            - heading "Home" [level=3] [ref=e42]
+            - combobox [ref=e43]:
+              - option "All time"
+              - option "Last 30 days"
+              - option "Last 90 days" [selected]
+              - option "Last 12 months"
+              - option "Year to date"
+          - generic [ref=e44]:
+            - generic [ref=e45]:
+              - heading "Total Spend" [level=4] [ref=e46]
+              - strong [ref=e47]: $0.00
+            - generic [ref=e48]:
+              - heading "Total Income" [level=4] [ref=e49]
+              - strong [ref=e50]: $0.00
+            - generic [ref=e51]:
+              - heading "Net Flow" [level=4] [ref=e52]
+              - strong [ref=e53]: $0.00
+            - generic [ref=e54]:
+              - heading "Recurring Spend" [level=4] [ref=e55]
+              - strong [ref=e56]: $0.00
+            - generic [ref=e57]:
+              - heading "Transactions" [level=4] [ref=e58]
+              - strong [ref=e59]: "0"
+          - generic [ref=e60]:
+            - heading "Monthly Trend" [level=4] [ref=e62]
+            - generic [ref=e63]:
+              - heading "Top Categories" [level=4] [ref=e64]
+              - list
+              - heading "Top Merchants" [level=4] [ref=e65]
+              - list
+          - generic [ref=e66]:
+            - generic [ref=e67]:
+              - heading "Insights" [level=4] [ref=e68]
+              - combobox [ref=e69]:
+                - option "All time"
+                - option "Last 30 days"
+                - option "Last 90 days" [selected]
+                - option "Last 12 months"
+            - generic [ref=e70]:
+              - heading "Category decomposition" [level=5] [ref=e72]
+              - heading "Merchant concentration" [level=5] [ref=e74]
+            - generic [ref=e75]:
+              - generic [ref=e76]:
+                - heading "Spending heatmap" [level=5] [ref=e77]
+                - paragraph [ref=e79]: No spend data for range.
+              - generic [ref=e80]:
+                - heading "Anomalies" [level=5] [ref=e81]
+                - paragraph [ref=e83]: No anomalies detected.
+          - generic [ref=e84]:
+            - heading "Saved Views" [level=4] [ref=e85]
+            - generic [ref=e86]:
+              - generic [ref=e87]:
+                - text: Name
+                - textbox "Name" [ref=e88]:
+                  - /placeholder: Quarterly dining check
+              - button "Save Current View" [ref=e89] [cursor=pointer]

@@ -1,0 +1,63 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e8]: Minance
+      - navigation [ref=e9]:
+        - link "Dashboard" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e11]
+          - text: Dashboard
+        - link "Transactions" [ref=e14] [cursor=pointer]:
+          - /url: /transactions
+          - img [ref=e15]
+          - text: Transactions
+        - link "Import CSV" [ref=e18] [cursor=pointer]:
+          - /url: /import
+          - img [ref=e19]
+          - text: Import CSV
+        - link "AI Assistant" [ref=e22] [cursor=pointer]:
+          - /url: /chat
+          - img [ref=e23]
+          - text: AI Assistant
+        - link "Settings" [ref=e25] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e26]
+          - text: Settings
+    - main [ref=e29]:
+      - generic [ref=e31]:
+        - generic [ref=e33]:
+          - heading "Dashboard" [level=1] [ref=e34]
+          - paragraph [ref=e35]: Welcome back. Here is your financial overview.
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - generic [ref=e38]:
+              - img [ref=e39]
+              - generic [ref=e41]: Net Worth
+            - generic [ref=e42]:
+              - generic [ref=e43]: $42,500.00
+              - generic [ref=e44]: +12.5%
+          - generic [ref=e45]:
+            - generic [ref=e46]:
+              - img [ref=e47]
+              - generic [ref=e49]: Spent this month
+            - generic [ref=e50]:
+              - generic [ref=e51]: $2,400.00
+              - generic [ref=e52]: "-4.2%"
+          - generic [ref=e53]:
+            - generic [ref=e54]:
+              - img [ref=e55]
+              - generic [ref=e58]: Income
+            - generic [ref=e59]:
+              - generic [ref=e60]: $8,200.00
+              - generic [ref=e61]: +2.1%
+          - generic [ref=e62]:
+            - generic [ref=e63]:
+              - img [ref=e64]
+              - generic [ref=e67]: Investments
+            - generic [ref=e68]:
+              - generic [ref=e69]: $12,300.00
+              - generic [ref=e70]: +5.4%
+        - generic [ref=e72]:
+          - img [ref=e73]
+          - paragraph [ref=e76]: Expense visualization will render here once Recharts is mounted.
+  - alert [ref=e77]

@@ -1,0 +1,91 @@
+- main [ref=e2]:
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - navigation [ref=e20]:
+        - generic [ref=e23]: Minance
+        - button "Dashboard" [ref=e24] [cursor=pointer]
+        - button "Imports" [ref=e25] [cursor=pointer]
+        - button "Transactions" [ref=e26] [cursor=pointer]
+        - button "Assistant" [ref=e27] [cursor=pointer]
+        - button "AI Settings" [active] [ref=e28] [cursor=pointer]
+        - button "Migration" [ref=e29] [cursor=pointer]
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - heading "Minance Next" [level=2] [ref=e33]
+          - paragraph [ref=e34]: dev@minance.local
+        - generic [ref=e35]:
+          - button "Refresh" [ref=e36] [cursor=pointer]
+          - button "Log out" [ref=e37] [cursor=pointer]
+      - generic [ref=e38]:
+        - paragraph [ref=e39]
+        - article [ref=e165]:
+          - heading "AI Provider Settings (BYOK)" [level=3] [ref=e167]
+          - generic [ref=e168]:
+            - generic [ref=e169]:
+              - heading "Add Provider Key" [level=4] [ref=e170]
+              - generic [ref=e171]:
+                - text: Provider
+                - combobox "Provider" [ref=e172]:
+                  - option "OpenAI" [selected]
+                  - option "OpenRouter"
+                  - option "Anthropic"
+                  - option "Google"
+              - generic [ref=e173]:
+                - text: Label
+                - textbox "Label" [ref=e174]:
+                  - /placeholder: Personal key
+              - generic [ref=e175]:
+                - text: API key
+                - textbox "API key" [ref=e176]
+              - button "Save Key" [ref=e177] [cursor=pointer]
+            - generic [ref=e178]:
+              - heading "Preferences & Failover" [level=4] [ref=e179]
+              - generic [ref=e180]:
+                - text: Default provider
+                - combobox "Default provider" [ref=e181]:
+                  - option "None"
+                  - option "OpenAI" [selected]
+                  - option "OpenRouter"
+                  - option "Anthropic"
+                  - option "Google"
+              - generic [ref=e182]:
+                - text: Default model
+                - combobox "Default model" [ref=e183]:
+                  - option "gpt-4.1-mini" [selected]
+                  - option "gpt-4.1"
+                  - option "gpt-4o-mini"
+              - generic [ref=e184]:
+                - text: Failover providers
+                - listbox "Failover providers" [ref=e185]
+              - button "Save Preferences" [ref=e186] [cursor=pointer]
+          - generic [ref=e187]:
+            - heading "Configured Keys" [level=4] [ref=e188]
+            - paragraph [ref=e190]: No keys configured.
+          - generic [ref=e191]:
+            - heading "Taxonomy & Rules" [level=4] [ref=e192]
+            - generic [ref=e193]:
+              - generic [ref=e194]:
+                - text: New category
+                - textbox "New category" [ref=e195]
+              - button "Add Category" [ref=e196] [cursor=pointer]
+            - generic [ref=e197]:
+              - generic [ref=e198]:
+                - text: Rule pattern
+                - textbox "Rule pattern" [ref=e199]:
+                  - /placeholder: merchant substring
+              - generic [ref=e200]:
+                - text: Rule category
+                - combobox "Rule category" [ref=e201]:
+                  - option "Groceries" [selected]
+                  - option "Dining"
+                  - option "Transport"
+                  - option "Utilities"
+                  - option "Housing"
+                  - option "Healthcare"
+                  - option "Entertainment"
+                  - option "Shopping"
+                  - option "Income"
+                  - option "Transfer"
+                  - option "Uncategorized"
+              - button "Add Rule" [ref=e202] [cursor=pointer]

@@ -56,6 +56,7 @@ Useful variants:
   - Password: `devpassword123` (override with `DEV_TEST_ACCOUNT_PASSWORD`)
   - Disable seeding with `MINANCE_SEED_TEST_ACCOUNT=false`
 - If `.env.local` contains `OPENROUTER_API_KEY`, the dev account is auto-seeded with an OpenRouter credential and default provider preference.
+- Set `IMPORT_PROCESSING_LOGS_ENABLED=true` in `.env.local` to print import-processing logs (including whether LLM categorization was attempted/succeeded/failed).
 - AI key encryption uses `AI_CREDENTIAL_SECRET` (set in environment for non-local use).
 - Categorization training can load backup priors from `backup_2026-02-26_00-00-03.db` (or `MINANCE_TRAINING_DB_PATH`).
 - CrewAI analysis agent script lives at `services/agents/crewai_analysis_agent.py` (enable/disable with `AI_CREW_ANALYSIS_ENABLED`; install Python deps from `services/agents/requirements.txt`).
