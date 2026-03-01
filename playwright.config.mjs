@@ -47,7 +47,7 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI
     },
     {
-      command: `env MINANCE_API_ORIGIN=http://127.0.0.1:${E2E_API_PORT} npm run dev --workspace @minance/web -- -p ${E2E_FRONTEND_PORT}`,
+      command: `env MINANCE_API_ORIGIN=http://127.0.0.1:${E2E_API_PORT} MINANCE_NEXT_DIST_DIR=.next-e2e npm run dev --workspace @minance/web -- -p ${E2E_FRONTEND_PORT}`,
       url: `http://127.0.0.1:${E2E_FRONTEND_PORT}`,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI
