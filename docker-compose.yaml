@@ -1,0 +1,13 @@
+version: "3.8"
+services:
+  minance:
+    image: ydeng11/minance:latest
+    container_name: minance
+    hostname: minance
+    ports:
+      - "18080:8080"
+    volumes:
+      - /path_to_folder/:/deployments/data
+    user: "185"
+    network_mode: bridge
+
