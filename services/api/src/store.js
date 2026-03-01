@@ -1,8 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
-import { DATA_FILE } from "./config.js";
+import { DATA_FILE, STORE_BACKEND } from "./config.js";
 import { DEFAULT_CATEGORIES } from "../../../packages/domain/src/constants.js";
 import { nowIso, createId } from "./utils.js";
+import {
+  readStoreCollectionsFromSqlite,
+  writeStoreCollectionsToSqlite
+} from "./sqlite-store-repository.js";
 
 const defaultStore = {
   users: [],
@@ -48,6 +52,11 @@ export function loadStore() {
     return cache;
   }
 
+  if (STORE_BACKEND === "sqlite") {
+    cache = normalizeStore(readStoreCollectionsFromSqlite());
+    return cache;
+  }
+
   ensureDataFile();
   const raw = fs.readFileSync(DATA_FILE, "utf8");
   cache = normalizeStore(JSON.parse(raw));
@@ -61,6 +70,11 @@ export function saveStore(nextStore = null) {
 
   if (!cache) {
     cache = loadStore();
+  }
+
+  if (STORE_BACKEND === "sqlite") {
+    writeStoreCollectionsToSqlite(cache);
+    return;
   }
 
   fs.writeFileSync(DATA_FILE, JSON.stringify(cache, null, 2));

@@ -159,6 +159,24 @@ export async function gotoView(page, viewName) {
     return;
   }
 
+  if (viewName === "accounts") {
+    await page.getByTestId("nav-accounts").click();
+    await expect(page.getByTestId("accounts-page")).toBeVisible();
+    return;
+  }
+
+  if (viewName === "categories") {
+    await page.getByTestId("nav-categories").click();
+    await expect(page.getByTestId("categories-page")).toBeVisible();
+    return;
+  }
+
+  if (viewName === "recurrings" || viewName === "recurring") {
+    await page.getByTestId("nav-recurrings").click();
+    await expect(page.getByTestId("recurrings-page")).toBeVisible();
+    return;
+  }
+
   if (viewName === "assistant") {
     if (!assistantIsOpen) {
       await page.getByTestId("assistant-toggle").click();

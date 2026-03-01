@@ -2,12 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, PieChart, LineChart, UploadCloud, Settings } from "lucide-react";
+import {
+  Home,
+  PieChart,
+  WalletCards,
+  Tags,
+  Repeat2,
+  LineChart,
+  UploadCloud,
+  Settings
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PRIMARY_NAV_ITEMS = [
   { name: "Dashboard", href: "/", icon: Home, testId: "nav-dashboard" },
   { name: "Transactions", href: "/transactions", icon: PieChart, testId: "nav-transactions" },
+  { name: "Accounts", href: "/accounts", icon: WalletCards, testId: "nav-accounts" },
+  { name: "Categories", href: "/categories", icon: Tags, testId: "nav-categories" },
+  { name: "Recurrings", href: "/recurrings", icon: Repeat2, testId: "nav-recurrings" },
   { name: "Investments", href: "/investments", icon: LineChart, testId: "nav-investments" },
   { name: "Import CSV", href: "/import", icon: UploadCloud, testId: "nav-import" },
   { name: "Settings", href: "/settings", icon: Settings, testId: "nav-settings" }
