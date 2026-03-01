@@ -1,0 +1,157 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - button "Close sidebar" [ref=e7] [cursor=pointer]:
+          - img [ref=e8]
+        - navigation [ref=e11]:
+          - button "Refresh all connections" [ref=e13] [cursor=pointer]:
+            - img [ref=e14]
+          - generic [ref=e16]:
+            - link "Dashboard" [ref=e17] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e18]:
+                - img [ref=e20]
+                - generic [ref=e22]: Dashboard
+            - link "Transactions" [ref=e23] [cursor=pointer]:
+              - /url: /transactions
+              - generic [ref=e24]:
+                - img [ref=e26]
+                - generic [ref=e30]: Transactions
+            - link "Accounts" [ref=e31] [cursor=pointer]:
+              - /url: /accounts
+              - generic [ref=e32]:
+                - img [ref=e34]
+                - generic [ref=e36]: Accounts
+            - link "Investments" [ref=e37] [cursor=pointer]:
+              - /url: /investments
+              - generic [ref=e38]:
+                - img [ref=e40]
+                - generic [ref=e42]: Investments
+            - link "Categories" [ref=e43] [cursor=pointer]:
+              - /url: /categories/all
+              - generic [ref=e44]:
+                - img [ref=e46]
+                - generic [ref=e48]: Categories
+            - link "Recurrings" [ref=e49] [cursor=pointer]:
+              - /url: /recurrings
+              - generic [ref=e50]:
+                - img [ref=e52]
+                - generic [ref=e54]: Recurrings
+          - generic [ref=e58]:
+            - button "Other" [ref=e59] [cursor=pointer]:
+              - img [ref=e61]
+              - generic [ref=e63]: Other
+            - generic [ref=e65]:
+              - button "Manual account $0" [ref=e66] [cursor=pointer]:
+                - generic [ref=e69]: Manual account
+                - generic [ref=e70]: $0
+              - button "Cash $0" [ref=e71] [cursor=pointer]:
+                - generic [ref=e74]: Cash
+                - generic [ref=e75]: $0
+          - generic [ref=e78]:
+            - link "Start here" [ref=e79] [cursor=pointer]:
+              - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+              - img [ref=e80]
+              - generic [ref=e82]:
+                - text: Start here
+                - img [ref=e83]
+            - button "Get Help" [ref=e85] [cursor=pointer]:
+              - img [ref=e86]
+              - text: Get Help
+            - button "Settings" [ref=e88] [cursor=pointer]:
+              - img [ref=e89]
+              - generic [ref=e91]: Settings
+      - main [ref=e92]:
+        - generic [ref=e94]:
+          - generic [ref=e95]:
+            - generic [ref=e97]:
+              - heading "Accounts" [level=5] [ref=e98]
+              - button "Add an account" [active] [ref=e101] [cursor=pointer]:
+                - img [ref=e102]
+            - generic [ref=e104]:
+              - generic [ref=e105]:
+                - button "Account settings" [ref=e108] [cursor=pointer]:
+                  - img [ref=e109]
+                - generic [ref=e111]:
+                  - generic [ref=e112]:
+                    - generic [ref=e113]:
+                      - heading "Assets" [level=5] [ref=e117]
+                      - generic [ref=e120]: $0
+                      - generic [ref=e121]:
+                        - img [ref=e122]
+                        - generic [ref=e124]: 0.00%
+                    - generic [ref=e125]:
+                      - heading "Debts" [level=5] [ref=e129]
+                      - generic [ref=e132]: $0
+                      - generic [ref=e133]:
+                        - img [ref=e134]
+                        - generic [ref=e136]: 0.00%
+                  - application [ref=e140]:
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                - generic [ref=e142]:
+                  - button "1W" [ref=e143] [cursor=pointer]
+                  - button "1M" [ref=e144] [cursor=pointer]
+                  - button "3M" [ref=e145] [cursor=pointer]
+                  - button "YTD" [ref=e146] [cursor=pointer]
+                  - button "1Y" [ref=e147] [cursor=pointer]
+                  - button "ALL" [ref=e148] [cursor=pointer]
+              - generic [ref=e151]:
+                - button "Other 0.00% $0.00" [ref=e152] [cursor=pointer]:
+                  - img [ref=e154]
+                  - generic [ref=e156]:
+                    - heading "Other" [level=5] [ref=e157]
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - img
+                            - generic: 0.00%
+                        - generic:
+                          - generic:
+                            - generic: $0.00
+                - generic [ref=e159]:
+                  - button "Manual account Manual account 0.00% $0.00" [ref=e160] [cursor=pointer]:
+                    - generic [ref=e161]:
+                      - generic [ref=e167]:
+                        - generic [ref=e168]:
+                          - heading "Manual account" [level=5] [ref=e169]
+                          - heading [level=5]
+                        - generic [ref=e171]: Manual account
+                      - generic [ref=e174]:
+                        - img [ref=e175]
+                        - generic [ref=e177]: 0.00%
+                      - generic [ref=e180]: $0.00
+                  - button "Cash Manual account 0.00% $0.00" [ref=e181] [cursor=pointer]:
+                    - generic [ref=e182]:
+                      - generic [ref=e188]:
+                        - generic [ref=e189]:
+                          - heading "Cash" [level=5] [ref=e190]
+                          - heading [level=5]
+                        - generic [ref=e192]: Manual account
+                      - generic [ref=e195]:
+                        - img [ref=e196]
+                        - generic [ref=e198]: 0.00%
+                      - generic [ref=e201]: $0.00
+                  - generic [ref=e205]:
+                    - generic [ref=e207]:
+                      - img [ref=e208]
+                      - generic [ref=e210]: 0.00%
+                    - generic [ref=e213]: $0.00
+          - generic [ref=e218]:
+            - img [ref=e219]
+            - generic [ref=e223]: Select to view details
+    - region "Notifications alt+T"
+  - iframe [ref=e225]:
+    

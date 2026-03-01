@@ -1,0 +1,120 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - button "Close sidebar" [ref=e7] [cursor=pointer]:
+          - img [ref=e8]
+        - navigation [ref=e11]:
+          - button "Refresh all connections" [ref=e13] [cursor=pointer]:
+            - img [ref=e14]
+          - generic [ref=e16]:
+            - link "Dashboard" [ref=e17] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e18]:
+                - img [ref=e20]
+                - generic [ref=e22]: Dashboard
+            - link "Transactions" [ref=e23] [cursor=pointer]:
+              - /url: /transactions
+              - generic [ref=e24]:
+                - img [ref=e26]
+                - generic [ref=e30]: Transactions
+            - link "Accounts" [ref=e31] [cursor=pointer]:
+              - /url: /accounts
+              - generic [ref=e32]:
+                - img [ref=e34]
+                - generic [ref=e36]: Accounts
+            - link "Investments" [ref=e37] [cursor=pointer]:
+              - /url: /investments
+              - generic [ref=e38]:
+                - img [ref=e40]
+                - generic [ref=e42]: Investments
+            - link "Categories" [ref=e43] [cursor=pointer]:
+              - /url: /categories/all
+              - generic [ref=e44]:
+                - img [ref=e46]
+                - generic [ref=e48]: Categories
+            - link "Recurrings" [ref=e49] [cursor=pointer]:
+              - /url: /recurrings
+              - generic [ref=e50]:
+                - img [ref=e52]
+                - generic [ref=e54]: Recurrings
+          - generic [ref=e58]:
+            - button "Other" [ref=e59] [cursor=pointer]:
+              - img [ref=e61]
+              - generic [ref=e63]: Other
+            - generic [ref=e65]:
+              - button "Manual account $0" [ref=e66] [cursor=pointer]:
+                - generic [ref=e69]: Manual account
+                - generic [ref=e70]: $0
+              - button "Cash $0" [ref=e71] [cursor=pointer]:
+                - generic [ref=e74]: Cash
+                - generic [ref=e75]: $0
+          - generic [ref=e78]:
+            - link "Start here" [ref=e79] [cursor=pointer]:
+              - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+              - img [ref=e80]
+              - generic [ref=e82]:
+                - text: Start here
+                - img [ref=e83]
+            - button "Get Help" [ref=e85] [cursor=pointer]:
+              - img [ref=e86]
+              - text: Get Help
+            - button "Settings" [ref=e88] [cursor=pointer]:
+              - img [ref=e89]
+              - text: Settings
+      - main [ref=e91]:
+        - generic [ref=e93]:
+          - generic [ref=e94]:
+            - heading "Investments" [level=5] [ref=e97]
+            - generic [ref=e98]:
+              - generic [ref=e99]:
+                - button "Investment settings" [ref=e101] [cursor=pointer]:
+                  - img [ref=e102]
+                - generic [ref=e104]:
+                  - generic [ref=e106]:
+                    - heading "Live balance estimate" [level=5] [ref=e108]
+                    - heading "no data" [level=2] [ref=e110]
+                    - generic [ref=e111]:
+                      - img [ref=e112]
+                      - generic [ref=e114]: 0.00%
+                  - generic [ref=e115]:
+                    - img [ref=e117]
+                    - application [ref=e121]
+                - generic [ref=e123]:
+                  - button "1W" [ref=e124] [cursor=pointer]
+                  - button "1M" [ref=e125] [cursor=pointer]
+                  - button "3M" [ref=e126] [cursor=pointer]
+                  - button "YTD" [ref=e127] [cursor=pointer]
+                  - button "1Y" [ref=e128] [cursor=pointer]
+                  - button "ALL" [ref=e129] [cursor=pointer]
+              - generic [ref=e130]:
+                - button "Accounts 1W Balance change" [ref=e132] [cursor=pointer]:
+                  - img [ref=e134]
+                  - generic [ref=e136]:
+                    - heading "Accounts" [level=5] [ref=e138]
+                    - button "1W Balance change" [ref=e139]:
+                      - generic [ref=e140]: 1W Balance change
+                      - img [ref=e141]
+                - generic [ref=e144]:
+                  - button "Allocation By percentage" [ref=e145] [cursor=pointer]:
+                    - img [ref=e147]
+                    - generic [ref=e149]:
+                      - heading "Allocation" [level=5] [ref=e150]
+                      - button "By percentage" [ref=e151]:
+                        - generic [ref=e152]: By percentage
+                        - img [ref=e153]
+                  - generic:
+                    - list
+                - button "Holdings Last price" [ref=e157] [cursor=pointer]:
+                  - img [ref=e159]
+                  - generic [ref=e161]:
+                    - heading "Holdings" [level=5] [ref=e162]
+                    - button "Last price" [ref=e163]:
+                      - generic [ref=e164]: Last price
+                      - img [ref=e165]
+          - generic [ref=e224]:
+            - img [ref=e225]
+            - generic [ref=e229]: Select to view details
+    - region "Notifications alt+T"
+  - iframe [ref=e231]:
+    

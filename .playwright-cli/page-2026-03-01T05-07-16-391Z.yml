@@ -1,0 +1,468 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - button:
+            - img
+        - generic:
+          - navigation:
+            - generic:
+              - button:
+                - img
+            - generic:
+              - link:
+                - /url: /
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Dashboard
+              - link:
+                - /url: /transactions
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Transactions
+              - link:
+                - /url: /accounts/VVk1UlhGMkRITWFuYWpsRXAwamk6dDBKY2R5ekJ6TktTZVQyUjJCMkw=
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Accounts
+              - link:
+                - /url: /investments
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Investments
+              - link:
+                - /url: /categories/all
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Categories
+              - link:
+                - /url: /recurrings
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Recurrings
+            - generic:
+              - generic:
+                - generic:
+                  - button:
+                    - generic:
+                      - img
+                    - generic: Other
+                  - generic:
+                    - generic:
+                      - button:
+                        - generic:
+                          - generic: Manual account
+                        - generic: $0
+                      - button:
+                        - generic:
+                          - generic: Cash
+                        - generic: $0
+            - generic:
+              - generic:
+                - link:
+                  - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+                  - img
+                  - generic:
+                    - text: Start here
+                    - img
+                - button:
+                  - img
+                  - text: Get Help
+                - button [expanded]:
+                  - img
+                  - generic: Settings
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=5]: Accounts
+                  - generic:
+                    - generic:
+                      - button:
+                        - img
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - button:
+                        - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading [level=5]: Assets
+                        - generic:
+                          - generic:
+                            - generic: $0
+                        - generic:
+                          - img
+                          - generic: 0.00%
+                      - generic:
+                        - generic:
+                          - heading [level=5]: Debts
+                        - generic:
+                          - generic:
+                            - generic: $0
+                        - generic:
+                          - img
+                          - generic: 0.00%
+                    - generic:
+                      - generic:
+                        - generic:
+                          - application
+                  - generic:
+                    - generic:
+                      - button: 1W
+                      - button: 1M
+                      - button: 3M
+                      - button: YTD
+                      - button: 1Y
+                      - button: ALL
+                - generic:
+                  - generic:
+                    - generic:
+                      - button:
+                        - generic:
+                          - img
+                        - generic:
+                          - heading [level=5]: Other
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - img
+                                  - generic: 0.00%
+                              - generic:
+                                - generic:
+                                  - generic: $0.00
+                      - generic:
+                        - generic:
+                          - button:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - heading [level=5]: Manual account
+                                      - generic:
+                                        - generic: Manual account
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - application
+                                - generic:
+                                  - generic:
+                                    - img
+                                    - generic: 0.00%
+                              - generic:
+                                - generic:
+                                  - generic: $0.00
+                          - button:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - heading [level=5]: Cash
+                                      - generic:
+                                        - generic: Manual account
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - application
+                                - generic:
+                                  - generic:
+                                    - img
+                                    - generic: 0.00%
+                              - generic:
+                                - generic:
+                                  - generic: $0.00
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - img
+                                  - generic: 0.00%
+                              - generic:
+                                - generic:
+                                  - generic: $0.00
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - heading [level=5]: Cash Management
+                      - generic:
+                        - generic:
+                          - button:
+                            - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: Manual account
+                            - generic:
+                              - generic:
+                                - img
+                                - generic: $0.00
+                              - generic:
+                                - img
+                                - generic: 0.00%
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - textbox:
+                                    - /placeholder: Manual account
+                                    - text: Manual account
+                            - generic:
+                              - generic: $
+                              - textbox
+                      - generic:
+                        - generic:
+                          - generic:
+                            - application
+                      - generic:
+                        - button: 1W
+                        - button: 1M
+                        - button: 3M
+                        - button: YTD
+                        - button: 1Y
+                        - button: ALL
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - heading [level=5]: February 2026
+                              - generic:
+                                - generic: $43.12
+                          - generic:
+                            - generic:
+                              - generic: Yesterday
+                          - generic:
+                            - generic:
+                              - generic: Right-click to open the context menu. Hold Alt while right-clicking to open the browser’s native menu instead.
+                              - generic:
+                                - button:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - checkbox
+                                    - generic:
+                                      - generic:
+                                        - img
+                                      - generic:
+                                        - heading [level=5]: Zz Codex Txn:temp note
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - generic:
+                                            - button:
+                                              - img
+                                        - button:
+                                          - generic:
+                                            - generic:
+                                              - generic:
+                                                - generic:
+                                                  - generic: 🧑‍🍳
+                                    - generic:
+                                      - generic: $43.12
+                          - generic:
+                            - generic:
+                              - generic: Right-click to open the context menu. Hold Alt while right-clicking to open the browser’s native menu instead.
+                              - generic:
+                                - button:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - checkbox
+                                    - generic:
+                                      - generic:
+                                        - heading [level=5]: Nacho's
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - generic:
+                                            - button:
+                                              - img
+                                        - button:
+                                          - generic:
+                                            - generic:
+                                              - generic:
+                                                - generic:
+                                                  - generic: 🧑‍🍳
+                                    - generic:
+                                      - generic: $0.00
+                      - toolbar:
+                        - button:
+                          - img
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: 0 selected
+                            - button:
+                              - img
+                            - button:
+                              - img
+                          - button:
+                            - img
+                - button:
+                  - img
+    - region "Notifications alt+T"
+  - iframe [ref=e185]:
+    
+  - generic: 2024-04
+  - dialog:
+    - heading [level=2]: Settings
+    - paragraph: Configure your General
+    - generic:
+      - generic:
+        - button:
+          - generic:
+            - img
+            - generic: General
+        - button:
+          - generic:
+            - img
+            - generic: Connections
+        - button:
+          - generic:
+            - img
+            - generic: Account
+        - button:
+          - generic:
+            - img
+            - generic: Subscription
+        - button:
+          - generic:
+            - img
+            - generic: About
+      - generic:
+        - generic:
+          - generic:
+            - generic: Appearance
+            - region:
+              - generic:
+                - generic:
+                  - generic:
+                    - heading [level=3]: Theme
+                  - generic:
+                    - paragraph: Customize how Copilot looks
+              - radiogroup:
+                - generic:
+                  - radio
+                  - text: Light
+                - generic:
+                  - radio [checked]
+                  - text: Auto
+                - generic:
+                  - radio
+                  - text: Dark
+            - generic: Budgeting
+            - region:
+              - generic:
+                - generic:
+                  - generic:
+                    - heading [level=3]: Enable budgeting
+                  - generic:
+                    - paragraph: Set monthly budgets for your categories
+              - button
+            - region:
+              - generic:
+                - generic:
+                  - generic:
+                    - heading [level=3]: Enable rollover
+                  - generic:
+                    - paragraph: Allow budgets to be spent across months
+              - button
+            - generic: Tags
+            - region:
+              - generic:
+                - generic:
+                  - generic:
+                    - heading [level=3]: Manage tags
+                  - generic:
+                    - paragraph: Use tags to group together any transactions
+              - button [expanded]:
+                - generic: 0 tags
+                - img
+  - generic:
+    - menu:
+      - menuitem:
+        - generic:
+          - generic:
+            - img
+          - generic:
+            - generic: Banks
+            - generic: Credit cards, checking, savings
+      - menuitem:
+        - generic:
+          - generic:
+            - img
+          - generic:
+            - generic: Investments
+            - generic: Brokerages, retirement accounts
+      - menuitem:
+        - generic:
+          - generic:
+            - img
+          - generic:
+            - generic: Crypto
+            - generic: Exchanges, wallets, holdings
+      - menuitem:
+        - generic:
+          - generic:
+            - img
+          - generic:
+            - generic: Loans
+            - generic: Mortgages, student loans
+  - dialog [ref=e816]:
+    - generic [ref=e818]:
+      - heading "Create a new tag" [level=5] [ref=e820]
+      - generic [ref=e821]:
+        - generic [ref=e822]:
+          - generic [ref=e823]: Name
+          - textbox "Name" [active] [ref=e826]:
+            - /placeholder: Tag name
+        - generic [ref=e827]:
+          - generic [ref=e828]: Color
+          - generic [ref=e829]:
+            - button "Red 1" [ref=e830] [cursor=pointer]
+            - button "Orange 2" [ref=e831] [cursor=pointer]
+            - button "Orange 1" [ref=e832] [cursor=pointer]
+            - button "Brown 1" [ref=e833] [cursor=pointer]
+            - button "Yellow 2" [ref=e834] [cursor=pointer]
+            - button "Yellow 1" [ref=e835] [cursor=pointer]:
+              - img [ref=e836]
+            - button "Olive 1" [ref=e838] [cursor=pointer]
+            - button "Green 1" [ref=e839] [cursor=pointer]
+            - button "Teal 1" [ref=e840] [cursor=pointer]
+            - button "Blue 1" [ref=e841] [cursor=pointer]
+            - button "Purple 2" [ref=e842] [cursor=pointer]
+            - button "Purple 1" [ref=e843] [cursor=pointer]
+            - button "Pink 2" [ref=e844] [cursor=pointer]
+            - button "Pink 1" [ref=e845] [cursor=pointer]
+            - button "Red 2" [ref=e846] [cursor=pointer]
+            - button "Gray 1" [ref=e847] [cursor=pointer]
+      - generic [ref=e848]:
+        - button "Create" [disabled]:
+          - generic: Create

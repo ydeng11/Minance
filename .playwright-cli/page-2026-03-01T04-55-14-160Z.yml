@@ -1,0 +1,183 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - button "Close sidebar" [ref=e727] [cursor=pointer]:
+          - img [ref=e8]
+        - navigation [ref=e11]:
+          - button "Refresh all connections" [ref=e728] [cursor=pointer]:
+            - img [ref=e14]
+          - generic [ref=e16]:
+            - link "Dashboard" [ref=e729] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e18]:
+                - img [ref=e20]
+                - generic [ref=e22]: Dashboard
+            - link "Transactions" [ref=e730] [cursor=pointer]:
+              - /url: /transactions/eyJpZGVudGlmaWVySWQiOiJWVmsxVWxoR01rUklUV0Z1WVdwc1JYQXdhbWs2ZERCS1kyUjVla0o2VGt0VFpWUXlVakpDTWt3NmRIbEhhazVqUzBsR2JFb3hlR3R5WkdVeE1WZz0ifQ==
+              - generic [ref=e24]:
+                - img [ref=e26]
+                - generic [ref=e30]: Transactions
+            - link "Accounts" [ref=e731] [cursor=pointer]:
+              - /url: /accounts
+              - generic [ref=e32]:
+                - img [ref=e34]
+                - generic [ref=e36]: Accounts
+            - link "Investments" [ref=e732] [cursor=pointer]:
+              - /url: /investments
+              - generic [ref=e38]:
+                - img [ref=e40]
+                - generic [ref=e42]: Investments
+            - link "Categories" [ref=e733] [cursor=pointer]:
+              - /url: /categories/all
+              - generic [ref=e44]:
+                - img [ref=e46]
+                - generic [ref=e48]: Categories
+            - link "Recurrings" [ref=e734] [cursor=pointer]:
+              - /url: /recurrings
+              - generic [ref=e50]:
+                - img [ref=e52]
+                - generic [ref=e54]: Recurrings
+          - generic [ref=e58]:
+            - button "Other" [ref=e735] [cursor=pointer]:
+              - img [ref=e61]
+              - generic [ref=e63]: Other
+            - generic [ref=e65]:
+              - button "Manual account $0" [ref=e736] [cursor=pointer]:
+                - generic [ref=e69]: Manual account
+                - generic [ref=e70]: $0
+              - button "Cash $0" [ref=e737] [cursor=pointer]:
+                - generic [ref=e74]: Cash
+                - generic [ref=e75]: $0
+          - generic [ref=e78]:
+            - link "Start here" [ref=e738] [cursor=pointer]:
+              - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+              - img [ref=e80]
+              - generic [ref=e82]:
+                - text: Start here
+                - img [ref=e83]
+            - button "Get Help" [ref=e739] [cursor=pointer]:
+              - img [ref=e86]
+              - text: Get Help
+            - button "Settings" [ref=e740] [cursor=pointer]:
+              - img [ref=e89]
+              - generic [ref=e91]: Settings
+      - main [ref=e92]:
+        - generic [ref=e94]:
+          - generic [ref=e95]:
+            - generic [ref=e97]:
+              - heading "Select all transactions. Transactions" [level=5] [ref=e741]:
+                - generic [ref=e99]:
+                  - generic "Select all transactions." [ref=e742] [cursor=pointer]:
+                    - checkbox "Select all transactions." [ref=e743]
+                  - text: Transactions
+              - generic [ref=e103]:
+                - button "Create new transaction" [ref=e744] [cursor=pointer]:
+                  - img [ref=e105]
+                - button "Download transactions" [ref=e745] [cursor=pointer]:
+                  - img [ref=e108]
+                - generic [ref=e111]:
+                  - generic:
+                    - img
+                  - textbox "Search for transaction name, note, or amount" [ref=e746]:
+                    - /placeholder: Search
+                  - button "Filter options" [ref=e747] [cursor=pointer]:
+                    - img [ref=e115]
+            - generic [ref=e118]:
+              - generic [ref=e121]: Today
+              - generic [ref=e577]:
+                - generic [ref=e578]: Right-click to open the context menu. Hold Alt while right-clicking to open the browser’s native menu instead.
+                - button "Select transaction \"ZZ Codex Txn\". ZZ Codex Txn:temp note Manual account Add tag Category icon Restaurants $0.00" [ref=e780] [cursor=pointer]:
+                  - generic [ref=e581]:
+                    - generic "Select transaction \"ZZ Codex Txn\"." [ref=e749]:
+                      - checkbox "Select transaction \"ZZ Codex Txn\"." [ref=e750]
+                    - generic [ref=e586]:
+                      - heading "ZZ Codex Txn:temp note" [level=5] [ref=e781]
+                      - heading "Manual account" [level=5] [ref=e752]
+                    - generic [ref=e590]:
+                      - button "Add tag" [ref=e753]:
+                        - img [ref=e594]
+                      - button "Category icon Restaurants" [ref=e754]:
+                        - generic [ref=e599]:
+                          - generic "Category icon" [ref=e755]: 🧑‍🍳
+                          - generic [ref=e602]: Restaurants
+                    - generic [ref=e604]: $0.00
+              - generic [ref=e123]:
+                - generic [ref=e124]: Right-click to open the context menu. Hold Alt while right-clicking to open the browser’s native menu instead.
+                - button "Select transaction \"Nacho's\". Nacho's Manual account Add tag Category icon Restaurants $0.00" [ref=e756] [cursor=pointer]:
+                  - generic [ref=e127]:
+                    - generic "Select transaction \"Nacho's\"." [ref=e757]:
+                      - checkbox "Select transaction \"Nacho's\"." [ref=e758]
+                    - generic [ref=e132]:
+                      - heading "Nacho's" [level=5] [ref=e759]
+                      - heading "Manual account" [level=5] [ref=e760]
+                    - generic [ref=e136]:
+                      - button "Add tag" [ref=e761]:
+                        - img [ref=e140]
+                      - button "Category icon Restaurants" [ref=e762]:
+                        - generic [ref=e145]:
+                          - generic "Category icon" [ref=e763]: 🧑‍🍳
+                          - generic [ref=e148]: Restaurants
+                    - generic [ref=e150]: $0.00
+            - toolbar "Selected-item actions" [ref=e764]:
+              - button "Dismiss bulk selection" [ref=e765] [cursor=pointer]:
+                - img [ref=e153]
+              - generic [ref=e155]:
+                - generic [ref=e156]:
+                  - generic [ref=e158]: 0 selected
+                  - button "Category" [ref=e766] [cursor=pointer]:
+                    - img [ref=e161]
+                    - generic [ref=e165]: Category
+                  - button "Type" [ref=e767] [cursor=pointer]:
+                    - img [ref=e167]
+                    - generic [ref=e170]: Type
+                  - button "Tag" [ref=e768] [cursor=pointer]:
+                    - img [ref=e172]
+                    - generic [ref=e174]: Tag
+                - button "More options" [ref=e769] [cursor=pointer]:
+                  - img [ref=e176]
+          - generic [ref=e179]:
+            - generic [ref=e605]:
+              - generic [ref=e607]:
+                - generic [ref=e609]:
+                  - combobox [ref=e610] [cursor=pointer]:
+                    - generic: Regular transaction
+                    - img [ref=e611]
+                  - combobox [ref=e613]
+                - button "More options" [ref=e770] [cursor=pointer]:
+                  - img [ref=e617]
+              - generic [ref=e620]:
+                - generic [ref=e622]:
+                  - button "Saturday, Feb 28, 2026" [active] [ref=e771] [cursor=pointer]
+                  - generic [ref=e626]:
+                    - textbox [ref=e628]
+                    - generic [ref=e630]:
+                      - generic [ref=e631]: $
+                      - textbox [ref=e632]
+                  - button "Manual account" [ref=e772] [cursor=pointer]:
+                    - generic [ref=e638]: Manual account
+                - generic [ref=e639]:
+                  - generic [ref=e641]: Category
+                  - generic [ref=e642]:
+                    - button "Category icon Restaurants" [ref=e773] [cursor=pointer]:
+                      - generic [ref=e646]:
+                        - generic "Category icon" [ref=e774]: 🧑‍🍳
+                        - generic [ref=e649]: Restaurants
+                    - button "Open category details" [ref=e775] [cursor=pointer]:
+                      - img [ref=e651]
+                  - generic [ref=e654]: Recurring
+                  - button "Set recurring" [ref=e776] [cursor=pointer]:
+                    - img [ref=e657]
+                  - generic [ref=e660]: Tags
+                  - generic [ref=e662]:
+                    - generic:
+                      - button "Add tag":
+                        - img
+                    - button "Add tag" [ref=e777] [cursor=pointer]:
+                      - img [ref=e664]
+                - textbox "Add a note..." [ref=e778]: temp note
+            - button "close panel" [ref=e779] [cursor=pointer]:
+              - img [ref=e247]
+    - region "Notifications alt+T"
+  - iframe [ref=e249]:
+    

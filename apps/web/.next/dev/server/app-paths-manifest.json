@@ -1,7 +1,4 @@
 {
-  "/import/page": "app/import/page.js",
-  "/investments/page": "app/investments/page.js",
-  "/page": "app/page.js",
   "/settings/page": "app/settings/page.js",
   "/transactions/page": "app/transactions/page.js"
 }

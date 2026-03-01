@@ -1,0 +1,174 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - button "Close sidebar" [ref=e7] [cursor=pointer]:
+          - img [ref=e8]
+        - navigation [ref=e11]:
+          - button "Refresh all connections" [ref=e13] [cursor=pointer]:
+            - img [ref=e14]
+          - generic [ref=e16]:
+            - link "Dashboard" [ref=e17] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e18]:
+                - img [ref=e20]
+                - generic [ref=e22]: Dashboard
+            - link "Transactions" [ref=e23] [cursor=pointer]:
+              - /url: /transactions
+              - generic [ref=e24]:
+                - img [ref=e26]
+                - generic [ref=e30]: Transactions
+            - link "Accounts" [ref=e31] [cursor=pointer]:
+              - /url: /accounts
+              - generic [ref=e32]:
+                - img [ref=e34]
+                - generic [ref=e36]: Accounts
+            - link "Investments" [ref=e37] [cursor=pointer]:
+              - /url: /investments
+              - generic [ref=e38]:
+                - img [ref=e40]
+                - generic [ref=e42]: Investments
+            - link "Categories" [ref=e43] [cursor=pointer]:
+              - /url: /categories/all
+              - generic [ref=e44]:
+                - img [ref=e46]
+                - generic [ref=e48]: Categories
+            - link "Recurrings" [ref=e49] [cursor=pointer]:
+              - /url: /recurrings
+              - generic [ref=e50]:
+                - img [ref=e52]
+                - generic [ref=e54]: Recurrings
+          - generic [ref=e178]:
+            - button "Other" [ref=e179] [cursor=pointer]:
+              - img [ref=e181]
+              - generic [ref=e183]: Other
+            - generic [ref=e185]:
+              - button "Manual account $0" [ref=e186] [cursor=pointer]:
+                - generic [ref=e189]: Manual account
+                - generic [ref=e190]: $0
+              - button "Cash $0" [ref=e191] [cursor=pointer]:
+                - generic [ref=e194]: Cash
+                - generic [ref=e195]: $0
+          - generic [ref=e59]:
+            - link "Start here" [ref=e60] [cursor=pointer]:
+              - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+              - img [ref=e61]
+              - generic [ref=e63]:
+                - text: Start here
+                - img [ref=e64]
+            - button "Get Help" [ref=e66] [cursor=pointer]:
+              - img [ref=e67]
+              - text: Get Help
+            - button "Settings" [ref=e196] [cursor=pointer]:
+              - img [ref=e197]
+              - generic [ref=e199]: Settings
+      - main [ref=e72]:
+        - generic [ref=e75]:
+          - heading "Dashboard" [level=5] [ref=e78]
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - generic [ref=e82]:
+                - generic [ref=e83]:
+                  - heading "Monthly spending" [level=5] [ref=e84]
+                  - button "Transactions" [ref=e86] [cursor=pointer]:
+                    - text: Transactions
+                    - img [ref=e87]
+                - generic [ref=e89]:
+                  - generic [ref=e91]:
+                    - generic [ref=e93]:
+                      - generic [ref=e94]: $100
+                      - text: left
+                    - generic [ref=e96]:
+                      - generic [ref=e97]: $100
+                      - text: budgeted
+                  - generic [ref=e104]:
+                    - application [ref=e105]:
+                      - generic:
+                        - generic:
+                          - generic: "0"
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - generic: $57
+                              - text: under
+              - generic [ref=e106]:
+                - generic [ref=e107]:
+                  - heading "Transactions to review" [level=5] [ref=e108]
+                  - button "View all" [ref=e110] [cursor=pointer]:
+                    - text: View all
+                    - img [ref=e111]
+                - generic [ref=e216]:
+                  - img [ref=e223]
+                  - generic [ref=e229]: 30 transactions to unlock intelligence
+            - generic [ref=e122]:
+              - generic [ref=e123]:
+                - generic [ref=e124]:
+                  - heading "Net worth" [level=5] [ref=e125]
+                  - button "Accounts" [ref=e127] [cursor=pointer]:
+                    - text: Accounts
+                    - img [ref=e128]
+                - generic [ref=e130]:
+                  - generic [ref=e131]:
+                    - generic [ref=e132]:
+                      - heading "Assets" [level=5] [ref=e232]
+                      - generic [ref=e137]: $0
+                      - generic [ref=e138]:
+                        - img [ref=e139]
+                        - generic [ref=e141]: 0.00%
+                    - generic [ref=e233]:
+                      - heading "Debts" [level=5] [ref=e237]
+                      - generic [ref=e240]: $0
+                      - generic [ref=e241]:
+                        - img [ref=e242]
+                        - generic [ref=e244]: 0.00%
+                  - application [ref=e148]:
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                    - generic:
+                      - generic:
+                        - generic: "0"
+                - generic [ref=e150]:
+                  - button "1W" [ref=e151] [cursor=pointer]
+                  - button "1M" [ref=e152] [cursor=pointer]
+                  - button "3M" [ref=e153] [cursor=pointer]
+                  - button "YTD" [ref=e154] [cursor=pointer]
+                  - button "1Y" [ref=e155] [cursor=pointer]
+                  - button "ALL" [active] [ref=e156] [cursor=pointer]
+              - generic [ref=e157]:
+                - generic [ref=e158]:
+                  - heading "Top categories" [level=5] [ref=e159]
+                  - button "View all" [ref=e161] [cursor=pointer]:
+                    - text: View all
+                    - img [ref=e162]
+                - generic [ref=e165]:
+                  - button "Restaurants category" [ref=e250] [cursor=pointer]:
+                    - generic [ref=e256]:
+                      - generic "Category icon" [ref=e258]: 🧑‍🍳
+                      - generic [ref=e259]: Restaurants
+                    - generic [ref=e261]: $0
+                    - progressbar [ref=e266]
+                    - generic [ref=e268]: $100
+                  - button "Other category" [ref=e271] [cursor=pointer]:
+                    - generic [ref=e277]:
+                      - generic "Category icon" [ref=e279]: 🤷‍♂️
+                      - generic [ref=e280]: Other
+                    - generic [ref=e282]: $0
+              - generic [ref=e166]:
+                - generic [ref=e167]:
+                  - heading "Next two weeks" [level=5] [ref=e168]
+                  - button "Recurrings" [ref=e170] [cursor=pointer]:
+                    - text: Recurrings
+                    - img [ref=e171]
+                - heading "There are no upcoming payments" [level=5] [ref=e284]
+    - region "Notifications alt+T"
+  - iframe [ref=e176]:
+    

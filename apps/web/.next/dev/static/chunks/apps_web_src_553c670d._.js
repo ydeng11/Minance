@@ -245,11 +245,14 @@ const assistantApi = {
 };
 const categoriesApi = {
     list: (request)=>request("/v1/categories"),
-    add: (request, name)=>request("/v1/categories", {
+    getStrategy: (request)=>request("/v1/category-strategy"),
+    saveStrategy: (request, strategy)=>request("/v1/category-strategy", {
+            method: "PUT",
+            body: strategy
+        }),
+    add: (request, body)=>request("/v1/categories", {
             method: "POST",
-            body: {
-                name
-            }
+            body
         }),
     addRule: (request, body)=>request("/v1/category-rules", {
             method: "POST",
@@ -362,13 +365,13 @@ function persistTokens(tokens) {
 }
 function SessionProvider({ children }) {
     _s();
-    const [status, setStatus] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("loading");
+    const [tokens, setTokensState] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])({
+        "SessionProvider.useState": ()=>readStoredTokens()
+    }["SessionProvider.useState"]);
+    const [status, setStatus] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(tokens ? "loading" : "unauthenticated");
     const [user, setUser] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
-    const [tokens, setTokensState] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
-    const tokensRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
     const setTokens = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "SessionProvider.useCallback[setTokens]": (nextTokens)=>{
-            tokensRef.current = nextTokens;
             setTokensState(nextTokens);
             persistTokens(nextTokens);
         }
@@ -385,14 +388,15 @@ function SessionProvider({ children }) {
     const client = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
         "SessionProvider.useMemo[client]": ()=>(0, __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$web$2f$src$2f$lib$2f$api$2f$client$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["createApiClient"])({
                 getTokens: {
-                    "SessionProvider.useMemo[client]": ()=>tokensRef.current
+                    "SessionProvider.useMemo[client]": ()=>tokens
                 }["SessionProvider.useMemo[client]"],
                 setTokens,
                 onAuthFailure
             })
     }["SessionProvider.useMemo[client]"], [
         onAuthFailure,
-        setTokens
+        setTokens,
+        tokens
     ]);
     const refreshUser = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useCallback"])({
         "SessionProvider.useCallback[refreshUser]": async ()=>{
@@ -436,12 +440,9 @@ function SessionProvider({ children }) {
     ]);
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
         "SessionProvider.useEffect": ()=>{
-            const nextTokens = readStoredTokens();
-            if (!nextTokens) {
-                setStatus("unauthenticated");
+            if (!tokens) {
                 return;
             }
-            setTokens(nextTokens);
             __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$web$2f$src$2f$lib$2f$api$2f$endpoints$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["authApi"].me(client.request).then({
                 "SessionProvider.useEffect": (result)=>{
                     setUser(result.user);
@@ -456,7 +457,7 @@ function SessionProvider({ children }) {
     }["SessionProvider.useEffect"], [
         client.request,
         onAuthFailure,
-        setTokens
+        tokens
     ]);
     const value = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useMemo"])({
         "SessionProvider.useMemo[value]": ()=>({
@@ -484,11 +485,11 @@ function SessionProvider({ children }) {
         children: children
     }, void 0, false, {
         fileName: "[project]/apps/web/src/lib/session.tsx",
-        lineNumber: 148,
+        lineNumber: 141,
         columnNumber: 10
     }, this);
 }
-_s(SessionProvider, "qG3w9gBj2k+WsxEZTVh4ldGv22g=");
+_s(SessionProvider, "IZvZsKXcomTmxOXFo/2OxayeZtA=");
 _c = SessionProvider;
 function useSession() {
     _s1();
@@ -1084,6 +1085,10 @@ function useApi() {
                     list: ({
                         "useApi.useMemo": ()=>__TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$web$2f$src$2f$lib$2f$api$2f$endpoints$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["categoriesApi"].list(request)
                     })["useApi.useMemo"],
+                    getStrategy: ({
+                        "useApi.useMemo": ()=>__TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$web$2f$src$2f$lib$2f$api$2f$endpoints$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["categoriesApi"].getStrategy(request)
+                    })["useApi.useMemo"],
+                    saveStrategy: __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$web$2f$src$2f$lib$2f$api$2f$endpoints$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["categoriesApi"].saveStrategy.bind(null, request),
                     add: __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$web$2f$src$2f$lib$2f$api$2f$endpoints$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["categoriesApi"].add.bind(null, request),
                     addRule: __TURBOPACK__imported__module__$5b$project$5d2f$apps$2f$web$2f$src$2f$lib$2f$api$2f$endpoints$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["categoriesApi"].addRule.bind(null, request)
                 },
