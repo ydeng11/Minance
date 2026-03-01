@@ -1,0 +1,5 @@
+date,merchant,description,amount,currency,account,category_raw,memo
+2026-02-10,Coffee Shop,Coffee purchase,-8.50,USD,Checking,Dining,morning coffee
+2026-02-11,Super Market,Groceries,-56.20,USD,Checking,Groceries,weekly groceries
+2026-02-12,Payroll Inc,Salary,2200.00,USD,Checking,Income,monthly payroll
+2026-02-13,Gas Station,Fuel,-40.00,USD,Credit Card,Transport,car fuel

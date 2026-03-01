@@ -1,0 +1,11 @@
+node_modules
+.DS_Store
+.env
+services/api/data/store.json
+services/api/tmp/*
+coverage
+output/playwright
+playwright-report
+
+# bv (beads viewer) local config and caches
+.bv/

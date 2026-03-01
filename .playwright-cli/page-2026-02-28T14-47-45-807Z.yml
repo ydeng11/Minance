@@ -1,0 +1,40 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e8]: Minance
+      - navigation [ref=e9]:
+        - link "Dashboard" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e11]
+          - text: Dashboard
+        - link "Transactions" [ref=e14] [cursor=pointer]:
+          - /url: /transactions
+          - img [ref=e15]
+          - text: Transactions
+        - link "Import CSV" [ref=e18] [cursor=pointer]:
+          - /url: /import
+          - img [ref=e19]
+          - text: Import CSV
+        - link "AI Assistant" [ref=e22] [cursor=pointer]:
+          - /url: /chat
+          - img [ref=e23]
+          - text: AI Assistant
+        - link "Settings" [ref=e25] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e26]
+          - text: Settings
+    - main [ref=e29]:
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - heading "Import Transactions" [level=1] [ref=e33]
+          - paragraph [ref=e34]: Upload a CSV from any bank. Our AI will automatically categorize and format it.
+        - generic [ref=e35]:
+          - button "Choose File" [ref=e36] [cursor=pointer]
+          - generic [ref=e37]:
+            - img [ref=e39]
+            - paragraph [ref=e42]: Click or drag CSV here
+            - paragraph [ref=e43]: Supports Chase, Amex, Apple, Citi & more...
+        - button "Process Transactions" [disabled] [ref=e44]
+  - button "Open Next.js Dev Tools" [ref=e50] [cursor=pointer]:
+    - img [ref=e51]
+  - alert [ref=e54]

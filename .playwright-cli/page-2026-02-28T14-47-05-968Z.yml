@@ -1,0 +1,36 @@
+- main [ref=e2]:
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - navigation [ref=e20]:
+        - generic [ref=e23]: Minance
+        - button "Dashboard" [ref=e24] [cursor=pointer]
+        - button "Imports" [ref=e25] [cursor=pointer]
+        - button "Transactions" [ref=e26] [cursor=pointer]
+        - button "Assistant" [active] [ref=e27] [cursor=pointer]
+        - button "AI Settings" [ref=e28] [cursor=pointer]
+        - button "Migration" [ref=e29] [cursor=pointer]
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - heading "Minance Next" [level=2] [ref=e33]
+          - paragraph [ref=e34]: dev@minance.local
+        - generic [ref=e35]:
+          - button "Refresh" [ref=e36] [cursor=pointer]
+          - button "Log out" [ref=e37] [cursor=pointer]
+      - generic [ref=e38]:
+        - paragraph [ref=e39]
+        - article [ref=e148]:
+          - heading "Assistant" [level=3] [ref=e150]
+          - generic [ref=e151]:
+            - paragraph [ref=e152]: Ask for quick financial answers. The assistant uses your actual transactions and guardrailed query plans.
+            - generic [ref=e153]:
+              - button "Dining this quarter" [ref=e154] [cursor=pointer]
+              - button "Unusual merchants" [ref=e155] [cursor=pointer]
+              - button "Biggest change" [ref=e156] [cursor=pointer]
+            - textbox "Ask about your finances" [ref=e157]
+            - button "Ask" [ref=e158] [cursor=pointer]
+          - generic [ref=e159]:
+            - generic [ref=e160]:
+              - heading "Answers" [level=4] [ref=e161]
+              - generic [ref=e162]: Most recent first
+            - paragraph [ref=e164]: Ask a question to get started.

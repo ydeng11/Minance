@@ -1,0 +1,117 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e8]: Minance
+      - navigation [ref=e9]:
+        - link "Dashboard" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e11]
+          - text: Dashboard
+        - link "Transactions" [ref=e14] [cursor=pointer]:
+          - /url: /transactions
+          - img [ref=e15]
+          - text: Transactions
+        - link "Import CSV" [ref=e18] [cursor=pointer]:
+          - /url: /import
+          - img [ref=e19]
+          - text: Import CSV
+        - link "AI Assistant" [ref=e22] [cursor=pointer]:
+          - /url: /chat
+          - img [ref=e23]
+          - text: AI Assistant
+        - link "Settings" [ref=e25] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e26]
+          - text: Settings
+    - main [ref=e29]:
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - heading "Transactions" [level=1] [ref=e34]
+            - paragraph [ref=e35]: Review and filter your parsed financial data.
+          - generic [ref=e36]:
+            - generic [ref=e37]:
+              - img [ref=e38]
+              - textbox "Search merchants..." [ref=e41]
+            - button [ref=e42]:
+              - img [ref=e43]
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - heading "Spending Trend (Last 7 Days)" [level=3] [ref=e47]
+            - application [ref=e51]:
+              - generic [ref=e53]:
+                - generic [ref=e55]: Mon
+                - generic [ref=e57]: Tue
+                - generic [ref=e59]: Wed
+                - generic [ref=e61]: Thu
+                - generic [ref=e63]: Fri
+                - generic [ref=e65]: Sat
+                - generic [ref=e67]: Sun
+          - generic [ref=e68]:
+            - generic [ref=e69]:
+              - heading "Total Expenses MTD" [level=3] [ref=e70]
+              - paragraph [ref=e71]: $2,410.50
+            - generic [ref=e72]:
+              - generic [ref=e74]:
+                - generic [ref=e75]: Dining
+                - generic [ref=e76]: $450.00
+              - generic [ref=e80]:
+                - generic [ref=e81]: Groceries
+                - generic [ref=e82]: $320.00
+        - table [ref=e86]:
+          - rowgroup [ref=e87]:
+            - row "Date Merchant Category Amount" [ref=e88]:
+              - columnheader "Date" [ref=e89]
+              - columnheader "Merchant" [ref=e90]
+              - columnheader "Category" [ref=e91]
+              - columnheader "Amount" [ref=e92]
+          - rowgroup [ref=e93]:
+            - row "2024-03-12 Uber Transport $24.50" [ref=e94]:
+              - cell "2024-03-12" [ref=e95]
+              - cell "Uber" [ref=e96]:
+                - generic [ref=e97]:
+                  - img [ref=e99]
+                  - text: Uber
+              - cell "Transport" [ref=e102]
+              - cell "$24.50" [ref=e103]:
+                - generic [ref=e104]: $24.50
+            - row "2024-03-11 Whole Foods Groceries $142.30" [ref=e105]:
+              - cell "2024-03-11" [ref=e106]
+              - cell "Whole Foods" [ref=e107]:
+                - generic [ref=e108]:
+                  - img [ref=e110]
+                  - text: Whole Foods
+              - cell "Groceries" [ref=e113]
+              - cell "$142.30" [ref=e114]:
+                - generic [ref=e115]: $142.30
+            - row "2024-03-10 Salary Paycheck +$4200.00" [ref=e116]:
+              - cell "2024-03-10" [ref=e117]
+              - cell "Salary" [ref=e118]:
+                - generic [ref=e119]:
+                  - img [ref=e121]
+                  - text: Salary
+              - cell "Paycheck" [ref=e124]
+              - cell "+$4200.00" [ref=e125]:
+                - generic [ref=e126]: +$4200.00
+            - row "2024-03-09 Netflix Entertainment $15.99" [ref=e127]:
+              - cell "2024-03-09" [ref=e128]
+              - cell "Netflix" [ref=e129]:
+                - generic [ref=e130]:
+                  - img [ref=e132]
+                  - text: Netflix
+              - cell "Entertainment" [ref=e135]
+              - cell "$15.99" [ref=e136]:
+                - generic [ref=e137]: $15.99
+            - row "2024-03-08 Shell Station Transport $45.00" [ref=e138]:
+              - cell "2024-03-08" [ref=e139]
+              - cell "Shell Station" [ref=e140]:
+                - generic [ref=e141]:
+                  - img [ref=e143]
+                  - text: Shell Station
+              - cell "Transport" [ref=e146]
+              - cell "$45.00" [ref=e147]:
+                - generic [ref=e148]: $45.00
+  - button "Open Next.js Dev Tools" [ref=e154] [cursor=pointer]:
+    - img [ref=e155]
+  - alert [ref=e158]
+  - generic [ref=e159]: Mon

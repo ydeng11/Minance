@@ -1,0 +1,806 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Minance Next</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ['"Space Grotesk"', "ui-sans-serif", "system-ui", "sans-serif"],
+              mono: ['"IBM Plex Mono"', "ui-monospace", "SFMono-Regular", "monospace"]
+            },
+            colors: {
+              brand: {
+                50: "#ecf7f3",
+                100: "#d7efe8",
+                500: "#0f7f6a",
+                700: "#0d6b5a"
+              }
+            }
+          }
+        }
+      };
+    </script>
+  </head>
+  <body class="min-h-screen bg-neutral-950 font-display text-neutral-100">
+    <div
+      class="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,0.16),transparent_35%),radial-gradient(circle_at_85%_10%,rgba(56,189,248,0.1),transparent_30%)]"
+    ></div>
+
+    <main class="mx-auto w-full max-w-[1400px] px-3 py-4 md:px-5 md:py-5">
+      <section id="auth-panel" class="grid min-h-[calc(100vh-40px)] place-items-center">
+        <div class="w-full max-w-[460px] rounded-3xl bg-neutral-900/60 p-6 shadow-[0_12px_36px_rgba(13,40,35,0.1)] md:p-8">
+          <h1 class="text-4xl font-bold tracking-tight text-neutral-100">Minance Next</h1>
+          <p class="mt-2 text-sm text-neutral-400">Privacy-first money intelligence without bank linking.</p>
+
+          <div class="my-5 flex gap-2.5">
+            <button
+              id="tab-login"
+              class="tab active rounded-full border border-emerald-500/50 bg-emerald-500/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800/70"
+            >
+              Login
+            </button>
+            <button
+              id="tab-signup"
+              class="tab rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+            >
+              Sign up
+            </button>
+          </div>
+
+          <form id="login-form" class="grid gap-3">
+            <label class="grid gap-1.5 text-sm text-neutral-300"
+              >Email
+              <input
+                class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                name="email"
+                type="email"
+                required
+              />
+            </label>
+            <label class="grid gap-1.5 text-sm text-neutral-300"
+              >Password
+              <input
+                class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                name="password"
+                type="password"
+                minlength="8"
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              class="rounded-full border border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800/70"
+            >
+              Login
+            </button>
+          </form>
+
+          <form id="signup-form" class="hidden grid gap-3">
+            <label class="grid gap-1.5 text-sm text-neutral-300"
+              >Email
+              <input
+                class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                name="email"
+                type="email"
+                required
+              />
+            </label>
+            <label class="grid gap-1.5 text-sm text-neutral-300"
+              >Password
+              <input
+                class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                name="password"
+                type="password"
+                minlength="8"
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              class="rounded-full border border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800/70"
+            >
+              Create account
+            </button>
+          </form>
+
+          <p id="auth-message" class="mt-3 min-h-6 text-sm text-amber-400"></p>
+        </div>
+      </section>
+
+      <section id="app" class="hidden min-h-[calc(100vh-40px)]">
+        <div class="flex min-h-[calc(100vh-40px)] flex-col gap-3.5 md:flex-row">
+          <aside class="hidden md:block md:w-64 md:shrink-0">
+            <nav
+              class="sidebar flex h-full flex-col gap-1 rounded-3xl border border-neutral-800 bg-neutral-900/50 p-4 backdrop-blur-xl"
+              id="sidebar"
+            >
+              <div class="mb-6 flex items-center gap-2 px-1">
+                <div
+                  class="h-8 w-8 rounded-lg border border-emerald-500/50 bg-emerald-500/20"
+                ></div>
+                <span class="text-lg font-semibold tracking-tight text-neutral-100">Minance</span>
+              </div>
+              <button
+                data-view="dashboard"
+                class="nav-btn active rounded-lg border border-emerald-500/50 bg-emerald-500/20 px-3 py-2 text-left text-sm font-medium text-white transition hover:bg-neutral-800/70"
+              >
+                Dashboard
+              </button>
+              <button
+                data-view="imports"
+                class="nav-btn rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-left text-sm font-medium text-neutral-300 transition hover:bg-neutral-800/70"
+              >
+                Imports
+              </button>
+              <button
+                data-view="transactions"
+                class="nav-btn rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-left text-sm font-medium text-neutral-300 transition hover:bg-neutral-800/70"
+              >
+                Transactions
+              </button>
+              <button
+                data-view="analytics"
+                class="nav-btn hidden rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-left text-sm font-medium text-neutral-300 transition hover:bg-neutral-800/70"
+              >
+                Analytics
+              </button>
+              <button
+                data-view="assistant"
+                class="nav-btn rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-left text-sm font-medium text-neutral-300 transition hover:bg-neutral-800/70"
+              >
+                Assistant
+              </button>
+              <button
+                data-view="settings"
+                class="nav-btn rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-left text-sm font-medium text-neutral-300 transition hover:bg-neutral-800/70"
+              >
+                AI Settings
+              </button>
+              <button
+                data-view="migration"
+                class="nav-btn rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-left text-sm font-medium text-neutral-300 transition hover:bg-neutral-800/70"
+              >
+                Migration
+              </button>
+            </nav>
+          </aside>
+
+          <section class="flex min-w-0 flex-1 flex-col gap-3 pb-20 md:pb-0">
+            <header
+              class="flex flex-col gap-3 rounded-3xl border border-neutral-800 bg-neutral-900/50 p-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:px-5"
+            >
+              <div>
+                <h2 class="text-2xl font-semibold text-neutral-100">Minance Next</h2>
+                <p id="user-email" class="text-sm text-neutral-400"></p>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  id="refresh-all"
+                  class="rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                >
+                  Refresh
+                </button>
+                <button
+                  id="logout"
+                  class="rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                >
+                  Log out
+                </button>
+              </div>
+            </header>
+
+            <section class="grid gap-3">
+            <p id="global-message" class="min-h-6 text-sm text-amber-400"></p>
+
+            <article id="view-dashboard" class="view grid gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-2.5">
+                <h3 class="text-lg font-semibold text-neutral-100">Home</h3>
+                <select
+                  id="dashboard-range"
+                  class="rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                >
+                  <option value="all">All time</option>
+                  <option value="30d">Last 30 days</option>
+                  <option value="90d" selected>Last 90 days</option>
+                  <option value="365d">Last 12 months</option>
+                  <option value="ytd">Year to date</option>
+                </select>
+              </div>
+              <div
+                class="kpi-grid grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3"
+                id="overview-cards"
+              ></div>
+              <div class="grid gap-3 lg:grid-cols-2">
+                <section class="rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                  <h4 class="text-sm font-semibold text-neutral-300">Monthly Trend</h4>
+                  <div id="trend-bars" class="mt-3"></div>
+                </section>
+                <section class="rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                  <h4 class="text-sm font-semibold text-neutral-300">Top Categories</h4>
+                  <ul id="top-categories" class="mt-3 grid list-none gap-2 p-0"></ul>
+                  <h4 class="mt-4 text-sm font-semibold text-neutral-300">Top Merchants</h4>
+                  <ul id="top-merchants" class="mt-3 grid list-none gap-2 p-0"></ul>
+                </section>
+              </div>
+              <section class="rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                <div class="flex flex-wrap items-center justify-between gap-2.5">
+                  <h4 class="text-sm font-semibold text-neutral-300">Insights</h4>
+                  <select
+                    id="analytics-range"
+                    class="rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  >
+                    <option value="all">All time</option>
+                    <option value="30d">Last 30 days</option>
+                    <option value="90d" selected>Last 90 days</option>
+                    <option value="365d">Last 12 months</option>
+                  </select>
+                </div>
+                <div class="mt-3 grid gap-3 lg:grid-cols-2">
+                  <section class="rounded-2xl bg-neutral-900/60 p-3.5">
+                    <h5 class="text-xs font-semibold uppercase tracking-wide text-neutral-400">Category decomposition</h5>
+                    <div id="analytics-categories" class="mt-3"></div>
+                  </section>
+                  <section class="rounded-2xl bg-neutral-900/60 p-3.5">
+                    <h5 class="text-xs font-semibold uppercase tracking-wide text-neutral-400">Merchant concentration</h5>
+                    <div id="analytics-merchants" class="mt-3"></div>
+                  </section>
+                </div>
+                <div class="mt-3 grid gap-3 lg:grid-cols-2">
+                  <section class="rounded-2xl bg-neutral-900/60 p-3.5">
+                    <h5 class="text-xs font-semibold uppercase tracking-wide text-neutral-400">Spending heatmap</h5>
+                    <div id="analytics-heatmap" class="mt-3 grid grid-cols-7 gap-1.5"></div>
+                  </section>
+                  <section class="rounded-2xl bg-neutral-900/60 p-3.5">
+                    <h5 class="text-xs font-semibold uppercase tracking-wide text-neutral-400">Anomalies</h5>
+                    <div id="analytics-anomalies" class="mt-3"></div>
+                  </section>
+                </div>
+              </section>
+              <section class="grid gap-3 rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                <h4 class="text-sm font-semibold text-neutral-300">Saved Views</h4>
+                <div class="inline-fields flex flex-wrap items-end gap-2.5 max-sm:flex-col max-sm:items-stretch">
+                  <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                    >Name
+                    <input
+                      id="saved-view-name"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="Quarterly dining check"
+                    />
+                  </label>
+                  <button
+                    id="save-view"
+                    class="rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                  >
+                    Save Current View
+                  </button>
+                </div>
+                <div id="saved-views-list"></div>
+              </section>
+            </article>
+
+            <article id="view-imports" class="view hidden grid gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-2.5">
+                <h3 class="text-lg font-semibold text-neutral-100">CSV Imports</h3>
+              </div>
+              <section class="grid gap-3 rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                <label class="grid gap-1.5 text-sm text-neutral-300"
+                  >CSV file
+                  <input
+                    id="import-file"
+                    class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition file:mr-3 file:rounded-full file:border-0 file:bg-neutral-800 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-neutral-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    type="file"
+                    accept=".csv,text/csv"
+                  />
+                </label>
+                <button
+                  id="import-upload"
+                  class="w-fit rounded-full border border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800/70"
+                >
+                  Upload & Analyze
+                </button>
+                <p class="text-sm text-neutral-400">
+                  AI mapping is used when a provider key is configured; otherwise deterministic mapping is used.
+                </p>
+              </section>
+              <section
+                class="hidden rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]"
+                id="mapping-panel"
+              >
+                <h4 class="text-sm font-semibold text-neutral-300">Mapping Review</h4>
+                <div
+                  id="mapping-fields"
+                  class="mapping-grid mt-3 grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-2.5"
+                ></div>
+                <div class="row-actions mt-3 flex flex-wrap justify-end gap-2">
+                  <button
+                    id="save-mapping"
+                    class="rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                  >
+                    Save Mapping
+                  </button>
+                  <button
+                    id="commit-import"
+                    class="rounded-full border border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800/70"
+                  >
+                    Commit Import
+                  </button>
+                </div>
+                <pre
+                  id="import-summary"
+                  class="code-box mt-3 max-h-60 overflow-auto rounded-xl border border-neutral-800 bg-neutral-950 p-2.5 font-mono text-xs text-emerald-100"
+                ></pre>
+              </section>
+              <section
+                class="hidden rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]"
+                id="processed-panel"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-2.5">
+                  <h4 class="text-sm font-semibold text-neutral-300">Processed Records Editor</h4>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <select
+                      id="processed-status-filter"
+                      class="rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-xs text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    >
+                      <option value="">All statuses</option>
+                      <option value="valid">Valid</option>
+                      <option value="invalid">Invalid</option>
+                      <option value="duplicate">Duplicate</option>
+                      <option value="excluded">Excluded</option>
+                    </select>
+                    <button
+                      id="processed-reprocess"
+                      class="rounded-full border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                    >
+                      Reprocess
+                    </button>
+                  </div>
+                </div>
+                <p id="processed-summary" class="mt-2 text-xs text-neutral-400"></p>
+                <div class="mt-3 overflow-auto">
+                  <table class="min-w-[1080px] w-full border-collapse text-xs">
+                    <thead>
+                      <tr class="border-b border-neutral-800 text-left text-neutral-400">
+                        <th class="px-2 py-2 font-semibold">Include</th>
+                        <th class="px-2 py-2 font-semibold">Status</th>
+                        <th class="px-2 py-2 font-semibold">Date</th>
+                        <th class="px-2 py-2 font-semibold">Merchant</th>
+                        <th class="px-2 py-2 font-semibold">Description</th>
+                        <th class="px-2 py-2 font-semibold">Amount</th>
+                        <th class="px-2 py-2 font-semibold">Dir</th>
+                        <th class="px-2 py-2 font-semibold">Category</th>
+                        <th class="px-2 py-2 font-semibold">Account</th>
+                        <th class="px-2 py-2 font-semibold">Memo</th>
+                        <th class="px-2 py-2 font-semibold">Issues</th>
+                      </tr>
+                    </thead>
+                    <tbody id="processed-table"></tbody>
+                  </table>
+                </div>
+              </section>
+              <section class="rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                <h4 class="text-sm font-semibold text-neutral-300">Recent Imports</h4>
+                <div id="import-list" class="mt-3"></div>
+              </section>
+            </article>
+
+            <article id="view-transactions" class="view hidden grid gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-2.5">
+                <h3 class="text-lg font-semibold text-neutral-100">Transactions</h3>
+              </div>
+              <section class="grid gap-3 rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                <div class="inline-fields flex flex-wrap items-end gap-2.5 max-sm:flex-col max-sm:items-stretch">
+                  <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                    >Search
+                    <input
+                      id="txn-query"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="merchant, memo, description"
+                    />
+                  </label>
+                  <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                    >Category
+                    <select
+                      id="txn-category-filter"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    ></select>
+                  </label>
+                  <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                    >Range
+                    <select
+                      id="txn-range"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    >
+                      <option value="all" selected>All time</option>
+                      <option value="30d">Last 30 days</option>
+                      <option value="90d">Last 90 days</option>
+                      <option value="365d">Last 12 months</option>
+                      <option value="ytd">Year to date</option>
+                    </select>
+                  </label>
+                  <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                    >Needs Review
+                    <input
+                      id="txn-review-only"
+                      class="h-5 w-5 rounded border-neutral-700 text-emerald-400 focus:ring-emerald-500"
+                      type="checkbox"
+                    />
+                  </label>
+                  <button
+                    id="txn-refresh"
+                    class="rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                  >
+                    Apply
+                  </button>
+                </div>
+                <div class="overflow-auto">
+                  <table class="min-w-[760px] w-full border-collapse text-sm">
+                    <thead>
+                      <tr class="border-b border-neutral-800 text-left text-neutral-400">
+                        <th class="px-2 py-2 font-semibold">Date</th>
+                        <th class="px-2 py-2 font-semibold">Merchant</th>
+                        <th class="px-2 py-2 font-semibold">Category</th>
+                        <th class="px-2 py-2 font-semibold">Direction</th>
+                        <th class="px-2 py-2 font-semibold">Amount</th>
+                        <th class="px-2 py-2 font-semibold">Source</th>
+                        <th class="px-2 py-2 font-semibold">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="txn-table"></tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section class="rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                <h4 class="text-sm font-semibold text-neutral-300">Manual Transaction</h4>
+                <form id="txn-form" class="mt-3 grid gap-3">
+                  <input type="hidden" name="id" />
+                  <div class="inline-fields flex flex-wrap items-end gap-2.5 max-sm:flex-col max-sm:items-stretch">
+                    <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                      >Date
+                      <input
+                        class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        name="transaction_date"
+                        type="date"
+                        required
+                      />
+                    </label>
+                    <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                      >Description
+                      <input
+                        class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        name="description"
+                        required
+                      />
+                    </label>
+                    <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                      >Merchant
+                      <input
+                        class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        name="merchant_raw"
+                      />
+                    </label>
+                    <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                      >Amount
+                      <input
+                        class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        name="amount"
+                        type="number"
+                        step="0.01"
+                        required
+                      />
+                    </label>
+                    <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                      >Direction
+                      <select
+                        class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        name="direction"
+                      >
+                        <option value="debit">debit</option>
+                        <option value="credit">credit</option>
+                      </select>
+                    </label>
+                    <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                      >Category
+                      <select
+                        class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        name="category_final"
+                        id="txn-form-category"
+                      ></select>
+                    </label>
+                    <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                      >Account
+                      <input
+                        class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        name="account_name"
+                        placeholder="Manual Account"
+                      />
+                    </label>
+                    <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                      >Memo
+                      <input
+                        class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        name="memo"
+                      />
+                    </label>
+                  </div>
+                  <div class="row-actions flex flex-wrap justify-end gap-2 max-sm:justify-start">
+                    <button
+                      type="submit"
+                      class="rounded-full border border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800/70"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      id="txn-form-reset"
+                      class="rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </article>
+
+            <article id="view-analytics" class="view hidden grid gap-3">
+              <section class="rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                <p class="text-sm text-neutral-400">Analytics has moved to Home.</p>
+              </section>
+            </article>
+
+            <article id="view-assistant" class="view hidden grid gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-2.5">
+                <h3 class="text-lg font-semibold text-neutral-100">Assistant</h3>
+              </div>
+              <section class="grid gap-3 rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)] md:p-5">
+                <p class="text-sm text-neutral-400">
+                  Ask for quick financial answers. The assistant uses your actual transactions and guardrailed query
+                  plans.
+                </p>
+                <div id="assistant-suggestions" class="flex flex-wrap gap-2">
+                  <button
+                    data-assistant-suggestion="How much did I spend on dining this quarter?"
+                    class="rounded-full border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                  >
+                    Dining this quarter
+                  </button>
+                  <button
+                    data-assistant-suggestion="Show unusual merchants in the past 60 days."
+                    class="rounded-full border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                  >
+                    Unusual merchants
+                  </button>
+                  <button
+                    data-assistant-suggestion="What changed the most in spending this month?"
+                    class="rounded-full border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                  >
+                    Biggest change
+                  </button>
+                </div>
+                <textarea
+                  id="assistant-question"
+                  rows="3"
+                  class="w-full resize-y rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                  placeholder="Ask about your finances"
+                ></textarea>
+                <button
+                  id="assistant-ask"
+                  class="w-fit rounded-full border border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800/70"
+                >
+                  Ask
+                </button>
+              </section>
+              <section class="rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)] md:p-5">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-sm font-semibold text-neutral-300">Answers</h4>
+                  <span class="text-xs text-neutral-500">Most recent first</span>
+                </div>
+                <div id="assistant-responses" class="mt-3 grid gap-3"></div>
+              </section>
+            </article>
+
+            <article id="view-settings" class="view hidden grid gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-2.5">
+                <h3 class="text-lg font-semibold text-neutral-100">AI Provider Settings (BYOK)</h3>
+              </div>
+              <div class="grid gap-3 lg:grid-cols-2">
+                <section class="grid gap-3 rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                  <h4 class="text-sm font-semibold text-neutral-300">Add Provider Key</h4>
+                  <label class="grid gap-1.5 text-sm text-neutral-300"
+                    >Provider
+                    <select
+                      id="provider-select"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    ></select>
+                  </label>
+                  <label class="grid gap-1.5 text-sm text-neutral-300"
+                    >Label
+                    <input
+                      id="provider-label"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="Personal key"
+                    />
+                  </label>
+                  <label class="grid gap-1.5 text-sm text-neutral-300"
+                    >API key
+                    <input
+                      id="provider-key"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                      type="password"
+                    />
+                  </label>
+                  <button
+                    id="provider-add"
+                    class="w-fit rounded-full border border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800/70"
+                  >
+                    Save Key
+                  </button>
+                </section>
+                <section class="grid gap-3 rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                  <h4 class="text-sm font-semibold text-neutral-300">Preferences & Failover</h4>
+                  <label class="grid gap-1.5 text-sm text-neutral-300"
+                    >Default provider
+                    <select
+                      id="pref-provider"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    ></select>
+                  </label>
+                  <label class="grid gap-1.5 text-sm text-neutral-300"
+                    >Default model
+                    <select
+                      id="pref-model"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    ></select>
+                  </label>
+                  <label class="grid gap-1.5 text-sm text-neutral-300"
+                    >Failover providers
+                    <select
+                      id="pref-failover"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                      multiple
+                      size="4"
+                    ></select>
+                  </label>
+                  <button
+                    id="save-preferences"
+                    class="w-fit rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                  >
+                    Save Preferences
+                  </button>
+                </section>
+              </div>
+              <section class="rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                <h4 class="text-sm font-semibold text-neutral-300">Configured Keys</h4>
+                <div id="credential-list" class="mt-3"></div>
+              </section>
+              <section class="grid gap-3 rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                <h4 class="text-sm font-semibold text-neutral-300">Taxonomy & Rules</h4>
+                <div class="inline-fields flex flex-wrap items-end gap-2.5 max-sm:flex-col max-sm:items-stretch">
+                  <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                    >New category
+                    <input
+                      id="new-category"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </label>
+                  <button
+                    id="add-category"
+                    class="rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                  >
+                    Add Category
+                  </button>
+                </div>
+                <div class="inline-fields flex flex-wrap items-end gap-2.5 max-sm:flex-col max-sm:items-stretch">
+                  <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                    >Rule pattern
+                    <input
+                      id="new-rule-pattern"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                      placeholder="merchant substring"
+                    />
+                  </label>
+                  <label class="grid min-w-[140px] flex-1 gap-1.5 text-sm text-neutral-300"
+                    >Rule category
+                    <select
+                      id="new-rule-category"
+                      class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    ></select>
+                  </label>
+                  <button
+                    id="add-rule"
+                    class="rounded-full border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-semibold text-neutral-300 transition hover:bg-neutral-800/70"
+                  >
+                    Add Rule
+                  </button>
+                </div>
+              </section>
+            </article>
+
+            <article id="view-migration" class="view hidden grid gap-3">
+              <div class="flex flex-wrap items-center justify-between gap-2.5">
+                <h3 class="text-lg font-semibold text-neutral-100">Legacy Minance Migration</h3>
+              </div>
+              <section class="grid gap-3 rounded-3xl bg-neutral-900/60 p-4 shadow-[0_12px_36px_rgba(13,40,35,0.1)]">
+                <label class="grid gap-1.5 text-sm text-neutral-300"
+                  >Upload legacy `data.db`
+                  <input
+                    id="migration-file"
+                    class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition file:mr-3 file:rounded-full file:border-0 file:bg-neutral-800 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-neutral-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    type="file"
+                    accept=".db,.sqlite,.sqlite3"
+                  />
+                </label>
+                <label class="grid gap-1.5 text-sm text-neutral-300"
+                  >or Server path (optional)
+                  <input
+                    id="migration-path"
+                    class="w-full rounded-xl border border-neutral-700 bg-neutral-900/60 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                    placeholder="/absolute/path/to/data.db"
+                  />
+                </label>
+                <button
+                  id="run-migration"
+                  class="w-fit rounded-full border border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800/70"
+                >
+                  Run Migration
+                </button>
+                <pre
+                  id="migration-report"
+                  class="code-box max-h-60 overflow-auto rounded-xl border border-neutral-800 bg-neutral-950 p-2.5 font-mono text-xs text-emerald-100"
+                ></pre>
+              </section>
+            </article>
+          </section>
+          </section>
+        </div>
+        <nav
+          class="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-neutral-800 bg-neutral-950/90 p-3 backdrop-blur-xl md:hidden"
+        >
+          <button
+            data-mobile-view="dashboard"
+            class="mobile-nav-btn active rounded-lg border border-emerald-500/50 bg-emerald-500/20 px-3 py-2 text-[11px] font-medium text-white transition hover:bg-neutral-800/70"
+          >
+            Home
+          </button>
+          <button
+            data-mobile-view="imports"
+            class="mobile-nav-btn rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-[11px] font-medium text-neutral-300 transition hover:bg-neutral-800/70"
+          >
+            Imports
+          </button>
+          <button
+            data-mobile-view="transactions"
+            class="mobile-nav-btn rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-[11px] font-medium text-neutral-300 transition hover:bg-neutral-800/70"
+          >
+            Txns
+          </button>
+          <button
+            data-mobile-view="assistant"
+            class="mobile-nav-btn rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-[11px] font-medium text-neutral-300 transition hover:bg-neutral-800/70"
+          >
+            Assistant
+          </button>
+          <button
+            data-mobile-view="settings"
+            class="mobile-nav-btn rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-[11px] font-medium text-neutral-300 transition hover:bg-neutral-800/70"
+          >
+            Settings
+          </button>
+        </nav>
+      </section>
+    </main>
+
+    <script type="module" src="/app.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,112 @@
+- main [ref=e2]:
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - navigation [ref=e20]:
+        - generic [ref=e23]: Minance
+        - button "Dashboard" [ref=e24] [cursor=pointer]
+        - button "Imports" [ref=e25] [cursor=pointer]
+        - button "Transactions" [active] [ref=e26] [cursor=pointer]
+        - button "Assistant" [ref=e27] [cursor=pointer]
+        - button "AI Settings" [ref=e28] [cursor=pointer]
+        - button "Migration" [ref=e29] [cursor=pointer]
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - heading "Minance Next" [level=2] [ref=e33]
+          - paragraph [ref=e34]: dev@minance.local
+        - generic [ref=e35]:
+          - button "Refresh" [ref=e36] [cursor=pointer]
+          - button "Log out" [ref=e37] [cursor=pointer]
+      - generic [ref=e38]:
+        - paragraph [ref=e39]
+        - article [ref=e90]:
+          - heading "Transactions" [level=3] [ref=e92]
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - generic [ref=e95]:
+                - text: Search
+                - textbox "Search" [ref=e96]:
+                  - /placeholder: merchant, memo, description
+              - generic [ref=e97]:
+                - text: Category
+                - combobox "Category" [ref=e98]:
+                  - option "All" [selected]
+                  - option "Groceries"
+                  - option "Dining"
+                  - option "Transport"
+                  - option "Utilities"
+                  - option "Housing"
+                  - option "Healthcare"
+                  - option "Entertainment"
+                  - option "Shopping"
+                  - option "Income"
+                  - option "Transfer"
+                  - option "Uncategorized"
+              - generic [ref=e99]:
+                - text: Range
+                - combobox "Range" [ref=e100]:
+                  - option "All time" [selected]
+                  - option "Last 30 days"
+                  - option "Last 90 days"
+                  - option "Last 12 months"
+                  - option "Year to date"
+              - generic [ref=e101]:
+                - text: Needs Review
+                - checkbox "Needs Review" [ref=e102]
+              - button "Apply" [ref=e103] [cursor=pointer]
+            - table [ref=e105]:
+              - rowgroup [ref=e106]:
+                - row "Date Merchant Category Direction Amount Source Actions" [ref=e107]:
+                  - columnheader "Date" [ref=e108]
+                  - columnheader "Merchant" [ref=e109]
+                  - columnheader "Category" [ref=e110]
+                  - columnheader "Direction" [ref=e111]
+                  - columnheader "Amount" [ref=e112]
+                  - columnheader "Source" [ref=e113]
+                  - columnheader "Actions" [ref=e114]
+              - rowgroup
+          - generic [ref=e115]:
+            - heading "Manual Transaction" [level=4] [ref=e116]
+            - generic [ref=e117]:
+              - generic [ref=e118]:
+                - generic [ref=e119]:
+                  - text: Date
+                  - textbox "Date" [ref=e120]: 2026-02-28
+                - generic [ref=e121]:
+                  - text: Description
+                  - textbox "Description" [ref=e122]
+                - generic [ref=e123]:
+                  - text: Merchant
+                  - textbox "Merchant" [ref=e124]
+                - generic [ref=e125]:
+                  - text: Amount
+                  - spinbutton "Amount" [ref=e126]
+                - generic [ref=e127]:
+                  - text: Direction
+                  - combobox "Direction" [ref=e128]:
+                    - option "debit" [selected]
+                    - option "credit"
+                - generic [ref=e129]:
+                  - text: Category
+                  - combobox "Category" [ref=e130]:
+                    - option "Groceries" [selected]
+                    - option "Dining"
+                    - option "Transport"
+                    - option "Utilities"
+                    - option "Housing"
+                    - option "Healthcare"
+                    - option "Entertainment"
+                    - option "Shopping"
+                    - option "Income"
+                    - option "Transfer"
+                    - option "Uncategorized"
+                - generic [ref=e131]:
+                  - text: Account
+                  - textbox "Account" [ref=e132]:
+                    - /placeholder: Manual Account
+                - generic [ref=e133]:
+                  - text: Memo
+                  - textbox "Memo" [ref=e134]
+              - generic [ref=e135]:
+                - button "Save" [ref=e136] [cursor=pointer]
+                - button "Reset" [ref=e137] [cursor=pointer]

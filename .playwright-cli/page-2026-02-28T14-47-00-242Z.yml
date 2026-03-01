@@ -1,0 +1,30 @@
+- main [ref=e2]:
+  - generic [ref=e18]:
+    - complementary [ref=e19]:
+      - navigation [ref=e20]:
+        - generic [ref=e23]: Minance
+        - button "Dashboard" [ref=e24] [cursor=pointer]
+        - button "Imports" [active] [ref=e25] [cursor=pointer]
+        - button "Transactions" [ref=e26] [cursor=pointer]
+        - button "Assistant" [ref=e27] [cursor=pointer]
+        - button "AI Settings" [ref=e28] [cursor=pointer]
+        - button "Migration" [ref=e29] [cursor=pointer]
+    - generic [ref=e30]:
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - heading "Minance Next" [level=2] [ref=e33]
+          - paragraph [ref=e34]: dev@minance.local
+        - generic [ref=e35]:
+          - button "Refresh" [ref=e36] [cursor=pointer]
+          - button "Log out" [ref=e37] [cursor=pointer]
+      - generic [ref=e38]:
+        - paragraph [ref=e39]
+        - article [ref=e138]:
+          - heading "CSV Imports" [level=3] [ref=e140]
+          - generic [ref=e141]:
+            - generic [ref=e142]:
+              - text: CSV file
+              - button "CSV file" [ref=e143]
+            - button "Upload & Analyze" [ref=e144] [cursor=pointer]
+            - paragraph [ref=e145]: AI mapping is used when a provider key is configured; otherwise deterministic mapping is used.
+          - heading "Recent Imports" [level=4] [ref=e147]
