@@ -1,0 +1,179 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - button:
+            - img
+        - generic:
+          - navigation:
+            - generic:
+              - button:
+                - img
+            - generic:
+              - link:
+                - /url: /
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Dashboard
+              - link:
+                - /url: /transactions
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Transactions
+              - link:
+                - /url: /accounts
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Accounts
+              - link:
+                - /url: /investments
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Investments
+              - link:
+                - /url: /categories/all
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Categories
+              - link:
+                - /url: /recurrings
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Recurrings
+            - generic:
+              - generic:
+                - generic:
+                  - button:
+                    - generic:
+                      - img
+                    - generic: Other
+                  - generic:
+                    - generic:
+                      - button:
+                        - generic:
+                          - generic: Manual account
+                        - generic: $0
+                      - button:
+                        - generic:
+                          - generic: Cash
+                        - generic: $0
+            - generic:
+              - generic:
+                - link:
+                  - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+                  - img
+                  - generic:
+                    - text: Start here
+                    - img
+                - button:
+                  - img
+                  - text: Get Help
+                - button:
+                  - img
+                  - generic: Settings
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=5]: Investments
+              - generic:
+                - generic:
+                  - generic:
+                    - button [expanded]:
+                      - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading [level=5]: Live balance estimate
+                        - generic:
+                          - heading [level=2]: no data
+                        - heading [level=5]: for this date
+                    - generic:
+                      - generic:
+                        - generic:
+                          - application
+                  - generic:
+                    - generic:
+                      - button: 1W
+                      - button: 1M
+                      - button: 3M
+                      - button: YTD
+                      - button: 1Y
+                      - button: ALL
+                - generic:
+                  - generic:
+                    - button:
+                      - generic:
+                        - img
+                      - generic:
+                        - generic:
+                          - heading [level=5]: Accounts
+                        - button:
+                          - generic: 1W Balance change
+                          - img
+                  - generic:
+                    - button:
+                      - generic:
+                        - img
+                      - generic:
+                        - heading [level=5]: Allocation
+                        - button:
+                          - generic: By percentage
+                          - img
+                  - generic:
+                    - button:
+                      - generic:
+                        - img
+                      - generic:
+                        - heading [level=5]: Holdings
+                        - button:
+                          - generic: Last price
+                          - img
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - generic: Select to view details
+    - region "Notifications alt+T"
+  - iframe [ref=e231]:
+    
+  - menu "Investment settings" [ref=e240]:
+    - menuitem "Display Balance" [expanded] [active] [ref=e241] [cursor=pointer]:
+      - generic [ref=e243]:
+        - generic [ref=e244]: Display
+        - generic [ref=e245]: Balance
+      - img [ref=e246]
+    - menu "Display Balance" [ref=e274]:
+      - group [ref=e275]:
+        - menuitemradio "Performance" [ref=e276] [cursor=pointer]:
+          - generic [ref=e278]: Performance
+        - menuitemradio "Balance" [checked] [ref=e279] [cursor=pointer]:
+          - img [ref=e282]
+          - generic [ref=e284]: Balance
+    - separator [ref=e248]
+    - menuitem "Benchmark None" [disabled] [ref=e249]:
+      - generic [ref=e251]:
+        - generic [ref=e252]: Benchmark
+        - generic [ref=e254]: None
+      - img [ref=e255]
+    - separator [ref=e257]
+    - menuitem "Live balance estimate" [ref=e258] [cursor=pointer]:
+      - generic [ref=e259]: Live balance estimate
+      - button [ref=e262]
+    - separator [ref=e264]
+    - menuitem "Accounts included 0 accounts" [ref=e265] [cursor=pointer]:
+      - generic [ref=e267]:
+        - heading "Accounts included" [level=5] [ref=e268]
+        - generic [ref=e270]: 0 accounts
+      - img [ref=e271]

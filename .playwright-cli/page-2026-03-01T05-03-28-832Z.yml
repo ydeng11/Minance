@@ -1,0 +1,112 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - button "Close sidebar" [ref=e7] [cursor=pointer]:
+          - img [ref=e8]
+        - navigation [ref=e11]:
+          - button "Refresh all connections" [ref=e13] [cursor=pointer]:
+            - img [ref=e14]
+          - generic [ref=e16]:
+            - link "Dashboard" [ref=e17] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e18]:
+                - img [ref=e20]
+                - generic [ref=e22]: Dashboard
+            - link "Transactions" [ref=e23] [cursor=pointer]:
+              - /url: /transactions
+              - generic [ref=e24]:
+                - img [ref=e26]
+                - generic [ref=e30]: Transactions
+            - link "Accounts" [ref=e31] [cursor=pointer]:
+              - /url: /accounts
+              - generic [ref=e32]:
+                - img [ref=e34]
+                - generic [ref=e36]: Accounts
+            - link "Investments" [ref=e37] [cursor=pointer]:
+              - /url: /investments
+              - generic [ref=e38]:
+                - img [ref=e40]
+                - generic [ref=e42]: Investments
+            - link "Categories" [ref=e43] [cursor=pointer]:
+              - /url: /categories/all
+              - generic [ref=e44]:
+                - img [ref=e46]
+                - generic [ref=e48]: Categories
+            - link "Recurrings" [ref=e49] [cursor=pointer]:
+              - /url: /recurrings
+              - generic [ref=e50]:
+                - img [ref=e52]
+                - generic [ref=e54]: Recurrings
+          - generic [ref=e59]:
+            - link "Start here" [ref=e60] [cursor=pointer]:
+              - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+              - img [ref=e61]
+              - generic [ref=e63]:
+                - text: Start here
+                - img [ref=e64]
+            - button "Get Help" [ref=e66] [cursor=pointer]:
+              - img [ref=e67]
+              - text: Get Help
+            - button "Settings" [ref=e69] [cursor=pointer]:
+              - img [ref=e70]
+              - text: Settings
+      - main [ref=e72]:
+        - generic [ref=e74]:
+          - generic [ref=e75]:
+            - generic [ref=e77]:
+              - heading "Categories" [level=5] [ref=e78]
+              - button "Create category" [ref=e80] [cursor=pointer]:
+                - img [ref=e81]
+            - generic [ref=e83]:
+              - button "$0 spent in Mar $0 last month" [ref=e84] [cursor=pointer]:
+                - generic [ref=e85]:
+                  - generic [ref=e86]:
+                    - generic [ref=e89]: $0
+                    - heading "spent in Mar" [level=5] [ref=e90]
+                  - img [ref=e95]:
+                    - img [ref=e112]
+                  - generic [ref=e113]:
+                    - generic [ref=e117]: $0
+                    - heading "last month" [level=5] [ref=e119]
+              - button "Regular categories Spent Last" [ref=e122] [cursor=pointer]:
+                - img [ref=e124]
+                - generic [ref=e126]:
+                  - heading "Regular categories" [level=5] [ref=e127]
+                  - generic [ref=e128]:
+                    - generic [ref=e130]: Spent
+                    - generic [ref=e132]: Last
+          - generic [ref=e134]:
+            - generic [ref=e137]:
+              - generic [ref=e139]:
+                - generic [ref=e140]:
+                  - button [ref=e143] [cursor=pointer]:
+                    - generic [ref=e146]: "+0"
+                  - heading "All regular categories" [level=2] [ref=e147]
+                - generic [ref=e149]:
+                  - heading "Spent in Mar" [level=5] [ref=e151]
+                  - generic [ref=e153]: $0.00
+                  - generic [ref=e154]:
+                    - generic [ref=e155]: $0.00
+                    - text: under
+              - application [ref=e160]
+              - generic [ref=e162]:
+                - generic [ref=e164]:
+                  - heading "Key metrics" [level=5] [ref=e165]:
+                    - generic [ref=e166]: Key metrics
+                    - link [ref=e167] [cursor=pointer]:
+                      - /url: https://help.copilot.money/en/articles/6918427-understanding-key-metrics-for-spending
+                      - img [ref=e168]
+                  - heading "Spent per year" [level=5] [ref=e170]
+                  - heading "Avg monthly" [level=5] [ref=e171]
+                - generic [ref=e173]:
+                  - heading "All categories" [level=5] [ref=e174]
+                  - generic [ref=e175]:
+                    - heading "Spent" [level=5] [ref=e177]
+                    - heading "Last" [level=5] [ref=e179]
+                    - heading "Left" [level=5] [ref=e181]
+            - button "close panel" [ref=e182] [cursor=pointer]:
+              - img [ref=e183]
+    - region "Notifications alt+T"
+  - iframe [ref=e185]:
+    

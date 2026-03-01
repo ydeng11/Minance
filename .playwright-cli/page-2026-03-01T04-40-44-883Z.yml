@@ -1,0 +1,19 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - img [ref=e6]
+    - generic [ref=e11]:
+      - heading "Log in to Copilot Money" [level=2] [ref=e13]:
+        - text: Log in to
+        - text: Copilot Money
+      - generic [ref=e14]:
+        - button "Continue with email" [ref=e15] [cursor=pointer]:
+          - generic [ref=e16]: Continue with email
+        - button "Continue with Apple" [ref=e17] [cursor=pointer]:
+          - generic [ref=e19]:
+            - img [ref=e20]
+            - generic [ref=e22]: Continue with Apple
+      - generic [ref=e23]:
+        - text: Don’t have an account?
+        - link "Sign up" [ref=e24] [cursor=pointer]:
+          - /url: https://www.copilot.money/sign-up
+  - region "Notifications alt+T"

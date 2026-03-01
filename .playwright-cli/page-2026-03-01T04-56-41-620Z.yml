@@ -1,0 +1,285 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - button "Close sidebar" [ref=e727] [cursor=pointer]:
+          - img [ref=e8]
+        - navigation [ref=e11]:
+          - button "Refresh all connections" [ref=e728] [cursor=pointer]:
+            - img [ref=e14]
+          - generic [ref=e16]:
+            - link "Dashboard" [ref=e729] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e18]:
+                - img [ref=e20]
+                - generic [ref=e22]: Dashboard
+            - link "Transactions" [ref=e730] [cursor=pointer]:
+              - /url: /transactions/eyJpZGVudGlmaWVySWQiOiJWVmsxVWxoR01rUklUV0Z1WVdwc1JYQXdhbWs2ZERCS1kyUjVla0o2VGt0VFpWUXlVakpDTWt3NmRIbEhhazVqUzBsR2JFb3hlR3R5WkdVeE1WZz0ifQ==
+              - generic [ref=e24]:
+                - img [ref=e26]
+                - generic [ref=e30]: Transactions
+            - link "Accounts" [ref=e731] [cursor=pointer]:
+              - /url: /accounts
+              - generic [ref=e32]:
+                - img [ref=e34]
+                - generic [ref=e36]: Accounts
+            - link "Investments" [ref=e732] [cursor=pointer]:
+              - /url: /investments
+              - generic [ref=e38]:
+                - img [ref=e40]
+                - generic [ref=e42]: Investments
+            - link "Categories" [ref=e733] [cursor=pointer]:
+              - /url: /categories/all
+              - generic [ref=e44]:
+                - img [ref=e46]
+                - generic [ref=e48]: Categories
+            - link "Recurrings" [ref=e734] [cursor=pointer]:
+              - /url: /recurrings
+              - generic [ref=e50]:
+                - img [ref=e52]
+                - generic [ref=e54]: Recurrings
+          - generic [ref=e58]:
+            - button "Other" [ref=e735] [cursor=pointer]:
+              - img [ref=e61]
+              - generic [ref=e63]: Other
+            - generic [ref=e65]:
+              - button "Manual account $0" [ref=e736] [cursor=pointer]:
+                - generic [ref=e69]: Manual account
+                - generic [ref=e70]: $0
+              - button "Cash $0" [ref=e737] [cursor=pointer]:
+                - generic [ref=e74]: Cash
+                - generic [ref=e75]: $0
+          - generic [ref=e78]:
+            - link "Start here" [ref=e738] [cursor=pointer]:
+              - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+              - img [ref=e80]
+              - generic [ref=e82]:
+                - text: Start here
+                - img [ref=e83]
+            - button "Get Help" [ref=e739] [cursor=pointer]:
+              - img [ref=e86]
+              - text: Get Help
+            - button "Settings" [ref=e740] [cursor=pointer]:
+              - img [ref=e89]
+              - generic [ref=e91]: Settings
+      - main [ref=e92]:
+        - generic [ref=e94]:
+          - generic [ref=e95]:
+            - generic [ref=e97]:
+              - heading "Select all transactions. Transactions" [level=5] [ref=e741]:
+                - generic [ref=e99]:
+                  - generic "Select all transactions." [ref=e742] [cursor=pointer]:
+                    - checkbox "Select all transactions." [ref=e743]
+                  - text: Transactions
+              - generic [ref=e103]:
+                - button "Create new transaction" [ref=e744] [cursor=pointer]:
+                  - img [ref=e105]
+                - button "Download transactions" [ref=e745] [cursor=pointer]:
+                  - img [ref=e108]
+                - generic [ref=e111]:
+                  - generic:
+                    - img
+                  - textbox "Search for transaction name, note, or amount" [ref=e746]:
+                    - /placeholder: Search
+                  - button "Filter options" [ref=e747] [cursor=pointer]:
+                    - img [ref=e115]
+            - generic [ref=e118]:
+              - generic [ref=e121]: Today
+              - generic [ref=e577]:
+                - generic [ref=e578]: Right-click to open the context menu. Hold Alt while right-clicking to open the browser’s native menu instead.
+                - button "Select transaction \"ZZ Codex Txn\". Zz Codex Txn:temp note Manual account Add tag Category icon Restaurants $43.12" [ref=e901] [cursor=pointer]:
+                  - generic [ref=e581]:
+                    - generic "Select transaction \"ZZ Codex Txn\"." [ref=e749]:
+                      - checkbox "Select transaction \"ZZ Codex Txn\"." [ref=e750]
+                    - generic [ref=e585]:
+                      - img [ref=e903]
+                      - generic [ref=e586]:
+                        - heading "Zz Codex Txn:temp note" [level=5] [ref=e906]
+                        - heading "Manual account" [level=5] [ref=e752]
+                    - generic [ref=e590]:
+                      - button "Add tag" [ref=e753]:
+                        - img [ref=e594]
+                      - button "Category icon Restaurants" [ref=e754]:
+                        - generic [ref=e599]:
+                          - generic "Category icon" [ref=e755]: 🧑‍🍳
+                          - generic [ref=e602]: Restaurants
+                    - generic [ref=e604]: $43.12
+              - generic [ref=e123]:
+                - generic [ref=e124]: Right-click to open the context menu. Hold Alt while right-clicking to open the browser’s native menu instead.
+                - button "Select transaction \"Nacho's\". Nacho's Manual account Add tag Category icon Restaurants $0.00" [ref=e756] [cursor=pointer]:
+                  - generic [ref=e127]:
+                    - generic "Select transaction \"Nacho's\"." [ref=e757]:
+                      - checkbox "Select transaction \"Nacho's\"." [ref=e758]
+                    - generic [ref=e132]:
+                      - heading "Nacho's" [level=5] [ref=e759]
+                      - heading "Manual account" [level=5] [ref=e760]
+                    - generic [ref=e136]:
+                      - button "Add tag" [ref=e761]:
+                        - img [ref=e140]
+                      - button "Category icon Restaurants" [ref=e762]:
+                        - generic [ref=e145]:
+                          - generic "Category icon" [ref=e763]: 🧑‍🍳
+                          - generic [ref=e148]: Restaurants
+                    - generic [ref=e150]: $0.00
+            - toolbar "Selected-item actions" [ref=e764]:
+              - button "Dismiss bulk selection" [ref=e765] [cursor=pointer]:
+                - img [ref=e153]
+              - generic [ref=e155]:
+                - generic [ref=e156]:
+                  - generic [ref=e158]: 0 selected
+                  - button "Category" [ref=e766] [cursor=pointer]:
+                    - img [ref=e161]
+                    - generic [ref=e165]: Category
+                  - button "Tag" [ref=e768] [cursor=pointer]:
+                    - img [ref=e172]
+                    - generic [ref=e174]: Tag
+                - button "More options" [ref=e769] [cursor=pointer]:
+                  - img [ref=e176]
+          - generic [ref=e179]:
+            - generic [ref=e934]:
+              - generic [ref=e935]:
+                - button "Navigate back" [ref=e937] [cursor=pointer]:
+                  - img [ref=e938]
+                - heading "Monthly recurring" [level=5] [ref=e942]
+                - button "More options" [ref=e944] [cursor=pointer]:
+                  - img [ref=e945]
+              - generic [ref=e949]:
+                - generic [ref=e950]:
+                  - generic [ref=e951]:
+                    - generic [ref=e952]:
+                      - button "Category icon Restaurants" [ref=e953] [cursor=pointer]:
+                        - generic [ref=e956]:
+                          - generic "Category icon" [ref=e958]: 🧑‍🍳
+                          - generic [ref=e959]: Restaurants
+                      - generic [ref=e960]: Next payment
+                    - generic [ref=e961]:
+                      - generic [ref=e962]:
+                        - button "Recurring icon" [ref=e963] [cursor=pointer]:
+                          - generic "Recurring icon" [ref=e964]: 🧑‍🍳
+                        - textbox [ref=e965]
+                      - generic [ref=e966]:
+                        - generic [ref=e967]:
+                          - generic [ref=e968]: $
+                          - textbox [ref=e969]
+                        - generic [ref=e970]:
+                          - generic [ref=e971]: around
+                          - button "Mar 28th" [ref=e972] [cursor=pointer]
+                  - generic [ref=e973]:
+                    - heading "Rules" [level=5] [ref=e974]
+                    - generic [ref=e975]:
+                      - generic [ref=e978]:
+                        - generic [ref=e979] [cursor=pointer]: named
+                        - textbox "named" [ref=e984]: Zz Codex Txn
+                      - generic [ref=e987]:
+                        - generic [ref=e988] [cursor=pointer]: from
+                        - generic [ref=e992]:
+                          - text: $
+                          - textbox "from" [ref=e993]:
+                            - /placeholder: "0.00"
+                            - text: "35.00"
+                        - generic [ref=e994] [cursor=pointer]: to
+                        - generic [ref=e998]:
+                          - text: $
+                          - textbox "to" [ref=e999]:
+                            - /placeholder: "0.00"
+                            - text: "52.00"
+                      - combobox [ref=e1002] [cursor=pointer]:
+                        - generic [ref=e1003]: every
+                        - generic: month
+                      - button "on any day of the month" [ref=e1006] [cursor=pointer]:
+                        - generic [ref=e1007]: on any day of the month
+                - application [ref=e1012]:
+                  - generic:
+                    - generic:
+                      - generic: "0"
+                  - generic [ref=e1040]:
+                    - generic [ref=e1042]:
+                      - generic [ref=e1043]: Apr
+                      - generic [ref=e1044]: "2025"
+                    - generic [ref=e1047]: May
+                    - generic [ref=e1050]: Jun
+                    - generic [ref=e1053]: Jul
+                    - generic [ref=e1056]: Aug
+                    - generic [ref=e1059]: Sep
+                    - generic [ref=e1062]: Oct
+                    - generic [ref=e1065]: Nov
+                    - generic [ref=e1068]: Dec
+                    - generic [ref=e1070]:
+                      - generic [ref=e1071]: Jan
+                      - generic [ref=e1072]: "2026"
+                    - generic [ref=e1075]: Feb
+                    - generic [ref=e1077]:
+                      - generic [ref=e1078]: Mar
+                      - generic [ref=e1079]: "2026"
+                  - generic:
+                    - generic:
+                      - generic: "0"
+                  - generic [ref=e1087]:
+                    - generic [ref=e1089]:
+                      - generic [ref=e1090]: Apr
+                      - generic [ref=e1091]: "2025"
+                    - generic [ref=e1094]: May
+                    - generic [ref=e1097]: Jun
+                    - generic [ref=e1100]: Jul
+                    - generic [ref=e1103]: Aug
+                    - generic [ref=e1106]: Sep
+                    - generic [ref=e1109]: Oct
+                    - generic [ref=e1112]: Nov
+                    - generic [ref=e1115]: Dec
+                    - generic [ref=e1117]:
+                      - generic [ref=e1118]: Jan
+                      - generic [ref=e1119]: "2026"
+                    - generic [ref=e1122]: Feb
+                    - generic [ref=e1124]:
+                      - generic [ref=e1125]: Mar
+                      - generic [ref=e1126]: "2026"
+                - generic [ref=e1127]:
+                  - generic [ref=e1128]:
+                    - heading "Key metrics" [level=5] [ref=e1129]
+                    - generic [ref=e1130]:
+                      - generic [ref=e1131]: Spent per year
+                      - generic [ref=e1132]: Avg transaction
+                  - generic [ref=e1134]:
+                    - generic [ref=e1135]: "2026"
+                    - generic [ref=e1136]:
+                      - generic [ref=e1137]: $43.12
+                      - generic [ref=e1138]: $43.12
+                - generic [ref=e1139]:
+                  - generic [ref=e1140]:
+                    - heading "Last account used" [level=5] [ref=e1141]
+                    - button "Manual account Manual account $0.00" [ref=e1144] [cursor=pointer]:
+                      - generic [ref=e1145]:
+                        - generic [ref=e1151]:
+                          - heading "Manual account" [level=5] [ref=e1153]
+                          - generic [ref=e1155]: Manual account
+                        - generic [ref=e1158]: $0.00
+                  - generic [ref=e1160]:
+                    - generic [ref=e1161]:
+                      - heading "Transactions" [level=5] [ref=e1162]
+                      - button "Add" [ref=e1163] [cursor=pointer]
+                    - generic [ref=e1166]:
+                      - generic [ref=e1167]: Right-click to open the context menu. Hold Alt while right-clicking to open the browser’s native menu instead.
+                      - button "Feb 28 ZZ Codex Txn:temp note Add tag Category icon Restaurants $43.12 Exclude from recurring" [ref=e1169] [cursor=pointer]:
+                        - generic [ref=e1170]: Feb 28
+                        - generic [ref=e1171]:
+                          - img [ref=e1173]
+                          - heading "ZZ Codex Txn:temp note" [level=5] [ref=e1177]
+                        - generic [ref=e1178]:
+                          - button "Add tag" [ref=e1181]:
+                            - img [ref=e1182]
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic "Category icon": 🧑‍🍳
+                                - generic: Restaurants
+                        - generic [ref=e1184]:
+                          - generic [ref=e1185]: $43.12
+                          - button "Exclude from recurring" [ref=e1186]:
+                            - img [ref=e1187]
+            - button "close panel" [ref=e779] [cursor=pointer]:
+              - img [ref=e247]
+    - region "Notifications alt+T"
+  - iframe [ref=e249]:
+    
+  - generic [ref=e1189]: "2025"

@@ -1,0 +1,374 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - button:
+            - img
+        - generic:
+          - navigation:
+            - generic:
+              - button:
+                - img
+            - generic:
+              - link:
+                - /url: /
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Dashboard
+              - link:
+                - /url: /transactions
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Transactions
+              - link:
+                - /url: /accounts
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Accounts
+              - link:
+                - /url: /investments
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Investments
+              - link:
+                - /url: /categories/all
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Categories
+              - link:
+                - /url: /recurrings/VyskzsWpSiJoGidztpCX
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Recurrings
+            - generic:
+              - generic:
+                - generic:
+                  - button:
+                    - generic:
+                      - img
+                    - generic: Other
+                  - generic:
+                    - generic:
+                      - button:
+                        - generic:
+                          - generic: Manual account
+                        - generic: $0
+                      - button:
+                        - generic:
+                          - generic: Cash
+                        - generic: $0
+            - generic:
+              - generic:
+                - link:
+                  - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+                  - img
+                  - generic:
+                    - text: Start here
+                    - img
+                - button:
+                  - img
+                  - text: Get Help
+                - button:
+                  - img
+                  - generic: Settings
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=5]: Recurrings
+                  - generic:
+                    - button:
+                      - img
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: $0
+                      - heading [level=5]: left to pay
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - img:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - img
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic: $43
+                      - heading [level=5]: paid so far
+                - generic:
+                  - generic:
+                    - generic:
+                      - button:
+                        - generic:
+                          - img
+                        - heading [level=5]: This month
+                      - generic:
+                        - generic:
+                          - button:
+                            - generic:
+                              - generic: Today
+                              - generic: 🧑‍🍳
+                              - generic: Zz Codex TxnMonthly
+                            - generic:
+                              - button:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic: 🧑‍🍳
+                                      - generic: Restaurants
+                              - generic: $43.12
+                              - img
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - heading [level=5]: Monthly recurring
+                    - generic:
+                      - button [expanded]:
+                        - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - generic:
+                            - button:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic: 🧑‍🍳
+                                    - generic: Restaurants
+                            - generic: Next payment
+                          - generic:
+                            - generic:
+                              - button:
+                                - generic: 🧑‍🍳
+                              - textbox
+                            - generic:
+                              - generic:
+                                - generic: $
+                                - textbox
+                              - generic:
+                                - generic: around
+                                - button: Mar 28th
+                        - generic:
+                          - heading [level=5]: Rules
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: named
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - textbox: Zz Codex Txn
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: from
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - text: $
+                                          - textbox:
+                                            - /placeholder: "0.00"
+                                            - text: "35.00"
+                                  - generic: to
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - text: $
+                                          - textbox:
+                                            - /placeholder: "0.00"
+                                            - text: "52.00"
+                            - generic:
+                              - generic:
+                                - combobox:
+                                  - generic: every
+                                  - generic: month
+                            - generic:
+                              - generic:
+                                - button:
+                                  - generic: on any day of the month
+                      - generic:
+                        - generic:
+                          - generic:
+                            - generic:
+                              - application:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic: Apr
+                                        - generic: "2025"
+                                    - generic:
+                                      - generic:
+                                        - generic: May
+                                    - generic:
+                                      - generic:
+                                        - generic: Jun
+                                    - generic:
+                                      - generic:
+                                        - generic: Jul
+                                    - generic:
+                                      - generic:
+                                        - generic: Aug
+                                    - generic:
+                                      - generic:
+                                        - generic: Sep
+                                    - generic:
+                                      - generic:
+                                        - generic: Oct
+                                    - generic:
+                                      - generic:
+                                        - generic: Nov
+                                    - generic:
+                                      - generic:
+                                        - generic: Dec
+                                    - generic:
+                                      - generic:
+                                        - generic: Jan
+                                        - generic: "2026"
+                                    - generic:
+                                      - generic:
+                                        - generic: Feb
+                                    - generic:
+                                      - generic:
+                                        - generic: Mar
+                                        - generic: "2026"
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic: Apr
+                                        - generic: "2025"
+                                    - generic:
+                                      - generic:
+                                        - generic: May
+                                    - generic:
+                                      - generic:
+                                        - generic: Jun
+                                    - generic:
+                                      - generic:
+                                        - generic: Jul
+                                    - generic:
+                                      - generic:
+                                        - generic: Aug
+                                    - generic:
+                                      - generic:
+                                        - generic: Sep
+                                    - generic:
+                                      - generic:
+                                        - generic: Oct
+                                    - generic:
+                                      - generic:
+                                        - generic: Nov
+                                    - generic:
+                                      - generic:
+                                        - generic: Dec
+                                    - generic:
+                                      - generic:
+                                        - generic: Jan
+                                        - generic: "2026"
+                                    - generic:
+                                      - generic:
+                                        - generic: Feb
+                                    - generic:
+                                      - generic:
+                                        - generic: Mar
+                                        - generic: "2026"
+                      - generic:
+                        - generic:
+                          - heading [level=5]: Key metrics
+                          - generic:
+                            - generic: Spent per year
+                            - generic: Avg transaction
+                        - generic:
+                          - generic:
+                            - generic: "2026"
+                            - generic:
+                              - generic: $43.12
+                              - generic: $43.12
+                      - generic:
+                        - generic:
+                          - heading [level=5]: Last account used
+                          - generic:
+                            - generic:
+                              - button:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - generic:
+                                          - generic:
+                                            - heading [level=5]: Manual account
+                                          - generic:
+                                            - generic: Manual account
+                                  - generic:
+                                    - generic:
+                                      - generic: $0.00
+                        - generic:
+                          - generic:
+                            - generic:
+                              - heading [level=5]: Transactions
+                              - button: Add
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic: Right-click to open the context menu. Hold Alt while right-clicking to open the browser’s native menu instead.
+                                  - generic:
+                                    - button:
+                                      - generic: Feb 28
+                                      - generic:
+                                        - generic:
+                                          - img
+                                        - generic:
+                                          - heading [level=5]: ZZ Codex Txn:temp note
+                                      - generic:
+                                        - generic:
+                                          - generic:
+                                            - button:
+                                              - img
+                                        - generic:
+                                          - generic:
+                                            - generic:
+                                              - generic:
+                                                - generic: 🧑‍🍳
+                                              - generic: Restaurants
+                                      - generic:
+                                        - generic: $43.12
+                                        - button:
+                                          - img
+                - button:
+                  - img
+    - region "Notifications alt+T"
+  - iframe [ref=e187]:
+    
+  - generic: "2025"
+  - menu "More options" [active] [ref=e529]:
+    - menuitem "Pause" [ref=e530] [cursor=pointer]
+    - menuitem "Archive" [ref=e531] [cursor=pointer]
+    - separator [ref=e532]
+    - menuitem "Delete recurring" [ref=e533] [cursor=pointer]

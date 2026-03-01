@@ -1,0 +1,129 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - button "Close sidebar" [ref=e7] [cursor=pointer]:
+          - img [ref=e8]
+        - navigation [ref=e11]:
+          - button "Refresh all connections" [ref=e13] [cursor=pointer]:
+            - img [ref=e14]
+          - generic [ref=e16]:
+            - link "Dashboard" [ref=e17] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e18]:
+                - img [ref=e20]
+                - generic [ref=e22]: Dashboard
+            - link "Transactions" [ref=e23] [cursor=pointer]:
+              - /url: /transactions
+              - generic [ref=e24]:
+                - img [ref=e26]
+                - generic [ref=e30]: Transactions
+            - link "Accounts" [ref=e31] [cursor=pointer]:
+              - /url: /accounts
+              - generic [ref=e32]:
+                - img [ref=e34]
+                - generic [ref=e36]: Accounts
+            - link "Investments" [ref=e37] [cursor=pointer]:
+              - /url: /investments
+              - generic [ref=e38]:
+                - img [ref=e40]
+                - generic [ref=e42]: Investments
+            - link "Categories" [ref=e43] [cursor=pointer]:
+              - /url: /categories/all
+              - generic [ref=e44]:
+                - img [ref=e46]
+                - generic [ref=e48]: Categories
+            - link "Recurrings" [ref=e49] [cursor=pointer]:
+              - /url: /recurrings
+              - generic [ref=e50]:
+                - img [ref=e52]
+                - generic [ref=e54]: Recurrings
+          - generic [ref=e59]:
+            - link "Start here" [ref=e60] [cursor=pointer]:
+              - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+              - img [ref=e61]
+              - generic [ref=e63]:
+                - text: Start here
+                - img [ref=e64]
+            - button "Get Help" [ref=e66] [cursor=pointer]:
+              - img [ref=e67]
+              - text: Get Help
+            - button "Settings" [ref=e69] [cursor=pointer]:
+              - img [ref=e70]
+              - text: Settings
+      - main [ref=e72]:
+        - generic [ref=e75]:
+          - heading "Dashboard" [level=5] [ref=e78]
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - generic [ref=e82]:
+                - generic [ref=e83]:
+                  - heading "Monthly spending" [level=5] [ref=e84]
+                  - button "Transactions" [ref=e86] [cursor=pointer]:
+                    - text: Transactions
+                    - img [ref=e87]
+                - generic [ref=e89]:
+                  - generic [ref=e91]:
+                    - generic [ref=e93]:
+                      - generic [ref=e94]: $0
+                      - text: spent
+                    - generic [ref=e96]:
+                      - generic [ref=e97]: $0
+                      - text: spent last month
+                  - generic [ref=e99]:
+                    - img [ref=e101]
+                    - application [ref=e105]
+              - generic [ref=e106]:
+                - generic [ref=e107]:
+                  - heading "Transactions to review" [level=5] [ref=e108]
+                  - button "View all" [ref=e110] [cursor=pointer]:
+                    - text: View all
+                    - img [ref=e111]
+                - generic [ref=e114]:
+                  - generic [ref=e115]:
+                    - generic [ref=e116]: 1 - 0 of 0
+                    - generic [ref=e117]:
+                      - button "Previous page" [disabled]:
+                        - img
+                      - button "Next page" [disabled]:
+                        - img
+                  - button "Mark 0 as reviewed" [ref=e119] [cursor=pointer]:
+                    - img [ref=e120]
+                    - text: Mark 0 as reviewed
+            - generic [ref=e122]:
+              - generic [ref=e123]:
+                - generic [ref=e124]:
+                  - heading "Net worth" [level=5] [ref=e125]
+                  - button "Accounts" [ref=e127] [cursor=pointer]:
+                    - text: Accounts
+                    - img [ref=e128]
+                - generic [ref=e130]:
+                  - generic [ref=e132]:
+                    - heading "Net worth" [level=5] [ref=e134]
+                    - generic [ref=e137]: $0
+                    - generic [ref=e138]:
+                      - img [ref=e139]
+                      - generic [ref=e141]: 0.00%
+                  - generic [ref=e142]:
+                    - img [ref=e144]
+                    - application [ref=e148]
+                - generic [ref=e150]:
+                  - button "1W" [ref=e151] [cursor=pointer]
+                  - button "1M" [ref=e152] [cursor=pointer]
+                  - button "3M" [ref=e153] [cursor=pointer]
+                  - button "YTD" [ref=e154] [cursor=pointer]
+                  - button "1Y" [ref=e155] [cursor=pointer]
+                  - button "ALL" [ref=e156] [cursor=pointer]
+              - generic [ref=e158]:
+                - heading "Top categories" [level=5] [ref=e159]
+                - button "View all" [ref=e161] [cursor=pointer]:
+                  - text: View all
+                  - img [ref=e162]
+              - generic [ref=e167]:
+                - heading "Next two weeks" [level=5] [ref=e168]
+                - button "Recurrings" [ref=e170] [cursor=pointer]:
+                  - text: Recurrings
+                  - img [ref=e171]
+    - region "Notifications alt+T"
+  - iframe [ref=e176]:
+    

@@ -1,0 +1,239 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - generic:
+          - button:
+            - img
+        - generic:
+          - navigation:
+            - generic:
+              - button:
+                - img
+            - generic:
+              - link:
+                - /url: /
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Dashboard
+              - link:
+                - /url: /transactions
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Transactions
+              - link:
+                - /url: /accounts
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Accounts
+              - link:
+                - /url: /investments
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Investments
+              - link:
+                - /url: /categories/all
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Categories
+              - link:
+                - /url: /recurrings
+                - generic:
+                  - generic:
+                    - img
+                  - generic: Recurrings
+            - generic:
+              - generic:
+                - generic:
+                  - button:
+                    - generic:
+                      - img
+                    - generic: Other
+                  - generic:
+                    - generic:
+                      - button:
+                        - generic:
+                          - generic: Manual account
+                        - generic: $0
+                      - button:
+                        - generic:
+                          - generic: Cash
+                        - generic: $0
+            - generic:
+              - generic:
+                - link:
+                  - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+                  - img
+                  - generic:
+                    - text: Start here
+                    - img
+                - button:
+                  - img
+                  - text: Get Help
+                - button:
+                  - img
+                  - generic: Settings
+      - main:
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - heading [level=5]: Accounts
+                  - generic:
+                    - generic:
+                      - button:
+                        - img
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - button:
+                        - img
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic:
+                          - heading [level=5]: Assets
+                        - generic:
+                          - generic:
+                            - generic: $0
+                        - generic:
+                          - img
+                          - generic: 0.00%
+                      - generic:
+                        - generic:
+                          - heading [level=5]: Debts
+                        - generic:
+                          - generic:
+                            - generic: $0
+                        - generic:
+                          - img
+                          - generic: 0.00%
+                    - generic:
+                      - generic:
+                        - generic:
+                          - application
+                  - generic:
+                    - generic:
+                      - button: 1W
+                      - button: 1M
+                      - button: 3M
+                      - button: YTD
+                      - button: 1Y
+                      - button: ALL
+                - generic:
+                  - generic:
+                    - generic:
+                      - button:
+                        - generic:
+                          - img
+                        - generic:
+                          - heading [level=5]: Other
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - img
+                                  - generic: 0.00%
+                              - generic:
+                                - generic:
+                                  - generic: $0.00
+                      - generic:
+                        - generic:
+                          - button:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - heading [level=5]: Manual account
+                                      - generic:
+                                        - generic: Manual account
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - img
+                                    - generic: 0.00%
+                              - generic:
+                                - generic:
+                                  - generic: $0.00
+                          - button:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - generic:
+                                      - generic:
+                                        - heading [level=5]: Cash
+                                      - generic:
+                                        - generic: Manual account
+                              - generic:
+                                - generic:
+                                  - generic:
+                                    - img
+                                    - generic: 0.00%
+                              - generic:
+                                - generic:
+                                  - generic: $0.00
+                          - generic:
+                            - generic:
+                              - generic:
+                                - generic:
+                                  - img
+                                  - generic: 0.00%
+                              - generic:
+                                - generic:
+                                  - generic: $0.00
+            - generic:
+              - generic:
+                - generic:
+                  - generic:
+                    - img
+                    - generic: Select to view details
+    - region "Notifications alt+T"
+  - iframe [ref=e225]:
+    
+  - dialog "Select your institution" [ref=e271]:
+    - generic [ref=e272]:
+      - heading "Select your institution" [level=2] [ref=e273]
+      - paragraph [ref=e274]: Select the financial institution you want to link to your account.
+    - generic [ref=e275]:
+      - generic:
+        - img
+      - textbox "Search 10,000 institutions" [active] [ref=e276]
+    - generic [ref=e277]:
+      - button "Chase" [ref=e278] [cursor=pointer]:
+        - img "Chase" [ref=e279]
+      - button "Bank of America" [ref=e280] [cursor=pointer]:
+        - img "Bank of America" [ref=e281]
+      - button "Wells Fargo" [ref=e282] [cursor=pointer]:
+        - img "Wells Fargo" [ref=e283]
+      - button "American Express" [ref=e284] [cursor=pointer]:
+        - img "American Express" [ref=e285]
+      - button "Charles Schwab" [ref=e286] [cursor=pointer]:
+        - img "Charles Schwab" [ref=e287]
+      - button "Vanguard" [ref=e288] [cursor=pointer]:
+        - img "Vanguard" [ref=e289]
+      - button "Citi" [ref=e290] [cursor=pointer]:
+        - img "Citi" [ref=e291]
+      - button "Venmo" [ref=e292] [cursor=pointer]:
+        - img "Venmo" [ref=e293]
+      - button "Ally Bank" [ref=e294] [cursor=pointer]:
+        - img "Ally Bank" [ref=e295]
+      - button "Fidelity" [ref=e296] [cursor=pointer]:
+        - img "Fidelity" [ref=e297]
+      - button "Capital One" [ref=e298] [cursor=pointer]:
+        - img "Capital One" [ref=e299]
+      - button "Discover" [ref=e300] [cursor=pointer]:
+        - img "Discover" [ref=e301]
+    - button "Or add an account manually" [ref=e302] [cursor=pointer]
+    - button "Close" [ref=e303] [cursor=pointer]:
+      - img [ref=e304]
+      - generic [ref=e306]: Close

@@ -1,0 +1,198 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e396]:
+        - button "Close sidebar" [ref=e394] [cursor=pointer]:
+          - img [ref=e6]
+        - navigation [ref=e9]:
+          - button "Refresh all connections" [ref=e11] [cursor=pointer]:
+            - img [ref=e12]
+          - generic [ref=e14]:
+            - link "Dashboard" [ref=e15] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e16]:
+                - img [ref=e18]
+                - generic [ref=e20]: Dashboard
+            - link "Transactions" [ref=e21] [cursor=pointer]:
+              - /url: /transactions
+              - generic [ref=e22]:
+                - img [ref=e24]
+                - generic [ref=e28]: Transactions
+            - link "Accounts" [ref=e29] [cursor=pointer]:
+              - /url: /accounts
+              - generic [ref=e30]:
+                - img [ref=e32]
+                - generic [ref=e34]: Accounts
+            - link "Investments" [ref=e35] [cursor=pointer]:
+              - /url: /investments
+              - generic [ref=e36]:
+                - img [ref=e38]
+                - generic [ref=e40]: Investments
+            - link "Categories" [ref=e41] [cursor=pointer]:
+              - /url: /categories/l7TCtfVob3gT0e6LCS7e
+              - generic [ref=e42]:
+                - img [ref=e44]
+                - generic [ref=e46]: Categories
+            - link "Recurrings" [ref=e47] [cursor=pointer]:
+              - /url: /recurrings
+              - generic [ref=e48]:
+                - img [ref=e50]
+                - generic [ref=e52]: Recurrings
+          - generic [ref=e56]:
+            - button "Other" [ref=e57] [cursor=pointer]:
+              - img [ref=e59]
+              - generic [ref=e61]: Other
+            - generic [ref=e63]:
+              - button "Manual account $0" [ref=e64] [cursor=pointer]:
+                - generic [ref=e67]: Manual account
+                - generic [ref=e68]: $0
+              - button "Cash $0" [ref=e69] [cursor=pointer]:
+                - generic [ref=e72]: Cash
+                - generic [ref=e73]: $0
+          - generic [ref=e76]:
+            - link "Start here" [ref=e77] [cursor=pointer]:
+              - /url: https://help.copilot.money/en/articles/11780342-copilot-money-for-web
+              - img [ref=e78]
+              - generic [ref=e80]:
+                - text: Start here
+                - img [ref=e81]
+            - button "Get Help" [ref=e83] [cursor=pointer]:
+              - img [ref=e84]
+              - text: Get Help
+            - button "Settings" [ref=e86] [cursor=pointer]:
+              - img [ref=e87]
+              - generic [ref=e89]: Settings
+      - main [ref=e90]:
+        - generic [ref=e92]:
+          - generic [ref=e93]:
+            - generic [ref=e95]:
+              - heading "Categories" [level=5] [ref=e96]
+              - button "Create category" [ref=e98] [cursor=pointer]:
+                - img [ref=e99]
+            - generic [ref=e101]:
+              - button "$0 spent in Feb $125 total budget" [ref=e906] [cursor=pointer]:
+                - generic [ref=e103]:
+                  - generic [ref=e104]:
+                    - generic [ref=e107]: $0
+                    - heading "spent in Feb" [level=5] [ref=e108]
+                  - img [ref=e113]:
+                    - img [ref=e917]
+                  - generic [ref=e131]:
+                    - generic [ref=e135]: $125
+                    - heading "total budget" [level=5] [ref=e137]
+              - generic [ref=e138]:
+                - generic [ref=e139]:
+                  - button "Regular categories Spent Budget" [ref=e140] [cursor=pointer]:
+                    - img [ref=e142]
+                    - generic [ref=e144]:
+                      - heading "Regular categories" [level=5] [ref=e145]
+                      - generic [ref=e146]:
+                        - generic [ref=e148]: Spent
+                        - generic [ref=e150]: Budget
+                  - generic [ref=e152]:
+                    - button "Restaurants category" [ref=e155] [cursor=pointer]:
+                      - generic [ref=e161]:
+                        - generic "Category icon" [ref=e163]: 🧑‍🍳
+                        - generic [ref=e164]: Restaurants
+                      - generic [ref=e166]: $0
+                      - progressbar [ref=e171]
+                      - generic [ref=e173]: $100
+                    - button "ZZ Codex Temp category" [ref=e920] [cursor=pointer]:
+                      - generic [ref=e926]:
+                        - generic "Category icon" [ref=e928]: 💸
+                        - generic [ref=e929]: ZZ Codex Temp
+                      - generic [ref=e931]: $0
+                      - progressbar [ref=e936]
+                      - generic [ref=e938]: $25
+                    - button "Other category" [ref=e176] [cursor=pointer]:
+                      - generic [ref=e182]:
+                        - generic "Category icon" [ref=e184]: 🤷‍♂️
+                        - generic [ref=e185]: Other
+                      - generic [ref=e187]: $0
+                - generic [ref=e188]:
+                  - button "Excluded categories" [ref=e189] [cursor=pointer]:
+                    - img [ref=e191]
+                    - heading "Excluded categories" [level=5] [ref=e193]
+                  - button "Work Expenses category" [ref=e198] [cursor=pointer]:
+                    - generic [ref=e204]:
+                      - generic "Category icon" [ref=e206]: 💼
+                      - generic [ref=e207]: Work Expenses
+                    - generic [ref=e209]: $0
+          - generic [ref=e211]:
+            - generic [ref=e212]:
+              - generic [ref=e940]:
+                - heading "Category" [level=5] [ref=e942]
+                - generic [ref=e943]:
+                  - button "Edit budget" [ref=e945] [cursor=pointer]
+                  - button "More options" [ref=e946] [cursor=pointer]:
+                    - img [ref=e947]
+              - generic [ref=e950]:
+                - generic [ref=e952]:
+                  - generic [ref=e953]:
+                    - generic [ref=e954]:
+                      - button [ref=e955] [cursor=pointer]
+                      - button "Category icon" [ref=e958] [cursor=pointer]:
+                        - generic "Category icon" [ref=e959]: 💸
+                    - textbox "ZZ Codex Temp" [ref=e963]
+                  - generic [ref=e965]:
+                    - heading "Spent in Feb" [level=5] [ref=e967]
+                    - generic [ref=e969]: $0.00
+                    - generic [ref=e970]:
+                      - generic [ref=e971]: $25.00
+                      - text: left
+                - generic [ref=e975]:
+                  - application [ref=e976]:
+                    - generic [ref=e1030]:
+                      - generic [ref=e1032]:
+                        - generic [ref=e1033] [cursor=pointer]: Jul
+                        - generic [ref=e1034] [cursor=pointer]: "2024"
+                      - generic [ref=e1037] [cursor=pointer]: Oct
+                      - generic [ref=e1039]:
+                        - generic [ref=e1040] [cursor=pointer]: Jan
+                        - generic [ref=e1041] [cursor=pointer]: "2025"
+                      - generic [ref=e1044] [cursor=pointer]: Apr
+                      - generic [ref=e1047] [cursor=pointer]: Jul
+                      - generic [ref=e1050] [cursor=pointer]: Oct
+                      - generic [ref=e1052]:
+                        - generic [ref=e1053] [cursor=pointer]: Jan
+                        - generic [ref=e1054] [cursor=pointer]: "2026"
+                  - button "$ 25.00" [ref=e1056] [cursor=pointer]:
+                    - generic [ref=e1058]: $ 25.00
+                - generic [ref=e1059]:
+                  - generic [ref=e1061]:
+                    - generic [ref=e1064]:
+                      - heading "Key metrics" [level=5] [ref=e1065]:
+                        - generic [ref=e1066]: Key metrics
+                        - link [ref=e1067] [cursor=pointer]:
+                          - /url: https://help.copilot.money/en/articles/6918427-understanding-key-metrics-for-spending
+                          - img [ref=e1068]
+                      - heading "Spent per year" [level=5] [ref=e1070]
+                      - heading "Avg monthly" [level=5] [ref=e1071]
+                    - generic [ref=e1073]:
+                      - generic [ref=e1074]: "2026"
+                      - generic [ref=e1075]: $0.00
+                      - generic [ref=e1076]: $0.00
+                    - generic [ref=e1081]:
+                      - heading "February 2026" [level=5] [ref=e1082]
+                      - generic [ref=e1084]: $0.00
+                    - generic [ref=e1087]: No transactions this month
+                  - toolbar "Selected-item actions" [ref=e1088]:
+                    - button "Dismiss bulk selection" [ref=e1089] [cursor=pointer]:
+                      - img [ref=e1090]
+                    - generic [ref=e1092]:
+                      - generic [ref=e1093]:
+                        - generic [ref=e1095]: 0 selected
+                        - button [ref=e1097] [cursor=pointer]:
+                          - img [ref=e1098]
+                        - button [ref=e1102] [cursor=pointer]:
+                          - img [ref=e1103]
+                        - button [ref=e1106] [cursor=pointer]:
+                          - img [ref=e1107]
+                      - button "More options" [ref=e1109] [cursor=pointer]:
+                        - img [ref=e1110]
+            - button "close panel" [ref=e389] [cursor=pointer]:
+              - img [ref=e390]
+    - region "Notifications alt+T"
+  - iframe [ref=e392]:
+    
+  - generic [ref=e393]: 2024-07
