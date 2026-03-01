@@ -257,6 +257,7 @@ export function deleteUser(userId) {
   store.accounts = store.accounts.filter((entry) => entry.userId !== userId);
   store.transactions = store.transactions.filter((entry) => entry.userId !== userId);
   store.categories = store.categories.filter((entry) => entry.userId !== userId);
+  store.categoryStrategies = store.categoryStrategies.filter((entry) => entry.userId !== userId);
   store.categoryRules = store.categoryRules.filter((entry) => entry.userId !== userId);
   store.imports = store.imports.filter((entry) => entry.userId !== userId);
   const importIds = new Set(store.imports.map((entry) => entry.id));

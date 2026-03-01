@@ -1,9 +1,29 @@
 import { loadStore } from "./store.js";
 import { computeDateRange, inDateRange, monthKey } from "./utils.js";
+import {
+  CATEGORY_VIEW_COARSE,
+  createCategoryResolver,
+  ensureCategoryStrategyForUser,
+  normalizeCategoryView
+} from "./category-strategy.js";
+
+function resolveTxnCategory(resolveCategory, txn) {
+  return resolveCategory({
+    categoryFinal: txn.category_final,
+    categoryRaw: txn.category_raw,
+    merchantNormalized: txn.merchant_normalized,
+    merchantRaw: txn.merchant_raw,
+    description: txn.description,
+    memo: txn.memo
+  });
+}
 
 export function filterUserTransactions(userId, filters = {}) {
   const store = loadStore();
   const { start, end } = computeDateRange(filters.range, filters.start, filters.end);
+  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const strategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(strategy);
 
   return store.transactions.filter((txn) => {
     if (txn.user_id !== userId) {
@@ -12,8 +32,14 @@ export function filterUserTransactions(userId, filters = {}) {
     if (!inDateRange(txn.transaction_date, start, end)) {
       return false;
     }
-    if (filters.category && txn.category_final !== filters.category) {
-      return false;
+    if (filters.category) {
+      const resolved = resolveTxnCategory(resolveCategory, txn);
+      const categoryToMatch = categoryView === CATEGORY_VIEW_COARSE
+        ? resolved.categoryCoarse
+        : resolved.categoryGranular;
+      if (categoryToMatch !== filters.category) {
+        return false;
+      }
     }
     if (filters.merchant && txn.merchant_normalized !== filters.merchant) {
       return false;
@@ -61,7 +87,8 @@ export function buildAppliedRange(filters = {}) {
 export function buildAnalyticsMeta(userId, filters = {}) {
   return {
     appliedRange: buildAppliedRange(filters),
-    dataBounds: getUserDataBounds(userId)
+    dataBounds: getUserDataBounds(userId),
+    categoryView: normalizeCategoryView(filters.category_view || filters.categoryView)
   };
 }
 
@@ -69,7 +96,54 @@ function toAmount(txn) {
   return Number(txn.amount || 0);
 }
 
+function buildCategoryRollupFromTransactions(txns, resolveCategory, categoryView) {
+  const grouped = {};
+  let totalAmount = 0;
+
+  for (const txn of txns) {
+    if (txn.direction !== "debit") {
+      continue;
+    }
+
+    const categoryMeta = resolveTxnCategory(resolveCategory, txn);
+    const categoryName = categoryView === CATEGORY_VIEW_COARSE
+      ? categoryMeta.categoryCoarse
+      : categoryMeta.categoryGranular;
+    const emoji = categoryView === CATEGORY_VIEW_COARSE
+      ? categoryMeta.categoryCoarseEmoji
+      : categoryMeta.categoryEmoji;
+
+    if (!grouped[categoryName]) {
+      grouped[categoryName] = {
+        category: categoryName,
+        amount: 0,
+        count: 0,
+        emoji,
+        coarseKey: categoryMeta.categoryCoarseKey,
+        excluded: categoryMeta.categoryExcluded
+      };
+    }
+
+    const amount = toAmount(txn);
+    grouped[categoryName].amount += amount;
+    grouped[categoryName].count += 1;
+    totalAmount += amount;
+  }
+
+  const safeTotal = totalAmount || 1;
+  return Object.values(grouped)
+    .map((entry) => ({
+      ...entry,
+      amount: round2(entry.amount),
+      share: round2((entry.amount / safeTotal) * 100)
+    }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
 export function getOverview(userId, filters = {}) {
+  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const strategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(strategy);
   const txns = filterUserTransactions(userId, filters);
   const spend = txns.filter((txn) => txn.direction === "debit").reduce((sum, txn) => sum + toAmount(txn), 0);
   const income = txns.filter((txn) => txn.direction === "credit").reduce((sum, txn) => sum + toAmount(txn), 0);
@@ -127,22 +201,21 @@ export function getOverview(userId, filters = {}) {
       income: round2(entry.income),
       net: round2(entry.net)
     })),
-    topCategories: getCategoryRollup(userId, filters).slice(0, 5),
+    topCategories: buildCategoryRollupFromTransactions(txns, resolveCategory, categoryView).slice(0, 5),
     topMerchants: getMerchantRollup(userId, filters).slice(0, 5),
-    meta: buildAnalyticsMeta(userId, filters)
+    meta: buildAnalyticsMeta(userId, {
+      ...filters,
+      category_view: categoryView
+    })
   };
 }
 
 export function getCategoryRollup(userId, filters = {}) {
-  const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "debit");
-  const grouped = {};
-  for (const txn of txns) {
-    grouped[txn.category_final] = (grouped[txn.category_final] || 0) + toAmount(txn);
-  }
-
-  return Object.entries(grouped)
-    .map(([category, amount]) => ({ category, amount: round2(amount) }))
-    .sort((a, b) => b.amount - a.amount);
+  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const strategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(strategy);
+  const txns = filterUserTransactions(userId, filters);
+  return buildCategoryRollupFromTransactions(txns, resolveCategory, categoryView);
 }
 
 export function getMerchantRollup(userId, filters = {}) {
@@ -201,6 +274,9 @@ export function getHeatmap(userId, filters = {}) {
 }
 
 export function getAnomalies(userId, filters = {}) {
+  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const strategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(strategy);
   const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "debit");
   if (!txns.length) {
     return [];
@@ -240,17 +316,28 @@ export function getAnomalies(userId, filters = {}) {
     })
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 20)
-    .map((txn) => ({
-      transactionId: txn.id,
-      transactionDate: txn.transaction_date,
-      merchant: txn.merchant_normalized,
-      amount: round2(txn.amount),
-      category: txn.category_final,
-      reason:
-        txn.amount >= threshold
-          ? "amount_outlier"
-          : "new_merchant_spike"
-    }));
+    .map((txn) => {
+      const categoryMeta = resolveTxnCategory(resolveCategory, txn);
+      const category = categoryView === CATEGORY_VIEW_COARSE
+        ? categoryMeta.categoryCoarse
+        : categoryMeta.categoryGranular;
+      return {
+        transactionId: txn.id,
+        transactionDate: txn.transaction_date,
+        merchant: txn.merchant_normalized,
+        amount: round2(txn.amount),
+        category,
+        categoryGranular: categoryMeta.categoryGranular,
+        categoryCoarse: categoryMeta.categoryCoarse,
+        emoji: categoryView === CATEGORY_VIEW_COARSE
+          ? categoryMeta.categoryCoarseEmoji
+          : categoryMeta.categoryEmoji,
+        reason:
+          txn.amount >= threshold
+            ? "amount_outlier"
+            : "new_merchant_spike"
+      };
+    });
 }
 
 function getWeekOfYear(date) {

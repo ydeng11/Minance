@@ -34,6 +34,11 @@ import {
   getAnomalies,
   buildAnalyticsMeta
 } from "./analytics.js";
+import {
+  ensureCategoryInStrategy,
+  getCategoryStrategyForUser,
+  updateCategoryStrategyForUser
+} from "./category-strategy.js";
 import { runAssistantQuery, getAssistantQuery } from "./assistant.js";
 import { writeUploadedSqliteFile, runLegacyMigration, getMigrationReport } from "./migration.js";
 import { loadStore, saveStore, addAuditEvent } from "./store.js";
@@ -44,7 +49,7 @@ import {
   updateSavedView,
   deleteSavedView
 } from "./savedViews.js";
-import { createId, nowIso } from "./utils.js";
+import { createId, nowIso, normalizeText } from "./utils.js";
 
 const contentTypeByExt = {
   ".html": "text/html; charset=utf-8",
@@ -324,6 +329,7 @@ async function handleApiRequest(req, res, url) {
         start: searchParams.get("start"),
         end: searchParams.get("end"),
         range: searchParams.get("range"),
+        category_view: searchParams.get("category_view"),
         category: searchParams.get("category"),
         merchant: searchParams.get("merchant"),
         source_type: searchParams.get("source_type"),
@@ -368,6 +374,7 @@ async function handleApiRequest(req, res, url) {
         start: searchParams.get("start"),
         end: searchParams.get("end"),
         range: searchParams.get("range"),
+        category_view: searchParams.get("category_view"),
         category: searchParams.get("category"),
         merchant: searchParams.get("merchant")
       });
@@ -380,12 +387,14 @@ async function handleApiRequest(req, res, url) {
       const filters = {
         start: searchParams.get("start"),
         end: searchParams.get("end"),
-        range: searchParams.get("range")
+        range: searchParams.get("range"),
+        category_view: searchParams.get("category_view")
       };
       const result = getCategoryRollup(user.id, {
         start: filters.start,
         end: filters.end,
-        range: filters.range
+        range: filters.range,
+        category_view: filters.category_view
       });
       sendJson(res, 200, { items: result, meta: buildAnalyticsMeta(user.id, filters) });
       return;
@@ -396,7 +405,8 @@ async function handleApiRequest(req, res, url) {
       const filters = {
         start: searchParams.get("start"),
         end: searchParams.get("end"),
-        range: searchParams.get("range")
+        range: searchParams.get("range"),
+        category_view: searchParams.get("category_view")
       };
       const result = getMerchantRollup(user.id, {
         start: filters.start,
@@ -412,7 +422,8 @@ async function handleApiRequest(req, res, url) {
       const filters = {
         start: searchParams.get("start"),
         end: searchParams.get("end"),
-        range: searchParams.get("range")
+        range: searchParams.get("range"),
+        category_view: searchParams.get("category_view")
       };
       const result = getHeatmap(user.id, {
         start: filters.start,
@@ -428,12 +439,14 @@ async function handleApiRequest(req, res, url) {
       const filters = {
         start: searchParams.get("start"),
         end: searchParams.get("end"),
-        range: searchParams.get("range")
+        range: searchParams.get("range"),
+        category_view: searchParams.get("category_view")
       };
       const result = getAnomalies(user.id, {
         start: filters.start,
         end: filters.end,
-        range: filters.range
+        range: filters.range,
+        category_view: filters.category_view
       });
       sendJson(res, 200, { items: result, meta: buildAnalyticsMeta(user.id, filters) });
       return;
@@ -458,8 +471,38 @@ async function handleApiRequest(req, res, url) {
     if (req.method === "GET" && pathname === "/v1/categories") {
       const user = requireUser(req);
       const store = loadStore();
-      const categories = store.categories.filter((entry) => entry.userId === user.id);
+      const strategy = getCategoryStrategyForUser(user.id);
+      const strategyByName = new Map(
+        (strategy.granularCategories || []).map((entry) => [normalizeText(entry.name), entry])
+      );
+
+      const categories = store.categories
+        .filter((entry) => entry.userId === user.id)
+        .map((entry) => {
+          const strategyMatch = strategyByName.get(normalizeText(entry.name));
+          return {
+            ...entry,
+            emoji: entry.emoji || strategyMatch?.emoji || "",
+            coarseKey: entry.coarseKey || strategyMatch?.coarseKey || "neutral"
+          };
+        });
       sendJson(res, 200, { categories });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/category-strategy") {
+      const user = requireUser(req);
+      const strategy = getCategoryStrategyForUser(user.id);
+      sendJson(res, 200, { strategy });
+      return;
+    }
+
+    if (req.method === "PUT" && pathname === "/v1/category-strategy") {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const strategy = updateCategoryStrategyForUser(user.id, body);
+      addAuditEvent(user.id, "category_strategy.update", {});
+      sendJson(res, 200, { strategy });
       return;
     }
 
@@ -475,12 +518,18 @@ async function handleApiRequest(req, res, url) {
         id: createId("cat"),
         userId: user.id,
         name: String(body.name).trim(),
+        emoji: String(body.emoji || "").trim(),
+        coarseKey: String(body.coarseKey || body.coarse_key || "").trim() || null,
         isSystem: false,
         createdAt: nowIso(),
         updatedAt: nowIso()
       };
       store.categories.push(category);
       saveStore(store);
+      ensureCategoryInStrategy(user.id, category.name, {
+        emoji: category.emoji,
+        coarseKey: category.coarseKey
+      });
       addAuditEvent(user.id, "category.create", { categoryId: category.id });
       sendJson(res, 201, { category });
       return;

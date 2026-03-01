@@ -11,6 +11,7 @@ import {
 } from "./flags.js";
 import { categorizeTransactionWithLlm } from "./llm/categorize.js";
 import { inferImportDirectionWithLlm } from "./llm/import-direction.js";
+import { createCategoryResolver, ensureCategoryStrategyForUser } from "./category-strategy.js";
 import {
   buildDirectionInferenceSample,
   extractRowAmountAndDirection,
@@ -312,6 +313,8 @@ function buildProcessedRows(store, userId, importJob, mapping, previousProcessed
 
   const userRules = store.categoryRules.filter((entry) => entry.userId === userId);
   const merchantMemory = buildMerchantMemory(store.transactions.filter((entry) => entry.user_id === userId));
+  const userCategoryStrategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(userCategoryStrategy);
 
   const existingFingerprints = new Set(
     store.transactions.filter((entry) => entry.user_id === userId).map((entry) => entry.dedupe_fingerprint)
@@ -384,6 +387,15 @@ function buildProcessedRows(store, userId, importJob, mapping, previousProcessed
       }
 
       needsCategoryReview = categoryConfidence < 0.6;
+      const categoryMeta = resolveCategory({
+        categoryFinal: staged.normalized.category_final,
+        categoryRaw: staged.normalized.category_raw,
+        merchantNormalized: staged.normalized.merchant_normalized,
+        merchantRaw: staged.normalized.merchant_raw,
+        description: staged.normalized.description,
+        memo: staged.normalized.memo
+      });
+      staged.normalized.category_final = categoryMeta.categoryGranular;
       logImportProcessing("staged_row_categorized", {
         importId: importJob.id,
         rowIndex: rowEntry.rowIndex,
@@ -855,6 +867,8 @@ export async function commitImport(userId, importId) {
 
   const userRules = store.categoryRules.filter((entry) => entry.userId === userId);
   const merchantMemory = buildMerchantMemory(store.transactions.filter((entry) => entry.user_id === userId));
+  const categoryStrategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(categoryStrategy);
   const existingFingerprints = new Set(
     store.transactions.filter((entry) => entry.user_id === userId).map((entry) => entry.dedupe_fingerprint)
   );
@@ -958,6 +972,8 @@ export async function commitImport(userId, importId) {
       direction: normalized.direction,
       category_raw: normalized.category_raw,
       category_final: normalized.category_final || "Uncategorized",
+      category_coarse: null,
+      category_emoji: "",
       category_confidence: Number(normalized.category_confidence || 0),
       category_strategy: normalized.category_strategy || null,
       needs_category_review: false,
@@ -1021,6 +1037,18 @@ export async function commitImport(userId, importId) {
       tx.category_confidence = 1;
       tx.category_strategy = "import_override";
     }
+
+    const categoryMeta = resolveCategory({
+      categoryFinal: tx.category_final,
+      categoryRaw: tx.category_raw,
+      merchantNormalized: tx.merchant_normalized,
+      merchantRaw: tx.merchant_raw,
+      description: tx.description,
+      memo: tx.memo
+    });
+    tx.category_final = categoryMeta.categoryGranular;
+    tx.category_coarse = categoryMeta.categoryCoarse;
+    tx.category_emoji = categoryMeta.categoryEmoji;
 
     tx.needs_category_review = tx.category_confidence < 0.6;
     if (tx.needs_category_review) {

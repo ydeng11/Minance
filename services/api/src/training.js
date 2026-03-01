@@ -18,7 +18,7 @@ const CATEGORY_ALIASES = {
   "travel entertainment": "Transport",
   "travel parking": "Transport",
   gas: "Transport",
-  automotive: "Transport",
+  automotive: "Auto",
   utilities: "Utilities",
   bills: "Utilities",
   "bills utilities": "Utilities",
@@ -155,7 +155,10 @@ function toCanonicalCategory(value) {
   if (normalized.includes("dining") || normalized.includes("restaurant") || normalized.includes("food")) {
     return "Dining";
   }
-  if (normalized.includes("travel") || normalized.includes("gas") || normalized.includes("automotive")) {
+  if (normalized.includes("automotive")) {
+    return "Auto";
+  }
+  if (normalized.includes("travel") || normalized.includes("gas")) {
     return "Transport";
   }
   if (normalized.includes("utility") || normalized.includes("bill")) {

@@ -306,7 +306,7 @@ export default function ImportPage() {
             <option value="">(auto)</option>
             {categories.map((entry) => (
               <option key={entry.id} value={entry.name}>
-                {entry.name}
+                {entry.emoji ? `${entry.emoji} ` : ""}{entry.name}
               </option>
             ))}
           </select>

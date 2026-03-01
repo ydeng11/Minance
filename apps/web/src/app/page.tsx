@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const api = useApi();
 
   const [range, setRange] = useState("90d");
+  const [categoryView, setCategoryView] = useState<"granular" | "coarse">("granular");
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [heatmap, setHeatmap] = useState<HeatmapItem[]>([]);
   const [anomalies, setAnomalies] = useState<AnomalyItem[]>([]);
@@ -22,6 +23,7 @@ export default function DashboardPage() {
 
   async function loadDashboardData(
     nextRange = range,
+    nextCategoryView = categoryView,
     options: {
       allowAutoAllFallback?: boolean;
       preserveMessage?: boolean;
@@ -37,9 +39,9 @@ export default function DashboardPage() {
 
     try {
       const [overviewData, heatmapData, anomaliesData, viewsData] = await Promise.all([
-        api.analytics.overview({ range: nextRange }),
-        api.analytics.heatmap({ range: nextRange }),
-        api.analytics.anomalies({ range: nextRange }),
+        api.analytics.overview({ range: nextRange, category_view: nextCategoryView }),
+        api.analytics.heatmap({ range: nextRange, category_view: nextCategoryView }),
+        api.analytics.anomalies({ range: nextRange, category_view: nextCategoryView }),
         api.savedViews.list()
       ]);
 
@@ -56,7 +58,7 @@ export default function DashboardPage() {
       if (allowAutoAllFallback && outOfRange) {
         setRange("all");
         setMessage("No transactions in this date range. Switched to all available data.");
-        await loadDashboardData("all", {
+        await loadDashboardData("all", nextCategoryView, {
           allowAutoAllFallback: false,
           preserveMessage: true
         });
@@ -73,12 +75,20 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    void loadDashboardData();
+    void loadDashboardData(range, categoryView);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range]);
+  }, [range, categoryView]);
 
   const trendBars = useMemo(() => {
-    return (overview?.trend || []).slice(-6);
+    return (overview?.trend || []).slice(-6).map((entry) => {
+      const maxSpend = Math.max(1, ...(overview?.trend || []).map((item) => item.spend));
+      const maxIncome = Math.max(1, ...(overview?.trend || []).map((item) => item.income));
+      return {
+        ...entry,
+        spendHeight: Math.max(14, Math.round((entry.spend / maxSpend) * 120)),
+        incomeHeight: Math.max(10, Math.round((entry.income / maxIncome) * 90))
+      };
+    });
   }, [overview]);
 
   async function saveCurrentView() {
@@ -88,7 +98,7 @@ export default function DashboardPage() {
     }
 
     try {
-      await api.savedViews.create(savedViewName.trim(), { range });
+      await api.savedViews.create(savedViewName.trim(), { range, categoryView });
       setSavedViewName("");
       setMessage("Saved view created.");
       const nextViews = await api.savedViews.list();
@@ -119,9 +129,11 @@ export default function DashboardPage() {
 
   function applySavedView(view: SavedView) {
     const savedRange = typeof view.filters?.range === "string" ? view.filters.range : null;
+    const savedCategoryView = view.filters?.categoryView === "coarse" ? "coarse" : "granular";
     if (savedRange) {
       setRange(savedRange);
     }
+    setCategoryView(savedCategoryView);
     setMessage(`Applied view: ${view.name}`);
   }
 
@@ -132,18 +144,29 @@ export default function DashboardPage() {
           <h2 className="text-3xl font-semibold tracking-tight">Dashboard</h2>
           <p className="text-neutral-400">Welcome back. Here is your financial overview.</p>
         </div>
-        <select
-          value={range}
-          onChange={(event) => setRange(event.target.value)}
-          data-testid="dashboard-range"
-          className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
-        >
-          {RANGE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex gap-2">
+          <select
+            value={categoryView}
+            onChange={(event) => setCategoryView(event.target.value as "granular" | "coarse")}
+            data-testid="dashboard-category-view"
+            className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
+          >
+            <option value="granular">Granular View</option>
+            <option value="coarse">Coarse View</option>
+          </select>
+          <select
+            value={range}
+            onChange={(event) => setRange(event.target.value)}
+            data-testid="dashboard-range"
+            className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
+          >
+            {RANGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </header>
 
       {message ? (
@@ -203,16 +226,15 @@ export default function DashboardPage() {
               ? (
                 <p className="col-span-6 text-sm text-neutral-500">No trend data for this range.</p>
               )
-              : trendBars.map((item) => {
-                  const max = Math.max(1, ...trendBars.map((entry) => entry.spend));
-                  const height = Math.max(14, Math.round((item.spend / max) * 180));
-                  return (
-                    <div key={item.month} className="flex flex-col items-center gap-2">
-                      <div className="w-full rounded-md bg-neutral-800/80" style={{ height }} />
-                      <div className="text-[11px] text-neutral-500">{item.month.slice(5)}</div>
+              : trendBars.map((item) => (
+                  <div key={item.month} className="flex flex-col items-center gap-2">
+                    <div className="flex w-full items-end gap-1">
+                      <div className="w-1/2 rounded-md bg-emerald-500/80" style={{ height: item.spendHeight }} />
+                      <div className="w-1/2 rounded-md bg-sky-400/70" style={{ height: item.incomeHeight }} />
                     </div>
-                  );
-                })}
+                    <div className="text-[11px] text-neutral-500">{item.month.slice(5)}</div>
+                  </div>
+                ))}
         </div>
       </section>
 
@@ -225,7 +247,7 @@ export default function DashboardPage() {
               <div className="mt-3 space-y-2" data-testid="analytics-category-bars">
                 {(overview?.topCategories || []).slice(0, 8).map((entry) => (
                   <div key={entry.category} className="flex items-center justify-between rounded-md bg-neutral-900 px-3 py-2 text-sm">
-                    <span className="text-neutral-300">{entry.category}</span>
+                    <span className="text-neutral-300">{entry.emoji ? `${entry.emoji} ` : ""}{entry.category}</span>
                     <strong className="text-neutral-100">{money(entry.amount)}</strong>
                   </div>
                 ))}
@@ -274,7 +296,7 @@ export default function DashboardPage() {
                 {anomalies.length ? (
                   anomalies.slice(0, 8).map((entry) => (
                     <div key={entry.transactionId} className="flex items-center justify-between rounded-md bg-neutral-900 px-3 py-2 text-sm">
-                      <span className="text-neutral-300">{entry.transactionDate} · {entry.merchant}</span>
+                      <span className="text-neutral-300">{entry.transactionDate} · {entry.merchant} · {entry.emoji ? `${entry.emoji} ` : ""}{entry.category}</span>
                       <strong className="text-neutral-100">{money(entry.amount)}</strong>
                     </div>
                   ))

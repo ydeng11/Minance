@@ -40,6 +40,7 @@ export default function TransactionsPage() {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
+  const [categoryView, setCategoryView] = useState<"granular" | "coarse">("granular");
   const [range, setRange] = useState("all");
   const [needsReview, setNeedsReview] = useState(false);
   const [form, setForm] = useState<TransactionForm>(initialForm);
@@ -66,11 +67,12 @@ export default function TransactionsPage() {
         api.transactions.list({
           query: search,
           category,
+          category_view: categoryView,
           range,
           needs_category_review: needsReview,
           limit: 200
         }),
-        api.analytics.overview({ range })
+        api.analytics.overview({ range, category_view: categoryView })
       ]);
 
       setTransactions(transactionData.items);
@@ -90,6 +92,24 @@ export default function TransactionsPage() {
     void Promise.all([loadCategories(), loadTransactions()]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const categoryFilterOptions = useMemo(() => {
+    if (categoryView === "granular") {
+      return categories.map((entry) => entry.name);
+    }
+
+    const fromTransactions = transactions
+      .map((entry) => entry.category_coarse || "")
+      .filter(Boolean);
+    const fromOverview = (overview?.topCategories || []).map((entry) => entry.category);
+    return Array.from(new Set([...fromTransactions, ...fromOverview]));
+  }, [categories, categoryView, overview, transactions]);
+
+  useEffect(() => {
+    if (category && !categoryFilterOptions.includes(category)) {
+      setCategory("");
+    }
+  }, [category, categoryFilterOptions]);
 
   function startEdit(transaction: Transaction) {
     setForm({
@@ -220,7 +240,7 @@ export default function TransactionsPage() {
               return (
                 <div key={entry.category}>
                   <div className="mb-1 flex justify-between text-sm text-neutral-300">
-                    <span>{entry.category}</span>
+                    <span>{entry.emoji ? `${entry.emoji} ` : ""}{entry.category}</span>
                     <span>{money(entry.amount)}</span>
                   </div>
                   <div className="h-2 rounded-full bg-neutral-800">
@@ -258,7 +278,9 @@ export default function TransactionsPage() {
                 </td>
                 <td className="px-4 py-3">
                   <span className="rounded-md bg-neutral-800 px-2 py-1 text-[11px] uppercase tracking-wide text-neutral-300">
-                    {txn.category_final}
+                    {(categoryView === "coarse"
+                      ? `${txn.category_coarse_emoji || ""} ${txn.category_coarse || txn.category_final}`
+                      : `${txn.category_emoji || ""} ${txn.category_final}`).trim()}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right font-medium">
@@ -303,7 +325,7 @@ export default function TransactionsPage() {
       <details className="rounded-2xl border border-neutral-900 bg-neutral-950/70" data-testid="advanced-transactions" open>
         <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-neutral-300">Advanced transaction tools</summary>
         <div className="space-y-5 px-4 pb-4">
-          <div className="grid gap-3 md:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-5">
             <label className="grid gap-1 text-sm text-neutral-300">
               Category
               <select
@@ -313,9 +335,9 @@ export default function TransactionsPage() {
                 className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
               >
                 <option value="">All</option>
-                {categories.map((entry) => (
-                  <option key={entry.id} value={entry.name}>
-                    {entry.name}
+                {categoryFilterOptions.map((entry) => (
+                  <option key={entry} value={entry}>
+                    {entry}
                   </option>
                 ))}
               </select>
@@ -334,6 +356,19 @@ export default function TransactionsPage() {
                     {option.label}
                   </option>
                 ))}
+              </select>
+            </label>
+
+            <label className="grid gap-1 text-sm text-neutral-300">
+              Category View
+              <select
+                value={categoryView}
+                onChange={(event) => setCategoryView(event.target.value as "granular" | "coarse")}
+                data-testid="txn-category-view"
+                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
+              >
+                <option value="granular">Granular</option>
+                <option value="coarse">Coarse</option>
               </select>
             </label>
 
@@ -435,7 +470,7 @@ export default function TransactionsPage() {
                   >
                     {categories.map((entry) => (
                       <option key={entry.id} value={entry.name}>
-                        {entry.name}
+                        {entry.emoji ? `${entry.emoji} ` : ""}{entry.name}
                       </option>
                     ))}
                   </select>
