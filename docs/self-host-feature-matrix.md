@@ -10,7 +10,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
 
 ## Decision Matrix
 
-| Area | Copilot-style expectation | Self-host decision | Current implementation (2026-03-01) | Fallback / Notes |
+| Area | Copilot-style expectation | Self-host decision | Current implementation (2026-03-02) | Fallback / Notes |
 |---|---|---|---|---|
 | Authentication and sessions | Email/password auth, session refresh, user profile | Supported | `POST /v1/auth/signup`, `POST /v1/auth/login`, `POST /v1/auth/refresh`, `GET/DELETE /v1/users/me` | Local session/token storage in app data file. |
 | Canonical data store | Durable relational storage | Supported (migration in progress) | JSON store (`services/api/data/store.json`) is active, with SQLite foundation bootstrap and status endpoint (`GET /v1/system/storage`) | Planned default backend is SQLite; see [JSON-to-SQLite runbook](./json-to-sqlite-migration-runbook.md). |
@@ -47,6 +47,10 @@ This document defines how Minance Next maps Copilot-style product expectations t
   - `MINANCE_SQLITE_FILE=services/api/data/minance.sqlite`
   - `MINANCE_SQLITE_SCHEMA_FILE=services/api/sql/schema.sql`
   - startup auto-init enabled unless `MINANCE_SQLITE_AUTO_INIT=false`
+- Reference self-host stack:
+  - `docker-compose.selfhost.yml`
+  - `.env.selfhost.example`
+  - [`self-host-operations-runbook.md`](./self-host-operations-runbook.md)
 - App remains usable without any AI keys:
   - import, manual transaction CRUD, analytics, categories, and migration UI continue to function.
 - Development defaults:
@@ -57,4 +61,3 @@ This document defines how Minance Next maps Copilot-style product expectations t
 - SQLite baseline and migration/cutover completion.
 - Accounts/Recurring dedicated APIs and tabs.
 - Investments live data model + API wiring.
-- Self-host operator docs for deploy/backup/security/observability hardening.

@@ -18,6 +18,7 @@
     "start:api": "env PORT=3001 node services/api/src/server.js",
     "migrate:sqlite": "node scripts/migrate-json-to-sqlite.mjs",
     "validate:sqlite": "node scripts/validate-json-vs-sqlite.mjs",
+    "seed:fixture": "node scripts/seed-deterministic-fixture.mjs",
     "test:test-first": "node --test scripts/check-frontend-test-first.test.mjs && node scripts/check-frontend-test-first.mjs",
     "test": "npm run test:test-first && node --test services/api/test/**/*.test.js && npm run test --workspace @minance/web",
     "check": "npm run test",

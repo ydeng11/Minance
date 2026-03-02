@@ -46,6 +46,35 @@ npm run e2e
 Useful variants:
 - `npm run e2e:headed` for local debugging.
 - `npm run e2e:ci` for CI-style execution and HTML report output.
+- Seed deterministic financial fixture for parity flows:
+  - `E2E_SEED_DATASET=deterministic-financial npm run e2e`
+
+## Deterministic fixture seed
+
+Create a repeatable baseline dataset (accounts/categories/transactions/recurring/investments):
+
+```bash
+node scripts/seed-deterministic-fixture.mjs --target services/api/data/store.json
+```
+
+Dry-run summary:
+
+```bash
+node scripts/seed-deterministic-fixture.mjs --dry-run
+```
+
+Fixture source of truth:
+- `services/api/test/fixtures/deterministic-financial-fixture.js`
+- `services/api/test/fixtures/deterministic-financial-store.json`
+
+## Self-host profile
+
+Reference deployment and operations profile:
+- `docker-compose.selfhost.yml`
+- `.env.selfhost.example`
+- `docs/self-host-operations-runbook.md`
+- `scripts/selfhost-backup.sh`
+- `scripts/selfhost-restore.sh`
 
 ## Notes
 - Data defaults to JSON persistence at `services/api/data/store.json` (`MINANCE_STORE_BACKEND=json`).

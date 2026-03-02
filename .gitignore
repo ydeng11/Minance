@@ -1,6 +1,7 @@
 node_modules
 .DS_Store
 .env
+.env.selfhost
 services/api/data/store.json
 services/api/tmp/*
 coverage
