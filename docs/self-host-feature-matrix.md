@@ -26,7 +26,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
 | AI categorization and assistant | Model-assisted enrichment and chat Q&A | Optional feature | Categorization + assistant endpoints implemented | If keys/providers are missing/unavailable, API returns setup-required or graceful errors; deterministic rules/import remain usable. |
 | Saved views | Persist reusable filters | Supported | `/v1/saved-views*` implemented | Local persistence; portable through data backup/restore. |
 | SaaS subscription/billing surfaces | Subscription plans, hosted billing states | Scoped out for self-host | Not implemented | Replace with self-host diagnostics/docs/help content. |
-| Proprietary account aggregation providers | Plaid-like managed integrations | Scoped out by default | Not implemented | Default path is CSV/manual ingestion; provider abstraction can be added later. |
+| Proprietary account aggregation providers | Plaid-like managed integrations | Scoped out by default with explicit abstraction | Account-provider registry endpoints implemented (`/v1/accounts/providers*`) with `manual_csv` self-host default | Direct aggregation actions return explicit unsupported-action errors with remediation to manual/CSV flows. |
 
 ## External Dependency Policy
 

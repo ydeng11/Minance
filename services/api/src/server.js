@@ -61,6 +61,12 @@ import {
   logStructuredEvent
 } from "./observability.js";
 import { applyCors, applySecurityHeaders, checkRateLimit } from "./security.js";
+import {
+  listAccountProviders,
+  getDefaultAccountProviderId,
+  getAccountProvider,
+  beginAccountProviderLinkSession
+} from "./account-providers.js";
 
 const contentTypeByExt = {
   ".html": "text/html; charset=utf-8",
@@ -102,6 +108,9 @@ function matchPath(pathname, pattern) {
 }
 
 function apiError(res, error) {
+  const message = String(error?.message || "Internal server error");
+  const normalizedMessage = message.toLowerCase();
+
   if (error.message === "Unauthorized") {
     sendError(res, 401, "Unauthorized");
     return;
@@ -113,27 +122,35 @@ function apiError(res, error) {
     });
     return;
   }
-
-  if (
-    error.message.includes("not found") ||
-    error.message.includes("not found") ||
-    error.message.includes("unknown")
-  ) {
-    sendError(res, 404, error.message);
+  if (error.code === "ACCOUNT_PROVIDER_ACTION_UNSUPPORTED") {
+    sendError(res, 409, error.message, {
+      code: error.code,
+      providerId: error.providerId,
+      action: error.action,
+      remediation: error.remediation
+    });
     return;
   }
 
   if (
-    error.message.includes("required") ||
-    error.message.includes("Invalid") ||
-    error.message.includes("must") ||
-    error.message.includes("Unsupported")
+    normalizedMessage.includes("not found") ||
+    normalizedMessage.includes("unknown")
   ) {
-    sendError(res, 400, error.message);
+    sendError(res, 404, message);
     return;
   }
 
-  sendError(res, 500, error.message || "Internal server error");
+  if (
+    normalizedMessage.includes("required") ||
+    normalizedMessage.includes("invalid") ||
+    normalizedMessage.includes("must") ||
+    normalizedMessage.includes("unsupported")
+  ) {
+    sendError(res, 400, message);
+    return;
+  }
+
+  sendError(res, 500, message);
 }
 
 function requireUser(req) {
@@ -194,6 +211,36 @@ async function handleApiRequest(req, res, url) {
       requireUser(req);
       sendJson(res, 200, {
         metrics: getMetricsSnapshot()
+      });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/accounts/providers") {
+      requireUser(req);
+      sendJson(res, 200, {
+        providers: listAccountProviders(),
+        defaultProviderId: getDefaultAccountProviderId()
+      });
+      return;
+    }
+
+    const accountProviderParams = matchPath(pathname, "/v1/accounts/providers/:providerId");
+    if (req.method === "GET" && accountProviderParams) {
+      requireUser(req);
+      sendJson(res, 200, {
+        provider: getAccountProvider(accountProviderParams.providerId)
+      });
+      return;
+    }
+
+    const accountProviderLinkSessionParams = matchPath(
+      pathname,
+      "/v1/accounts/providers/:providerId/link-session"
+    );
+    if (req.method === "POST" && accountProviderLinkSessionParams) {
+      requireUser(req);
+      sendJson(res, 201, {
+        linkSession: beginAccountProviderLinkSession(accountProviderLinkSessionParams.providerId)
       });
       return;
     }

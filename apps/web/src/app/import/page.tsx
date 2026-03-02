@@ -250,6 +250,7 @@ export default function ImportPage() {
             type="checkbox"
             data-testid={`processed-include-${row.rowId}`}
             defaultChecked={row.include}
+            aria-label={`Include row ${row.rowId}`}
             onChange={(event) => void updateProcessedRow(row.rowId, { include: event.target.checked })}
           />
         </td>
@@ -261,6 +262,7 @@ export default function ImportPage() {
             defaultValue={row.normalized.transaction_date || ""}
             type="date"
             className={`w-28 ${processedFieldClass}`}
+            aria-label={`Date for row ${row.rowId}`}
             onBlur={(event) => void updateProcessedRow(row.rowId, { transaction_date: event.target.value })}
           />
         </td>
@@ -268,6 +270,7 @@ export default function ImportPage() {
           <input
             defaultValue={row.normalized.merchant_raw}
             className={`w-40 ${processedFieldClass}`}
+            aria-label={`Merchant for row ${row.rowId}`}
             onBlur={(event) => void updateProcessedRow(row.rowId, { merchant_raw: event.target.value })}
           />
         </td>
@@ -275,6 +278,7 @@ export default function ImportPage() {
           <input
             defaultValue={row.normalized.description}
             className={`w-44 ${processedFieldClass}`}
+            aria-label={`Description for row ${row.rowId}`}
             onBlur={(event) => void updateProcessedRow(row.rowId, { description: event.target.value })}
           />
         </td>
@@ -284,6 +288,7 @@ export default function ImportPage() {
             type="number"
             step="0.01"
             className={`w-24 ${processedFieldClass}`}
+            aria-label={`Amount for row ${row.rowId}`}
             onBlur={(event) => void updateProcessedRow(row.rowId, { amount: Number(event.target.value) })}
           />
         </td>
@@ -291,6 +296,7 @@ export default function ImportPage() {
           <select
             defaultValue={row.normalized.direction}
             className={`w-20 ${processedFieldClass}`}
+            aria-label={`Direction for row ${row.rowId}`}
             onChange={(event) => void updateProcessedRow(row.rowId, { direction: event.target.value as "debit" | "credit" })}
           >
             <option value="debit">debit</option>
@@ -301,6 +307,7 @@ export default function ImportPage() {
           <select
             defaultValue={row.normalized.category_final || ""}
             className={`w-36 ${processedFieldClass}`}
+            aria-label={`Category for row ${row.rowId}`}
             onChange={(event) => void updateProcessedRow(row.rowId, { category_final: event.target.value || null })}
           >
             <option value="">(auto)</option>
@@ -315,6 +322,7 @@ export default function ImportPage() {
           <input
             defaultValue={row.normalized.account_name}
             className={`w-32 ${processedFieldClass}`}
+            aria-label={`Account for row ${row.rowId}`}
             onBlur={(event) => void updateProcessedRow(row.rowId, { account_name: event.target.value })}
           />
         </td>
@@ -323,6 +331,7 @@ export default function ImportPage() {
             defaultValue={row.normalized.memo || ""}
             data-testid={`processed-memo-${row.rowId}`}
             className={`w-32 ${processedFieldClass}`}
+            aria-label={`Memo for row ${row.rowId}`}
             onBlur={(event) => void updateProcessedRow(row.rowId, { memo: event.target.value || null })}
           />
         </td>
@@ -421,11 +430,12 @@ export default function ImportPage() {
           </div>
           <div className="mt-3 overflow-hidden rounded-lg border border-neutral-900">
             <table className="w-full text-left text-sm">
+              <caption className="sr-only">Analyzed import preview rows</caption>
               <thead className="bg-neutral-900/60 text-neutral-400">
                 <tr>
-                  <th className="px-3 py-2">Date</th>
-                  <th className="px-3 py-2">Merchant</th>
-                  <th className="px-3 py-2">Amount</th>
+                  <th scope="col" className="px-3 py-2">Date</th>
+                  <th scope="col" className="px-3 py-2">Merchant</th>
+                  <th scope="col" className="px-3 py-2">Amount</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-900">
@@ -513,7 +523,11 @@ export default function ImportPage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-medium text-neutral-300">Processed Records Editor</h3>
               <div className="flex items-center gap-2">
+                <label htmlFor="processed-status-filter" className="sr-only">
+                  Processed rows status
+                </label>
                 <select
+                  id="processed-status-filter"
                   value={statusFilter}
                   onChange={(event) => {
                     const nextStatus = event.target.value;
@@ -550,19 +564,20 @@ export default function ImportPage() {
 
             <div className="mt-3 overflow-auto">
               <table className="min-w-[1100px] w-full text-xs" data-testid="processed-table">
+                <caption className="sr-only">Processed row editor table</caption>
                 <thead>
                   <tr className="border-b border-neutral-900 text-left text-neutral-300">
-                    <th className="px-2 py-2">Include</th>
-                    <th className="px-2 py-2">Status</th>
-                    <th className="px-2 py-2">Date</th>
-                    <th className="px-2 py-2">Merchant</th>
-                    <th className="px-2 py-2">Description</th>
-                    <th className="px-2 py-2">Amount</th>
-                    <th className="px-2 py-2">Dir</th>
-                    <th className="px-2 py-2">Category</th>
-                    <th className="px-2 py-2">Account</th>
-                    <th className="px-2 py-2">Memo</th>
-                    <th className="px-2 py-2">Issues</th>
+                    <th scope="col" className="px-2 py-2">Include</th>
+                    <th scope="col" className="px-2 py-2">Status</th>
+                    <th scope="col" className="px-2 py-2">Date</th>
+                    <th scope="col" className="px-2 py-2">Merchant</th>
+                    <th scope="col" className="px-2 py-2">Description</th>
+                    <th scope="col" className="px-2 py-2">Amount</th>
+                    <th scope="col" className="px-2 py-2">Dir</th>
+                    <th scope="col" className="px-2 py-2">Category</th>
+                    <th scope="col" className="px-2 py-2">Account</th>
+                    <th scope="col" className="px-2 py-2">Memo</th>
+                    <th scope="col" className="px-2 py-2">Issues</th>
                   </tr>
                 </thead>
                 <tbody>{renderProcessedRowsTable(state.processedRows)}</tbody>
@@ -584,6 +599,7 @@ export default function ImportPage() {
                   <button
                     type="button"
                     onClick={() => void openImport(entry.id)}
+                    aria-label={`Open import ${entry.fileName}`}
                     className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1 text-xs text-neutral-200 transition hover:bg-neutral-700"
                   >
                     Open

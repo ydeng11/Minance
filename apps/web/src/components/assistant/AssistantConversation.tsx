@@ -148,7 +148,11 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
 
         <form onSubmit={askAssistant} className="border-t border-neutral-900 bg-neutral-950/90 p-4">
           <div className="relative">
+            <label htmlFor="assistant-question-input" className="sr-only">
+              Ask the assistant a question
+            </label>
             <input
+              id="assistant-question-input"
               ref={inputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
@@ -160,6 +164,7 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
               type="submit"
               disabled={isLoading || !input.trim()}
               data-testid="assistant-ask"
+              aria-label="Send question to assistant"
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-emerald-500 p-2 text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

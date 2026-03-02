@@ -14,7 +14,7 @@ function HelpMenuItem({
   onSelect: () => void;
 }) {
   const classes =
-    "group block rounded-lg border border-neutral-900 bg-neutral-950/70 p-2 transition hover:border-neutral-700 hover:bg-neutral-900";
+    "group block rounded-lg border border-neutral-900 bg-neutral-950/70 p-2 transition hover:border-neutral-700 hover:bg-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950";
 
   const content = (
     <>
@@ -34,6 +34,7 @@ function HelpMenuItem({
         rel="noreferrer"
         className={classes}
         data-testid={`help-menu-link-${link.id}`}
+        data-help-item
         onClick={onSelect}
       >
         {content}
@@ -42,7 +43,7 @@ function HelpMenuItem({
   }
 
   return (
-    <Link href={link.href} className={classes} data-testid={`help-menu-link-${link.id}`} onClick={onSelect}>
+    <Link href={link.href} className={classes} data-testid={`help-menu-link-${link.id}`} data-help-item onClick={onSelect}>
       {content}
     </Link>
   );
@@ -52,11 +53,15 @@ export function HelpMenu() {
   const resources = getHelpResources();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) {
       return;
     }
+
+    const firstItem = panelRef.current?.querySelector<HTMLElement>("[data-help-item]");
+    firstItem?.focus();
 
     function handlePointerDown(event: MouseEvent) {
       if (!containerRef.current?.contains(event.target as Node)) {
@@ -85,7 +90,8 @@ export function HelpMenu() {
         onClick={() => setOpen((prev) => !prev)}
         data-testid="help-menu-toggle"
         aria-expanded={open}
-        aria-haspopup="menu"
+        aria-haspopup="true"
+        aria-controls="help-menu-panel"
         className={cn(
           "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition",
           open
@@ -100,7 +106,9 @@ export function HelpMenu() {
 
       {open ? (
         <div
-          role="menu"
+          id="help-menu-panel"
+          ref={panelRef}
+          aria-label="Help resources"
           className="absolute right-0 top-full z-40 mt-2 w-[320px] rounded-xl border border-neutral-800 bg-neutral-950/95 p-3 shadow-2xl shadow-black/40 backdrop-blur"
           data-testid="help-menu-panel"
         >

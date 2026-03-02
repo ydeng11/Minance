@@ -32,6 +32,7 @@ export function BottomNav() {
     <nav
       className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-900 bg-neutral-950/90 px-2 py-2 backdrop-blur-xl md:hidden"
       data-testid="mobile-nav"
+      aria-label="Primary"
     >
       <div className="flex items-center gap-1 overflow-x-auto pb-1">
         {NAV_ITEMS.map((item) => {
@@ -41,12 +42,13 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               data-testid={item.testId}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex min-w-[62px] shrink-0 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[10px] font-medium transition-colors",
+                "flex min-w-[62px] shrink-0 flex-col items-center gap-1 rounded-xl px-2 py-1.5 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
                 isActive ? "text-emerald-400" : "text-neutral-500 hover:text-neutral-200"
               )}
             >
-              <item.icon className={cn("h-4 w-4", isActive && "text-emerald-400")} />
+              <item.icon className={cn("h-4 w-4", isActive && "text-emerald-400")} aria-hidden="true" />
               {item.name}
             </Link>
           );

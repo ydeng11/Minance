@@ -29,7 +29,10 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-neutral-900 bg-neutral-950/60 px-3 py-4 backdrop-blur-xl" data-testid="desktop-sidebar">
+    <aside
+      className="flex h-full w-64 flex-col border-r border-neutral-900 bg-neutral-950/60 px-3 py-4 backdrop-blur-xl"
+      data-testid="desktop-sidebar"
+    >
       <div className="mb-6 flex items-center gap-2 px-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/20">
           <div className="h-3 w-3 rounded-full bg-emerald-400" />
@@ -37,7 +40,7 @@ export function Sidebar() {
         <span className="text-lg font-semibold tracking-tight text-neutral-100">Minance</span>
       </div>
 
-      <nav className="flex flex-col gap-1" data-testid="primary-nav">
+      <nav className="flex flex-col gap-1" data-testid="primary-nav" aria-label="Primary">
         {PRIMARY_NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
           return (
@@ -45,14 +48,15 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               data-testid={item.testId}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
                 isActive
                   ? "bg-emerald-500/10 text-emerald-400"
                   : "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100"
               )}
             >
-              <item.icon className="h-4 w-4" />
+              <item.icon className="h-4 w-4" aria-hidden="true" />
               {item.name}
             </Link>
           );

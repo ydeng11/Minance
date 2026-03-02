@@ -192,8 +192,12 @@ export default function TransactionsPage() {
 
         <div className="flex w-full items-center gap-2 md:w-auto">
           <div className="relative flex-1 md:w-64">
+            <label htmlFor="txn-query-input" className="sr-only">
+              Search merchants
+            </label>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
             <input
+              id="txn-query-input"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               data-testid="txn-query"
@@ -205,9 +209,10 @@ export default function TransactionsPage() {
             type="button"
             data-testid="txn-apply"
             onClick={() => void loadTransactions()}
+            aria-label="Apply search and filters"
             className="rounded-lg border border-neutral-800 bg-neutral-900 p-2 text-neutral-300 transition hover:bg-neutral-800"
           >
-            <Filter className="h-4 w-4" />
+            <Filter className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </header>
@@ -263,13 +268,14 @@ export default function TransactionsPage() {
 
       <section className="overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-950/70">
         <table className="w-full text-left text-sm" data-testid="txn-table">
+          <caption className="sr-only">Transactions results with row actions</caption>
           <thead className="bg-neutral-900/60 text-neutral-300">
             <tr>
-              <th className="px-4 py-3 font-medium">Date</th>
-              <th className="px-4 py-3 font-medium">Merchant</th>
-              <th className="px-4 py-3 font-medium">Category</th>
-              <th className="px-4 py-3 font-medium text-right">Amount</th>
-              <th className="px-4 py-3 font-medium text-right">Actions</th>
+              <th scope="col" className="px-4 py-3 font-medium">Date</th>
+              <th scope="col" className="px-4 py-3 font-medium">Merchant</th>
+              <th scope="col" className="px-4 py-3 font-medium">Category</th>
+              <th scope="col" className="px-4 py-3 font-medium text-right">Amount</th>
+              <th scope="col" className="px-4 py-3 font-medium text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-900">
@@ -303,6 +309,7 @@ export default function TransactionsPage() {
                       type="button"
                       onClick={() => startEdit(txn)}
                       data-testid={`txn-edit-${txn.id}`}
+                      aria-label={`Edit transaction ${txn.merchant_raw}`}
                       className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800"
                     >
                       Edit
@@ -311,6 +318,7 @@ export default function TransactionsPage() {
                       type="button"
                       onClick={() => void removeTransaction(txn.id)}
                       data-testid={`txn-delete-${txn.id}`}
+                      aria-label={`Delete transaction ${txn.merchant_raw}`}
                       className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800"
                     >
                       Delete

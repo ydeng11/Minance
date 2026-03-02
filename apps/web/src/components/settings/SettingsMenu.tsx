@@ -33,6 +33,7 @@ export function SettingsMenu() {
     <nav
       className="flex flex-wrap gap-2 rounded-2xl border border-neutral-900 bg-neutral-950/70 p-2"
       data-testid="settings-menu"
+      aria-label="Settings sections"
     >
       {SETTINGS_MENU_ITEMS.map((item) => {
         const isActive =
@@ -42,14 +43,15 @@ export function SettingsMenu() {
             key={item.href}
             href={item.href}
             data-testid={item.testId}
+            aria-current={isActive ? "page" : undefined}
             className={cn(
-              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
               isActive
                 ? "bg-emerald-500/15 text-emerald-300"
                 : "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100"
             )}
           >
-            <item.icon className="h-4 w-4" />
+            <item.icon className="h-4 w-4" aria-hidden="true" />
             {item.name}
           </Link>
         );
