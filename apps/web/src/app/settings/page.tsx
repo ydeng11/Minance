@@ -501,11 +501,12 @@ export default function SettingsPage() {
 
         <div className="mt-4 overflow-hidden rounded-lg border border-neutral-900">
           <table className="w-full text-left text-sm">
+            <caption className="sr-only">Granular category strategy mapping</caption>
             <thead className="bg-neutral-900/70 text-neutral-400">
               <tr>
-                <th className="px-3 py-2">Granular Category</th>
-                <th className="px-3 py-2">Emoji</th>
-                <th className="px-3 py-2">Coarse Bucket</th>
+                <th scope="col" className="px-3 py-2">Granular Category</th>
+                <th scope="col" className="px-3 py-2">Emoji</th>
+                <th scope="col" className="px-3 py-2">Coarse Bucket</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-900">
@@ -515,6 +516,7 @@ export default function SettingsPage() {
                   <td className="px-3 py-2">
                     <input
                       value={entry.emoji}
+                      aria-label={`Emoji for ${entry.name}`}
                       onChange={(event) => {
                         const next = [...granularDraft];
                         next[index] = {
@@ -529,6 +531,7 @@ export default function SettingsPage() {
                   <td className="px-3 py-2">
                     <select
                       value={entry.coarseKey}
+                      aria-label={`Coarse bucket for ${entry.name}`}
                       onChange={(event) => {
                         const next = [...granularDraft];
                         next[index] = {

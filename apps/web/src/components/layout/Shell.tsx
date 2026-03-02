@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -9,11 +10,26 @@ import { HelpMenu } from "@/components/layout/HelpMenu";
 import { useSession } from "@/lib/session";
 
 export function Shell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { user, logout } = useSession();
   const appEnv = process.env.NEXT_PUBLIC_APP_ENV || "local";
 
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantFocusToken, setAssistantFocusToken] = useState(0);
+  const assistantToggleRef = useRef<HTMLButtonElement | null>(null);
+
+  const routeLabel = useMemo(() => {
+    if (pathname === "/") {
+      return "Dashboard";
+    }
+
+    return pathname
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => segment.replace(/-/g, " "))
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(" / ");
+  }, [pathname]);
 
   function openAssistant() {
     setAssistantOpen(true);
@@ -22,6 +38,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   function closeAssistant() {
     setAssistantOpen(false);
+    requestAnimationFrame(() => {
+      assistantToggleRef.current?.focus();
+    });
   }
 
   function toggleAssistant() {
@@ -55,7 +74,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Sidebar />
       </div>
 
-      <main className="flex-1 overflow-y-auto pb-20 md:pb-0" data-testid="app-shell">
+      <main id="app-main" tabIndex={-1} className="flex-1 overflow-y-auto pb-20 outline-none md:pb-0" data-testid="app-shell">
+        <p className="sr-only" aria-live="polite" aria-atomic="true">{`Page: ${routeLabel}`}</p>
         <div className="mx-auto w-full max-w-6xl p-4 md:p-8">
           <header className="mb-6 flex flex-col gap-3 rounded-2xl border border-neutral-900 bg-neutral-950/50 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -66,19 +86,22 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <div className="flex flex-wrap items-center gap-2">
               <HelpMenu />
               <button
+                ref={assistantToggleRef}
                 type="button"
                 onClick={toggleAssistant}
                 data-testid="assistant-toggle"
-                className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20"
+                aria-controls="assistant-sidebar"
+                aria-expanded={assistantOpen}
+                className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
               >
-                <MessageSquare className="h-4 w-4" />
+                <MessageSquare className="h-4 w-4" aria-hidden="true" />
                 AI Assistant
               </button>
               <button
                 type="button"
                 onClick={logout}
                 data-testid="logout-button"
-                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-300 transition hover:bg-neutral-800 hover:text-white"
+                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-300 transition hover:bg-neutral-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950"
               >
                 Log out
               </button>
@@ -100,6 +123,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             className="fixed inset-0 z-[70] bg-black/45"
           />
           <aside
+            id="assistant-sidebar"
             data-testid="assistant-sidebar"
             role="dialog"
             aria-modal="true"

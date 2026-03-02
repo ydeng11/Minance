@@ -13,6 +13,7 @@ const allocationRows = [
 ];
 
 const timeFrames = ["1D", "1W", "1M", "3M", "YTD", "1Y", "ALL"];
+const activeTimeFrame = "3M";
 
 const overviewSeries = [42, 37, 46, 34, 40, 38, 49, 44, 53, 47, 58, 54, 61];
 const securitySeries = [36, 33, 40, 31, 37, 35, 44, 41, 49, 43, 51, 47, 54];
@@ -78,13 +79,14 @@ export default function InvestmentsPage() {
 
             <div className="rounded-xl border border-[#15456d] bg-[#03172c]/80 p-4">
               <Sparkline values={overviewSeries} gradientId="overview-series" lineColor="#64dc7b" />
-              <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-300">
+              <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-300" role="group" aria-label="Overview time range">
                 {timeFrames.map((entry) => (
                   <button
                     key={entry}
                     type="button"
+                    aria-pressed={entry === activeTimeFrame}
                     className={
-                      entry === "3M"
+                      entry === activeTimeFrame
                         ? "rounded-full bg-[#24508a] px-3 py-1 font-semibold text-slate-100"
                         : "rounded-full px-3 py-1 text-slate-400 transition hover:bg-[#13345c] hover:text-slate-100"
                     }
@@ -172,13 +174,14 @@ export default function InvestmentsPage() {
 
             <div className="rounded-xl border border-[#15456d] bg-[#03172c]/80 p-4">
               <Sparkline values={securitySeries} gradientId="security-series" lineColor="#64dc7b" />
-              <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-300">
+              <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-300" role="group" aria-label="Security time range">
                 {timeFrames.map((entry) => (
                   <button
                     key={entry}
                     type="button"
+                    aria-pressed={entry === activeTimeFrame}
                     className={
-                      entry === "3M"
+                      entry === activeTimeFrame
                         ? "rounded-full bg-[#24508a] px-3 py-1 font-semibold text-slate-100"
                         : "rounded-full px-3 py-1 text-slate-400 transition hover:bg-[#13345c] hover:text-slate-100"
                     }
@@ -214,8 +217,12 @@ export default function InvestmentsPage() {
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-slate-100">Positions</h3>
               <div className="relative hidden md:block">
+                <label htmlFor="investments-sidebar-search" className="sr-only">
+                  Search positions
+                </label>
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                 <input
+                  id="investments-sidebar-search"
                   type="search"
                   placeholder="Search"
                   className="rounded-lg border border-[#24527f] bg-[#031a31] py-1.5 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-[#6c9cd8] focus:ring-1 focus:ring-[#6c9cd8]/40"
