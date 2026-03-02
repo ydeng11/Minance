@@ -105,6 +105,14 @@ export default function TransactionsPage() {
     return Array.from(new Set([...fromTransactions, ...fromOverview]));
   }, [categories, categoryView, overview, transactions]);
 
+  function handleCategoryViewChange(nextView: "granular" | "coarse") {
+    if (nextView !== categoryView) {
+      // Granular and coarse filter domains are not compatible; clear stale selection.
+      setCategory("");
+    }
+    setCategoryView(nextView);
+  }
+
   useEffect(() => {
     if (category && !categoryFilterOptions.includes(category)) {
       setCategory("");
@@ -363,7 +371,7 @@ export default function TransactionsPage() {
               Category View
               <select
                 value={categoryView}
-                onChange={(event) => setCategoryView(event.target.value as "granular" | "coarse")}
+                onChange={(event) => handleCategoryViewChange(event.target.value as "granular" | "coarse")}
                 data-testid="txn-category-view"
                 className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
               >
