@@ -73,6 +73,8 @@ Reference deployment and operations profile:
 - `docker-compose.selfhost.yml`
 - `.env.selfhost.example`
 - `docs/self-host-operations-runbook.md`
+- `docs/self-host-security-hardening-checklist.md`
+- `docs/transaction-category-operator-runbook.md`
 - `scripts/selfhost-backup.sh`
 - `scripts/selfhost-restore.sh`
 
@@ -84,6 +86,8 @@ Reference deployment and operations profile:
   - `MINANCE_SQLITE_SCHEMA_FILE` to select the schema file (default `services/api/sql/schema.sql`).
   - `MINANCE_SQLITE_AUTO_INIT=false` to disable startup schema initialization.
 - Authenticated storage status can be inspected via `GET /v1/system/storage`.
+- Authenticated metrics snapshot can be inspected via `GET /v1/system/metrics`.
+- Health/readiness probes are available at `GET /healthz` and `GET /readyz`.
 - E2E runs use isolated storage via `MINANCE_DATA_FILE=services/api/tmp/e2e-store.json`.
 - API now reads `.env.local` automatically for local development settings.
 - Dev/test account is auto-seeded when `NODE_ENV` is not `production`:

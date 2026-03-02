@@ -51,6 +51,16 @@ import {
 } from "./savedViews.js";
 import { createId, nowIso, normalizeText } from "./utils.js";
 import { ensureSqliteFoundation, getSqliteFoundationStatus } from "./sqlite-foundation.js";
+import {
+  beginHttpObservation,
+  createRequestId,
+  endHttpObservation,
+  getHealthStatus,
+  getMetricsSnapshot,
+  getReadinessStatus,
+  logStructuredEvent
+} from "./observability.js";
+import { applyCors, applySecurityHeaders, checkRateLimit } from "./security.js";
 
 const contentTypeByExt = {
   ".html": "text/html; charset=utf-8",
@@ -89,12 +99,6 @@ function matchPath(pathname, pattern) {
   }
 
   return params;
-}
-
-function allowCors(res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
 }
 
 function apiError(res, error) {
@@ -182,6 +186,14 @@ async function handleApiRequest(req, res, url) {
           backend: STORE_BACKEND,
           sqlite: getSqliteFoundationStatus()
         }
+      });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/system/metrics") {
+      requireUser(req);
+      sendJson(res, 200, {
+        metrics: getMetricsSnapshot()
       });
       return;
     }
@@ -644,14 +656,68 @@ function serveStatic(req, res, url) {
 }
 
 const server = http.createServer(async (req, res) => {
-  allowCors(res);
+  applySecurityHeaders(req, res);
+  const corsAllowed = applyCors(req, res);
+  if (!corsAllowed) {
+    sendError(res, 403, "Origin is not allowed by MINANCE_ALLOWED_ORIGINS");
+    return;
+  }
+  const requestId = createRequestId(req.headers["x-request-id"]);
+  res.setHeader("X-Request-Id", requestId);
+
+  const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const observation = beginHttpObservation(req, url.pathname);
+  let responseFinished = false;
+
+  const finalizeObservation = () => {
+    if (responseFinished) {
+      return;
+    }
+    responseFinished = true;
+    const durationMs = endHttpObservation(observation, res.statusCode, Date.now());
+    logStructuredEvent("info", "http.request", {
+      requestId,
+      method: req.method,
+      path: url.pathname,
+      statusCode: res.statusCode,
+      durationMs,
+      remoteAddress: req.socket?.remoteAddress || "unknown",
+      userAgent: req.headers["user-agent"] || null
+    });
+  };
+  res.on("finish", finalizeObservation);
+  res.on("close", finalizeObservation);
+
+  const rateLimit = checkRateLimit(req, url.pathname);
+  if (Number.isFinite(rateLimit.limit)) {
+    res.setHeader("X-RateLimit-Limit", String(rateLimit.limit));
+    res.setHeader("X-RateLimit-Remaining", String(rateLimit.remaining));
+    res.setHeader("X-RateLimit-Reset", rateLimit.resetAt);
+  }
+  if (!rateLimit.allowed) {
+    res.setHeader("Retry-After", String(rateLimit.retryAfterSeconds));
+    sendError(res, 429, "Rate limit exceeded", {
+      policy: rateLimit.policy,
+      retryAfterSeconds: rateLimit.retryAfterSeconds
+    });
+    return;
+  }
 
   if (req.method === "OPTIONS") {
     sendNoContent(res);
     return;
   }
 
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  if (req.method === "GET" && url.pathname === "/healthz") {
+    sendJson(res, 200, getHealthStatus());
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/readyz") {
+    const readiness = getReadinessStatus();
+    sendJson(res, readiness.ready ? 200 : 503, readiness);
+    return;
+  }
 
   if (isApiPath(url.pathname)) {
     await handleApiRequest(req, res, url);
@@ -664,7 +730,10 @@ const server = http.createServer(async (req, res) => {
 const devTestAccount = ensureDevTestAccount();
 if (devTestAccount.enabled) {
   const status = devTestAccount.created ? "created" : "available";
-  console.log(`Dev/test account ${status}: ${devTestAccount.email}`);
+  logStructuredEvent("info", "dev_account.seed", {
+    status,
+    email: devTestAccount.email
+  });
 }
 
 let sqliteFoundation = null;
@@ -676,11 +745,14 @@ try {
 }
 
 if (sqliteFoundation?.ready) {
-  console.log(
-    `SQLite foundation ready (${sqliteFoundation.migrationsApplied} migration entries) at ${sqliteFoundation.sqliteFilePath}`
-  );
+  logStructuredEvent("info", "sqlite.foundation.ready", {
+    migrationsApplied: sqliteFoundation.migrationsApplied,
+    sqliteFilePath: sqliteFoundation.sqliteFilePath
+  });
 } else if (sqliteFoundation?.lastError) {
-  console.warn(`SQLite foundation is not ready: ${sqliteFoundation.lastError}`);
+  logStructuredEvent("warn", "sqlite.foundation.not_ready", {
+    reason: sqliteFoundation.lastError
+  });
 }
 
 if (process.env.NODE_ENV !== "production") {
@@ -695,16 +767,21 @@ if (process.env.NODE_ENV !== "production") {
         seededUsers += 1;
       }
     } else if (!warned && aiSeed.reason !== "missing_env_key" && aiSeed.reason !== "production") {
-      console.warn(`Skipped dev OpenRouter seed: ${aiSeed.reason}`);
+      logStructuredEvent("warn", "dev_openrouter.seed_skipped", { reason: aiSeed.reason });
       warned = true;
     }
   }
 
   if (seededUsers > 0) {
-    console.log(`Seeded dev OpenRouter credential/default for ${seededUsers} user(s) from .env.local`);
+    logStructuredEvent("info", "dev_openrouter.seeded", {
+      users: seededUsers
+    });
   }
 }
 
 server.listen(PORT, () => {
-  console.log(`Minance Next running at http://localhost:${PORT}`);
+  logStructuredEvent("info", "server.started", {
+    port: PORT,
+    storeBackend: STORE_BACKEND
+  });
 });

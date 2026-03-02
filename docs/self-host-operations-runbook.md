@@ -2,6 +2,9 @@
 
 This runbook defines the baseline self-host profile for Minance Next, including deployment, backup/restore, and secret lifecycle policy.
 
+Security baseline companion checklist:
+- [`self-host-security-hardening-checklist.md`](./self-host-security-hardening-checklist.md)
+
 ## 1. Deployment Profile (Docker Compose + Env Template)
 
 ### Files
@@ -104,11 +107,41 @@ scripts/selfhost-restore.sh --backup ./backups/<stamp> --apply
 3. Force reconfiguration of provider credentials in app settings.
 4. Review audit trail (`audit_events`) for suspicious API settings changes.
 
-## 4. Operational Verification Checklist
+## 4. Observability Baseline
+
+### API health/readiness probes
+- Liveness: `GET /healthz` returns `200` when the API process is running.
+- Readiness: `GET /readyz` returns:
+  - `200` when active storage backend checks pass.
+  - `503` when required dependencies are not ready (for example SQLite foundation issues).
+- Storage visibility (authenticated): `GET /v1/system/storage`.
+- Metrics snapshot (authenticated): `GET /v1/system/metrics`.
+
+### Structured request logs
+- API emits JSON log lines for every request with:
+  - `event=http.request`
+  - `requestId`, `method`, `path`, `statusCode`, `durationMs`
+  - `remoteAddress`, `userAgent`
+- Forward container logs to your preferred sink (journald, Loki, Elasticsearch, CloudWatch, etc.).
+
+### Minimum alert policy
+- Availability:
+  - Alert when `/healthz` fails for 2 consecutive probe windows.
+  - Alert when `/readyz` is `503` for more than 5 minutes.
+- Error rate:
+  - Alert when `5xx` ratio exceeds 2% over a rolling 10-minute window.
+- Latency:
+  - Alert when p95 API latency exceeds 1200ms over 15 minutes.
+- Capacity:
+  - Alert when backup directory free disk drops below 15%.
+
+## 5. Operational Verification Checklist
 
 - [ ] `docker compose ... ps` shows healthy `api` and `web`.
 - [ ] Login works with expected user account(s).
+- [ ] `/healthz` returns `200` and `/readyz` returns expected state.
 - [ ] `/v1/system/storage` responds and reports expected backend.
+- [ ] `/v1/system/metrics` is reachable for operator diagnostics.
 - [ ] Backup artifact for current release exists and has checksums.
 - [ ] Restore drill executed in non-production within the last 30 days.
 - [ ] `.env.selfhost` permissions are restricted and secrets rotated per policy.

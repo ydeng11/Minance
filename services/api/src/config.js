@@ -66,6 +66,28 @@ function parseBoolean(value, defaultValue) {
   return defaultValue;
 }
 
+function parseInteger(value, defaultValue, minValue = null) {
+  if (value == null || value === "") {
+    return defaultValue;
+  }
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isFinite(parsed)) {
+    return defaultValue;
+  }
+  if (minValue != null && parsed < minValue) {
+    return minValue;
+  }
+  return parsed;
+}
+
+function parseOriginList(value, fallback) {
+  const raw = value == null ? fallback : value;
+  return String(raw)
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
 function normalizeStoreBackend(value) {
   const normalized = String(value || "json").trim().toLowerCase();
   return normalized === "sqlite" ? "sqlite" : "json";
@@ -90,3 +112,19 @@ export const PORT = Number(process.env.PORT || 3000);
 export const TOKEN_TTL_MS = 1000 * 60 * 60; // 1 hour
 export const REFRESH_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 days
 export const AI_SECRET = process.env.AI_CREDENTIAL_SECRET || "minance-next-local-secret-change-me";
+export const SECURITY_ALLOWED_ORIGINS = parseOriginList(
+  process.env.MINANCE_ALLOWED_ORIGINS,
+  "http://localhost:3000,http://127.0.0.1:3000"
+);
+export const CORS_ALLOW_CREDENTIALS = parseBoolean(process.env.MINANCE_CORS_ALLOW_CREDENTIALS, false);
+export const RATE_LIMIT_WINDOW_MS = parseInteger(process.env.MINANCE_RATE_LIMIT_WINDOW_MS, 60_000, 1_000);
+export const DEFAULT_RATE_LIMIT_MAX_REQUESTS = parseInteger(
+  process.env.MINANCE_RATE_LIMIT_MAX_REQUESTS,
+  600,
+  1
+);
+export const AUTH_RATE_LIMIT_MAX_REQUESTS = parseInteger(
+  process.env.MINANCE_AUTH_RATE_LIMIT_MAX_REQUESTS,
+  60,
+  1
+);
