@@ -303,6 +303,38 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(credentials.payload?.preferences?.defaultProvider, "openrouter");
   });
 
+  await t.test("account provider abstraction exposes self-host fallback and deterministic failures", async () => {
+    const providers = await apiRequest(context, "GET", "/v1/accounts/providers", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(Array.isArray(providers.payload?.providers), true);
+    assert.equal(providers.payload?.providers?.length > 0, true);
+    assert.equal(providers.payload?.defaultProviderId, "manual_csv");
+
+    const provider = await apiRequest(context, "GET", "/v1/accounts/providers/manual_csv", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(provider.payload?.provider?.id, "manual_csv");
+    assert.equal(provider.payload?.provider?.capabilities?.csvImport, true);
+    assert.equal(provider.payload?.provider?.capabilities?.directAggregation, false);
+
+    const missing = await apiRequest(context, "GET", "/v1/accounts/providers/unknown", {
+      token: accessToken,
+      expectedStatus: 404
+    });
+    assert.equal(missing.payload?.error?.message, "Unknown account provider");
+
+    const unsupportedAction = await apiRequest(context, "POST", "/v1/accounts/providers/manual_csv/link-session", {
+      token: accessToken,
+      expectedStatus: 409
+    });
+    assert.equal(unsupportedAction.payload?.error?.details?.code, "ACCOUNT_PROVIDER_ACTION_UNSUPPORTED");
+    assert.equal(unsupportedAction.payload?.error?.details?.providerId, "manual_csv");
+    assert.equal(unsupportedAction.payload?.error?.details?.action, "begin_link_session");
+  });
+
   await t.test("accounts, recurrings, investments, and generic settings remain explicit 404 contracts", async () => {
     const missingEndpoints = ["/v1/accounts", "/v1/recurrings", "/v1/investments", "/v1/settings"];
     for (const endpoint of missingEndpoints) {
