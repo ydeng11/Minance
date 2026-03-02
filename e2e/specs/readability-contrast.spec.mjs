@@ -8,6 +8,13 @@ import {
   uploadAndCommitFixtureCsv
 } from "./helpers.mjs";
 
+const CONTRAST_TARGETS = {
+  body: 4.5,
+  placeholder: 4.5,
+  emphasizedText: 7,
+  focusBorder: 3
+};
+
 async function collectContrast(locator, options = {}) {
   const pseudo = options.pseudo || null;
   const metric = options.metric || "text";
@@ -134,9 +141,20 @@ async function expectContrast(locator, options) {
   );
 }
 
-test("@core table and input text remain readable across transactions/import UI", async ({ page }) => {
+test("@core major tab text and input contrast meets dark-theme thresholds", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);
+
+  await gotoView(page, "dashboard");
+  await expectContrast(page.getByTestId("dashboard-page").locator("header p").first(), {
+    label: "dashboard subtitle text",
+    minRatio: CONTRAST_TARGETS.body
+  });
+
+  await expectContrast(page.getByTestId("dashboard-trend").locator("h3"), {
+    label: "dashboard trend section heading",
+    minRatio: CONTRAST_TARGETS.body
+  });
 
   await gotoView(page, "transactions");
   await searchTransactions(page, "Coffee Shop");
@@ -151,18 +169,18 @@ test("@core table and input text remain readable across transactions/import UI",
 
   await expectContrast(transactionsTable.locator("tbody td").first(), {
     label: "transactions table body cell",
-    minRatio: 5
+    minRatio: CONTRAST_TARGETS.body
   });
 
   const queryInput = page.getByTestId("txn-query");
   await expectContrast(queryInput, {
     label: "transactions search input text",
-    minRatio: 7
+    minRatio: CONTRAST_TARGETS.emphasizedText
   });
 
   await expectContrast(queryInput, {
     label: "transactions search input placeholder",
-    minRatio: 4.5,
+    minRatio: CONTRAST_TARGETS.placeholder,
     pseudo: "::placeholder"
   });
 
@@ -177,13 +195,44 @@ test("@core table and input text remain readable across transactions/import UI",
 
   await expectContrast(processedMemo, {
     label: "processed row memo input text",
-    minRatio: 7
+    minRatio: CONTRAST_TARGETS.emphasizedText
   });
 
   await processedMemo.focus();
   await expectContrast(processedMemo, {
     label: "processed row memo input focus border",
-    minRatio: 3,
+    minRatio: CONTRAST_TARGETS.focusBorder,
     metric: "border"
+  });
+
+  await expectContrast(page.getByTestId("processed-summary"), {
+    label: "import processed summary text",
+    minRatio: CONTRAST_TARGETS.body
+  });
+
+  await gotoView(page, "settings");
+  await expectContrast(page.getByTestId("settings-section-map").locator("p").first(), {
+    label: "settings section map description text",
+    minRatio: CONTRAST_TARGETS.body
+  });
+
+  await expectContrast(page.getByTestId("settings-data-controls").locator("p").first(), {
+    label: "settings data controls description text",
+    minRatio: CONTRAST_TARGETS.body
+  });
+
+  await gotoView(page, "assistant");
+  const assistantQuestion = page.getByTestId("assistant-question");
+  await expect(assistantQuestion).toBeVisible();
+
+  await expectContrast(assistantQuestion, {
+    label: "assistant question input text",
+    minRatio: CONTRAST_TARGETS.emphasizedText
+  });
+
+  await expectContrast(assistantQuestion, {
+    label: "assistant question input placeholder",
+    minRatio: CONTRAST_TARGETS.placeholder,
+    pseudo: "::placeholder"
   });
 });

@@ -79,7 +79,7 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
         <header className="flex items-center justify-between border-b border-neutral-900 px-4 py-3">
           <div>
             <h2 className="text-base font-semibold tracking-tight text-neutral-100">AI Assistant</h2>
-            <p className="text-xs text-neutral-500">Ask questions about your spending patterns.</p>
+            <p className="text-xs text-neutral-400">Ask questions about your spending patterns.</p>
           </div>
           <button
             type="button"

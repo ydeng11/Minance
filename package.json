@@ -24,10 +24,12 @@
     "check": "npm run test",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --project=chromium --headed",
-    "e2e:ci": "playwright test --project=chromium"
+    "e2e:ci": "playwright test --project=chromium --grep-invert @a11y",
+    "e2e:a11y": "playwright test --project=chromium --grep @a11y"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
+    "axe-core": "^4.11.0",
     "concurrently": "^9.2.1"
   },
   "dependencies": {

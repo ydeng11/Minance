@@ -1,13 +1,24 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AssistantConversation } from "@/components/assistant/AssistantConversation";
 import { HelpMenu } from "@/components/layout/HelpMenu";
 import { useSession } from "@/lib/session";
+
+const ASSISTANT_FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "area[href]",
+  "button:not([disabled])",
+  "input:not([disabled]):not([type='hidden'])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "[contenteditable='true']",
+  "[tabindex]:not([tabindex='-1'])"
+].join(",");
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -17,6 +28,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantFocusToken, setAssistantFocusToken] = useState(0);
   const assistantToggleRef = useRef<HTMLButtonElement | null>(null);
+  const assistantSidebarRef = useRef<HTMLElement | null>(null);
 
   const routeLabel = useMemo(() => {
     if (pathname === "/") {
@@ -31,42 +43,124 @@ export function Shell({ children }: { children: React.ReactNode }) {
       .join(" / ");
   }, [pathname]);
 
-  function openAssistant() {
+  const getAssistantFocusableElements = useCallback(() => {
+    if (!assistantSidebarRef.current) {
+      return [];
+    }
+
+    return Array.from(assistantSidebarRef.current.querySelectorAll<HTMLElement>(ASSISTANT_FOCUSABLE_SELECTOR)).filter((element) => {
+      if (element.hasAttribute("disabled") || element.getAttribute("aria-hidden") === "true") {
+        return false;
+      }
+
+      const computedStyle = getComputedStyle(element);
+      if (computedStyle.display === "none" || computedStyle.visibility === "hidden") {
+        return false;
+      }
+
+      return !(element.offsetParent === null && computedStyle.position !== "fixed");
+    });
+  }, []);
+
+  const focusAssistantFirstElement = useCallback(() => {
+    const focusable = getAssistantFocusableElements();
+    const fallbackTarget = assistantSidebarRef.current;
+    const target = focusable[0] ?? fallbackTarget;
+    target?.focus();
+  }, [getAssistantFocusableElements]);
+
+  const openAssistant = useCallback(() => {
     setAssistantOpen(true);
     setAssistantFocusToken((prev) => prev + 1);
-  }
+  }, []);
 
-  function closeAssistant() {
+  const closeAssistant = useCallback(() => {
     setAssistantOpen(false);
     requestAnimationFrame(() => {
       assistantToggleRef.current?.focus();
     });
-  }
+  }, []);
 
-  function toggleAssistant() {
+  const toggleAssistant = useCallback(() => {
     if (assistantOpen) {
       closeAssistant();
       return;
     }
     openAssistant();
-  }
+  }, [assistantOpen, closeAssistant, openAssistant]);
 
   useEffect(() => {
     if (!assistantOpen) {
       return;
     }
 
+    requestAnimationFrame(() => {
+      if (!assistantSidebarRef.current?.contains(document.activeElement)) {
+        focusAssistantFirstElement();
+      }
+    });
+
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        event.preventDefault();
         closeAssistant();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusable = getAssistantFocusableElements();
+      const activeElement = document.activeElement as HTMLElement | null;
+      const firstElement = focusable[0];
+      const lastElement = focusable[focusable.length - 1];
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        assistantSidebarRef.current?.focus();
+        return;
+      }
+
+      const isOutsideSidebar = !activeElement || !assistantSidebarRef.current?.contains(activeElement);
+      if (isOutsideSidebar) {
+        event.preventDefault();
+        if (event.shiftKey) {
+          lastElement.focus();
+        } else {
+          focusAssistantFirstElement();
+        }
+        return;
+      }
+
+      if (event.shiftKey && activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+        return;
+      }
+
+      if (!event.shiftKey && activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     }
 
-    window.addEventListener("keydown", onKeyDown);
+    function onFocusIn(event: FocusEvent) {
+      const target = event.target as Node | null;
+      if (!target || assistantSidebarRef.current?.contains(target)) {
+        return;
+      }
+
+      focusAssistantFirstElement();
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("focusin", onFocusIn);
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("focusin", onFocusIn);
     };
-  }, [assistantOpen]);
+  }, [assistantOpen, closeAssistant, focusAssistantFirstElement, getAssistantFocusableElements]);
 
   return (
     <div className="flex h-screen w-full flex-col bg-neutral-950 text-white md:flex-row">
@@ -124,10 +218,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
           />
           <aside
             id="assistant-sidebar"
+            ref={assistantSidebarRef}
             data-testid="assistant-sidebar"
             role="dialog"
             aria-modal="true"
             aria-label="AI Assistant"
+            tabIndex={-1}
             className="fixed inset-y-0 right-0 z-[80] w-full max-w-xl border-l border-neutral-900 bg-neutral-950/95 backdrop-blur-xl"
           >
             <AssistantConversation mode="panel" focusToken={assistantFocusToken} onClose={closeAssistant} />

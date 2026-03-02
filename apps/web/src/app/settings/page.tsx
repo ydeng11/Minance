@@ -217,7 +217,7 @@ export default function SettingsPage() {
 
       <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4" data-testid="settings-section-map">
         <h3 className="text-sm font-medium text-neutral-300">Section Map</h3>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-400">
           This workspace defaults to self-host behavior and keeps SaaS-only surfaces optional.
         </p>
         <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -226,35 +226,35 @@ export default function SettingsPage() {
             className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
           >
             Data import/export
-            <ArrowRight className="h-4 w-4 text-neutral-500" />
+            <ArrowRight className="h-4 w-4 text-neutral-400" />
           </a>
           <a
             href="#settings-integrations"
             className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
           >
             Integrations
-            <ArrowRight className="h-4 w-4 text-neutral-500" />
+            <ArrowRight className="h-4 w-4 text-neutral-400" />
           </a>
           <a
             href="#settings-profile-prefs"
             className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
           >
             Profile &amp; preferences
-            <ArrowRight className="h-4 w-4 text-neutral-500" />
+            <ArrowRight className="h-4 w-4 text-neutral-400" />
           </a>
           <a
             href="#settings-taxonomy-rules"
             className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
           >
             Taxonomy &amp; rules
-            <ArrowRight className="h-4 w-4 text-neutral-500" />
+            <ArrowRight className="h-4 w-4 text-neutral-400" />
           </a>
         </div>
       </section>
 
       <section id="settings-data-controls" className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4" data-testid="settings-data-controls">
         <h3 className="text-sm font-medium text-neutral-300">Data Controls</h3>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-400">
           Default ingestion is CSV/manual import. Export produces a local JSON snapshot with masked credentials.
         </p>
 
@@ -299,7 +299,7 @@ export default function SettingsPage() {
 
       <section id="settings-integrations" className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4" data-testid="settings-integrations">
         <h3 className="text-sm font-medium text-neutral-300">Integrations</h3>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-400">
           AI and support channels are operator-configurable; no subscription service is required.
         </p>
 
@@ -313,7 +313,7 @@ export default function SettingsPage() {
               <Bot className="h-4 w-4 text-emerald-400" />
               AI provider settings (BYOK)
             </span>
-            <ArrowRight className="h-4 w-4 text-neutral-500" />
+            <ArrowRight className="h-4 w-4 text-neutral-400" />
           </Link>
           <Link
             href="/help"
@@ -324,7 +324,7 @@ export default function SettingsPage() {
               <LifeBuoy className="h-4 w-4 text-emerald-400" />
               Help &amp; support links
             </span>
-            <ArrowRight className="h-4 w-4 text-neutral-500" />
+            <ArrowRight className="h-4 w-4 text-neutral-400" />
           </Link>
         </div>
 
@@ -341,18 +341,18 @@ export default function SettingsPage() {
         <h3 className="text-sm font-medium text-neutral-300">Profile &amp; Preferences</h3>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <div className="rounded-lg border border-neutral-900 bg-neutral-950 p-3">
-            <p className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-neutral-500">
+            <p className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-neutral-400">
               <UserRound className="h-3.5 w-3.5" />
               Account
             </p>
             <p className="mt-1 text-sm text-neutral-200">{user?.email || "Unknown user"}</p>
           </div>
           <div className="rounded-lg border border-neutral-900 bg-neutral-950 p-3">
-            <p className="text-xs uppercase tracking-wide text-neutral-500">Environment</p>
+            <p className="text-xs uppercase tracking-wide text-neutral-400">Environment</p>
             <p className="mt-1 text-sm text-neutral-200">{appEnv}</p>
           </div>
           <div className="rounded-lg border border-neutral-900 bg-neutral-950 p-3">
-            <p className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-neutral-500">
+            <p className="inline-flex items-center gap-1.5 text-xs uppercase tracking-wide text-neutral-400">
               <ShieldCheck className="h-3.5 w-3.5" />
               Storage backend
             </p>
@@ -449,7 +449,7 @@ export default function SettingsPage() {
 
       <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4" data-testid="category-strategy">
         <h3 className="text-sm font-medium text-neutral-300">Copilot Two-Category Strategy</h3>
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-xs text-neutral-400">
           Defaults follow{" "}
           <a
             className="text-emerald-300 underline decoration-emerald-600 underline-offset-2"

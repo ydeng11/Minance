@@ -381,15 +381,15 @@ export default function ImportPage() {
                 <FileText className="h-8 w-8 text-emerald-400" />
               </div>
               <p className="text-lg font-medium text-emerald-100" data-testid="import-selected-file">{file.name}</p>
-              <p className="text-sm text-neutral-500">Ready to process. Upload again to replace this file.</p>
+              <p className="text-sm text-neutral-400">Ready to process. Upload again to replace this file.</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
               <div className="rounded-full bg-neutral-900 p-4">
-                <UploadCloud className="h-8 w-8 text-neutral-500" />
+                <UploadCloud className="h-8 w-8 text-neutral-400" />
               </div>
               <p className="text-lg font-medium text-neutral-200">Upload a CSV file to begin</p>
-              <p className="text-sm text-neutral-500">Supports Chase, Amex, Apple, Citi &amp; more...</p>
+              <p className="text-sm text-neutral-400">Supports Chase, Amex, Apple, Citi &amp; more...</p>
             </div>
           )}
         </div>
@@ -508,7 +508,7 @@ export default function ImportPage() {
                 </div>
               </>
             ) : (
-              <p className="mt-2 text-sm text-neutral-500">Analyze a CSV to review mapping.</p>
+              <p className="mt-2 text-sm text-neutral-400">Analyze a CSV to review mapping.</p>
             )}
 
             <pre
@@ -556,13 +556,17 @@ export default function ImportPage() {
               </div>
             </div>
 
-            <p className="mt-2 text-xs text-neutral-500" data-testid="processed-summary">
+            <p className="mt-2 text-xs text-neutral-400" data-testid="processed-summary">
               {state.processedRows
                 ? `Total: ${state.processedRows.summary.all} · Included: ${state.processedRows.summary.included} · Valid: ${state.processedRows.summary.valid} · Invalid: ${state.processedRows.summary.invalid} · Duplicate: ${state.processedRows.summary.duplicate} · Excluded: ${state.processedRows.summary.excluded}`
                 : "No processed rows loaded yet."}
             </p>
 
-            <div className="mt-3 overflow-auto">
+            <div
+              className="mt-3 overflow-auto"
+              tabIndex={0}
+              aria-label="Processed records table"
+            >
               <table className="min-w-[1100px] w-full text-xs" data-testid="processed-table">
                 <caption className="sr-only">Processed row editor table</caption>
                 <thead>
@@ -592,7 +596,7 @@ export default function ImportPage() {
                 <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-neutral-900 px-3 py-2 text-sm">
                   <div>
                     <strong className="text-neutral-100">{entry.fileName}</strong>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-neutral-400">
                       {entry.status} · {entry.rowCount} rows · {new Date(entry.createdAt).toLocaleString()}
                     </p>
                   </div>

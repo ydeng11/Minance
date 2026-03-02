@@ -149,6 +149,7 @@ export default function DashboardPage() {
             value={categoryView}
             onChange={(event) => setCategoryView(event.target.value as "granular" | "coarse")}
             data-testid="dashboard-category-view"
+            aria-label="Category view"
             className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
           >
             <option value="granular">Granular View</option>
@@ -158,6 +159,7 @@ export default function DashboardPage() {
             value={range}
             onChange={(event) => setRange(event.target.value)}
             data-testid="dashboard-range"
+            aria-label="Date range"
             className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
           >
             {RANGE_OPTIONS.map((option) => (
@@ -224,7 +226,7 @@ export default function DashboardPage() {
               ))
             : trendBars.length === 0
               ? (
-                <p className="col-span-6 text-sm text-neutral-500">No trend data for this range.</p>
+                <p className="col-span-6 text-sm text-neutral-400">No trend data for this range.</p>
               )
               : trendBars.map((item) => (
                   <div key={item.month} className="flex flex-col items-center gap-2">
@@ -232,7 +234,7 @@ export default function DashboardPage() {
                       <div className="w-1/2 rounded-md bg-emerald-500/80" style={{ height: item.spendHeight }} />
                       <div className="w-1/2 rounded-md bg-sky-400/70" style={{ height: item.incomeHeight }} />
                     </div>
-                    <div className="text-[11px] text-neutral-500">{item.month.slice(5)}</div>
+                    <div className="text-[11px] text-neutral-400">{item.month.slice(5)}</div>
                   </div>
                 ))}
         </div>
@@ -243,7 +245,7 @@ export default function DashboardPage() {
         <div className="space-y-5 px-4 pb-4">
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Top Categories</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Top Categories</h4>
               <div className="mt-3 space-y-2" data-testid="analytics-category-bars">
                 {(overview?.topCategories || []).slice(0, 8).map((entry) => (
                   <div key={entry.category} className="flex items-center justify-between rounded-md bg-neutral-900 px-3 py-2 text-sm">
@@ -255,7 +257,7 @@ export default function DashboardPage() {
             </section>
 
             <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Top Merchants</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Top Merchants</h4>
               <div className="mt-3 space-y-2" data-testid="analytics-merchant-bars">
                 {(overview?.topMerchants || []).slice(0, 8).map((entry) => (
                   <div key={entry.merchant} className="flex items-center justify-between rounded-md bg-neutral-900 px-3 py-2 text-sm">
@@ -269,7 +271,7 @@ export default function DashboardPage() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Spending Heatmap</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Spending Heatmap</h4>
               <div className="mt-3 grid grid-cols-7 gap-1.5" data-testid="analytics-heatmap">
                 {heatmap.length ? (
                   heatmap.slice(0, 49).map((entry) => {
@@ -285,13 +287,13 @@ export default function DashboardPage() {
                     );
                   })
                 ) : (
-                  <p className="col-span-7 text-sm text-neutral-500">No spend data for range.</p>
+                  <p className="col-span-7 text-sm text-neutral-400">No spend data for range.</p>
                 )}
               </div>
             </section>
 
             <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Anomalies</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Anomalies</h4>
               <div className="mt-3 space-y-2" data-testid="analytics-anomalies">
                 {anomalies.length ? (
                   anomalies.slice(0, 8).map((entry) => (
@@ -301,14 +303,14 @@ export default function DashboardPage() {
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-neutral-500">No anomalies detected.</p>
+                  <p className="text-sm text-neutral-400">No anomalies detected.</p>
                 )}
               </div>
             </section>
           </div>
 
           <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Saved Views</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Saved Views</h4>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
               <label className="grid flex-1 gap-1 text-sm text-neutral-300">
                 Name

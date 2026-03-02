@@ -195,7 +195,7 @@ export default function TransactionsPage() {
             <label htmlFor="txn-query-input" className="sr-only">
               Search merchants
             </label>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
             <input
               id="txn-query-input"
               value={search}
@@ -234,7 +234,7 @@ export default function TransactionsPage() {
                   return (
                     <div key={entry.month} className="flex flex-col items-center gap-2">
                       <div className="w-full rounded bg-neutral-700/80" style={{ height }} />
-                      <span className="text-[11px] text-neutral-500">{entry.month.slice(5)}</span>
+                      <span className="text-[11px] text-neutral-400">{entry.month.slice(5)}</span>
                     </div>
                   );
                 })

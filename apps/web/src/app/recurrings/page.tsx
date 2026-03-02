@@ -21,7 +21,7 @@ export default function RecurringsPage() {
             <article key={entry.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-900/60 px-3 py-3">
               <div>
                 <p className="text-sm font-medium text-neutral-100">{entry.name}</p>
-                <p className="text-xs text-neutral-500">{entry.cadence}</p>
+                <p className="text-xs text-neutral-400">{entry.cadence}</p>
               </div>
               <div className="flex items-center gap-3 text-sm text-neutral-300">
                 <span>{entry.amount}</span>

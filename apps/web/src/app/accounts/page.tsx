@@ -43,7 +43,7 @@ export default function AccountsPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-base font-medium text-neutral-100">{entry.name}</p>
-                  <p className="text-xs uppercase tracking-wide text-neutral-500">{entry.provider}</p>
+                  <p className="text-xs uppercase tracking-wide text-neutral-400">{entry.provider}</p>
                 </div>
                 <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300">{entry.status}</span>
               </div>

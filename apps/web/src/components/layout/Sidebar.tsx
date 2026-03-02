@@ -63,7 +63,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-auto pt-3 text-[11px] text-neutral-600">Reference parity mode</div>
+      <div className="mt-auto pt-3 text-[11px] text-neutral-400">Reference parity mode</div>
     </aside>
   );
 }

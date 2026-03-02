@@ -31,7 +31,7 @@ export default function CategoriesPage() {
                 <entry.icon className={`h-4 w-4 ${entry.color}`} />
                 <span className="text-sm font-medium text-neutral-100">{entry.label}</span>
               </div>
-              <p className="mt-2 text-xs text-neutral-500">Category CRUD and grouping flows ship in the dedicated categories parity bead.</p>
+              <p className="mt-2 text-xs text-neutral-400">Category CRUD and grouping flows ship in the dedicated categories parity bead.</p>
             </article>
           ))}
         </div>
