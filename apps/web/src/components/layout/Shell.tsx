@@ -5,6 +5,7 @@ import { MessageSquare } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AssistantConversation } from "@/components/assistant/AssistantConversation";
+import { HelpMenu } from "@/components/layout/HelpMenu";
 import { useSession } from "@/lib/session";
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -63,6 +64,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <p className="text-[11px] uppercase tracking-wide text-neutral-600">{appEnv}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <HelpMenu />
               <button
                 type="button"
                 onClick={toggleAssistant}

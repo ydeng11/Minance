@@ -19,4 +19,11 @@ test("@core AI settings and migration are available in the settings menu", async
 
   await page.getByTestId("settings-menu-migration").click();
   await expect(page.getByTestId("migration-settings-page")).toBeVisible();
+
+  const helpMenuToggle = page.getByTestId("help-menu-toggle");
+  await expect(helpMenuToggle).toBeVisible();
+  await helpMenuToggle.click();
+  await expect(page.getByTestId("help-menu-panel")).toBeVisible();
+  await page.getByTestId("help-menu-link-help-center").click();
+  await expect(page.getByTestId("help-page")).toBeVisible();
 });
