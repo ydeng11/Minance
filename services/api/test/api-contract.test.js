@@ -187,19 +187,97 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(createResponse.payload?.category?.name, "Parity Dining");
     assert.equal(createResponse.payload?.category?.coarseKey, "essential");
     assert.equal(createResponse.payload?.category?.emoji, "Bowl");
+    const categoryId = createResponse.payload?.category?.id;
+    assert.equal(typeof categoryId, "string");
+
+    const updatedCategory = await apiRequest(context, "PUT", `/v1/categories/${categoryId}`, {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        name: "Parity Dining Updated",
+        coarseKey: "extra",
+        type: "expense"
+      }
+    });
+    assert.equal(updatedCategory.payload?.category?.name, "Parity Dining Updated");
+    assert.equal(updatedCategory.payload?.category?.coarseKey, "extra");
+    assert.equal(updatedCategory.payload?.category?.type, "expense");
+
+    const duplicateCategory = await apiRequest(context, "POST", "/v1/categories", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        name: "Parity Dining Updated"
+      }
+    });
+    assert.equal(duplicateCategory.payload?.error?.message, "Invalid category name already exists");
+
+    const invalidCategoryGroup = await apiRequest(context, "POST", "/v1/categories", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        name: "Invalid Group Category",
+        coarseKey: "not-a-real-group"
+      }
+    });
+    assert.equal(invalidCategoryGroup.payload?.error?.message, "Invalid category group");
 
     const ruleResponse = await apiRequest(context, "POST", "/v1/category-rules", {
       token: accessToken,
       expectedStatus: 201,
       body: {
         pattern: "parity cafe",
-        category: "Parity Dining",
+        category: "Parity Dining Updated",
         type: "contains",
         priority: 70
       }
     });
-    assert.equal(ruleResponse.payload?.rule?.category, "Parity Dining");
+    assert.equal(ruleResponse.payload?.rule?.category, "Parity Dining Updated");
     assert.equal(ruleResponse.payload?.rule?.type, "contains");
+
+    const removableCategory = await apiRequest(context, "POST", "/v1/categories", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        name: "Temporary Cleanup Category",
+        coarseKey: "neutral"
+      }
+    });
+    const removableCategoryId = removableCategory.payload?.category?.id;
+    assert.equal(typeof removableCategoryId, "string");
+
+    await apiRequest(context, "DELETE", `/v1/categories/${removableCategoryId}`, {
+      token: accessToken,
+      expectedStatus: 204
+    });
+
+    const listAfterDelete = await apiRequest(context, "GET", "/v1/categories", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(
+      listAfterDelete.payload?.categories?.some((entry) => entry.id === removableCategoryId),
+      false
+    );
+
+    await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        transaction_date: "2026-02-01",
+        description: "Referenced category transaction",
+        merchant_raw: "Parity Category Merchant",
+        amount: -15.25,
+        account_name: "Contract Checking",
+        category_final: "Parity Dining Updated"
+      }
+    });
+
+    const referencedDelete = await apiRequest(context, "DELETE", `/v1/categories/${categoryId}`, {
+      token: accessToken,
+      expectedStatus: 400
+    });
+    assert.equal(referencedDelete.payload?.error?.message, "Invalid category is referenced by existing transactions");
   });
 
   await t.test("transactions endpoints support captured query patterns and CRUD lifecycle", async () => {
@@ -406,7 +484,7 @@ test("api parity contract suite for categories/transactions/settings and missing
       token: accessToken,
       expectedStatus: 201,
       body: {
-        displayName: "Contract Checking",
+        displayName: "Accounts Suite Checking",
         accountType: "checking",
         currency: "usd",
         initialBalance: "250.55"
@@ -435,7 +513,7 @@ test("api parity contract suite for categories/transactions/settings and missing
       token: accessToken,
       expectedStatus: 400,
       body: {
-        displayName: "Contract Checking",
+        displayName: "Accounts Suite Checking",
         accountType: "checking",
         currency: "USD",
         initialBalance: 10

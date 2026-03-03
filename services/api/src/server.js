@@ -41,10 +41,15 @@ import {
   buildAnalyticsMeta
 } from "./analytics.js";
 import {
-  ensureCategoryInStrategy,
   getCategoryStrategyForUser,
   updateCategoryStrategyForUser
 } from "./category-strategy.js";
+import {
+  listCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory
+} from "./categories.js";
 import { runAssistantQuery, getAssistantQuery } from "./assistant.js";
 import { writeUploadedSqliteFile, runLegacyMigration, getMigrationReport } from "./migration.js";
 import { loadStore, saveStore, addAuditEvent } from "./store.js";
@@ -55,7 +60,7 @@ import {
   updateSavedView,
   deleteSavedView
 } from "./savedViews.js";
-import { createId, nowIso, normalizeText, stableHash } from "./utils.js";
+import { createId, nowIso, stableHash } from "./utils.js";
 import { ensureSqliteFoundation, getSqliteFoundationStatus } from "./sqlite-foundation.js";
 import {
   beginHttpObservation,
@@ -736,23 +741,7 @@ async function handleApiRequest(req, res, url) {
 
     if (req.method === "GET" && pathname === "/v1/categories") {
       const user = requireUser(req);
-      const store = loadStore();
-      const strategy = getCategoryStrategyForUser(user.id);
-      const strategyByName = new Map(
-        (strategy.granularCategories || []).map((entry) => [normalizeText(entry.name), entry])
-      );
-
-      const categories = store.categories
-        .filter((entry) => entry.userId === user.id)
-        .map((entry) => {
-          const strategyMatch = strategyByName.get(normalizeText(entry.name));
-          return {
-            ...entry,
-            emoji: entry.emoji || strategyMatch?.emoji || "",
-            coarseKey: entry.coarseKey || strategyMatch?.coarseKey || "neutral"
-          };
-        });
-      sendJson(res, 200, { categories });
+      sendJson(res, 200, { categories: listCategories(user.id) });
       return;
     }
 
@@ -786,30 +775,38 @@ async function handleApiRequest(req, res, url) {
         sendMutationReplay(res, guard.replay);
         return;
       }
-      if (!body.name || String(body.name).trim().length < 2) {
-        throw new Error("Category name is required");
-      }
-
-      const store = loadStore();
-      const category = {
-        id: createId("cat"),
-        userId: user.id,
-        name: String(body.name).trim(),
-        emoji: String(body.emoji || "").trim(),
-        coarseKey: String(body.coarseKey || body.coarse_key || "").trim() || null,
-        isSystem: false,
-        createdAt: nowIso(),
-        updatedAt: nowIso()
-      };
-      store.categories.push(category);
-      saveStore(store);
-      ensureCategoryInStrategy(user.id, category.name, {
-        emoji: category.emoji,
-        coarseKey: category.coarseKey
-      });
-      addAuditEvent(user.id, "category.create", { categoryId: category.id });
+      const category = createCategory(user.id, body);
       recordMutationGuardResult(user.id, guard, 201, { category });
       sendJson(res, 201, { category });
+      return;
+    }
+
+    const categoryPutParams = matchPath(pathname, "/v1/categories/:id");
+    if (req.method === "PUT" && categoryPutParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, `PUT /v1/categories/:id#${categoryPutParams.id}`, body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const category = updateCategory(user.id, categoryPutParams.id, body);
+      recordMutationGuardResult(user.id, guard, 200, { category });
+      sendJson(res, 200, { category });
+      return;
+    }
+
+    const categoryDeleteParams = matchPath(pathname, "/v1/categories/:id");
+    if (req.method === "DELETE" && categoryDeleteParams) {
+      const user = requireUser(req);
+      const guard = resolveMutationGuard(req, user.id, `DELETE /v1/categories/:id#${categoryDeleteParams.id}`);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      deleteCategory(user.id, categoryDeleteParams.id);
+      recordMutationGuardResult(user.id, guard, 204, null, true);
+      sendNoContent(res);
       return;
     }
 
