@@ -162,8 +162,30 @@ export const categoriesApi = {
       granularCategories?: CategoryStrategy["granularCategories"];
     }
   ) => request<{ strategy: CategoryStrategy }>("/v1/category-strategy", { method: "PUT", body: strategy }),
-  add: (request: ApiRequest, body: { name: string; emoji?: string; coarseKey?: string }) =>
+  add: (
+    request: ApiRequest,
+    body: {
+      name: string;
+      emoji?: string;
+      coarseKey?: string;
+      type?: "expense" | "income" | "transfer";
+      budget?: Category["budget"];
+    }
+  ) =>
     request<{ category: Category }>("/v1/categories", { method: "POST", body }),
+  update: (
+    request: ApiRequest,
+    id: string,
+    body: Partial<{
+      name: string;
+      emoji: string;
+      coarseKey: string;
+      type: "expense" | "income" | "transfer";
+      budget: Category["budget"];
+    }>
+  ) => request<{ category: Category }>(`/v1/categories/${id}`, { method: "PUT", body }),
+  remove: (request: ApiRequest, id: string) =>
+    request<null>(`/v1/categories/${id}`, { method: "DELETE" }),
   addRule: (request: ApiRequest, body: { pattern: string; category: string; type?: string; priority?: number }) =>
     request<{ rule: Record<string, unknown> }>("/v1/category-rules", { method: "POST", body })
 };

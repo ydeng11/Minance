@@ -281,6 +281,13 @@ export interface Category {
   name: string;
   emoji?: string;
   coarseKey?: string | null;
+  type?: "expense" | "income" | "transfer" | null;
+  budget?: {
+    amount: number;
+    cadence: "weekly" | "monthly" | "yearly";
+    currency: string;
+    rollover: boolean;
+  } | null;
   isSystem: boolean;
   createdAt: string;
   updatedAt: string;

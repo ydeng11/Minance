@@ -61,10 +61,23 @@ test("categoriesApi strategy endpoints use expected routes and methods", async (
     emoji: "🚗",
     coarseKey: "essential"
   });
+  await categoriesApi.update(request, "cat_123", {
+    budget: {
+      amount: 500,
+      cadence: "monthly",
+      currency: "USD",
+      rollover: false
+    }
+  });
+  await categoriesApi.remove(request, "cat_123");
 
   assert.equal(calls[0].path, "/v1/category-strategy");
   assert.equal(calls[1].path, "/v1/category-strategy");
   assert.equal(calls[1].options?.method, "PUT");
   assert.equal(calls[2].path, "/v1/categories");
   assert.equal(calls[2].options?.method, "POST");
+  assert.equal(calls[3].path, "/v1/categories/cat_123");
+  assert.equal(calls[3].options?.method, "PUT");
+  assert.equal(calls[4].path, "/v1/categories/cat_123");
+  assert.equal(calls[4].options?.method, "DELETE");
 });

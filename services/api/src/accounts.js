@@ -3,6 +3,7 @@ import { createId, nowIso, normalizeText, parseDate, toDecimal } from "./utils.j
 
 const DEFAULT_ACCOUNT_TYPE = "checking";
 const DEFAULT_CURRENCY = "USD";
+const DEFAULT_ACCOUNT_STATUS = "active";
 
 const ACCOUNT_TYPE_ALIASES = new Map(
   Object.entries({
@@ -17,6 +18,17 @@ const ACCOUNT_TYPE_ALIASES = new Map(
     investment: "investment",
     brokerage: "investment",
     cash: "cash"
+  })
+);
+
+const ACCOUNT_STATUS_ALIASES = new Map(
+  Object.entries({
+    active: "active",
+    open: "active",
+    hidden: "hidden",
+    hide: "hidden",
+    closed: "closed",
+    close: "closed"
   })
 );
 
@@ -71,7 +83,134 @@ function normalizeInitialBalance(rawValue, accountType) {
   return absolute;
 }
 
+function normalizeAccountStatus(rawValue, fallbackValue = DEFAULT_ACCOUNT_STATUS) {
+  const raw = rawValue == null || rawValue === "" ? fallbackValue : rawValue;
+  const normalized = normalizeText(raw).replace(/\s+/g, "_");
+  const status = ACCOUNT_STATUS_ALIASES.get(normalized);
+  if (!status) {
+    throw new Error("Invalid account status");
+  }
+  return status;
+}
+
+function coerceStoredBoolean(rawValue, fallbackValue = false) {
+  if (typeof rawValue === "boolean") {
+    return rawValue;
+  }
+  if (rawValue == null || rawValue === "") {
+    return fallbackValue;
+  }
+  const normalized = String(rawValue).trim().toLowerCase();
+  if (normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on") {
+    return true;
+  }
+  if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "off") {
+    return false;
+  }
+  return fallbackValue;
+}
+
+function parseBooleanField(rawValue, fieldLabel) {
+  if (typeof rawValue === "boolean") {
+    return rawValue;
+  }
+  const normalized = String(rawValue ?? "").trim().toLowerCase();
+  if (normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on") {
+    return true;
+  }
+  if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "off") {
+    return false;
+  }
+  throw new Error(`Invalid ${fieldLabel}`);
+}
+
+function normalizeClosedAt(rawValue) {
+  if (rawValue == null || rawValue === "") {
+    return null;
+  }
+  const parsed = parseDate(rawValue);
+  if (!parsed) {
+    throw new Error("Invalid account close date");
+  }
+  return parsed;
+}
+
+function resolveAccountSettings(account = {}, payload = {}) {
+  const includeInCharts = hasAnyField(payload, [
+    "includeInCharts",
+    "include_in_charts",
+    "includeInNetWorth",
+    "include_in_net_worth"
+  ])
+    ? parseBooleanField(
+      payload.includeInCharts ?? payload.include_in_charts ?? payload.includeInNetWorth ?? payload.include_in_net_worth,
+      "account chart inclusion setting"
+    )
+    : coerceStoredBoolean(account.includeInCharts, true);
+
+  let status = hasAnyField(payload, ["status", "state", "accountStatus", "account_status"])
+    ? normalizeAccountStatus(payload.status ?? payload.state ?? payload.accountStatus ?? payload.account_status)
+    : normalizeAccountStatus(account.status, DEFAULT_ACCOUNT_STATUS);
+
+  if (hasAnyField(payload, ["hidden", "isHidden", "is_hidden"])) {
+    const hidden = parseBooleanField(payload.hidden ?? payload.isHidden ?? payload.is_hidden, "account hidden setting");
+    if (hidden) {
+      status = "hidden";
+    } else if (status === "hidden") {
+      status = DEFAULT_ACCOUNT_STATUS;
+    }
+  }
+
+  if (hasAnyField(payload, ["closed", "isClosed", "is_closed"])) {
+    const closed = parseBooleanField(payload.closed ?? payload.isClosed ?? payload.is_closed, "account closed setting");
+    if (closed) {
+      status = "closed";
+    } else if (status === "closed") {
+      status = DEFAULT_ACCOUNT_STATUS;
+    }
+  }
+
+  let closedAt = normalizeClosedAt(account.closedAt);
+  if (status === "closed") {
+    if (hasAnyField(payload, ["closedAt", "closed_at"])) {
+      closedAt = normalizeClosedAt(payload.closedAt ?? payload.closed_at);
+    } else if (!closedAt) {
+      closedAt = parseDate(nowIso());
+    }
+  } else {
+    closedAt = null;
+  }
+
+  return {
+    includeInCharts,
+    status,
+    closedAt
+  };
+}
+
+function normalizeStoredAccountStatus(rawValue) {
+  try {
+    return normalizeAccountStatus(rawValue, DEFAULT_ACCOUNT_STATUS);
+  } catch {
+    return DEFAULT_ACCOUNT_STATUS;
+  }
+}
+
+function normalizeStoredClosedAt(rawValue, fallbackValue = null) {
+  try {
+    return normalizeClosedAt(rawValue) || fallbackValue;
+  } catch {
+    return fallbackValue;
+  }
+}
+
 function toAccountResponse(entry) {
+  const status = normalizeStoredAccountStatus(entry.status);
+  const includeInCharts = coerceStoredBoolean(entry.includeInCharts, true);
+  const closedAt = status === "closed"
+    ? normalizeStoredClosedAt(entry.closedAt, parseDate(entry.updatedAt || entry.createdAt || nowIso()))
+    : null;
+
   return {
     id: entry.id,
     userId: entry.userId,
@@ -81,6 +220,11 @@ function toAccountResponse(entry) {
     currency: entry.currency || DEFAULT_CURRENCY,
     initialBalance: Number(entry.initialBalance || 0),
     version: Number(entry.version || 1),
+    status,
+    includeInCharts,
+    hidden: status === "hidden",
+    closed: status === "closed",
+    closedAt,
     normalizedKey: entry.normalizedKey,
     createdAt: entry.createdAt || null,
     updatedAt: entry.updatedAt || null
@@ -134,12 +278,14 @@ function resolveCreatePayload(payload = {}) {
   const sourceInstitution = normalizeSourceInstitution(
     payload.sourceInstitution ?? payload.source_institution ?? payload.bankName ?? payload.bank_name
   );
+  const settings = resolveAccountSettings({}, payload);
   return {
     displayName,
     accountType,
     currency,
     initialBalance,
-    sourceInstitution
+    sourceInstitution,
+    settings
   };
 }
 
@@ -161,12 +307,14 @@ function resolveUpdatePayload(account, payload = {}) {
       payload.sourceInstitution ?? payload.source_institution ?? payload.bankName ?? payload.bank_name
     )
     : account.sourceInstitution || null;
+  const settings = resolveAccountSettings(account, payload);
   return {
     displayName,
     accountType,
     currency,
     initialBalance,
-    sourceInstitution
+    sourceInstitution,
+    settings
   };
 }
 
@@ -207,6 +355,9 @@ export function createAccount(userId, payload) {
     accountType: normalized.accountType,
     currency: normalized.currency,
     initialBalance: normalized.initialBalance,
+    status: normalized.settings.status,
+    includeInCharts: normalized.settings.includeInCharts,
+    closedAt: normalized.settings.closedAt,
     manualAdjustments: [],
     version: 1,
     createdAt: timestamp,
@@ -241,6 +392,9 @@ export function updateAccount(userId, accountId, payload) {
   account.accountType = normalized.accountType;
   account.currency = normalized.currency;
   account.initialBalance = normalized.initialBalance;
+  account.status = normalized.settings.status;
+  account.includeInCharts = normalized.settings.includeInCharts;
+  account.closedAt = normalized.settings.closedAt;
   account.version = currentVersion + 1;
   account.updatedAt = updatedAt;
 
@@ -262,6 +416,31 @@ function toSignedTransactionAmount(transaction) {
 
 function findAccount(store, userId, accountId) {
   return store.accounts.find((entry) => entry.id === accountId && entry.userId === userId) || null;
+}
+
+export function deleteAccount(userId, accountId) {
+  const store = loadStore();
+  const index = store.accounts.findIndex((entry) => entry.id === accountId && entry.userId === userId);
+  if (index < 0) {
+    throw new Error("Account not found");
+  }
+
+  const account = store.accounts[index];
+  const linkedTransactionCount = store.transactions.filter(
+    (entry) => entry.user_id === userId && entry.account_id === account.id && !entry.deleted_at
+  ).length;
+  if (linkedTransactionCount > 0) {
+    throw new Error("Invalid account is referenced by existing transactions");
+  }
+
+  store.accounts.splice(index, 1);
+  saveStore(store);
+  addAuditEvent(userId, "account.delete", {
+    accountId: account.id,
+    linkedTransactionCount
+  });
+
+  return true;
 }
 
 export function createAccountManualAdjustment(userId, accountId, payload = {}) {

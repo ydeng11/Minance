@@ -203,6 +203,56 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(updatedCategory.payload?.category?.coarseKey, "extra");
     assert.equal(updatedCategory.payload?.category?.type, "expense");
 
+    const budgetedCategory = await apiRequest(context, "POST", "/v1/categories", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        name: "Budget Groceries",
+        coarseKey: "essential",
+        type: "expense",
+        budget: {
+          amount: "650.40",
+          cadence: "monthly",
+          currency: "usd",
+          rollover: true
+        }
+      }
+    });
+    const budgetedCategoryId = budgetedCategory.payload?.category?.id;
+    assert.equal(typeof budgetedCategoryId, "string");
+    assert.equal(budgetedCategory.payload?.category?.budget?.amount, 650.4);
+    assert.equal(budgetedCategory.payload?.category?.budget?.cadence, "monthly");
+    assert.equal(budgetedCategory.payload?.category?.budget?.currency, "USD");
+    assert.equal(budgetedCategory.payload?.category?.budget?.rollover, true);
+
+    const budgetUpdatedCategory = await apiRequest(context, "PUT", `/v1/categories/${budgetedCategoryId}`, {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        budgetAmount: 700,
+        budgetCadence: "yearly",
+        budgetCurrency: "eur",
+        budgetRollover: false
+      }
+    });
+    assert.equal(budgetUpdatedCategory.payload?.category?.budget?.amount, 700);
+    assert.equal(budgetUpdatedCategory.payload?.category?.budget?.cadence, "yearly");
+    assert.equal(budgetUpdatedCategory.payload?.category?.budget?.currency, "EUR");
+    assert.equal(budgetUpdatedCategory.payload?.category?.budget?.rollover, false);
+
+    const invalidBudget = await apiRequest(context, "POST", "/v1/categories", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        name: "Invalid Budget Category",
+        coarseKey: "essential",
+        budget: {
+          amount: -5
+        }
+      }
+    });
+    assert.equal(invalidBudget.payload?.error?.message, "Invalid category budget amount");
+
     const duplicateCategory = await apiRequest(context, "POST", "/v1/categories", {
       token: accessToken,
       expectedStatus: 400,
@@ -495,6 +545,10 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(createAsset.payload?.account?.currency, "USD");
     assert.equal(createAsset.payload?.account?.accountType, "checking");
     assert.equal(createAsset.payload?.account?.initialBalance, 250.55);
+    assert.equal(createAsset.payload?.account?.status, "active");
+    assert.equal(createAsset.payload?.account?.includeInCharts, true);
+    assert.equal(createAsset.payload?.account?.hidden, false);
+    assert.equal(createAsset.payload?.account?.closed, false);
     assert.equal(Number.isInteger(createAsset.payload?.account?.version), true);
 
     const createLiability = await apiRequest(context, "POST", "/v1/accounts", {
@@ -546,8 +600,54 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(updated.payload?.account?.accountType, "savings");
     assert.equal(updated.payload?.account?.currency, "EUR");
     assert.equal(updated.payload?.account?.initialBalance, 111);
-    const updatedVersion = updated.payload?.account?.version;
-    assert.equal(Number.isInteger(updatedVersion), true);
+    let currentVersion = updated.payload?.account?.version;
+    assert.equal(Number.isInteger(currentVersion), true);
+
+    const hiddenUpdate = await apiRequest(context, "PUT", `/v1/accounts/${assetAccountId}/settings`, {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        includeInCharts: false,
+        hidden: true,
+        expectedVersion: Number(currentVersion)
+      }
+    });
+    currentVersion = hiddenUpdate.payload?.account?.version;
+    assert.equal(hiddenUpdate.payload?.account?.status, "hidden");
+    assert.equal(hiddenUpdate.payload?.account?.hidden, true);
+    assert.equal(hiddenUpdate.payload?.account?.closed, false);
+    assert.equal(hiddenUpdate.payload?.account?.includeInCharts, false);
+    assert.equal(Number.isInteger(currentVersion), true);
+
+    const closedUpdate = await apiRequest(context, "PUT", `/v1/accounts/${assetAccountId}/settings`, {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        closed: true,
+        expectedVersion: Number(currentVersion)
+      }
+    });
+    currentVersion = closedUpdate.payload?.account?.version;
+    assert.equal(closedUpdate.payload?.account?.status, "closed");
+    assert.equal(closedUpdate.payload?.account?.closed, true);
+    assert.equal(typeof closedUpdate.payload?.account?.closedAt, "string");
+    assert.equal(Number.isInteger(currentVersion), true);
+
+    const activeUpdate = await apiRequest(context, "PUT", `/v1/accounts/${assetAccountId}/settings`, {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        status: "active",
+        includeInCharts: true,
+        expectedVersion: Number(currentVersion)
+      }
+    });
+    currentVersion = activeUpdate.payload?.account?.version;
+    assert.equal(activeUpdate.payload?.account?.status, "active");
+    assert.equal(activeUpdate.payload?.account?.hidden, false);
+    assert.equal(activeUpdate.payload?.account?.closed, false);
+    assert.equal(activeUpdate.payload?.account?.closedAt, null);
+    assert.equal(activeUpdate.payload?.account?.includeInCharts, true);
 
     const staleManualAdjustment = await apiRequest(
       context,
@@ -560,7 +660,7 @@ test("api parity contract suite for categories/transactions/settings and missing
           amountDelta: 25.5,
           effectiveAt: "2026-02-18",
           reason: "Quarterly reconciliation",
-          expectedVersion: Number(updatedVersion) - 1
+          expectedVersion: Number(currentVersion) - 1
         }
       }
     );
@@ -582,13 +682,13 @@ test("api parity contract suite for categories/transactions/settings and missing
           effectiveAt: "2026-02-18",
           reason: "Quarterly reconciliation",
           note: "Bank statement aligned",
-          expectedVersion: Number(updatedVersion)
+          expectedVersion: Number(currentVersion)
         }
       }
     );
     const adjustmentId = firstAdjustment.payload?.adjustment?.id;
     assert.equal(typeof adjustmentId, "string");
-    assert.equal(firstAdjustment.payload?.account?.version, Number(updatedVersion) + 1);
+    assert.equal(firstAdjustment.payload?.account?.version, Number(currentVersion) + 1);
 
     const replayAdjustment = await apiRequest(
       context,
@@ -605,12 +705,12 @@ test("api parity contract suite for categories/transactions/settings and missing
           effectiveAt: "2026-02-18",
           reason: "Quarterly reconciliation",
           note: "Bank statement aligned",
-          expectedVersion: Number(updatedVersion)
+          expectedVersion: Number(currentVersion)
         }
       }
     );
     assert.equal(replayAdjustment.payload?.adjustment?.id, adjustmentId);
-    assert.equal(replayAdjustment.payload?.account?.version, Number(updatedVersion) + 1);
+    assert.equal(replayAdjustment.payload?.account?.version, Number(currentVersion) + 1);
 
     const staleAfterAdjustment = await apiRequest(
       context,
@@ -623,7 +723,7 @@ test("api parity contract suite for categories/transactions/settings and missing
           amountDelta: 5,
           effectiveAt: "2026-02-20",
           reason: "Late correction",
-          expectedVersion: Number(updatedVersion)
+          expectedVersion: Number(currentVersion)
         }
       }
     );
@@ -646,6 +746,75 @@ test("api parity contract suite for categories/transactions/settings and missing
     });
     assert.equal(Array.isArray(list.payload?.accounts), true);
     assert.equal(list.payload?.accounts?.some((entry) => entry.id === assetAccountId), true);
+
+    const removableAccount = await apiRequest(context, "POST", "/v1/accounts", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        displayName: "Temporary Closable Account",
+        accountType: "checking",
+        currency: "USD",
+        initialBalance: 0
+      }
+    });
+    const removableAccountId = removableAccount.payload?.account?.id;
+    assert.equal(typeof removableAccountId, "string");
+
+    const accountDeleteKey = "acct-delete-idem-001";
+    await apiRequest(context, "DELETE", `/v1/accounts/${removableAccountId}`, {
+      token: accessToken,
+      expectedStatus: 204,
+      headers: {
+        "Idempotency-Key": accountDeleteKey
+      }
+    });
+    await apiRequest(context, "DELETE", `/v1/accounts/${removableAccountId}`, {
+      token: accessToken,
+      expectedStatus: 204,
+      headers: {
+        "Idempotency-Key": accountDeleteKey
+      }
+    });
+
+    const listAfterDelete = await apiRequest(context, "GET", "/v1/accounts", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(Array.isArray(listAfterDelete.payload?.accounts), true);
+    assert.equal(listAfterDelete.payload?.accounts?.some((entry) => entry.id === removableAccountId), false);
+
+    const referencedAccount = await apiRequest(context, "POST", "/v1/accounts", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        displayName: "Referenced Delete Guard Account",
+        accountType: "checking",
+        currency: "USD",
+        initialBalance: 10
+      }
+    });
+    const referencedAccountId = referencedAccount.payload?.account?.id;
+    assert.equal(typeof referencedAccountId, "string");
+
+    await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        transaction_date: "2026-02-22",
+        description: "Delete guard transaction",
+        merchant_raw: "Delete Guard Merchant",
+        amount: -12.34,
+        account_id: referencedAccountId,
+        account_name: "Referenced Delete Guard Account",
+        category_final: "Dining"
+      }
+    });
+
+    const referencedDelete = await apiRequest(context, "DELETE", `/v1/accounts/${referencedAccountId}`, {
+      token: accessToken,
+      expectedStatus: 400
+    });
+    assert.equal(referencedDelete.payload?.error?.message, "Invalid account is referenced by existing transactions");
   });
 
   await t.test("account provider abstraction exposes self-host fallback and deterministic failures", async () => {

@@ -82,6 +82,7 @@ import {
   listAccounts,
   createAccount,
   updateAccount,
+  deleteAccount,
   getSupportedAccountTypes,
   listAccountBalanceHistory,
   createAccountManualAdjustment
@@ -397,6 +398,40 @@ async function handleApiRequest(req, res, url) {
       const account = updateAccount(user.id, accountPutParams.id, body);
       recordMutationGuardResult(user.id, guard, 200, { account });
       sendJson(res, 200, { account });
+      return;
+    }
+
+    const accountSettingsPutParams = matchPath(pathname, "/v1/accounts/:id/settings");
+    if (req.method === "PUT" && accountSettingsPutParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `PUT /v1/accounts/:id/settings#${accountSettingsPutParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const account = updateAccount(user.id, accountSettingsPutParams.id, body);
+      recordMutationGuardResult(user.id, guard, 200, { account });
+      sendJson(res, 200, { account });
+      return;
+    }
+
+    const accountDeleteParams = matchPath(pathname, "/v1/accounts/:id");
+    if (req.method === "DELETE" && accountDeleteParams) {
+      const user = requireUser(req);
+      const guard = resolveMutationGuard(req, user.id, `DELETE /v1/accounts/:id#${accountDeleteParams.id}`);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      deleteAccount(user.id, accountDeleteParams.id);
+      recordMutationGuardResult(user.id, guard, 204, null, true);
+      sendNoContent(res);
       return;
     }
 

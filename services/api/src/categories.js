@@ -1,8 +1,18 @@
 import { loadStore, saveStore, addAuditEvent } from "./store.js";
-import { createId, nowIso, normalizeText } from "./utils.js";
+import { createId, nowIso, normalizeText, toDecimal } from "./utils.js";
 import { ensureCategoryInStrategy, getCategoryStrategyForUser } from "./category-strategy.js";
 
 const CATEGORY_TYPE_VALUES = new Set(["expense", "income", "transfer"]);
+const CATEGORY_BUDGET_CADENCE_VALUES = new Set(["weekly", "monthly", "yearly"]);
+const DEFAULT_BUDGET_CADENCE = "monthly";
+const DEFAULT_BUDGET_CURRENCY = "USD";
+
+function hasAnyField(payload, fields) {
+  if (!payload || typeof payload !== "object") {
+    return false;
+  }
+  return fields.some((field) => Object.hasOwn(payload, field));
+}
 
 function normalizeCoarseKey(value) {
   return String(value || "")
@@ -33,6 +43,146 @@ function normalizeCategoryType(value, fallbackValue = null) {
     throw new Error("Invalid category type");
   }
   return normalized;
+}
+
+function parseBooleanField(rawValue, fieldLabel) {
+  if (typeof rawValue === "boolean") {
+    return rawValue;
+  }
+
+  const normalized = String(rawValue ?? "").trim().toLowerCase();
+  if (normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on") {
+    return true;
+  }
+  if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "off") {
+    return false;
+  }
+  throw new Error(`Invalid ${fieldLabel}`);
+}
+
+function normalizeBudgetCurrency(rawValue, fallbackValue = DEFAULT_BUDGET_CURRENCY) {
+  const normalized = String(rawValue || fallbackValue).trim().toUpperCase() || fallbackValue;
+  if (!/^[A-Z]{3}$/.test(normalized)) {
+    throw new Error("Invalid category budget currency");
+  }
+  return normalized;
+}
+
+function normalizeBudgetCadence(rawValue, fallbackValue = DEFAULT_BUDGET_CADENCE) {
+  const normalized = String(rawValue || fallbackValue).trim().toLowerCase() || fallbackValue;
+  if (!CATEGORY_BUDGET_CADENCE_VALUES.has(normalized)) {
+    throw new Error("Invalid category budget cadence");
+  }
+  return normalized;
+}
+
+function normalizeBudgetAmount(rawValue) {
+  const amount = toDecimal(rawValue);
+  if (amount == null || amount < 0) {
+    throw new Error("Invalid category budget amount");
+  }
+  return amount;
+}
+
+function normalizeStoredBudget(rawBudget) {
+  if (!rawBudget || typeof rawBudget !== "object") {
+    return null;
+  }
+
+  const amount = toDecimal(rawBudget.amount);
+  if (amount == null || amount < 0) {
+    return null;
+  }
+
+  let cadence = DEFAULT_BUDGET_CADENCE;
+  const cadenceCandidate = String(rawBudget.cadence || "").trim().toLowerCase();
+  if (CATEGORY_BUDGET_CADENCE_VALUES.has(cadenceCandidate)) {
+    cadence = cadenceCandidate;
+  }
+
+  let currency = DEFAULT_BUDGET_CURRENCY;
+  const currencyCandidate = String(rawBudget.currency || "").trim().toUpperCase();
+  if (/^[A-Z]{3}$/.test(currencyCandidate)) {
+    currency = currencyCandidate;
+  }
+
+  return {
+    amount,
+    cadence,
+    currency,
+    rollover: Boolean(rawBudget.rollover)
+  };
+}
+
+function normalizeCategoryBudget(payload = {}, fallbackBudget = null) {
+  const budgetPayload = payload.budget && typeof payload.budget === "object" ? payload.budget : null;
+  const hasBudgetFields = Boolean(budgetPayload) || hasAnyField(payload, [
+    "budgetAmount",
+    "budget_amount",
+    "monthlyBudget",
+    "monthly_budget",
+    "budgetCadence",
+    "budget_cadence",
+    "budgetPeriod",
+    "budget_period",
+    "budgetCurrency",
+    "budget_currency",
+    "budgetRollover",
+    "budget_rollover",
+    "budgetEnabled",
+    "budget_enabled"
+  ]);
+
+  if (Object.hasOwn(payload, "budget") && payload.budget == null) {
+    return null;
+  }
+
+  if (hasAnyField(payload, ["budgetEnabled", "budget_enabled"])) {
+    const enabled = parseBooleanField(payload.budgetEnabled ?? payload.budget_enabled, "category budget enabled flag");
+    if (!enabled) {
+      return null;
+    }
+  }
+
+  if (!hasBudgetFields) {
+    return normalizeStoredBudget(fallbackBudget);
+  }
+
+  const amountValue = budgetPayload?.amount
+    ?? budgetPayload?.budgetAmount
+    ?? payload.budgetAmount
+    ?? payload.budget_amount
+    ?? payload.monthlyBudget
+    ?? payload.monthly_budget
+    ?? fallbackBudget?.amount;
+  const amount = normalizeBudgetAmount(amountValue);
+
+  const cadence = normalizeBudgetCadence(
+    budgetPayload?.cadence
+      ?? budgetPayload?.period
+      ?? payload.budgetCadence
+      ?? payload.budget_cadence
+      ?? payload.budgetPeriod
+      ?? payload.budget_period,
+    fallbackBudget?.cadence || DEFAULT_BUDGET_CADENCE
+  );
+
+  const currency = normalizeBudgetCurrency(
+    budgetPayload?.currency
+      ?? payload.budgetCurrency
+      ?? payload.budget_currency,
+    fallbackBudget?.currency || DEFAULT_BUDGET_CURRENCY
+  );
+
+  const rollover = budgetPayload?.rollover ?? payload.budgetRollover ?? payload.budget_rollover;
+  return {
+    amount,
+    cadence,
+    currency,
+    rollover: rollover == null
+      ? Boolean(fallbackBudget?.rollover)
+      : parseBooleanField(rollover, "category budget rollover")
+  };
 }
 
 function resolveCategoryCoarseKey(rawValue, coarseKeySet, categoryType, fallback = null) {
@@ -91,11 +241,13 @@ function ensureUniqueCategoryName(store, userId, categoryName, excludeId = null)
 
 function toCategoryResponse(category, strategyByName = new Map()) {
   const strategyMatch = strategyByName.get(normalizeText(category.name));
+  const budget = normalizeStoredBudget(category.budget);
   return {
     ...category,
     emoji: String(category.emoji || strategyMatch?.emoji || "").trim(),
     coarseKey: normalizeCoarseKey(category.coarseKey || strategyMatch?.coarseKey || "neutral"),
-    type: category.type || null
+    type: category.type || null,
+    budget
   };
 }
 
@@ -214,6 +366,7 @@ export function createCategory(userId, payload = {}) {
     coarseKeySet,
     type
   );
+  const budget = normalizeCategoryBudget(payload);
   validateCategoryGroupTypeCompatibility(coarseKey, type);
 
   const store = loadStore();
@@ -226,6 +379,7 @@ export function createCategory(userId, payload = {}) {
     emoji: String(payload.emoji || "").trim(),
     coarseKey,
     type,
+    budget,
     isSystem: false,
     createdAt: nowIso(),
     updatedAt: nowIso()
@@ -268,6 +422,7 @@ export function updateCategory(userId, categoryId, payload = {}) {
     category.coarseKey || strategyMatch?.coarseKey || null
   );
   validateCategoryGroupTypeCompatibility(nextCoarseKey, nextType);
+  const nextBudget = normalizeCategoryBudget(payload, category.budget || null);
 
   ensureUniqueCategoryName(store, userId, nextName, category.id);
 
@@ -281,6 +436,7 @@ export function updateCategory(userId, categoryId, payload = {}) {
   category.emoji = nextEmoji;
   category.coarseKey = nextCoarseKey;
   category.type = nextType;
+  category.budget = nextBudget;
   category.updatedAt = timestamp;
 
   reassignCategoryReferences(store, userId, previousName, nextName, timestamp);
