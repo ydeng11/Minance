@@ -4,9 +4,13 @@ import assert from "node:assert/strict";
 import { resetStoreForTests } from "../src/store.js";
 import {
   createManualInvestmentHolding,
+  getInvestmentOverview,
+  getInvestmentPerformance,
   getInvestmentPortfolio,
   importInvestmentHoldingsFromCsv,
+  listInvestmentAccounts,
   listInvestmentHoldings,
+  listInvestmentPositions,
   normalizeInvestmentHoldingInput
 } from "../src/investments.js";
 
@@ -227,4 +231,44 @@ test("portfolio snapshot uses the latest holding per account+symbol and computes
   assert.equal(bySymbol.VOO.market_price, 440);
   assert.equal(bySymbol.VOO.market_value, 4400);
   assert.equal(bySymbol.BND.day_change_value, 20);
+});
+
+test("overview, positions, accounts, and performance projections stay deterministic", () => {
+  resetForInvestments();
+
+  importInvestmentHoldingsFromCsv(
+    USER_ID,
+    [
+      "Account,Ticker,Shares,Cost Basis,Market Price,Previous Close,As Of",
+      "Primary Brokerage,NFLX,2,200,250,248,2026-02-01",
+      "Primary Brokerage,NFLX,2,200,255,252,2026-03-01",
+      "Primary Brokerage,VOO,10,430,440,438,2026-03-01"
+    ].join("\n"),
+    { sourceFileId: "series_file_001" }
+  );
+
+  const overview = getInvestmentOverview(USER_ID, { timeframe: "3M", query: "nflx" });
+  assert.equal(overview.timeframe, "3M");
+  assert.equal(Array.isArray(overview.positions), true);
+  assert.equal(overview.positions.length, 1);
+  assert.equal(overview.positions[0].symbol, "NFLX");
+  assert.equal(overview.summary.position_count, 2);
+  assert.equal(Array.isArray(overview.accounts), true);
+  assert.equal(Array.isArray(overview.allocations), true);
+  assert.equal(Array.isArray(overview.performance.portfolio), true);
+  assert.equal(Array.isArray(overview.performance.security), true);
+
+  const positions = listInvestmentPositions(USER_ID, { query: "voo" });
+  assert.equal(positions.total, 1);
+  assert.equal(positions.items[0].symbol, "VOO");
+
+  const accounts = listInvestmentAccounts(USER_ID);
+  assert.equal(accounts.items.length, 1);
+  assert.equal(accounts.items[0].account_name, "Primary Brokerage");
+
+  const performance = getInvestmentPerformance(USER_ID, { timeframe: "1M", symbol: "NFLX" });
+  assert.equal(performance.timeframe, "1M");
+  assert.equal(performance.featured_symbol, "NFLX");
+  assert.equal(performance.portfolio.length > 0, true);
+  assert.equal(performance.security.length > 0, true);
 });

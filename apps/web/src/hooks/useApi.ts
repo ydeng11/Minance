@@ -9,6 +9,7 @@ import {
   assistantApi,
   categoriesApi,
   importsApi,
+  investmentsApi,
   migrationApi,
   savedViewsApi,
   systemApi,
@@ -77,6 +78,15 @@ export function useApi() {
         create: transactionsApi.create.bind(null, request),
         update: transactionsApi.update.bind(null, request),
         remove: transactionsApi.remove.bind(null, request)
+      },
+      investments: {
+        overview: investmentsApi.overview.bind(null, request),
+        holdings: () => investmentsApi.holdings(request),
+        createHolding: investmentsApi.createHolding.bind(null, request),
+        importCsv: investmentsApi.importCsv.bind(null, request),
+        positions: investmentsApi.positions.bind(null, request),
+        accounts: () => investmentsApi.accounts(request),
+        performance: investmentsApi.performance.bind(null, request)
       },
       savedViews: {
         list: () => savedViewsApi.list(request),

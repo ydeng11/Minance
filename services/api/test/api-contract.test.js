@@ -1129,8 +1129,83 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(unsupportedAction.payload?.error?.details?.action, "begin_link_session");
   });
 
-  await t.test("recurrings, investments, and generic settings remain explicit 404 contracts", async () => {
-    const missingEndpoints = ["/v1/recurrings", "/v1/investments", "/v1/settings"];
+  await t.test("investments endpoints expose overview, holdings, positions, and performance contracts", async () => {
+    const createdHolding = await apiRequest(context, "POST", "/v1/investments/holdings", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        account_name: "Parity Brokerage",
+        symbol: "NFLX",
+        asset_name: "Netflix Inc",
+        asset_class: "equity",
+        quantity: 3.25,
+        average_cost: 250.5,
+        market_price: 299.05,
+        previous_close_price: 296.12,
+        as_of_date: "2026-03-01"
+      }
+    });
+    assert.equal(createdHolding.payload?.holding?.symbol, "NFLX");
+
+    const csvImport = await apiRequest(context, "POST", "/v1/investments/holdings/import-csv", {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        sourceFileId: "contract_import_001",
+        csvText: [
+          "Account,Ticker,Shares,Cost Basis,Market Price,Previous Close,As Of",
+          "Parity Brokerage,NFLX,3.50,251.00,300.10,299.00,2026-03-02",
+          "Parity Brokerage,VOO,12.00,430.25,439.10,438.00,2026-03-02"
+        ].join("\n")
+      }
+    });
+    assert.equal(csvImport.payload?.result?.total_rows, 2);
+    assert.equal(Array.isArray(csvImport.payload?.result?.imported), true);
+    assert.equal(Array.isArray(csvImport.payload?.result?.updated), true);
+
+    const holdings = await apiRequest(context, "GET", "/v1/investments/holdings", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(Array.isArray(holdings.payload?.items), true);
+    assert.equal(holdings.payload?.items?.length >= 2, true);
+
+    const overview = await apiRequest(context, "GET", "/v1/investments/overview?timeframe=3M&query=nflx", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(typeof overview.payload?.overview?.summary?.total_market_value, "number");
+    assert.equal(Array.isArray(overview.payload?.overview?.allocations), true);
+    assert.equal(Array.isArray(overview.payload?.overview?.accounts), true);
+    assert.equal(Array.isArray(overview.payload?.overview?.positions), true);
+    assert.equal(typeof overview.payload?.overview?.performance?.timeframe, "string");
+
+    const positions = await apiRequest(context, "GET", "/v1/investments/positions?query=nflx", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(Array.isArray(positions.payload?.items), true);
+    assert.equal(typeof positions.payload?.total, "number");
+    assert.equal(positions.payload?.items?.every((entry) => entry.symbol.includes("NFLX")), true);
+
+    const accounts = await apiRequest(context, "GET", "/v1/investments/accounts", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(Array.isArray(accounts.payload?.items), true);
+
+    const performance = await apiRequest(context, "GET", "/v1/investments/performance?timeframe=1M&symbol=NFLX", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(performance.payload?.timeframe, "1M");
+    assert.equal(performance.payload?.featured_symbol, "NFLX");
+    assert.equal(Array.isArray(performance.payload?.portfolio), true);
+    assert.equal(Array.isArray(performance.payload?.security), true);
+  });
+
+  await t.test("recurrings and generic settings remain explicit 404 contracts", async () => {
+    const missingEndpoints = ["/v1/recurrings", "/v1/settings"];
     for (const endpoint of missingEndpoints) {
       const response = await apiRequest(context, "GET", endpoint, {
         token: accessToken,

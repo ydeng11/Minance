@@ -14,6 +14,11 @@ import type {
   HeatmapItem,
   ImportDetailsResponse,
   ImportJob,
+  InvestmentAccountSummary,
+  InvestmentHolding,
+  InvestmentOverviewResponse,
+  InvestmentPerformancePoint,
+  InvestmentPosition,
   ImportProcessedRowsResponse,
   MigrationRun,
   OverviewResponse,
@@ -194,6 +199,69 @@ export const transactionsApi = {
     request<{ transaction: Transaction }>(`/v1/transactions/${id}`, { method: "PUT", body }),
   remove: (request: ApiRequest, id: string) =>
     request<null>(`/v1/transactions/${id}`, { method: "DELETE" })
+};
+
+export const investmentsApi = {
+  overview: (
+    request: ApiRequest,
+    params: {
+      timeframe?: "1D" | "1W" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
+      query?: string;
+    }
+  ) =>
+    request<{ overview: InvestmentOverviewResponse }>(
+      `/v1/investments/overview${buildQuery(params)}`
+    ),
+  holdings: (request: ApiRequest) =>
+    request<{ items: InvestmentHolding[] }>("/v1/investments/holdings"),
+  createHolding: (
+    request: ApiRequest,
+    body: Partial<InvestmentHolding> & {
+      account_name: string;
+      symbol: string;
+      quantity: number;
+      average_cost: number;
+      market_price: number;
+    }
+  ) =>
+    request<{ holding: InvestmentHolding }>("/v1/investments/holdings", {
+      method: "POST",
+      body
+    }),
+  importCsv: (
+    request: ApiRequest,
+    body: {
+      csvText: string;
+      sourceFileId?: string | null;
+      asOfDate?: string | null;
+    }
+  ) =>
+    request<{ result: { imported: string[]; updated: string[]; total_rows: number } }>(
+      "/v1/investments/holdings/import-csv",
+      {
+        method: "POST",
+        body
+      }
+    ),
+  positions: (request: ApiRequest, params: { query?: string }) =>
+    request<{ items: InvestmentPosition[]; total: number }>(
+      `/v1/investments/positions${buildQuery(params)}`
+    ),
+  accounts: (request: ApiRequest) =>
+    request<{ items: InvestmentAccountSummary[] }>("/v1/investments/accounts"),
+  performance: (
+    request: ApiRequest,
+    params: {
+      timeframe?: "1D" | "1W" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
+      symbol?: string;
+    }
+  ) =>
+    request<{
+      timeframe: string;
+      portfolio: InvestmentPerformancePoint[];
+      security: InvestmentPerformancePoint[];
+      featured_symbol: string | null;
+    }>(`/v1/investments/performance${buildQuery(params)}`)
 };
 
 export const analyticsApi = {

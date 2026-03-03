@@ -40,7 +40,7 @@ function ensureDataFile() {
 }
 
 function normalizeStore(store) {
-  const normalized = { ...defaultStore, ...(store || {}) };
+  const normalized = structuredClone({ ...defaultStore, ...(store || {}) });
   for (const key of Object.keys(defaultStore)) {
     if (!Array.isArray(normalized[key])) {
       normalized[key] = [];

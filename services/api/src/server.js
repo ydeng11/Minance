@@ -34,6 +34,15 @@ import {
   restoreTransaction
 } from "./transactions.js";
 import {
+  listInvestmentHoldings,
+  createManualInvestmentHolding,
+  importInvestmentHoldingsFromCsv,
+  listInvestmentPositions,
+  listInvestmentAccounts,
+  getInvestmentPerformance,
+  getInvestmentOverview
+} from "./investments.js";
+import {
   getOverview,
   getCategoryRollup,
   getMerchantRollup,
@@ -724,6 +733,80 @@ async function handleApiRequest(req, res, url) {
       const transaction = restoreTransaction(user.id, transactionRestoreParams.id);
       recordMutationGuardResult(user.id, guard, 200, { transaction });
       sendJson(res, 200, { transaction });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/investments/overview") {
+      const user = requireUser(req);
+      const overview = getInvestmentOverview(user.id, {
+        timeframe: searchParams.get("timeframe"),
+        query: searchParams.get("query")
+      });
+      sendJson(res, 200, { overview });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/investments/holdings") {
+      const user = requireUser(req);
+      const holdings = listInvestmentHoldings(user.id);
+      sendJson(res, 200, holdings);
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/v1/investments/holdings") {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, "POST /v1/investments/holdings", body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const holding = createManualInvestmentHolding(user.id, body || {});
+      recordMutationGuardResult(user.id, guard, 201, { holding });
+      sendJson(res, 201, { holding });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/v1/investments/holdings/import-csv") {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, "POST /v1/investments/holdings/import-csv", body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const result = importInvestmentHoldingsFromCsv(user.id, body.csvText, {
+        sourceFileId: body.sourceFileId,
+        asOfDate: body.asOfDate
+      });
+      recordMutationGuardResult(user.id, guard, 200, { result });
+      sendJson(res, 200, { result });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/investments/positions") {
+      const user = requireUser(req);
+      const positions = listInvestmentPositions(user.id, {
+        query: searchParams.get("query")
+      });
+      sendJson(res, 200, positions);
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/investments/accounts") {
+      const user = requireUser(req);
+      const accounts = listInvestmentAccounts(user.id);
+      sendJson(res, 200, accounts);
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/investments/performance") {
+      const user = requireUser(req);
+      const performance = getInvestmentPerformance(user.id, {
+        timeframe: searchParams.get("timeframe"),
+        symbol: searchParams.get("symbol")
+      });
+      sendJson(res, 200, performance);
       return;
     }
 

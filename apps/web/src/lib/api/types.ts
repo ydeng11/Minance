@@ -270,6 +270,88 @@ export interface TransactionsResponse {
   meta: AnalyticsMeta;
 }
 
+export interface InvestmentHolding {
+  id: string;
+  user_id: string;
+  holding_key: string;
+  account_name: string;
+  symbol: string;
+  asset_name: string;
+  asset_class: string;
+  quantity: number;
+  average_cost: number;
+  market_price: number;
+  previous_close_price: number | null;
+  currency: string;
+  as_of_date: string;
+  source_type: "manual" | "csv";
+  source_file_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvestmentPosition extends InvestmentHolding {
+  market_value: number;
+  cost_basis: number;
+  unrealized_gain: number;
+  unrealized_return_pct: number;
+  day_change_value: number;
+  day_change_pct: number;
+}
+
+export interface InvestmentAllocation {
+  asset_class: string;
+  market_value: number;
+  share_pct: number;
+}
+
+export interface InvestmentAccountSummary {
+  account_name: string;
+  market_value: number;
+  cost_basis: number;
+  unrealized_gain: number;
+  day_change_value: number;
+  day_change_pct: number;
+  position_count: number;
+  latest_as_of_date: string | null;
+}
+
+export interface InvestmentPerformancePoint {
+  date: string;
+  total_market_value: number;
+  day_change_value: number;
+  day_change_pct: number;
+}
+
+export interface InvestmentOverviewResponse {
+  timeframe: string;
+  summary: {
+    total_market_value: number;
+    total_cost_basis: number;
+    unrealized_gain: number;
+    day_change_value: number;
+    unrealized_return_pct: number;
+    day_change_pct: number;
+    position_count: number;
+  };
+  allocations: InvestmentAllocation[];
+  accounts: InvestmentAccountSummary[];
+  positions: InvestmentPosition[];
+  featured_security: InvestmentPosition | null;
+  performance: {
+    timeframe: string;
+    portfolio: InvestmentPerformancePoint[];
+    security: InvestmentPerformancePoint[];
+    featured_symbol: string | null;
+  };
+  meta: {
+    as_of_date: string | null;
+    total_holdings: number;
+    total_positions: number;
+    filtered_positions: number;
+  };
+}
+
 export interface TransactionsBulkUpdateRequest {
   transaction_ids: string[];
   category_final?: string;

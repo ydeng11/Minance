@@ -1,22 +1,87 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import { MoreHorizontal, Search, TrendingUp } from "lucide-react";
+import { ApiError } from "@/lib/api/client";
+import type {
+  InvestmentAccountSummary,
+  InvestmentAllocation,
+  InvestmentOverviewResponse,
+  InvestmentPosition
+} from "@/lib/api/types";
+import { useApi } from "@/hooks/useApi";
+import { money } from "@/lib/utils";
 
-const accountRows = [
-  { name: "Robinhood", updated: "2 days ago", change: "+ 1.81%", value: "$ 6,281.54", tone: "up" as const },
-  { name: "Coinbase", updated: "2 days ago", change: "- 0.22%", value: "$ 3,360.12", tone: "down" as const },
-  { name: "Wealthfront", updated: "2 days ago", change: "+ 1.97%", value: "$ 2,906.82", tone: "up" as const }
+const timeFrames = ["1D", "1W", "1M", "3M", "YTD", "1Y", "ALL"] as const;
+type Timeframe = (typeof timeFrames)[number];
+
+const fallbackOverviewSeries = [42, 37, 46, 34, 40, 38, 49, 44, 53, 47, 58, 54, 61];
+const fallbackSecuritySeries = [36, 33, 40, 31, 37, 35, 44, 41, 49, 43, 51, 47, 54];
+
+const fallbackFeaturedSecurity: InvestmentPosition = {
+  id: "invhold_fallback_nflx",
+  user_id: "fallback",
+  holding_key: "fallback-nflx-holding",
+  account_name: "Robinhood",
+  symbol: "NFLX",
+  asset_name: "Netflix Inc",
+  asset_class: "equity",
+  quantity: 2.87,
+  average_cost: 224.54,
+  market_price: 299.05,
+  previous_close_price: 295.98,
+  currency: "USD",
+  as_of_date: "2026-03-01",
+  source_type: "manual",
+  source_file_id: null,
+  created_at: "2026-03-01T00:00:00.000Z",
+  updated_at: "2026-03-01T00:00:00.000Z",
+  market_value: 858.27,
+  cost_basis: 644.43,
+  unrealized_gain: 213.84,
+  unrealized_return_pct: 33.18,
+  day_change_value: 8.81,
+  day_change_pct: 1.04
+};
+
+const fallbackAccounts: InvestmentAccountSummary[] = [
+  {
+    account_name: "Robinhood",
+    latest_as_of_date: "2026-03-01",
+    day_change_pct: 1.81,
+    day_change_value: 111.87,
+    market_value: 6281.54,
+    cost_basis: 5599.67,
+    unrealized_gain: 681.87,
+    position_count: 5
+  },
+  {
+    account_name: "Coinbase",
+    latest_as_of_date: "2026-03-01",
+    day_change_pct: -0.22,
+    day_change_value: -7.41,
+    market_value: 3360.12,
+    cost_basis: 3491.24,
+    unrealized_gain: -131.12,
+    position_count: 2
+  },
+  {
+    account_name: "Wealthfront",
+    latest_as_of_date: "2026-03-01",
+    day_change_pct: 1.97,
+    day_change_value: 56.24,
+    market_value: 2906.82,
+    cost_basis: 2710.56,
+    unrealized_gain: 196.26,
+    position_count: 3
+  }
 ];
 
-const allocationRows = [
-  { name: "Equity", value: "43.61%", width: "43.61%" },
-  { name: "Crypto", value: "29.61%", width: "29.61%" },
-  { name: "ETF", value: "26.77%", width: "26.77%" }
+const fallbackAllocations: InvestmentAllocation[] = [
+  { asset_class: "equity", market_value: 0, share_pct: 43.61 },
+  { asset_class: "crypto", market_value: 0, share_pct: 29.61 },
+  { asset_class: "etf", market_value: 0, share_pct: 26.77 }
 ];
-
-const timeFrames = ["1D", "1W", "1M", "3M", "YTD", "1Y", "ALL"];
-const activeTimeFrame = "3M";
-
-const overviewSeries = [42, 37, 46, 34, 40, 38, 49, 44, 53, 47, 58, 54, 61];
-const securitySeries = [36, 33, 40, 31, 37, 35, 44, 41, 49, 43, 51, 47, 54];
 
 function Sparkline({ values, gradientId, lineColor }: { values: number[]; gradientId: string; lineColor: string }) {
   const width = 460;
@@ -49,7 +114,122 @@ function Sparkline({ values, gradientId, lineColor }: { values: number[]; gradie
   );
 }
 
+function formatSignedPercent(value: number, digits = 2) {
+  const magnitude = Math.abs(Number(value || 0)).toFixed(digits);
+  const sign = value >= 0 ? "+" : "-";
+  return `${sign} ${magnitude}%`;
+}
+
+function formatSignedNumber(value: number, digits = 2) {
+  const magnitude = Math.abs(Number(value || 0)).toFixed(digits);
+  const sign = value >= 0 ? "+" : "-";
+  return `${sign}${magnitude}`;
+}
+
+function formatLabelFromAssetClass(value: string) {
+  return String(value || "Other")
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatRelativeDate(value: string | null) {
+  if (!value) {
+    return "No updates";
+  }
+  return `As of ${value}`;
+}
+
 export default function InvestmentsPage() {
+  const api = useApi();
+  const [timeframe, setTimeframe] = useState<Timeframe>("3M");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [overview, setOverview] = useState<InvestmentOverviewResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const timeoutId = setTimeout(() => {
+      void (async () => {
+        setLoading(true);
+        try {
+          const response = await api.investments.overview({
+            timeframe,
+            query: searchQuery || undefined
+          });
+          if (!cancelled) {
+            setOverview(response.overview);
+            setMessage("");
+          }
+        } catch (error) {
+          if (cancelled) {
+            return;
+          }
+          if (error instanceof ApiError) {
+            setMessage(error.message);
+          } else {
+            setMessage("Failed to load investments overview.");
+          }
+        } finally {
+          if (!cancelled) {
+            setLoading(false);
+          }
+        }
+      })();
+    }, 150);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [api, timeframe, searchQuery]);
+
+  const hasLiveData = Boolean(overview?.meta?.total_positions && overview.meta.total_positions > 0);
+
+  const featuredSecurity = hasLiveData
+    ? overview?.featured_security || overview?.positions?.[0] || fallbackFeaturedSecurity
+    : fallbackFeaturedSecurity;
+
+  const accounts = useMemo(
+    () => (hasLiveData ? overview?.accounts || [] : fallbackAccounts),
+    [hasLiveData, overview]
+  );
+
+  const allocations = useMemo(
+    () => (hasLiveData ? overview?.allocations || [] : fallbackAllocations),
+    [hasLiveData, overview]
+  );
+
+  const positions = useMemo(() => {
+    if (hasLiveData) {
+      return overview?.positions || [];
+    }
+    return [fallbackFeaturedSecurity];
+  }, [hasLiveData, overview]);
+
+  const overviewSeries = useMemo(() => {
+    const values = overview?.performance?.portfolio?.map((point) => point.total_market_value) || [];
+    if (values.length < 2) {
+      return fallbackOverviewSeries;
+    }
+    return values;
+  }, [overview]);
+
+  const securitySeries = useMemo(() => {
+    const values = overview?.performance?.security?.map((point) => point.total_market_value) || [];
+    if (values.length < 2) {
+      return fallbackSecuritySeries;
+    }
+    return values;
+  }, [overview]);
+
+  const totalMarketValue = hasLiveData ? overview?.summary.total_market_value || 0 : 13253;
+  const totalReturnPct = hasLiveData ? overview?.summary.unrealized_return_pct || 0 : 2.29;
+  const securityPriceChange =
+    featuredSecurity.previous_close_price == null
+      ? featuredSecurity.day_change_value
+      : Number((featuredSecurity.market_price - featuredSecurity.previous_close_price).toFixed(2));
+
   return (
     <div className="space-y-6" data-testid="investments-page">
       <header className="rounded-2xl border border-[#17446f] bg-[#031327] px-5 py-4 shadow-[0_0_0_1px_rgba(15,58,96,0.35)]">
@@ -65,6 +245,12 @@ export default function InvestmentsPage() {
         </div>
       </header>
 
+      {message ? (
+        <p className="rounded-lg border border-[#24527f] bg-[#031b34]/70 px-3 py-2 text-sm text-slate-200" data-testid="global-message">
+          {message}
+        </p>
+      ) : null}
+
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]" data-testid="investments-main-grid">
         <div className="space-y-6">
           <section
@@ -72,21 +258,26 @@ export default function InvestmentsPage() {
             data-testid="investments-overview-card"
           >
             <div className="mb-4 text-center">
-              <p className="text-sm font-semibold text-emerald-300">+ 2.29%</p>
-              <p className="text-4xl font-semibold tracking-tight text-slate-100">$13,253</p>
-              <p className="text-sm text-slate-400">estimated return</p>
+              <p className={totalReturnPct >= 0 ? "text-sm font-semibold text-emerald-300" : "text-sm font-semibold text-rose-300"}>
+                {formatSignedPercent(totalReturnPct)}
+              </p>
+              <p className="text-4xl font-semibold tracking-tight text-slate-100">{money(totalMarketValue)}</p>
+              <p className="text-sm text-slate-400">portfolio market value</p>
             </div>
 
             <div className="rounded-xl border border-[#15456d] bg-[#03172c]/80 p-4">
-              <Sparkline values={overviewSeries} gradientId="overview-series" lineColor="#64dc7b" />
+              <div className={loading ? "opacity-70" : "opacity-100"}>
+                <Sparkline values={overviewSeries} gradientId="overview-series" lineColor="#64dc7b" />
+              </div>
               <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-300" role="group" aria-label="Overview time range">
                 {timeFrames.map((entry) => (
                   <button
                     key={entry}
                     type="button"
-                    aria-pressed={entry === activeTimeFrame}
+                    onClick={() => setTimeframe(entry)}
+                    aria-pressed={entry === timeframe}
                     className={
-                      entry === activeTimeFrame
+                      entry === timeframe
                         ? "rounded-full bg-[#24508a] px-3 py-1 font-semibold text-slate-100"
                         : "rounded-full px-3 py-1 text-slate-400 transition hover:bg-[#13345c] hover:text-slate-100"
                     }
@@ -104,30 +295,33 @@ export default function InvestmentsPage() {
           >
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-xl font-semibold text-slate-100">Accounts</h3>
-              <span className="text-xs uppercase tracking-wide text-slate-400">3M balance change</span>
+              <span className="text-xs uppercase tracking-wide text-slate-400">balance change</span>
             </div>
 
             <div className="space-y-4">
-              {accountRows.map((entry) => (
-                <article key={entry.name} className="flex items-center justify-between rounded-xl border border-[#133c64] bg-[#031b34]/70 px-3 py-2">
-                  <div>
-                    <p className="font-medium text-slate-100">{entry.name}</p>
-                    <p className="text-xs text-slate-400">{entry.updated}</p>
-                  </div>
-                  <div className="text-right">
-                    <p
-                      className={
-                        entry.tone === "up"
-                          ? "text-sm font-medium text-emerald-300"
-                          : "text-sm font-medium text-rose-300"
-                      }
-                    >
-                      {entry.change}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-100">{entry.value}</p>
-                  </div>
-                </article>
-              ))}
+              {accounts.map((entry) => {
+                const tone = entry.day_change_pct >= 0 ? "up" : "down";
+                return (
+                  <article key={entry.account_name} className="flex items-center justify-between rounded-xl border border-[#133c64] bg-[#031b34]/70 px-3 py-2">
+                    <div>
+                      <p className="font-medium text-slate-100">{entry.account_name}</p>
+                      <p className="text-xs text-slate-400">{formatRelativeDate(entry.latest_as_of_date)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p
+                        className={
+                          tone === "up"
+                            ? "text-sm font-medium text-emerald-300"
+                            : "text-sm font-medium text-rose-300"
+                        }
+                      >
+                        {formatSignedPercent(entry.day_change_pct)}
+                      </p>
+                      <p className="text-sm font-semibold text-slate-100">{money(entry.market_value)}</p>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
 
             <div className="mt-8">
@@ -136,13 +330,13 @@ export default function InvestmentsPage() {
                 <span className="text-xs uppercase tracking-wide text-slate-400">By percentage</span>
               </div>
               <div className="space-y-3">
-                {allocationRows.map((entry) => (
-                  <div key={entry.name} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                    <span className="text-slate-200">{entry.name}</span>
+                {allocations.map((entry) => (
+                  <div key={entry.asset_class} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                    <span className="text-slate-200">{formatLabelFromAssetClass(entry.asset_class)}</span>
                     <div className="h-1.5 rounded-full bg-[#12355a]">
-                      <div className="h-1.5 rounded-full bg-[#6c9cd8]" style={{ width: entry.width }} />
+                      <div className="h-1.5 rounded-full bg-[#6c9cd8]" style={{ width: `${Math.max(0, Math.min(100, entry.share_pct))}%` }} />
                     </div>
-                    <span className="text-sm font-medium text-slate-200">{entry.value}</span>
+                    <span className="text-sm font-medium text-slate-200">{entry.share_pct.toFixed(2)}%</span>
                   </div>
                 ))}
               </div>
@@ -158,30 +352,37 @@ export default function InvestmentsPage() {
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <span className="inline-flex rounded-md border border-[#255784] bg-[#06223f] px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-slate-300">
-                  Stock
+                  {formatLabelFromAssetClass(featuredSecurity.asset_class)}
                 </span>
-                <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-100">NFLX</p>
-                <p className="text-lg text-slate-400">Netflix Inc</p>
+                <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-100">{featuredSecurity.symbol}</p>
+                <p className="text-lg text-slate-400">{featuredSecurity.asset_name}</p>
               </div>
               <div className="text-right">
-                <p className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300">
-                  <TrendingUp className="h-3.5 w-3.5" /> +3.07
+                <p className={
+                  securityPriceChange >= 0
+                    ? "inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300"
+                    : "inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2 py-0.5 text-xs font-semibold text-rose-300"
+                }>
+                  <TrendingUp className="h-3.5 w-3.5" /> {formatSignedNumber(securityPriceChange)}
                 </p>
-                <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-100">$299.05</p>
-                <p className="text-sm text-slate-400">Price at 4:00 PM</p>
+                <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-100">{money(featuredSecurity.market_price)}</p>
+                <p className="text-sm text-slate-400">{formatRelativeDate(featuredSecurity.as_of_date)}</p>
               </div>
             </div>
 
             <div className="rounded-xl border border-[#15456d] bg-[#03172c]/80 p-4">
-              <Sparkline values={securitySeries} gradientId="security-series" lineColor="#64dc7b" />
+              <div className={loading ? "opacity-70" : "opacity-100"}>
+                <Sparkline values={securitySeries} gradientId="security-series" lineColor="#64dc7b" />
+              </div>
               <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-300" role="group" aria-label="Security time range">
                 {timeFrames.map((entry) => (
                   <button
                     key={entry}
                     type="button"
-                    aria-pressed={entry === activeTimeFrame}
+                    onClick={() => setTimeframe(entry)}
+                    aria-pressed={entry === timeframe}
                     className={
-                      entry === activeTimeFrame
+                      entry === timeframe
                         ? "rounded-full bg-[#24508a] px-3 py-1 font-semibold text-slate-100"
                         : "rounded-full px-3 py-1 text-slate-400 transition hover:bg-[#13345c] hover:text-slate-100"
                     }
@@ -201,11 +402,13 @@ export default function InvestmentsPage() {
             <div className="mt-4 space-y-3 text-slate-200">
               <div className="flex items-center justify-between">
                 <span className="text-slate-300">Average cost</span>
-                <span className="font-semibold">$224.54</span>
+                <span className="font-semibold">{money(featuredSecurity.average_cost)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-slate-300">Total return</span>
-                <span className="font-semibold">$213.84 (33.18%)</span>
+                <span className="font-semibold">
+                  {money(featuredSecurity.unrealized_gain)} ({formatSignedPercent(featuredSecurity.unrealized_return_pct)})
+                </span>
               </div>
             </div>
           </section>
@@ -224,6 +427,8 @@ export default function InvestmentsPage() {
                 <input
                   id="investments-sidebar-search"
                   type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search"
                   className="rounded-lg border border-[#24527f] bg-[#031a31] py-1.5 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-[#6c9cd8] focus:ring-1 focus:ring-[#6c9cd8]/40"
                   data-testid="investments-sidebar-search"
@@ -231,13 +436,25 @@ export default function InvestmentsPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-[#133c64] bg-[#031b34]/70 px-3 py-3">
-              <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-hidden="true" />
-                <span className="text-slate-200">Robinhood · 2.87 shares</span>
-                <span className="font-semibold text-slate-100">$858.27</span>
+            {positions.length ? (
+              <div className="space-y-2">
+                {positions.map((position) => (
+                  <div key={position.id} className="rounded-xl border border-[#133c64] bg-[#031b34]/70 px-3 py-3">
+                    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                      <span className={position.day_change_value >= 0 ? "h-2.5 w-2.5 rounded-full bg-emerald-400" : "h-2.5 w-2.5 rounded-full bg-rose-400"} aria-hidden="true" />
+                      <span className="text-slate-200">
+                        {position.account_name} · {position.quantity.toFixed(2)} shares · {position.symbol}
+                      </span>
+                      <span className="font-semibold text-slate-100">{money(position.market_value)}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            ) : (
+              <p className="rounded-xl border border-[#133c64] bg-[#031b34]/70 px-3 py-3 text-sm text-slate-300">
+                No positions match your current filters.
+              </p>
+            )}
           </section>
         </div>
       </div>

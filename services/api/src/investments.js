@@ -6,6 +6,7 @@ const MAX_TEXT_LENGTH = 120;
 const MAX_SYMBOL_LENGTH = 32;
 const SUPPORTED_SOURCE_TYPES = new Set(["manual", "csv"]);
 const REQUIRED_CSV_FIELDS = ["account_name", "symbol", "quantity", "average_cost", "market_price"];
+const SUPPORTED_TIMEFRAMES = new Set(["1D", "1W", "1M", "3M", "YTD", "1Y", "ALL"]);
 
 const COLUMN_ALIASES = {
   account_name: ["account", "account name", "broker", "institution", "portfolio"],
@@ -252,6 +253,203 @@ function selectLatestHoldings(holdings = []) {
   }
 
   return Array.from(latestByPositionKey.values());
+}
+
+function normalizeTimeframe(rawValue) {
+  const candidate = String(rawValue || "3M").trim().toUpperCase();
+  if (!SUPPORTED_TIMEFRAMES.has(candidate)) {
+    return "3M";
+  }
+  return candidate;
+}
+
+function toUtcDate(rawValue) {
+  const parsed = parseDate(rawValue);
+  if (!parsed) {
+    return null;
+  }
+  const candidate = new Date(`${parsed}T12:00:00Z`);
+  if (Number.isNaN(candidate.getTime())) {
+    return null;
+  }
+  return candidate;
+}
+
+function shiftDate(rawValue, days) {
+  const date = toUtcDate(rawValue);
+  if (!date) {
+    return null;
+  }
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function resolveTimeframeStartDate(latestDate, timeframe) {
+  if (!latestDate || timeframe === "ALL") {
+    return null;
+  }
+  if (timeframe === "1D") {
+    return shiftDate(latestDate, -1);
+  }
+  if (timeframe === "1W") {
+    return shiftDate(latestDate, -7);
+  }
+  if (timeframe === "1M") {
+    return shiftDate(latestDate, -30);
+  }
+  if (timeframe === "3M") {
+    return shiftDate(latestDate, -90);
+  }
+  if (timeframe === "1Y") {
+    return shiftDate(latestDate, -365);
+  }
+  if (timeframe === "YTD") {
+    const date = toUtcDate(latestDate);
+    if (!date) {
+      return null;
+    }
+    return `${date.getUTCFullYear()}-01-01`;
+  }
+  return null;
+}
+
+function buildHistoricalPortfolioSeries(holdings = [], timeframe = "3M") {
+  if (!holdings.length) {
+    return [];
+  }
+
+  const holdingsByDate = new Map();
+  for (const holding of holdings) {
+    const date = holding.as_of_date;
+    if (!date) {
+      continue;
+    }
+    const bucket = holdingsByDate.get(date);
+    if (bucket) {
+      bucket.push(holding);
+    } else {
+      holdingsByDate.set(date, [holding]);
+    }
+  }
+
+  const orderedDates = Array.from(holdingsByDate.keys()).sort();
+  if (!orderedDates.length) {
+    return [];
+  }
+
+  const latestDate = orderedDates[orderedDates.length - 1];
+  const startDate = resolveTimeframeStartDate(latestDate, timeframe);
+  const activeByPosition = new Map();
+  const points = [];
+
+  for (const date of orderedDates) {
+    for (const holding of holdingsByDate.get(date) || []) {
+      const key = `${normalizeText(holding.account_name)}|${holding.symbol}`;
+      activeByPosition.set(key, holding);
+    }
+
+    if (startDate && date < startDate) {
+      continue;
+    }
+
+    const snapshot = computePortfolioSnapshot(Array.from(activeByPosition.values()));
+    points.push({
+      date,
+      total_market_value: snapshot.summary.total_market_value,
+      day_change_value: snapshot.summary.day_change_value,
+      day_change_pct: snapshot.summary.day_change_pct
+    });
+  }
+
+  return points;
+}
+
+function filterPositionsByQuery(positions = [], rawQuery = "") {
+  const query = normalizeText(rawQuery);
+  if (!query) {
+    return positions;
+  }
+
+  return positions.filter((position) => {
+    const fields = [
+      position.symbol,
+      position.asset_name,
+      position.asset_class,
+      position.account_name
+    ];
+    return fields.some((value) => normalizeText(value).includes(query));
+  });
+}
+
+function buildAccountSummaryRows(positions = []) {
+  const byAccount = new Map();
+
+  for (const position of positions) {
+    const key = position.account_name || "Portfolio";
+    const current = byAccount.get(key) || {
+      account_name: key,
+      market_value: 0,
+      cost_basis: 0,
+      unrealized_gain: 0,
+      day_change_value: 0,
+      position_count: 0,
+      latest_as_of_date: null
+    };
+
+    current.market_value += position.market_value;
+    current.cost_basis += position.cost_basis;
+    current.unrealized_gain += position.unrealized_gain;
+    current.day_change_value += position.day_change_value;
+    current.position_count += 1;
+
+    if (!current.latest_as_of_date || position.as_of_date > current.latest_as_of_date) {
+      current.latest_as_of_date = position.as_of_date;
+    }
+
+    byAccount.set(key, current);
+  }
+
+  return Array.from(byAccount.values())
+    .map((entry) => {
+      const marketValue = Number(entry.market_value.toFixed(2));
+      const previousMarketValue = Number((entry.market_value - entry.day_change_value).toFixed(2));
+      const dayChangePct =
+        previousMarketValue > 0
+          ? Number(((entry.day_change_value / previousMarketValue) * 100).toFixed(4))
+          : 0;
+
+      return {
+        account_name: entry.account_name,
+        market_value: marketValue,
+        cost_basis: Number(entry.cost_basis.toFixed(2)),
+        unrealized_gain: Number(entry.unrealized_gain.toFixed(2)),
+        day_change_value: Number(entry.day_change_value.toFixed(2)),
+        day_change_pct: dayChangePct,
+        position_count: entry.position_count,
+        latest_as_of_date: entry.latest_as_of_date
+      };
+    })
+    .sort((left, right) => right.market_value - left.market_value);
+}
+
+function buildPerformancePayload(holdings = [], timeframe, symbol = null) {
+  const normalizedTimeframe = normalizeTimeframe(timeframe);
+  const featuredSymbol = symbol ? String(symbol).trim().toUpperCase() : null;
+
+  const portfolio = buildHistoricalPortfolioSeries(holdings, normalizedTimeframe);
+  const security = featuredSymbol
+    ? buildHistoricalPortfolioSeries(
+        holdings.filter((holding) => holding.symbol === featuredSymbol),
+        normalizedTimeframe
+      )
+    : [];
+
+  return {
+    timeframe: normalizedTimeframe,
+    portfolio,
+    security,
+    featured_symbol: featuredSymbol
+  };
 }
 
 function upsertInvestmentHolding(store, userId, payload, options = {}) {
@@ -550,4 +748,63 @@ export function getInvestmentPortfolio(userId) {
   const holdings = listInvestmentHoldings(userId).items;
   const latestHoldings = selectLatestHoldings(holdings);
   return computePortfolioSnapshot(latestHoldings);
+}
+
+export function listInvestmentPositions(userId, options = {}) {
+  const portfolio = getInvestmentPortfolio(userId);
+  const items = filterPositionsByQuery(portfolio.positions, options.query || "");
+  return {
+    items,
+    total: items.length
+  };
+}
+
+export function listInvestmentAccounts(userId) {
+  const portfolio = getInvestmentPortfolio(userId);
+  return {
+    items: buildAccountSummaryRows(portfolio.positions)
+  };
+}
+
+export function getInvestmentPerformance(userId, options = {}) {
+  const portfolio = getInvestmentPortfolio(userId);
+  const topSymbol = portfolio.positions[0]?.symbol || null;
+  const symbol = options.symbol ? String(options.symbol).trim().toUpperCase() : topSymbol;
+  const holdings = listInvestmentHoldings(userId).items;
+  return buildPerformancePayload(holdings, options.timeframe, symbol);
+}
+
+export function getInvestmentOverview(userId, options = {}) {
+  const holdings = listInvestmentHoldings(userId).items;
+  const portfolio = getInvestmentPortfolio(userId);
+  const positions = filterPositionsByQuery(portfolio.positions, options.query || "");
+  const featuredSecurity = positions[0] || portfolio.positions[0] || null;
+  const performance = buildPerformancePayload(
+    holdings,
+    options.timeframe,
+    featuredSecurity?.symbol || null
+  );
+  const accounts = buildAccountSummaryRows(portfolio.positions);
+  const latestAsOfDate = portfolio.positions.reduce((latest, position) => {
+    if (!latest || position.as_of_date > latest) {
+      return position.as_of_date;
+    }
+    return latest;
+  }, null);
+
+  return {
+    timeframe: performance.timeframe,
+    summary: portfolio.summary,
+    allocations: portfolio.allocations,
+    accounts,
+    positions,
+    featured_security: featuredSecurity,
+    performance,
+    meta: {
+      as_of_date: latestAsOfDate,
+      total_holdings: holdings.length,
+      total_positions: portfolio.positions.length,
+      filtered_positions: positions.length
+    }
+  };
 }

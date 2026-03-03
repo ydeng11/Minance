@@ -4,6 +4,7 @@ import {
   accountsApi,
   analyticsApi,
   categoriesApi,
+  investmentsApi,
   transactionsApi,
   type ApiRequest
 } from "./endpoints";
@@ -122,4 +123,35 @@ test("accountsApi routes provider and manual-create requests to /v1/accounts con
   assert.equal(calls[7].options?.method, "PUT");
   assert.equal(calls[8].path, "/v1/accounts/acct_123");
   assert.equal(calls[8].options?.method, "DELETE");
+});
+
+test("investmentsApi exposes overview, module endpoints, and CSV/manual mutations", async () => {
+  const { calls, request } = createRecorder();
+
+  await investmentsApi.overview(request, { timeframe: "3M", query: "nflx" });
+  await investmentsApi.holdings(request);
+  await investmentsApi.createHolding(request, {
+    account_name: "Brokerage",
+    symbol: "VOO",
+    quantity: 10,
+    average_cost: 400,
+    market_price: 430
+  });
+  await investmentsApi.importCsv(request, {
+    csvText: "Account,Ticker,Shares,Cost Basis,Market Price\\nBrokerage,VOO,10,400,430",
+    sourceFileId: "import_1"
+  });
+  await investmentsApi.positions(request, { query: "voo" });
+  await investmentsApi.accounts(request);
+  await investmentsApi.performance(request, { timeframe: "1M", symbol: "VOO" });
+
+  assert.equal(calls[0].path, "/v1/investments/overview?timeframe=3M&query=nflx");
+  assert.equal(calls[1].path, "/v1/investments/holdings");
+  assert.equal(calls[2].path, "/v1/investments/holdings");
+  assert.equal(calls[2].options?.method, "POST");
+  assert.equal(calls[3].path, "/v1/investments/holdings/import-csv");
+  assert.equal(calls[3].options?.method, "POST");
+  assert.equal(calls[4].path, "/v1/investments/positions?query=voo");
+  assert.equal(calls[5].path, "/v1/investments/accounts");
+  assert.equal(calls[6].path, "/v1/investments/performance?timeframe=1M&symbol=VOO");
 });
