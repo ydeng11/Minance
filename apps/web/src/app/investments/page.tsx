@@ -14,6 +14,7 @@ import { money } from "@/lib/utils";
 
 const timeFrames = ["1D", "1W", "1M", "3M", "YTD", "1Y", "ALL"] as const;
 type Timeframe = (typeof timeFrames)[number];
+type PositionSort = "value_desc" | "value_asc" | "day_change_desc" | "symbol_asc";
 
 const fallbackOverviewSeries = [42, 37, 46, 34, 40, 38, 49, 44, 53, 47, 58, 54, 61];
 const fallbackSecuritySeries = [36, 33, 40, 31, 37, 35, 44, 41, 49, 43, 51, 47, 54];
@@ -139,10 +140,28 @@ function formatRelativeDate(value: string | null) {
   return `As of ${value}`;
 }
 
+function sortPositions(items: InvestmentPosition[], mode: PositionSort) {
+  const next = [...items];
+  next.sort((left, right) => {
+    if (mode === "value_asc") {
+      return left.market_value - right.market_value;
+    }
+    if (mode === "day_change_desc") {
+      return right.day_change_value - left.day_change_value;
+    }
+    if (mode === "symbol_asc") {
+      return left.symbol.localeCompare(right.symbol);
+    }
+    return right.market_value - left.market_value;
+  });
+  return next;
+}
+
 export default function InvestmentsPage() {
   const api = useApi();
   const [timeframe, setTimeframe] = useState<Timeframe>("3M");
   const [searchQuery, setSearchQuery] = useState("");
+  const [positionSort, setPositionSort] = useState<PositionSort>("value_desc");
   const [overview, setOverview] = useState<InvestmentOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -185,50 +204,62 @@ export default function InvestmentsPage() {
   }, [api, timeframe, searchQuery]);
 
   const hasLiveData = Boolean(overview?.meta?.total_positions && overview.meta.total_positions > 0);
+  const showFallback = !overview && loading;
 
   const featuredSecurity = hasLiveData
-    ? overview?.featured_security || overview?.positions?.[0] || fallbackFeaturedSecurity
-    : fallbackFeaturedSecurity;
+    ? overview?.featured_security || overview?.positions?.[0] || null
+    : showFallback
+      ? fallbackFeaturedSecurity
+      : null;
 
   const accounts = useMemo(
-    () => (hasLiveData ? overview?.accounts || [] : fallbackAccounts),
-    [hasLiveData, overview]
+    () => (hasLiveData ? overview?.accounts || [] : showFallback ? fallbackAccounts : []),
+    [hasLiveData, overview, showFallback]
   );
 
   const allocations = useMemo(
-    () => (hasLiveData ? overview?.allocations || [] : fallbackAllocations),
-    [hasLiveData, overview]
+    () => (hasLiveData ? overview?.allocations || [] : showFallback ? fallbackAllocations : []),
+    [hasLiveData, overview, showFallback]
   );
 
   const positions = useMemo(() => {
     if (hasLiveData) {
       return overview?.positions || [];
     }
-    return [fallbackFeaturedSecurity];
-  }, [hasLiveData, overview]);
+    return showFallback ? [fallbackFeaturedSecurity] : [];
+  }, [hasLiveData, overview, showFallback]);
+
+  const sortedPositions = useMemo(() => sortPositions(positions, positionSort), [positions, positionSort]);
 
   const overviewSeries = useMemo(() => {
     const values = overview?.performance?.portfolio?.map((point) => point.total_market_value) || [];
-    if (values.length < 2) {
+    if (values.length >= 2) {
+      return values;
+    }
+    if (showFallback) {
       return fallbackOverviewSeries;
     }
-    return values;
-  }, [overview]);
+    return [0, 0, 0];
+  }, [overview, showFallback]);
 
   const securitySeries = useMemo(() => {
     const values = overview?.performance?.security?.map((point) => point.total_market_value) || [];
-    if (values.length < 2) {
+    if (values.length >= 2) {
+      return values;
+    }
+    if (showFallback) {
       return fallbackSecuritySeries;
     }
-    return values;
-  }, [overview]);
+    return [0, 0, 0];
+  }, [overview, showFallback]);
 
-  const totalMarketValue = hasLiveData ? overview?.summary.total_market_value || 0 : 13253;
-  const totalReturnPct = hasLiveData ? overview?.summary.unrealized_return_pct || 0 : 2.29;
-  const securityPriceChange =
-    featuredSecurity.previous_close_price == null
+  const totalMarketValue = hasLiveData ? overview?.summary.total_market_value || 0 : showFallback ? 13253 : 0;
+  const totalReturnPct = hasLiveData ? overview?.summary.unrealized_return_pct || 0 : showFallback ? 2.29 : 0;
+  const securityPriceChange = featuredSecurity
+    ? featuredSecurity.previous_close_price == null
       ? featuredSecurity.day_change_value
-      : Number((featuredSecurity.market_price - featuredSecurity.previous_close_price).toFixed(2));
+      : Number((featuredSecurity.market_price - featuredSecurity.previous_close_price).toFixed(2))
+    : 0;
 
   return (
     <div className="space-y-6" data-testid="investments-page">
@@ -248,6 +279,12 @@ export default function InvestmentsPage() {
       {message ? (
         <p className="rounded-lg border border-[#24527f] bg-[#031b34]/70 px-3 py-2 text-sm text-slate-200" data-testid="global-message">
           {message}
+        </p>
+      ) : null}
+
+      {loading ? (
+        <p className="text-xs uppercase tracking-wide text-slate-400" data-testid="investments-loading">
+          Refreshing investments data...
         </p>
       ) : null}
 
@@ -299,29 +336,35 @@ export default function InvestmentsPage() {
             </div>
 
             <div className="space-y-4">
-              {accounts.map((entry) => {
-                const tone = entry.day_change_pct >= 0 ? "up" : "down";
-                return (
-                  <article key={entry.account_name} className="flex items-center justify-between rounded-xl border border-[#133c64] bg-[#031b34]/70 px-3 py-2">
-                    <div>
-                      <p className="font-medium text-slate-100">{entry.account_name}</p>
-                      <p className="text-xs text-slate-400">{formatRelativeDate(entry.latest_as_of_date)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p
-                        className={
-                          tone === "up"
-                            ? "text-sm font-medium text-emerald-300"
-                            : "text-sm font-medium text-rose-300"
-                        }
-                      >
-                        {formatSignedPercent(entry.day_change_pct)}
-                      </p>
-                      <p className="text-sm font-semibold text-slate-100">{money(entry.market_value)}</p>
-                    </div>
-                  </article>
-                );
-              })}
+              {accounts.length ? (
+                accounts.map((entry) => {
+                  const tone = entry.day_change_pct >= 0 ? "up" : "down";
+                  return (
+                    <article key={entry.account_name} className="flex items-center justify-between rounded-xl border border-[#133c64] bg-[#031b34]/70 px-3 py-2">
+                      <div>
+                        <p className="font-medium text-slate-100">{entry.account_name}</p>
+                        <p className="text-xs text-slate-400">{formatRelativeDate(entry.latest_as_of_date)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p
+                          className={
+                            tone === "up"
+                              ? "text-sm font-medium text-emerald-300"
+                              : "text-sm font-medium text-rose-300"
+                          }
+                        >
+                          {formatSignedPercent(entry.day_change_pct)}
+                        </p>
+                        <p className="text-sm font-semibold text-slate-100">{money(entry.market_value)}</p>
+                      </div>
+                    </article>
+                  );
+                })
+              ) : (
+                <p className="rounded-xl border border-[#133c64] bg-[#031b34]/70 px-3 py-3 text-sm text-slate-300">
+                  No linked investment accounts yet.
+                </p>
+              )}
             </div>
 
             <div className="mt-8">
@@ -330,15 +373,19 @@ export default function InvestmentsPage() {
                 <span className="text-xs uppercase tracking-wide text-slate-400">By percentage</span>
               </div>
               <div className="space-y-3">
-                {allocations.map((entry) => (
-                  <div key={entry.asset_class} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                    <span className="text-slate-200">{formatLabelFromAssetClass(entry.asset_class)}</span>
-                    <div className="h-1.5 rounded-full bg-[#12355a]">
-                      <div className="h-1.5 rounded-full bg-[#6c9cd8]" style={{ width: `${Math.max(0, Math.min(100, entry.share_pct))}%` }} />
+                {allocations.length ? (
+                  allocations.map((entry) => (
+                    <div key={entry.asset_class} className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                      <span className="text-slate-200">{formatLabelFromAssetClass(entry.asset_class)}</span>
+                      <div className="h-1.5 rounded-full bg-[#12355a]">
+                        <div className="h-1.5 rounded-full bg-[#6c9cd8]" style={{ width: `${Math.max(0, Math.min(100, entry.share_pct))}%` }} />
+                      </div>
+                      <span className="text-sm font-medium text-slate-200">{entry.share_pct.toFixed(2)}%</span>
                     </div>
-                    <span className="text-sm font-medium text-slate-200">{entry.share_pct.toFixed(2)}%</span>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-300">Allocation appears after your first holdings import.</p>
+                )}
               </div>
             </div>
           </section>
@@ -349,49 +396,57 @@ export default function InvestmentsPage() {
             className="rounded-2xl border border-[#17446f] bg-gradient-to-b from-[#041a32] to-[#031327] p-6"
             data-testid="investments-security-card"
           >
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <span className="inline-flex rounded-md border border-[#255784] bg-[#06223f] px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-slate-300">
-                  {formatLabelFromAssetClass(featuredSecurity.asset_class)}
-                </span>
-                <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-100">{featuredSecurity.symbol}</p>
-                <p className="text-lg text-slate-400">{featuredSecurity.asset_name}</p>
-              </div>
-              <div className="text-right">
-                <p className={
-                  securityPriceChange >= 0
-                    ? "inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300"
-                    : "inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2 py-0.5 text-xs font-semibold text-rose-300"
-                }>
-                  <TrendingUp className="h-3.5 w-3.5" /> {formatSignedNumber(securityPriceChange)}
-                </p>
-                <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-100">{money(featuredSecurity.market_price)}</p>
-                <p className="text-sm text-slate-400">{formatRelativeDate(featuredSecurity.as_of_date)}</p>
-              </div>
-            </div>
+            {featuredSecurity ? (
+              <>
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <span className="inline-flex rounded-md border border-[#255784] bg-[#06223f] px-2 py-0.5 text-xs font-medium uppercase tracking-wide text-slate-300">
+                      {formatLabelFromAssetClass(featuredSecurity.asset_class)}
+                    </span>
+                    <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-100">{featuredSecurity.symbol}</p>
+                    <p className="text-lg text-slate-400">{featuredSecurity.asset_name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={
+                      securityPriceChange >= 0
+                        ? "inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300"
+                        : "inline-flex items-center gap-1 rounded-full bg-rose-500/20 px-2 py-0.5 text-xs font-semibold text-rose-300"
+                    }>
+                      <TrendingUp className="h-3.5 w-3.5" /> {formatSignedNumber(securityPriceChange)}
+                    </p>
+                    <p className="mt-2 text-4xl font-semibold tracking-tight text-slate-100">{money(featuredSecurity.market_price)}</p>
+                    <p className="text-sm text-slate-400">{formatRelativeDate(featuredSecurity.as_of_date)}</p>
+                  </div>
+                </div>
 
-            <div className="rounded-xl border border-[#15456d] bg-[#03172c]/80 p-4">
-              <div className={loading ? "opacity-70" : "opacity-100"}>
-                <Sparkline values={securitySeries} gradientId="security-series" lineColor="#64dc7b" />
+                <div className="rounded-xl border border-[#15456d] bg-[#03172c]/80 p-4">
+                  <div className={loading ? "opacity-70" : "opacity-100"}>
+                    <Sparkline values={securitySeries} gradientId="security-series" lineColor="#64dc7b" />
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-300" role="group" aria-label="Security time range">
+                    {timeFrames.map((entry) => (
+                      <button
+                        key={entry}
+                        type="button"
+                        onClick={() => setTimeframe(entry)}
+                        aria-pressed={entry === timeframe}
+                        className={
+                          entry === timeframe
+                            ? "rounded-full bg-[#24508a] px-3 py-1 font-semibold text-slate-100"
+                            : "rounded-full px-3 py-1 text-slate-400 transition hover:bg-[#13345c] hover:text-slate-100"
+                        }
+                      >
+                        {entry}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="rounded-xl border border-[#15456d] bg-[#03172c]/80 p-4">
+                <p className="text-sm text-slate-300">No security snapshots yet. Import holdings to unlock security performance.</p>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-300" role="group" aria-label="Security time range">
-                {timeFrames.map((entry) => (
-                  <button
-                    key={entry}
-                    type="button"
-                    onClick={() => setTimeframe(entry)}
-                    aria-pressed={entry === timeframe}
-                    className={
-                      entry === timeframe
-                        ? "rounded-full bg-[#24508a] px-3 py-1 font-semibold text-slate-100"
-                        : "rounded-full px-3 py-1 text-slate-400 transition hover:bg-[#13345c] hover:text-slate-100"
-                    }
-                  >
-                    {entry}
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
           </section>
 
           <section
@@ -399,56 +454,88 @@ export default function InvestmentsPage() {
             data-testid="investments-metrics-panel"
           >
             <h3 className="text-xl font-semibold text-slate-100">Metrics</h3>
-            <div className="mt-4 space-y-3 text-slate-200">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-300">Average cost</span>
-                <span className="font-semibold">{money(featuredSecurity.average_cost)}</span>
+            {featuredSecurity ? (
+              <div className="mt-4 space-y-3 text-slate-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-300">Average cost</span>
+                  <span className="font-semibold">{money(featuredSecurity.average_cost)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-300">Total return</span>
+                  <span className="font-semibold">
+                    {money(featuredSecurity.unrealized_gain)} ({formatSignedPercent(featuredSecurity.unrealized_return_pct)})
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-300">Total return</span>
-                <span className="font-semibold">
-                  {money(featuredSecurity.unrealized_gain)} ({formatSignedPercent(featuredSecurity.unrealized_return_pct)})
-                </span>
-              </div>
-            </div>
+            ) : (
+              <p className="mt-4 text-sm text-slate-300">Metrics appear when position data is available.</p>
+            )}
           </section>
 
           <section
             className="rounded-2xl border border-[#17446f] bg-gradient-to-b from-[#041a32] to-[#031327] p-6"
             data-testid="investments-positions-panel"
           >
-            <div className="mb-4 flex items-center justify-between">
+            <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <h3 className="text-xl font-semibold text-slate-100">Positions</h3>
-              <div className="relative hidden md:block">
-                <label htmlFor="investments-sidebar-search" className="sr-only">
-                  Search positions
-                </label>
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <input
-                  id="investments-sidebar-search"
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search"
-                  className="rounded-lg border border-[#24527f] bg-[#031a31] py-1.5 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-[#6c9cd8] focus:ring-1 focus:ring-[#6c9cd8]/40"
-                  data-testid="investments-sidebar-search"
-                />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label className="sr-only" htmlFor="investments-positions-sort">Sort positions</label>
+                <select
+                  id="investments-positions-sort"
+                  value={positionSort}
+                  onChange={(event) => setPositionSort(event.target.value as PositionSort)}
+                  className="rounded-lg border border-[#24527f] bg-[#031a31] px-3 py-1.5 text-sm text-slate-100 outline-none transition focus:border-[#6c9cd8] focus:ring-1 focus:ring-[#6c9cd8]/40"
+                  data-testid="investments-positions-sort"
+                >
+                  <option value="value_desc">Largest value</option>
+                  <option value="value_asc">Smallest value</option>
+                  <option value="day_change_desc">Top day gain</option>
+                  <option value="symbol_asc">Symbol A-Z</option>
+                </select>
+                <div className="relative min-w-56">
+                  <label htmlFor="investments-sidebar-search" className="sr-only">
+                    Search positions
+                  </label>
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    id="investments-sidebar-search"
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search"
+                    className="w-full rounded-lg border border-[#24527f] bg-[#031a31] py-1.5 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-[#6c9cd8] focus:ring-1 focus:ring-[#6c9cd8]/40"
+                    data-testid="investments-sidebar-search"
+                  />
+                </div>
               </div>
             </div>
 
-            {positions.length ? (
-              <div className="space-y-2">
-                {positions.map((position) => (
-                  <div key={position.id} className="rounded-xl border border-[#133c64] bg-[#031b34]/70 px-3 py-3">
-                    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3">
-                      <span className={position.day_change_value >= 0 ? "h-2.5 w-2.5 rounded-full bg-emerald-400" : "h-2.5 w-2.5 rounded-full bg-rose-400"} aria-hidden="true" />
-                      <span className="text-slate-200">
-                        {position.account_name} · {position.quantity.toFixed(2)} shares · {position.symbol}
-                      </span>
-                      <span className="font-semibold text-slate-100">{money(position.market_value)}</span>
-                    </div>
-                  </div>
-                ))}
+            {sortedPositions.length ? (
+              <div className="overflow-x-auto rounded-xl border border-[#133c64] bg-[#031b34]/70">
+                <table className="min-w-full text-sm text-slate-200">
+                  <thead className="bg-[#031428] text-xs uppercase tracking-wide text-slate-400">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium">Symbol</th>
+                      <th className="px-3 py-2 text-left font-medium">Account</th>
+                      <th className="px-3 py-2 text-right font-medium">Shares</th>
+                      <th className="px-3 py-2 text-right font-medium">Market value</th>
+                      <th className="px-3 py-2 text-right font-medium">Day change</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedPositions.map((position) => (
+                      <tr key={position.id} className="border-t border-[#133c64]">
+                        <td className="px-3 py-2 font-semibold text-slate-100">{position.symbol}</td>
+                        <td className="px-3 py-2">{position.account_name}</td>
+                        <td className="px-3 py-2 text-right">{position.quantity.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right font-semibold text-slate-100">{money(position.market_value)}</td>
+                        <td className={position.day_change_value >= 0 ? "px-3 py-2 text-right text-emerald-300" : "px-3 py-2 text-right text-rose-300"}>
+                          {money(position.day_change_value)} ({formatSignedPercent(position.day_change_pct)})
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <p className="rounded-xl border border-[#133c64] bg-[#031b34]/70 px-3 py-3 text-sm text-slate-300">

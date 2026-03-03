@@ -155,3 +155,15 @@ test("investmentsApi exposes overview, module endpoints, and CSV/manual mutation
   assert.equal(calls[5].path, "/v1/investments/accounts");
   assert.equal(calls[6].path, "/v1/investments/performance?timeframe=1M&symbol=VOO");
 });
+
+test("investmentsApi query builder omits empty optional filters", async () => {
+  const { calls, request } = createRecorder();
+
+  await investmentsApi.overview(request, { query: "" });
+  await investmentsApi.positions(request, {});
+  await investmentsApi.performance(request, {});
+
+  assert.equal(calls[0].path, "/v1/investments/overview");
+  assert.equal(calls[1].path, "/v1/investments/positions");
+  assert.equal(calls[2].path, "/v1/investments/performance");
+});
