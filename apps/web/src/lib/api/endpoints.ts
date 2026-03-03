@@ -164,8 +164,11 @@ export const transactionsApi = {
   list: (
     request: ApiRequest,
     params: {
+      start?: string;
+      end?: string;
       query?: string;
       category?: string;
+      account?: string;
       range?: string;
       category_view?: "granular" | "coarse";
       needs_category_review?: boolean;

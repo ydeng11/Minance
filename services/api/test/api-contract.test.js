@@ -344,7 +344,9 @@ test("api parity contract suite for categories/transactions/settings and missing
       }
     });
     const transactionId = created.payload?.transaction?.id;
+    const accountId = created.payload?.transaction?.account_id;
     assert.equal(typeof transactionId, "string");
+    assert.equal(typeof accountId, "string");
     assert.equal(created.payload?.transaction?.transaction_type, "transfer");
     assert.equal(Array.isArray(created.payload?.transaction?.tags), true);
     assert.equal(created.payload?.transaction?.review_status, "reviewed");
@@ -414,6 +416,20 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(Array.isArray(queryMatch.payload?.items), true);
     assert.equal(
       queryMatch.payload.items.some((entry) => entry.id === transactionId),
+      true
+    );
+
+    const accountFilterMatch = await apiRequest(
+      context,
+      "GET",
+      `/v1/transactions?range=all&account=${encodeURIComponent(accountId)}`,
+      {
+        token: accessToken,
+        expectedStatus: 200
+      }
+    );
+    assert.equal(
+      accountFilterMatch.payload?.items?.some((entry) => entry.id === transactionId),
       true
     );
 

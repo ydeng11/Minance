@@ -623,6 +623,7 @@ async function handleApiRequest(req, res, url) {
         range: searchParams.get("range"),
         category_view: searchParams.get("category_view"),
         category: searchParams.get("category"),
+        account: searchParams.get("account"),
         merchant: searchParams.get("merchant"),
         source_type: searchParams.get("source_type"),
         query: searchParams.get("query"),

@@ -534,6 +534,15 @@ export function listTransactions(userId, filters = {}) {
     );
   }
 
+  if (effectiveFilters.account) {
+    const accountFilter = normalizeText(effectiveFilters.account);
+    txns = txns.filter((entry) => {
+      const accountKey = normalizeText(entry.account_key || "");
+      const accountId = normalizeText(entry.account_id || "");
+      return accountKey === accountFilter || accountId === accountFilter;
+    });
+  }
+
   txns = txns.map((entry) => normalizeTransactionRecord(entry));
 
   if (effectiveFilters.needs_category_review === "true") {
