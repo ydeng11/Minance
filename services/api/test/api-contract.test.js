@@ -393,6 +393,89 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(credentials.payload?.preferences?.defaultProvider, "openrouter");
   });
 
+  await t.test("accounts create/update contracts enforce type, currency, and initial-balance semantics", async () => {
+    const accountTypes = await apiRequest(context, "GET", "/v1/accounts/supported-account-types", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(Array.isArray(accountTypes.payload?.accountTypes), true);
+    assert.equal(accountTypes.payload?.accountTypes?.includes("checking"), true);
+    assert.equal(accountTypes.payload?.accountTypes?.includes("credit"), true);
+
+    const createAsset = await apiRequest(context, "POST", "/v1/accounts", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        displayName: "Contract Checking",
+        accountType: "checking",
+        currency: "usd",
+        initialBalance: "250.55"
+      }
+    });
+    const assetAccountId = createAsset.payload?.account?.id;
+    assert.equal(typeof assetAccountId, "string");
+    assert.equal(createAsset.payload?.account?.currency, "USD");
+    assert.equal(createAsset.payload?.account?.accountType, "checking");
+    assert.equal(createAsset.payload?.account?.initialBalance, 250.55);
+
+    const createLiability = await apiRequest(context, "POST", "/v1/accounts", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        displayName: "Travel Card",
+        accountType: "credit",
+        currency: "USD",
+        initialBalance: 425
+      }
+    });
+    assert.equal(createLiability.payload?.account?.accountType, "credit");
+    assert.equal(createLiability.payload?.account?.initialBalance, -425);
+
+    const duplicateName = await apiRequest(context, "POST", "/v1/accounts", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        displayName: "Contract Checking",
+        accountType: "checking",
+        currency: "USD",
+        initialBalance: 10
+      }
+    });
+    assert.equal(duplicateName.payload?.error?.message, "Invalid account name already exists");
+
+    const invalidCurrency = await apiRequest(context, "POST", "/v1/accounts", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        displayName: "Bad Currency Account",
+        accountType: "checking",
+        currency: "US",
+        initialBalance: 10
+      }
+    });
+    assert.equal(invalidCurrency.payload?.error?.message, "Invalid currency code");
+
+    const updated = await apiRequest(context, "PUT", `/v1/accounts/${assetAccountId}`, {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        accountType: "savings",
+        currency: "eur",
+        initialBalance: -111
+      }
+    });
+    assert.equal(updated.payload?.account?.accountType, "savings");
+    assert.equal(updated.payload?.account?.currency, "EUR");
+    assert.equal(updated.payload?.account?.initialBalance, 111);
+
+    const list = await apiRequest(context, "GET", "/v1/accounts", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(Array.isArray(list.payload?.accounts), true);
+    assert.equal(list.payload?.accounts?.some((entry) => entry.id === assetAccountId), true);
+  });
+
   await t.test("account provider abstraction exposes self-host fallback and deterministic failures", async () => {
     const providers = await apiRequest(context, "GET", "/v1/accounts/providers", {
       token: accessToken,
@@ -425,8 +508,8 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(unsupportedAction.payload?.error?.details?.action, "begin_link_session");
   });
 
-  await t.test("accounts, recurrings, investments, and generic settings remain explicit 404 contracts", async () => {
-    const missingEndpoints = ["/v1/accounts", "/v1/recurrings", "/v1/investments", "/v1/settings"];
+  await t.test("recurrings, investments, and generic settings remain explicit 404 contracts", async () => {
+    const missingEndpoints = ["/v1/recurrings", "/v1/investments", "/v1/settings"];
     for (const endpoint of missingEndpoints) {
       const response = await apiRequest(context, "GET", endpoint, {
         token: accessToken,

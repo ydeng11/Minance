@@ -18,7 +18,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
 | Legacy Minance migration | Import from legacy Minance SQLite DB | Supported | `POST /v1/migrations/minance/sqlite` and migration report endpoint are implemented | Requires host `sqlite3` CLI. If unavailable, operator uses CSV import path. |
 | Transactions lifecycle | Create/edit/delete and filter transactions | Partially supported | Manual CRUD and query filters are implemented (`/v1/transactions*`) | Bulk operations, review workflows, and parity details tracked by open parity tasks. |
 | Categories and rules | Category CRUD, strategy tuning, mapping rules | Partially supported | Category create/list, rules create, strategy get/update implemented | Group/type/budget parity and full Categories-tab parity are tracked separately. |
-| Accounts workflows | Dedicated accounts onboarding/settings flows | OSS fallback (for now) | No dedicated accounts tab/API yet | Accounts are auto-created from imports/manual transactions; deeper account UX/API tracked by open tasks. |
+| Accounts workflows | Dedicated accounts onboarding/settings flows | Partially supported | Accounts API create/update/list and supported-type endpoints are implemented (`/v1/accounts*`), while the Accounts tab UI is still placeholder | Manual/CSV provider fallback remains default; deeper account UX/settings/archive flows are tracked by open tasks. |
 | Recurring rules | Recurring lifecycle and transaction linkage | Not yet implemented | No recurring routes/endpoints yet | Scoped to future parity work; no hidden/proprietary dependency required. |
 | Investments | Portfolio analytics backed by data model and APIs | Partially supported (UI-first) | `/investments` page is currently static/reference UI | Live investments domain/API is tracked as follow-on work. |
 | Dashboard and analytics | Summary, trends, category/merchant/heatmap/anomaly views | Supported | `/v1/analytics/*` + dashboard UI implemented | Uses local transaction corpus only; no external analytics service required. |
@@ -59,5 +59,5 @@ This document defines how Minance Next maps Copilot-style product expectations t
 ## Open Follow-On Tracks from This Matrix
 
 - SQLite baseline and migration/cutover completion.
-- Accounts/Recurring dedicated APIs and tabs.
+- Accounts/Recurring dedicated tabs and advanced lifecycle flows.
 - Investments live data model + API wiring.

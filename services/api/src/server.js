@@ -73,6 +73,12 @@ import {
   getAccountProvider,
   beginAccountProviderLinkSession
 } from "./account-providers.js";
+import {
+  listAccounts,
+  createAccount,
+  updateAccount,
+  getSupportedAccountTypes
+} from "./accounts.js";
 
 const contentTypeByExt = {
   ".html": "text/html; charset=utf-8",
@@ -339,6 +345,51 @@ async function handleApiRequest(req, res, url) {
       sendJson(res, 201, {
         linkSession: beginAccountProviderLinkSession(accountProviderLinkSessionParams.providerId)
       });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/accounts/supported-account-types") {
+      requireUser(req);
+      sendJson(res, 200, {
+        accountTypes: getSupportedAccountTypes()
+      });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/accounts") {
+      const user = requireUser(req);
+      sendJson(res, 200, {
+        accounts: listAccounts(user.id)
+      });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/v1/accounts") {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, "POST /v1/accounts", body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const account = createAccount(user.id, body);
+      recordMutationGuardResult(user.id, guard, 201, { account });
+      sendJson(res, 201, { account });
+      return;
+    }
+
+    const accountPutParams = matchPath(pathname, "/v1/accounts/:id");
+    if (req.method === "PUT" && accountPutParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, `PUT /v1/accounts/:id#${accountPutParams.id}`, body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const account = updateAccount(user.id, accountPutParams.id, body);
+      recordMutationGuardResult(user.id, guard, 200, { account });
+      sendJson(res, 200, { account });
       return;
     }
 
