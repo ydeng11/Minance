@@ -48,6 +48,8 @@ export default function TransactionsPage() {
   const [formErrors, setFormErrors] = useState<TransactionFormErrors>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
 
   const trendBars = useMemo(() => {
@@ -88,6 +90,12 @@ export default function TransactionsPage() {
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [accounts, transactions]);
+
+  const selectedTransactionIdSet = useMemo(
+    () => new Set(selectedTransactionIds),
+    [selectedTransactionIds]
+  );
+  const allVisibleSelected = transactions.length > 0 && transactions.every((entry) => selectedTransactionIdSet.has(entry.id));
 
   async function loadCategories() {
     try {
@@ -163,6 +171,11 @@ export default function TransactionsPage() {
     }
   }, [filters.category, categoryFilterOptions]);
 
+  useEffect(() => {
+    const visibleIds = new Set(transactions.map((entry) => entry.id));
+    setSelectedTransactionIds((previous) => previous.filter((id) => visibleIds.has(id)));
+  }, [transactions]);
+
   function updateFilters(updater: TransactionsFilterState | ((previous: TransactionsFilterState) => TransactionsFilterState)) {
     setFilters((previous) => {
       const next = typeof updater === "function" ? updater(previous) : updater;
@@ -204,6 +217,69 @@ export default function TransactionsPage() {
   function cancelEdit() {
     resetManualForm();
     setMessage("Edit canceled.");
+  }
+
+  function toggleTransactionSelection(transactionId: string) {
+    setSelectedTransactionIds((previous) => {
+      if (previous.includes(transactionId)) {
+        return previous.filter((id) => id !== transactionId);
+      }
+      return [...previous, transactionId];
+    });
+  }
+
+  function toggleSelectVisibleTransactions() {
+    if (allVisibleSelected) {
+      setSelectedTransactionIds([]);
+      return;
+    }
+    setSelectedTransactionIds(transactions.map((entry) => entry.id));
+  }
+
+  async function applyBulkReviewStatus(reviewStatus: "reviewed" | "needs_review") {
+    if (!selectedTransactionIds.length) {
+      setMessage("Select at least one transaction for bulk actions.");
+      return;
+    }
+
+    const selectedIds = [...selectedTransactionIds];
+    const optimisticTransactions = transactions.map((entry) => {
+      if (!selectedIds.includes(entry.id)) {
+        return entry;
+      }
+      const needsReview = reviewStatus === "needs_review";
+      return {
+        ...entry,
+        review_status: reviewStatus,
+        needs_category_review: needsReview
+      };
+    });
+
+    setBulkSaving(true);
+    setTransactions(optimisticTransactions);
+
+    try {
+      await api.transactions.bulkUpdate({
+        transaction_ids: selectedIds,
+        review_status: reviewStatus
+      });
+      setMessage(
+        reviewStatus === "reviewed"
+          ? `Marked ${selectedIds.length} transaction(s) as reviewed.`
+          : `Marked ${selectedIds.length} transaction(s) as needs review.`
+      );
+      setSelectedTransactionIds([]);
+      await loadTransactions(parsedFilters, { preserveMessage: true });
+    } catch (error) {
+      setTransactions(transactions);
+      if (error instanceof ApiError) {
+        setMessage(error.message);
+      } else {
+        setMessage("Bulk update failed.");
+      }
+    } finally {
+      setBulkSaving(false);
+    }
   }
 
   async function removeTransaction(transactionId: string) {
@@ -345,10 +421,47 @@ export default function TransactionsPage() {
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-950/70">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-900 bg-neutral-900/40 px-4 py-3">
+          <p className="text-xs uppercase tracking-wide text-neutral-400">
+            {selectedTransactionIds.length
+              ? `${selectedTransactionIds.length} selected`
+              : "Select rows for bulk actions"}
+          </p>
+          <div className="inline-flex gap-2">
+            <button
+              type="button"
+              onClick={() => void applyBulkReviewStatus("reviewed")}
+              disabled={bulkSaving || selectedTransactionIds.length === 0}
+              className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+              data-testid="txn-bulk-reviewed"
+            >
+              Mark reviewed
+            </button>
+            <button
+              type="button"
+              onClick={() => void applyBulkReviewStatus("needs_review")}
+              disabled={bulkSaving || selectedTransactionIds.length === 0}
+              className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+              data-testid="txn-bulk-needs-review"
+            >
+              Mark needs review
+            </button>
+          </div>
+        </div>
+
         <table className="w-full text-left text-sm" data-testid="txn-table">
           <caption className="sr-only">Transactions results with row actions</caption>
           <thead className="bg-neutral-900/60 text-neutral-300">
             <tr>
+              <th scope="col" className="px-4 py-3 font-medium">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={toggleSelectVisibleTransactions}
+                  className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
+                  data-testid="txn-select-all"
+                />
+              </th>
               <th scope="col" className="px-4 py-3 font-medium">Date</th>
               <th scope="col" className="px-4 py-3 font-medium">Merchant</th>
               <th scope="col" className="px-4 py-3 font-medium">Category</th>
@@ -359,6 +472,15 @@ export default function TransactionsPage() {
           <tbody className="divide-y divide-neutral-900">
             {transactions.map((txn) => (
               <tr key={txn.id} className="hover:bg-neutral-900/40">
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedTransactionIdSet.has(txn.id)}
+                    onChange={() => toggleTransactionSelection(txn.id)}
+                    className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
+                    data-testid={`txn-select-${txn.id}`}
+                  />
+                </td>
                 <td className="px-4 py-3 text-neutral-300">{txn.transaction_date}</td>
                 <td className="px-4 py-3 font-medium text-neutral-200">
                   <div className="flex items-center gap-3">
@@ -391,18 +513,20 @@ export default function TransactionsPage() {
                     <button
                       type="button"
                       onClick={() => startEdit(txn)}
+                      disabled={bulkSaving}
                       data-testid={`txn-edit-${txn.id}`}
                       aria-label={`Edit transaction ${txn.merchant_raw}`}
-                      className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800"
+                      className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => void removeTransaction(txn.id)}
+                      disabled={bulkSaving}
                       data-testid={`txn-delete-${txn.id}`}
                       aria-label={`Delete transaction ${txn.merchant_raw}`}
-                      className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800"
+                      className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
                     >
                       Delete
                     </button>
@@ -412,7 +536,7 @@ export default function TransactionsPage() {
             ))}
             {!loading && transactions.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-neutral-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-neutral-400">
                   No transactions found.
                 </td>
               </tr>

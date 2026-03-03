@@ -77,6 +77,7 @@ export function useApi() {
       transactions: {
         list: transactionsApi.list.bind(null, request),
         create: transactionsApi.create.bind(null, request),
+        bulkUpdate: transactionsApi.bulkUpdate.bind(null, request),
         update: transactionsApi.update.bind(null, request),
         remove: transactionsApi.remove.bind(null, request)
       },
