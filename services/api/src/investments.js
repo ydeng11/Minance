@@ -429,12 +429,22 @@ function buildAccountSummaryRows(positions = []) {
         latest_as_of_date: entry.latest_as_of_date
       };
     })
-    .sort((left, right) => right.market_value - left.market_value);
+    .sort((left, right) => {
+      if (left.market_value === right.market_value) {
+        return left.account_name.localeCompare(right.account_name);
+      }
+      return right.market_value - left.market_value;
+    });
 }
 
 function buildPerformancePayload(holdings = [], timeframe, symbol = null) {
   const normalizedTimeframe = normalizeTimeframe(timeframe);
-  const featuredSymbol = symbol ? String(symbol).trim().toUpperCase() : null;
+  const availableSymbols = Array.from(new Set(holdings.map((holding) => holding.symbol))).sort();
+  const requestedSymbol = symbol ? String(symbol).trim().toUpperCase() : null;
+  const featuredSymbol =
+    requestedSymbol && availableSymbols.includes(requestedSymbol)
+      ? requestedSymbol
+      : availableSymbols[0] || null;
 
   const portfolio = buildHistoricalPortfolioSeries(holdings, normalizedTimeframe);
   const security = featuredSymbol

@@ -272,3 +272,27 @@ test("overview, positions, accounts, and performance projections stay determinis
   assert.equal(performance.portfolio.length > 0, true);
   assert.equal(performance.security.length > 0, true);
 });
+
+test("performance symbol fallback and account ordering remain deterministic", () => {
+  resetForInvestments();
+
+  importInvestmentHoldingsFromCsv(
+    USER_ID,
+    [
+      "Account,Ticker,Shares,Cost Basis,Market Price,As Of",
+      "Zulu Brokerage,VOO,1,100,120,2026-03-01",
+      "Alpha Brokerage,NFLX,1,100,120,2026-03-01"
+    ].join("\n"),
+    { sourceFileId: "deterministic_tie_001" }
+  );
+
+  const fallbackPerformance = getInvestmentPerformance(USER_ID, {
+    timeframe: "1M",
+    symbol: "MISSING"
+  });
+  assert.equal(fallbackPerformance.featured_symbol, "NFLX");
+  assert.equal(fallbackPerformance.security.length > 0, true);
+
+  const accountOrder = listInvestmentAccounts(USER_ID).items.map((entry) => entry.account_name);
+  assert.deepEqual(accountOrder, ["Alpha Brokerage", "Zulu Brokerage"]);
+});
