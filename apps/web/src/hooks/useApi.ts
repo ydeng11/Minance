@@ -11,6 +11,7 @@ import {
   importsApi,
   investmentsApi,
   migrationApi,
+  recurringsApi,
   savedViewsApi,
   systemApi,
   transactionsApi
@@ -87,6 +88,17 @@ export function useApi() {
         positions: investmentsApi.positions.bind(null, request),
         accounts: () => investmentsApi.accounts(request),
         performance: investmentsApi.performance.bind(null, request)
+      },
+      recurrings: {
+        list: recurringsApi.list.bind(null, request),
+        getById: recurringsApi.getById.bind(null, request),
+        create: recurringsApi.create.bind(null, request),
+        update: recurringsApi.update.bind(null, request),
+        evaluate: recurringsApi.evaluate.bind(null, request),
+        pause: recurringsApi.pause.bind(null, request),
+        resume: recurringsApi.resume.bind(null, request),
+        archive: recurringsApi.archive.bind(null, request),
+        remove: recurringsApi.remove.bind(null, request)
       },
       savedViews: {
         list: () => savedViewsApi.list(request),

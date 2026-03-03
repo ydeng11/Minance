@@ -352,6 +352,45 @@ export interface InvestmentOverviewResponse {
   };
 }
 
+export interface RecurringRule {
+  id: string;
+  user_id: string;
+  name: string;
+  cadence: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
+  amount: number;
+  direction: "debit" | "credit" | null;
+  category_final: string | null;
+  account_id: string | null;
+  merchant_pattern: string | null;
+  status: "active" | "paused" | "archived";
+  next_run_at: string | null;
+  linked_transaction_ids: string[];
+  linked_transaction_count: number;
+  last_evaluated_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecurringMatch {
+  id: string;
+  transaction_date: string;
+  merchant_raw: string;
+  amount: number;
+  direction: "debit" | "credit";
+  account_id: string | null;
+  category_final: string;
+  recurring_rule_id: string | null;
+}
+
+export interface RecurringEvaluation {
+  rule: RecurringRule;
+  matches: RecurringMatch[];
+  match_count: number;
+  attached_count: number;
+  detached_count: number;
+  linked_transaction_ids: string[];
+}
+
 export interface TransactionsBulkUpdateRequest {
   transaction_ids: string[];
   category_final?: string;

@@ -5,6 +5,7 @@ import {
   analyticsApi,
   categoriesApi,
   investmentsApi,
+  recurringsApi,
   transactionsApi,
   type ApiRequest
 } from "./endpoints";
@@ -166,4 +167,42 @@ test("investmentsApi query builder omits empty optional filters", async () => {
   assert.equal(calls[0].path, "/v1/investments/overview");
   assert.equal(calls[1].path, "/v1/investments/positions");
   assert.equal(calls[2].path, "/v1/investments/performance");
+});
+
+test("recurringsApi routes lifecycle and evaluation contracts", async () => {
+  const { calls, request } = createRecorder();
+
+  await recurringsApi.list(request, { status: "active" });
+  await recurringsApi.getById(request, "rrule_1");
+  await recurringsApi.create(request, {
+    name: "Rent",
+    cadence: "monthly",
+    amount: 1850
+  });
+  await recurringsApi.update(request, "rrule_1", {
+    status: "paused",
+    merchant_pattern: "sunset"
+  });
+  await recurringsApi.evaluate(request, "rrule_1", {
+    start: "2026-01-01",
+    end: "2026-03-31"
+  });
+  await recurringsApi.pause(request, "rrule_1");
+  await recurringsApi.resume(request, "rrule_1");
+  await recurringsApi.archive(request, "rrule_1");
+  await recurringsApi.remove(request, "rrule_1");
+
+  assert.equal(calls[0].path, "/v1/recurrings?status=active");
+  assert.equal(calls[1].path, "/v1/recurrings/rrule_1");
+  assert.equal(calls[2].path, "/v1/recurrings");
+  assert.equal(calls[2].options?.method, "POST");
+  assert.equal(calls[3].path, "/v1/recurrings/rrule_1");
+  assert.equal(calls[3].options?.method, "PUT");
+  assert.equal(calls[4].path, "/v1/recurrings/rrule_1/evaluate");
+  assert.equal(calls[4].options?.method, "POST");
+  assert.equal(calls[5].path, "/v1/recurrings/rrule_1/pause");
+  assert.equal(calls[6].path, "/v1/recurrings/rrule_1/resume");
+  assert.equal(calls[7].path, "/v1/recurrings/rrule_1/archive");
+  assert.equal(calls[8].path, "/v1/recurrings/rrule_1");
+  assert.equal(calls[8].options?.method, "DELETE");
 });

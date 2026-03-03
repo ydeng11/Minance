@@ -26,6 +26,8 @@ import type {
   ProcessedSummary,
   Provider,
   ProviderPreferences,
+  RecurringEvaluation,
+  RecurringRule,
   SavedView,
   StorageStatusResponse,
   Transaction,
@@ -262,6 +264,61 @@ export const investmentsApi = {
       security: InvestmentPerformancePoint[];
       featured_symbol: string | null;
     }>(`/v1/investments/performance${buildQuery(params)}`)
+};
+
+export const recurringsApi = {
+  list: (
+    request: ApiRequest,
+    params: {
+      status?: "active" | "paused" | "archived";
+    } = {}
+  ) =>
+    request<{ items: RecurringRule[] }>(`/v1/recurrings${buildQuery(params)}`),
+  getById: (request: ApiRequest, id: string) =>
+    request<{ recurring: RecurringRule }>(`/v1/recurrings/${id}`),
+  create: (
+    request: ApiRequest,
+    body: {
+      name: string;
+      cadence: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
+      amount: number;
+      direction?: "debit" | "credit";
+      category_final?: string | null;
+      account_id?: string | null;
+      merchant_pattern?: string | null;
+    }
+  ) =>
+    request<{ recurring: RecurringRule }>("/v1/recurrings", {
+      method: "POST",
+      body
+    }),
+  update: (request: ApiRequest, id: string, body: Partial<RecurringRule>) =>
+    request<{ recurring: RecurringRule }>(`/v1/recurrings/${id}`, {
+      method: "PUT",
+      body
+    }),
+  evaluate: (
+    request: ApiRequest,
+    id: string,
+    body: {
+      start?: string;
+      end?: string;
+    } = {}
+  ) =>
+    request<{ evaluation: RecurringEvaluation }>(`/v1/recurrings/${id}/evaluate`, {
+      method: "POST",
+      body
+    }),
+  pause: (request: ApiRequest, id: string) =>
+    request<{ recurring: RecurringRule }>(`/v1/recurrings/${id}/pause`, { method: "POST" }),
+  resume: (request: ApiRequest, id: string) =>
+    request<{ recurring: RecurringRule }>(`/v1/recurrings/${id}/resume`, { method: "POST" }),
+  archive: (request: ApiRequest, id: string) =>
+    request<{ recurring: RecurringRule }>(`/v1/recurrings/${id}/archive`, { method: "POST" }),
+  remove: (request: ApiRequest, id: string) =>
+    request<{ result: { deleted: boolean; detached_count: number } }>(`/v1/recurrings/${id}`, {
+      method: "DELETE"
+    })
 };
 
 export const analyticsApi = {
