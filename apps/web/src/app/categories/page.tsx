@@ -1,49 +1,538 @@
-import Link from "next/link";
-import { CircleDashed, CircleDot, ListFilter } from "lucide-react";
+"use client";
 
-const CATEGORY_PREVIEW = [
-  { id: "cat-essential", label: "Essential", icon: CircleDot, color: "text-emerald-300" },
-  { id: "cat-extra", label: "Extra", icon: CircleDot, color: "text-sky-300" },
-  { id: "cat-neutral", label: "Neutral", icon: CircleDashed, color: "text-neutral-300" }
-];
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { Loader2, Pencil, Plus, Search, Tags, Trash2 } from "lucide-react";
+import { ApiError } from "@/lib/api/client";
+import { useApi } from "@/hooks/useApi";
+import type { Category, CategoryStrategyCoarse } from "@/lib/api/types";
+import {
+  buildCategoryDraftFromCategory,
+  createDefaultCategoryDraft,
+  type CategoryFormDraft,
+  type CategoryFormErrors,
+  validateCategoryDraft
+} from "./categoryForm";
+
+type MessageTone = "info" | "error";
+type ModalMode = "create" | "edit";
+
+function categoryTypeLabel(type: string | null | undefined) {
+  if (type === "expense") {
+    return "Expense";
+  }
+  if (type === "income") {
+    return "Income";
+  }
+  if (type === "transfer") {
+    return "Transfer";
+  }
+  return "Not set";
+}
+
+function resolveDefaultCoarseKey(coarseGroups: CategoryStrategyCoarse[]) {
+  return coarseGroups.find((entry) => entry.key === "neutral")?.key || coarseGroups[0]?.key || "";
+}
+
+function hasFormErrors(errors: CategoryFormErrors) {
+  return Boolean(errors.name || errors.coarseKey || errors.type);
+}
+
+function messageClasses(tone: MessageTone) {
+  if (tone === "error") {
+    return "border-rose-700 bg-rose-950/40 text-rose-200";
+  }
+  return "border-neutral-800 bg-neutral-900/60 text-neutral-300";
+}
 
 export default function CategoriesPage() {
+  const api = useApi();
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [coarseGroups, setCoarseGroups] = useState<CategoryStrategyCoarse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [query, setQuery] = useState("");
+  const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<MessageTone>("info");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<ModalMode>("create");
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<CategoryFormDraft>(() => createDefaultCategoryDraft(""));
+  const [formErrors, setFormErrors] = useState<CategoryFormErrors>({});
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+
+  const coarseLabelByKey = useMemo(
+    () => new Map(coarseGroups.map((entry) => [entry.key, entry.name])),
+    [coarseGroups]
+  );
+
+  const filteredCategories = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return categories;
+    }
+
+    return categories.filter((category) => {
+      const coarseLabel = coarseLabelByKey.get(String(category.coarseKey || "")) || category.coarseKey || "";
+      return [
+        category.name,
+        category.emoji || "",
+        category.type || "",
+        coarseLabel
+      ].some((value) => String(value).toLowerCase().includes(normalizedQuery));
+    });
+  }, [categories, coarseLabelByKey, query]);
+
+  const loadPageData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [categoryResponse, strategyResponse] = await Promise.all([
+        api.categories.list(),
+        api.categories.getStrategy()
+      ]);
+      setCategories(categoryResponse.categories || []);
+      setCoarseGroups(strategyResponse.strategy.coarseCategories || []);
+    } catch (error) {
+      setMessage(error instanceof ApiError ? error.message : "Failed to load categories.");
+      setMessageTone("error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    void loadPageData();
+  }, [loadPageData]);
+
+  useEffect(() => {
+    if (!modalOpen || isSaving || !coarseGroups.length) {
+      return;
+    }
+
+    if (!draft.coarseKey) {
+      setDraft((previous) => ({
+        ...previous,
+        coarseKey: resolveDefaultCoarseKey(coarseGroups)
+      }));
+    }
+  }, [coarseGroups, draft.coarseKey, isSaving, modalOpen]);
+
+  function updateDraft(field: keyof CategoryFormDraft, value: string) {
+    setDraft((previous) => ({
+      ...previous,
+      [field]: value
+    }));
+
+    if (field === "name" && formErrors.name) {
+      setFormErrors((previous) => ({ ...previous, name: undefined }));
+    }
+    if (field === "coarseKey" && formErrors.coarseKey) {
+      setFormErrors((previous) => ({ ...previous, coarseKey: undefined }));
+    }
+    if (field === "type" && formErrors.type) {
+      setFormErrors((previous) => ({ ...previous, type: undefined }));
+    }
+  }
+
+  function openCreateModal() {
+    setModalMode("create");
+    setEditingCategoryId(null);
+    setDraft(createDefaultCategoryDraft(resolveDefaultCoarseKey(coarseGroups)));
+    setFormErrors({});
+    setModalOpen(true);
+  }
+
+  function openEditModal(category: Category) {
+    setModalMode("edit");
+    setEditingCategoryId(category.id);
+    setDraft(buildCategoryDraftFromCategory(category));
+    setFormErrors({});
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    if (isSaving) {
+      return;
+    }
+    setModalOpen(false);
+    setFormErrors({});
+  }
+
+  async function submitCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+
+    const validation = validateCategoryDraft(draft, categories, editingCategoryId);
+    setFormErrors(validation.errors);
+    if (hasFormErrors(validation.errors)) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        name: validation.normalizedName,
+        emoji: validation.normalizedEmoji || undefined,
+        coarseKey: validation.normalizedCoarseKey,
+        type: validation.normalizedType
+      };
+
+      if (modalMode === "edit" && editingCategoryId) {
+        await api.categories.update(editingCategoryId, payload);
+        setMessage("Category updated.");
+      } else {
+        await api.categories.add(payload);
+        setMessage("Category created.");
+      }
+
+      setMessageTone("info");
+      setModalOpen(false);
+      setFormErrors({});
+      await loadPageData();
+    } catch (error) {
+      const nextMessage = error instanceof ApiError ? error.message : "Failed to save category.";
+      const normalized = nextMessage.toLowerCase();
+      if (normalized.includes("already exists")) {
+        setFormErrors((previous) => ({ ...previous, name: "Category name already exists." }));
+      }
+      if (normalized.includes("category group")) {
+        setFormErrors((previous) => ({ ...previous, coarseKey: "Category group is invalid." }));
+      }
+      if (normalized.includes("category type")) {
+        setFormErrors((previous) => ({ ...previous, type: "Category type is invalid." }));
+      }
+      setMessage(nextMessage);
+      setMessageTone("error");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function confirmDeleteCategory() {
+    if (!deleteTarget) {
+      return;
+    }
+    setMessage("");
+    setIsDeleting(true);
+    try {
+      await api.categories.remove(deleteTarget.id);
+      setMessage("Category deleted.");
+      setMessageTone("info");
+      setDeleteTarget(null);
+      await loadPageData();
+    } catch (error) {
+      setMessage(error instanceof ApiError ? error.message : "Failed to delete category.");
+      setMessageTone("error");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   return (
     <div className="space-y-6" data-testid="categories-page">
-      <header>
-        <h2 className="text-3xl font-semibold tracking-tight">Categories</h2>
-        <p className="text-neutral-400">Audit category groups and monitor strategy coverage at a glance.</p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-3xl font-semibold tracking-tight">Categories</h2>
+          <p className="text-neutral-400">Manage category names, group assignments, and type mapping behavior.</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={openCreateModal}
+          data-testid="categories-add"
+          className="inline-flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-200 transition hover:border-emerald-500/40 hover:text-emerald-300"
+        >
+          <Plus className="h-4 w-4" />
+          Add category
+        </button>
       </header>
 
+      {message ? (
+        <p className={`rounded-lg border px-3 py-2 text-sm ${messageClasses(messageTone)}`} data-testid="global-message">
+          {message}
+        </p>
+      ) : null}
+
       <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-neutral-300">Strategy buckets</h3>
-          <span className="inline-flex items-center gap-1 rounded-md border border-neutral-800 bg-neutral-900/70 px-2 py-1 text-xs text-neutral-400">
-            <ListFilter className="h-3.5 w-3.5" />
-            Preview
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="inline-flex items-center gap-2 text-sm font-medium text-neutral-300">
+            <Tags className="h-4 w-4 text-neutral-400" />
+            Category catalog
+          </h3>
+          <span className="rounded-md border border-neutral-800 bg-neutral-900/70 px-2 py-1 text-xs text-neutral-400">
+            {filteredCategories.length} / {categories.length} visible
           </span>
         </div>
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          {CATEGORY_PREVIEW.map((entry) => (
-            <article key={entry.id} className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4">
-              <div className="flex items-center gap-2">
-                <entry.icon className={`h-4 w-4 ${entry.color}`} />
-                <span className="text-sm font-medium text-neutral-100">{entry.label}</span>
-              </div>
-              <p className="mt-2 text-xs text-neutral-400">Category CRUD and grouping flows ship in the dedicated categories parity bead.</p>
-            </article>
-          ))}
+        <div className="mt-3">
+          <label htmlFor="categories-query" className="sr-only">
+            Search categories
+          </label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+            <input
+              id="categories-query"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search category, group, or type"
+              data-testid="categories-query"
+              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 py-2 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-800">
+          <table className="min-w-full divide-y divide-neutral-800 text-sm" data-testid="categories-table">
+            <caption className="sr-only">Category list</caption>
+            <thead className="bg-neutral-900/70 text-left text-xs uppercase tracking-wide text-neutral-400">
+              <tr>
+                <th scope="col" className="px-3 py-2 font-medium">Category</th>
+                <th scope="col" className="px-3 py-2 font-medium">Type</th>
+                <th scope="col" className="px-3 py-2 font-medium">Group</th>
+                <th scope="col" className="px-3 py-2 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-800 bg-neutral-950/20 text-neutral-200">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-6 text-center text-neutral-400">
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading categories...
+                    </span>
+                  </td>
+                </tr>
+              ) : filteredCategories.length ? (
+                filteredCategories.map((category) => (
+                  <tr key={category.id} data-testid={`category-row-${category.id}`}>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{category.emoji || "🏷️"}</span>
+                        <div>
+                          <p className="font-medium text-neutral-100">{category.name}</p>
+                          {category.isSystem ? (
+                            <p className="text-xs text-neutral-500">System category</p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-neutral-300">{categoryTypeLabel(category.type)}</td>
+                    <td className="px-3 py-3 text-neutral-300">
+                      {coarseLabelByKey.get(String(category.coarseKey || "")) || category.coarseKey || "Unassigned"}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(category)}
+                          data-testid={`category-edit-${category.id}`}
+                          className="inline-flex items-center gap-1 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:border-emerald-500/40 hover:text-emerald-300"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(category)}
+                          disabled={category.isSystem}
+                          data-testid={`category-delete-${category.id}`}
+                          className="inline-flex items-center gap-1 rounded-md border border-rose-800/60 bg-rose-950/20 px-2 py-1 text-xs text-rose-200 transition hover:border-rose-700 disabled:cursor-not-allowed disabled:border-neutral-800 disabled:bg-neutral-900 disabled:text-neutral-500"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="px-3 py-6 text-center text-neutral-400">
+                    No categories match the current filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
 
-      <p className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300">
-        Use{" "}
-        <Link href="/settings" className="text-emerald-300 underline decoration-emerald-700 underline-offset-2">
-          Settings
-        </Link>{" "}
-        to manage current strategy/rules until full categories parity lands.
-      </p>
+      {modalOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4"
+          onClick={(event) => {
+            if (event.currentTarget === event.target) {
+              closeModal();
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="category-modal-title"
+            data-testid="category-modal"
+            className="w-full max-w-xl rounded-2xl border border-neutral-800 bg-neutral-950 p-5 shadow-2xl"
+          >
+            <h3 id="category-modal-title" className="text-lg font-semibold text-neutral-100">
+              {modalMode === "edit" ? "Edit category" : "Add category"}
+            </h3>
+            <p className="mt-1 text-sm text-neutral-400">
+              Configure required fields, type, and group assignment.
+            </p>
+
+            <form onSubmit={(event) => void submitCategory(event)} className="mt-4 space-y-4">
+              <div>
+                <label htmlFor="category-form-name" className="block text-xs uppercase tracking-wide text-neutral-400">
+                  Category name
+                </label>
+                <input
+                  id="category-form-name"
+                  value={draft.name}
+                  onChange={(event) => updateDraft("name", event.target.value)}
+                  required
+                  autoFocus
+                  data-testid="category-form-name"
+                  className="mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+                />
+                {formErrors.name ? (
+                  <p className="mt-1 text-xs text-rose-300" data-testid="category-form-error-name">{formErrors.name}</p>
+                ) : null}
+              </div>
+
+              <div>
+                <label htmlFor="category-form-emoji" className="block text-xs uppercase tracking-wide text-neutral-400">
+                  Emoji
+                </label>
+                <input
+                  id="category-form-emoji"
+                  value={draft.emoji}
+                  onChange={(event) => updateDraft("emoji", event.target.value)}
+                  placeholder="Optional (e.g. 🍽️)"
+                  data-testid="category-form-emoji"
+                  className="mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="category-form-type" className="block text-xs uppercase tracking-wide text-neutral-400">
+                    Category type
+                  </label>
+                  <select
+                    id="category-form-type"
+                    value={draft.type}
+                    onChange={(event) => updateDraft("type", event.target.value)}
+                    data-testid="category-form-type"
+                    className="mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+                  >
+                    <option value="">Not set</option>
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                    <option value="transfer">Transfer</option>
+                  </select>
+                  {formErrors.type ? (
+                    <p className="mt-1 text-xs text-rose-300" data-testid="category-form-error-type">{formErrors.type}</p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <label htmlFor="category-form-group" className="block text-xs uppercase tracking-wide text-neutral-400">
+                    Group
+                  </label>
+                  <select
+                    id="category-form-group"
+                    value={draft.coarseKey}
+                    onChange={(event) => updateDraft("coarseKey", event.target.value)}
+                    required
+                    data-testid="category-form-group"
+                    className="mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+                  >
+                    {!coarseGroups.length ? <option value="">No groups available</option> : null}
+                    {coarseGroups.map((entry) => (
+                      <option key={entry.key} value={entry.key}>
+                        {entry.name}
+                      </option>
+                    ))}
+                  </select>
+                  {formErrors.coarseKey ? (
+                    <p className="mt-1 text-xs text-rose-300" data-testid="category-form-error-group">{formErrors.coarseKey}</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  disabled={isSaving}
+                  data-testid="category-form-cancel"
+                  className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving || !coarseGroups.length}
+                  data-testid="category-form-save"
+                  className="inline-flex items-center gap-2 rounded-lg border border-emerald-700/60 bg-emerald-900/30 px-3 py-2 text-sm text-emerald-200 transition hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {modalMode === "edit" ? "Save changes" : "Create category"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteTarget ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4"
+          onClick={(event) => {
+            if (event.currentTarget === event.target && !isDeleting) {
+              setDeleteTarget(null);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-category-title"
+            data-testid="category-delete-modal"
+            className="w-full max-w-lg rounded-2xl border border-rose-900/70 bg-neutral-950 p-5 shadow-2xl"
+          >
+            <h3 id="delete-category-title" className="text-lg font-semibold text-neutral-100">
+              Delete category?
+            </h3>
+            <p className="mt-2 text-sm text-neutral-300">
+              This permanently removes <strong>{deleteTarget.name}</strong>. Existing references must be cleared before deletion.
+            </p>
+
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                disabled={isDeleting}
+                data-testid="category-delete-cancel"
+                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDeleteCategory()}
+                disabled={isDeleting}
+                data-testid="category-delete-confirm"
+                className="inline-flex items-center gap-2 rounded-lg border border-rose-700/70 bg-rose-900/30 px-3 py-2 text-sm text-rose-200 transition hover:border-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Confirm delete
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
