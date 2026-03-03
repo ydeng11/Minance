@@ -21,6 +21,7 @@ const CATEGORY_VALUE_MAX_LENGTH = 120;
 const TAG_MAX_LENGTH = 40;
 const TAG_MAX_COUNT = 25;
 const RECURRING_RULE_ID_MAX_LENGTH = 128;
+const BULK_MUTATION_MAX_COUNT = 200;
 
 function isSoftDeleted(transaction) {
   return Boolean(transaction?.deleted_at);
@@ -513,6 +514,28 @@ function normalizeTagFilter(rawTag) {
   return normalizeTagValue(rawTag);
 }
 
+function normalizeBulkTransactionIds(rawIds) {
+  if (!Array.isArray(rawIds) || rawIds.length === 0 || rawIds.length > BULK_MUTATION_MAX_COUNT) {
+    throw new Error("transaction_ids must include 1-200 items");
+  }
+
+  const ids = [];
+  const seen = new Set();
+  for (const rawId of rawIds) {
+    const id = String(rawId || "").trim();
+    if (!id) {
+      throw new Error("transaction_ids must include valid ids");
+    }
+    if (seen.has(id)) {
+      throw new Error("transaction_ids must not include duplicates");
+    }
+    seen.add(id);
+    ids.push(id);
+  }
+
+  return ids;
+}
+
 export function listTransactions(userId, filters = {}) {
   const effectiveFilters = { ...filters };
   if (!effectiveFilters.start && !effectiveFilters.end && !effectiveFilters.range) {
@@ -737,6 +760,128 @@ export function updateTransaction(userId, transactionId, payload) {
   addAuditEvent(userId, "transaction.update", { transactionId });
 
   return normalizeTransactionRecord(tx);
+}
+
+export function bulkUpdateTransactions(userId, payload = {}) {
+  const rawUpdatePayload =
+    payload && typeof payload.updates === "object" && payload.updates !== null
+      ? payload.updates
+      : payload;
+  const transactionIds = normalizeBulkTransactionIds(payload.transaction_ids ?? payload.ids);
+
+  const hasCategoryUpdate = hasOwnField(rawUpdatePayload, "category_final");
+  const hasTagsUpdate = hasOwnField(rawUpdatePayload, "tags");
+  const hasReviewUpdate =
+    hasOwnField(rawUpdatePayload, "review_status") ||
+    hasOwnField(rawUpdatePayload, "needs_category_review");
+
+  if (!hasCategoryUpdate && !hasTagsUpdate && !hasReviewUpdate) {
+    throw new Error("Bulk update requires category_final, tags, or review state");
+  }
+
+  const store = loadStore();
+  const strategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(strategy);
+
+  const transactionById = new Map(
+    store.transactions
+      .filter((entry) => entry.user_id === userId && !isSoftDeleted(entry))
+      .map((entry) => [entry.id, entry])
+  );
+
+  const updates = transactionIds.map((id) => {
+    const entry = transactionById.get(id);
+    if (!entry) {
+      throw new Error(`Transaction not found: ${id}`);
+    }
+    return entry;
+  });
+
+  let nextCategory = null;
+  let categoryType = null;
+  if (hasCategoryUpdate) {
+    nextCategory = String(rawUpdatePayload.category_final || "").trim();
+    if (!nextCategory) {
+      throw new Error("category_final is required");
+    }
+    if (nextCategory.length > CATEGORY_VALUE_MAX_LENGTH) {
+      throw new Error("Invalid category value");
+    }
+
+    const matchedCategory = findUserCategoryByName(store, userId, nextCategory);
+    if (!matchedCategory) {
+      throw new Error("Invalid category");
+    }
+    nextCategory = matchedCategory.name;
+    categoryType = matchedCategory.type || null;
+  }
+
+  const updatedAt = nowIso();
+  const normalizedTransactions = [];
+
+  for (const entry of updates) {
+    const previous = normalizeTransactionRecord(entry);
+    const nextShape = {
+      ...previous,
+      category_final: hasCategoryUpdate ? nextCategory : previous.category_final
+    };
+
+    const categoryMeta = resolveTransactionCategory(resolveCategory, nextShape);
+    nextShape.category_final = categoryMeta.categoryGranular;
+    nextShape.category_coarse = categoryMeta.categoryCoarse;
+    nextShape.category_coarse_key = categoryMeta.categoryCoarseKey;
+    nextShape.category_emoji = categoryMeta.categoryEmoji;
+    nextShape.category_coarse_emoji = categoryMeta.categoryCoarseEmoji;
+
+    if (hasCategoryUpdate) {
+      nextShape.transaction_type = normalizeTransactionType(
+        undefined,
+        previous.direction,
+        nextShape.category_final,
+        categoryType
+      );
+      maybeCreateRuleFromCorrection(store, userId, nextShape, previous.category_final, nextShape.category_final);
+    }
+
+    if (hasTagsUpdate) {
+      nextShape.tags = normalizeTags(rawUpdatePayload.tags, previous.tags);
+    }
+
+    if (hasReviewUpdate) {
+      const reviewState = normalizeReviewState(rawUpdatePayload, previous.needs_category_review);
+      nextShape.needs_category_review = reviewState.needs_category_review;
+      nextShape.review_status = reviewState.review_status;
+    }
+
+    entry.category_final = nextShape.category_final;
+    entry.category_coarse = nextShape.category_coarse;
+    entry.category_coarse_key = nextShape.category_coarse_key;
+    entry.category_emoji = nextShape.category_emoji;
+    entry.category_coarse_emoji = nextShape.category_coarse_emoji;
+    entry.transaction_type = nextShape.transaction_type;
+    entry.tags = nextShape.tags;
+    entry.needs_category_review = nextShape.needs_category_review;
+    entry.review_status = nextShape.review_status;
+    entry.updated_at = updatedAt;
+
+    normalizedTransactions.push(normalizeTransactionRecord(entry));
+  }
+
+  saveStore(store);
+  addAuditEvent(userId, "transaction.bulk_update", {
+    transactionCount: transactionIds.length,
+    hasCategoryUpdate,
+    hasTagsUpdate,
+    hasReviewUpdate
+  });
+
+  return {
+    updated: normalizedTransactions.length,
+    transactions: normalizedTransactions,
+    meta: {
+      transaction_ids: transactionIds
+    }
+  };
 }
 
 export function deleteTransaction(userId, transactionId) {

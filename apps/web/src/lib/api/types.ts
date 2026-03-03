@@ -270,6 +270,22 @@ export interface TransactionsResponse {
   meta: AnalyticsMeta;
 }
 
+export interface TransactionsBulkUpdateRequest {
+  transaction_ids: string[];
+  category_final?: string;
+  tags?: string[] | null;
+  review_status?: "reviewed" | "needs_review";
+  needs_category_review?: boolean;
+}
+
+export interface TransactionsBulkUpdateResult {
+  updated: number;
+  transactions: Transaction[];
+  meta: {
+    transaction_ids: string[];
+  };
+}
+
 export interface OverviewResponse {
   summary: {
     totalSpend: number;

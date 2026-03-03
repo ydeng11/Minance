@@ -28,6 +28,7 @@ import {
 import {
   createManualTransaction,
   listTransactions,
+  bulkUpdateTransactions,
   updateTransaction,
   deleteTransaction,
   restoreTransaction
@@ -651,6 +652,20 @@ async function handleApiRequest(req, res, url) {
       const transaction = createManualTransaction(user.id, body);
       recordMutationGuardResult(user.id, guard, 201, { transaction });
       sendJson(res, 201, { transaction });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/v1/transactions/bulk") {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, "POST /v1/transactions/bulk", body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const result = bulkUpdateTransactions(user.id, body || {});
+      recordMutationGuardResult(user.id, guard, 200, { result });
+      sendJson(res, 200, { result });
       return;
     }
 

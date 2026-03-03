@@ -24,6 +24,8 @@ import type {
   SavedView,
   StorageStatusResponse,
   Transaction,
+  TransactionsBulkUpdateRequest,
+  TransactionsBulkUpdateResult,
   TransactionsResponse,
   User
 } from "@/lib/api/types";
@@ -186,6 +188,8 @@ export const transactionsApi = {
     })}`),
   create: (request: ApiRequest, body: Partial<Transaction>) =>
     request<{ transaction: Transaction }>("/v1/transactions", { method: "POST", body }),
+  bulkUpdate: (request: ApiRequest, body: TransactionsBulkUpdateRequest) =>
+    request<{ result: TransactionsBulkUpdateResult }>("/v1/transactions/bulk", { method: "POST", body }),
   update: (request: ApiRequest, id: string, body: Partial<Transaction>) =>
     request<{ transaction: Transaction }>(`/v1/transactions/${id}`, { method: "PUT", body }),
   remove: (request: ApiRequest, id: string) =>

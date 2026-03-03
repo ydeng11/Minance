@@ -433,6 +433,158 @@ test("api parity contract suite for categories/transactions/settings and missing
       true
     );
 
+    const bulkOne = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        transaction_date: "2026-02-07",
+        description: "Bulk candidate 1",
+        merchant_raw: "Bulk Merchant One",
+        amount: -18.5,
+        account_name: "Primary Checking",
+        category_final: "Dining"
+      }
+    });
+    const bulkTwo = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        transaction_date: "2026-02-08",
+        description: "Bulk candidate 2",
+        merchant_raw: "Bulk Merchant Two",
+        amount: -22.1,
+        account_name: "Primary Checking",
+        category_final: "Dining"
+      }
+    });
+    const bulkTransactionIds = [
+      bulkOne.payload?.transaction?.id,
+      bulkTwo.payload?.transaction?.id
+    ];
+    assert.equal(typeof bulkTransactionIds[0], "string");
+    assert.equal(typeof bulkTransactionIds[1], "string");
+
+    const bulkReviewUpdate = await apiRequest(context, "POST", "/v1/transactions/bulk", {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        transaction_ids: bulkTransactionIds,
+        review_status: "needs_review"
+      }
+    });
+    assert.equal(bulkReviewUpdate.payload?.result?.updated, 2);
+    assert.equal(
+      bulkReviewUpdate.payload?.result?.transactions?.every((entry) => entry.review_status === "needs_review"),
+      true
+    );
+
+    const bulkCategoryAndTags = await apiRequest(context, "POST", "/v1/transactions/bulk", {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        transaction_ids: bulkTransactionIds,
+        category_final: "Transfer",
+        tags: [" Operations ", "quarterly", "operations"],
+        needs_category_review: false
+      }
+    });
+    assert.equal(bulkCategoryAndTags.payload?.result?.updated, 2);
+    assert.equal(
+      bulkCategoryAndTags.payload?.result?.transactions?.every(
+        (entry) =>
+          entry.category_final === "Transfer" &&
+          entry.transaction_type === "transfer" &&
+          entry.review_status === "reviewed"
+      ),
+      true
+    );
+    assert.deepEqual(
+      bulkCategoryAndTags.payload?.result?.transactions?.[0]?.tags,
+      ["operations", "quarterly"]
+    );
+
+    const bulkFilterMatch = await apiRequest(
+      context,
+      "GET",
+      "/v1/transactions?range=all&transaction_type=transfer&tag=operations",
+      {
+        token: accessToken,
+        expectedStatus: 200
+      }
+    );
+    assert.equal(
+      bulkTransactionIds.every((id) => bulkFilterMatch.payload?.items?.some((entry) => entry.id === id)),
+      true
+    );
+
+    const invalidBulkMissingTransaction = await apiRequest(context, "POST", "/v1/transactions/bulk", {
+      token: accessToken,
+      expectedStatus: 404,
+      body: {
+        transaction_ids: [bulkTransactionIds[0], "txn_missing_contract"],
+        review_status: "reviewed"
+      }
+    });
+    assert.equal(
+      invalidBulkMissingTransaction.payload?.error?.message,
+      "Transaction not found: txn_missing_contract"
+    );
+
+    const invalidBulkDuplicates = await apiRequest(context, "POST", "/v1/transactions/bulk", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        transaction_ids: [bulkTransactionIds[0], bulkTransactionIds[0]],
+        review_status: "reviewed"
+      }
+    });
+    assert.equal(
+      invalidBulkDuplicates.payload?.error?.message,
+      "transaction_ids must not include duplicates"
+    );
+
+    const bulkIdempotentKey = "txn-bulk-idem-001";
+    const bulkIdempotentBody = {
+      transaction_ids: bulkTransactionIds,
+      review_status: "needs_review"
+    };
+    const firstBulkIdempotent = await apiRequest(context, "POST", "/v1/transactions/bulk", {
+      token: accessToken,
+      expectedStatus: 200,
+      headers: {
+        "Idempotency-Key": bulkIdempotentKey
+      },
+      body: bulkIdempotentBody
+    });
+    const secondBulkIdempotent = await apiRequest(context, "POST", "/v1/transactions/bulk", {
+      token: accessToken,
+      expectedStatus: 200,
+      headers: {
+        "Idempotency-Key": bulkIdempotentKey
+      },
+      body: bulkIdempotentBody
+    });
+    assert.equal(
+      secondBulkIdempotent.payload?.result?.transactions?.[0]?.id,
+      firstBulkIdempotent.payload?.result?.transactions?.[0]?.id
+    );
+
+    const conflictingBulkIdempotent = await apiRequest(context, "POST", "/v1/transactions/bulk", {
+      token: accessToken,
+      expectedStatus: 400,
+      headers: {
+        "Idempotency-Key": bulkIdempotentKey
+      },
+      body: {
+        transaction_ids: bulkTransactionIds,
+        review_status: "reviewed"
+      }
+    });
+    assert.equal(
+      conflictingBulkIdempotent.payload?.error?.message,
+      "Invalid idempotency key reuse with a different payload"
+    );
+
     const updated = await apiRequest(context, "PUT", `/v1/transactions/${transactionId}`, {
       token: accessToken,
       expectedStatus: 200,
