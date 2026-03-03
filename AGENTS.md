@@ -186,6 +186,7 @@ bd automatically syncs via Dolt:
 - ✅ Always use `--json` flag for programmatic use
 - ✅ Link discovered work with `discovered-from` dependencies
 - ✅ Check `bd ready` before asking "what should I work on?"
+- ✅ For beads-powered tasks, use a subagent with fresh context and parallelize independent work whenever possible
 - ❌ Do NOT create markdown TODO lists
 - ❌ Do NOT use external issue trackers
 - ❌ Do NOT duplicate tracking systems

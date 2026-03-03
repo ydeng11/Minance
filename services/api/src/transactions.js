@@ -4,6 +4,10 @@ import { normalizeMerchant } from "./categorization.js";
 import { filterUserTransactions, getUserDataBounds, buildAppliedRange } from "./analytics.js";
 import { createCategoryResolver, ensureCategoryStrategyForUser } from "./category-strategy.js";
 
+function isSoftDeleted(transaction) {
+  return Boolean(transaction?.deleted_at);
+}
+
 function ensureAccount(store, userId, accountId, accountName) {
   if (accountId) {
     const existingById = store.accounts.find((entry) => entry.id === accountId && entry.userId === userId);
@@ -105,7 +109,7 @@ function maybeCreateRuleFromCorrection(store, userId, transaction, previousCateg
   }
 
   const matching = store.transactions
-    .filter((entry) => entry.user_id === userId)
+    .filter((entry) => entry.user_id === userId && !isSoftDeleted(entry))
     .filter((entry) => entry.merchant_normalized === transaction.merchant_normalized)
     .filter((entry) => entry.category_final === nextCategory)
     .length;
@@ -217,6 +221,9 @@ export function createManualTransaction(userId, payload) {
       normalized.transaction_date,
       normalized.memo
     ),
+    deleted_at: null,
+    deleted_reason: null,
+    deleted_by: null,
     created_at: nowIso(),
     updated_at: nowIso()
   };
@@ -230,7 +237,9 @@ export function createManualTransaction(userId, payload) {
 
 export function updateTransaction(userId, transactionId, payload) {
   const store = loadStore();
-  const tx = store.transactions.find((entry) => entry.id === transactionId && entry.user_id === userId);
+  const tx = store.transactions.find(
+    (entry) => entry.id === transactionId && entry.user_id === userId && !isSoftDeleted(entry)
+  );
   if (!tx) {
     throw new Error("Transaction not found");
   }
@@ -286,17 +295,44 @@ export function updateTransaction(userId, transactionId, payload) {
 
 export function deleteTransaction(userId, transactionId) {
   const store = loadStore();
-  const before = store.transactions.length;
-  store.transactions = store.transactions.filter(
-    (entry) => !(entry.id === transactionId && entry.user_id === userId)
-  );
-
-  if (before === store.transactions.length) {
+  const tx = store.transactions.find((entry) => entry.id === transactionId && entry.user_id === userId);
+  if (!tx) {
     throw new Error("Transaction not found");
   }
 
-  saveStore(store);
-  addAuditEvent(userId, "transaction.delete", { transactionId });
+  if (isSoftDeleted(tx)) {
+    return tx;
+  }
 
-  return true;
+  tx.deleted_at = nowIso();
+  tx.deleted_reason = "user_delete";
+  tx.deleted_by = userId;
+  tx.updated_at = nowIso();
+
+  saveStore(store);
+  addAuditEvent(userId, "transaction.delete.soft", { transactionId });
+
+  return tx;
+}
+
+export function restoreTransaction(userId, transactionId) {
+  const store = loadStore();
+  const tx = store.transactions.find((entry) => entry.id === transactionId && entry.user_id === userId);
+  if (!tx) {
+    throw new Error("Transaction not found");
+  }
+
+  if (!isSoftDeleted(tx)) {
+    throw new Error("Transaction is not deleted");
+  }
+
+  tx.deleted_at = null;
+  tx.deleted_reason = null;
+  tx.deleted_by = null;
+  tx.updated_at = nowIso();
+
+  saveStore(store);
+  addAuditEvent(userId, "transaction.restore", { transactionId });
+
+  return tx;
 }

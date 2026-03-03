@@ -29,6 +29,9 @@ export function filterUserTransactions(userId, filters = {}) {
     if (txn.user_id !== userId) {
       return false;
     }
+    if (txn.deleted_at) {
+      return false;
+    }
     if (!inDateRange(txn.transaction_date, start, end)) {
       return false;
     }
@@ -53,7 +56,7 @@ export function filterUserTransactions(userId, filters = {}) {
 
 export function getUserDataBounds(userId) {
   const store = loadStore();
-  const userTxns = store.transactions.filter((txn) => txn.user_id === userId);
+  const userTxns = store.transactions.filter((txn) => txn.user_id === userId && !txn.deleted_at);
   if (!userTxns.length) {
     return {
       start: null,

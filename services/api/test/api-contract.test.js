@@ -125,8 +125,8 @@ async function startApiServer(t) {
   return { baseUrl, getLogs };
 }
 
-async function apiRequest(context, method, pathName, { token = null, body, expectedStatus } = {}) {
-  const headers = {};
+async function apiRequest(context, method, pathName, { token = null, body, expectedStatus, headers: customHeaders } = {}) {
+  const headers = { ...(customHeaders || {}) };
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
@@ -254,10 +254,100 @@ test("api parity contract suite for categories/transactions/settings and missing
     });
     assert.equal(updated.payload?.transaction?.description, "Transfer to HYSA");
 
+    const idempotentCreateBody = {
+      transaction_date: "2026-02-02",
+      description: "Idempotent coffee",
+      merchant_raw: "Parity Cafe",
+      amount: -9.75,
+      account_name: "Primary Checking",
+      category_final: "Dining"
+    };
+    const idempotentKey = "txn-create-idem-001";
+    const firstIdempotentCreate = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 201,
+      headers: {
+        "Idempotency-Key": idempotentKey
+      },
+      body: idempotentCreateBody
+    });
+    const secondIdempotentCreate = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 201,
+      headers: {
+        "Idempotency-Key": idempotentKey
+      },
+      body: idempotentCreateBody
+    });
+    const idempotentTransactionId = firstIdempotentCreate.payload?.transaction?.id;
+    assert.equal(typeof idempotentTransactionId, "string");
+    assert.equal(secondIdempotentCreate.payload?.transaction?.id, idempotentTransactionId);
+
+    const conflictingIdempotentCreate = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 400,
+      headers: {
+        "Idempotency-Key": idempotentKey
+      },
+      body: {
+        ...idempotentCreateBody,
+        amount: -19.75
+      }
+    });
+    assert.equal(
+      conflictingIdempotentCreate.payload?.error?.message,
+      "Invalid idempotency key reuse with a different payload"
+    );
+
+    const deleteKey = "txn-delete-idem-001";
     await apiRequest(context, "DELETE", `/v1/transactions/${transactionId}`, {
       token: accessToken,
-      expectedStatus: 204
+      expectedStatus: 204,
+      headers: {
+        "Idempotency-Key": deleteKey
+      }
     });
+    await apiRequest(context, "DELETE", `/v1/transactions/${transactionId}`, {
+      token: accessToken,
+      expectedStatus: 204,
+      headers: {
+        "Idempotency-Key": deleteKey
+      }
+    });
+
+    const afterDelete = await apiRequest(
+      context,
+      "GET",
+      "/v1/transactions?category_view=granular&range=all&limit=200",
+      {
+        token: accessToken,
+        expectedStatus: 200
+      }
+    );
+    assert.equal(
+      afterDelete.payload?.items?.some((entry) => entry.id === transactionId),
+      false
+    );
+
+    const restored = await apiRequest(context, "POST", `/v1/transactions/${transactionId}/restore`, {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(restored.payload?.transaction?.id, transactionId);
+
+    const afterRestore = await apiRequest(
+      context,
+      "GET",
+      "/v1/transactions?category_view=granular&range=all&limit=200",
+      {
+        token: accessToken,
+        expectedStatus: 200
+      }
+    );
+    assert.equal(
+      afterRestore.payload?.items?.some((entry) => entry.id === transactionId),
+      true
+    );
   });
 
   await t.test("settings endpoints expose storage and AI preference contracts", async () => {

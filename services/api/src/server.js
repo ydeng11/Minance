@@ -25,7 +25,13 @@ import {
   updateImportProcessedRow,
   reprocessImportRows
 } from "./imports.js";
-import { createManualTransaction, listTransactions, updateTransaction, deleteTransaction } from "./transactions.js";
+import {
+  createManualTransaction,
+  listTransactions,
+  updateTransaction,
+  deleteTransaction,
+  restoreTransaction
+} from "./transactions.js";
 import {
   getOverview,
   getCategoryRollup,
@@ -49,7 +55,7 @@ import {
   updateSavedView,
   deleteSavedView
 } from "./savedViews.js";
-import { createId, nowIso, normalizeText } from "./utils.js";
+import { createId, nowIso, normalizeText, stableHash } from "./utils.js";
 import { ensureSqliteFoundation, getSqliteFoundationStatus } from "./sqlite-foundation.js";
 import {
   beginHttpObservation,
@@ -156,6 +162,97 @@ function apiError(res, error) {
 function requireUser(req) {
   const auth = requireAuth(req);
   return auth.user;
+}
+
+const IDEMPOTENCY_AUDIT_ACTION = "mutation.idempotency.recorded";
+
+function getHeaderValue(req, headerName) {
+  const raw = req.headers[headerName];
+  if (Array.isArray(raw)) {
+    return raw[0] || null;
+  }
+  return raw ?? null;
+}
+
+function getIdempotencyKey(req) {
+  const value = getHeaderValue(req, "idempotency-key");
+  if (value == null) {
+    return null;
+  }
+  const key = String(value).trim();
+  if (!key || key.length > 128) {
+    throw new Error("Invalid idempotency key");
+  }
+  return key;
+}
+
+function resolveMutationGuard(req, userId, mutationScope, requestBody = {}) {
+  const idempotencyKey = getIdempotencyKey(req);
+  if (!idempotencyKey) {
+    return null;
+  }
+
+  const fingerprint = stableHash(
+    JSON.stringify({
+      mutationScope,
+      requestBody: requestBody || {}
+    })
+  );
+
+  const store = loadStore();
+  const replayEvent = [...store.auditEvents]
+    .reverse()
+    .find((event) => {
+      if (event.userId !== userId || event.action !== IDEMPOTENCY_AUDIT_ACTION) {
+        return false;
+      }
+      return (
+        event.details?.idempotencyKey === idempotencyKey && event.details?.mutationScope === mutationScope
+      );
+    });
+
+  if (!replayEvent) {
+    return {
+      idempotencyKey,
+      mutationScope,
+      fingerprint
+    };
+  }
+
+  if (replayEvent.details?.fingerprint !== fingerprint) {
+    throw new Error("Invalid idempotency key reuse with a different payload");
+  }
+
+  return {
+    replay: {
+      statusCode: Number(replayEvent.details?.statusCode || 200),
+      responseBody: replayEvent.details?.responseBody || null,
+      noContent: Boolean(replayEvent.details?.noContent)
+    }
+  };
+}
+
+function sendMutationReplay(res, replay) {
+  if (replay.noContent) {
+    sendNoContent(res);
+    return;
+  }
+  sendJson(res, replay.statusCode, replay.responseBody || {});
+}
+
+function recordMutationGuardResult(userId, guard, statusCode, responseBody = null, noContent = false) {
+  if (!guard || guard.replay) {
+    return;
+  }
+
+  addAuditEvent(userId, IDEMPOTENCY_AUDIT_ACTION, {
+    idempotencyKey: guard.idempotencyKey,
+    mutationScope: guard.mutationScope,
+    fingerprint: guard.fingerprint,
+    statusCode,
+    responseBody: noContent ? null : responseBody,
+    noContent
+  });
 }
 
 async function handleApiRequest(req, res, url) {
@@ -417,7 +514,13 @@ async function handleApiRequest(req, res, url) {
     if (req.method === "POST" && pathname === "/v1/transactions") {
       const user = requireUser(req);
       const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, "POST /v1/transactions", body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
       const transaction = createManualTransaction(user.id, body);
+      recordMutationGuardResult(user.id, guard, 201, { transaction });
       sendJson(res, 201, { transaction });
       return;
     }
@@ -426,7 +529,18 @@ async function handleApiRequest(req, res, url) {
     if (req.method === "PUT" && transactionPutParams) {
       const user = requireUser(req);
       const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `PUT /v1/transactions/:id#${transactionPutParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
       const transaction = updateTransaction(user.id, transactionPutParams.id, body);
+      recordMutationGuardResult(user.id, guard, 200, { transaction });
       sendJson(res, 200, { transaction });
       return;
     }
@@ -434,8 +548,38 @@ async function handleApiRequest(req, res, url) {
     const transactionDeleteParams = matchPath(pathname, "/v1/transactions/:id");
     if (req.method === "DELETE" && transactionDeleteParams) {
       const user = requireUser(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `DELETE /v1/transactions/:id#${transactionDeleteParams.id}`
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
       deleteTransaction(user.id, transactionDeleteParams.id);
+      recordMutationGuardResult(user.id, guard, 204, null, true);
       sendNoContent(res);
+      return;
+    }
+
+    const transactionRestoreParams = matchPath(pathname, "/v1/transactions/:id/restore");
+    if (req.method === "POST" && transactionRestoreParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `POST /v1/transactions/:id/restore#${transactionRestoreParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const transaction = restoreTransaction(user.id, transactionRestoreParams.id);
+      recordMutationGuardResult(user.id, guard, 200, { transaction });
+      sendJson(res, 200, { transaction });
       return;
     }
 
@@ -571,8 +715,14 @@ async function handleApiRequest(req, res, url) {
     if (req.method === "PUT" && pathname === "/v1/category-strategy") {
       const user = requireUser(req);
       const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, "PUT /v1/category-strategy", body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
       const strategy = updateCategoryStrategyForUser(user.id, body);
       addAuditEvent(user.id, "category_strategy.update", {});
+      recordMutationGuardResult(user.id, guard, 200, { strategy });
       sendJson(res, 200, { strategy });
       return;
     }
@@ -580,6 +730,11 @@ async function handleApiRequest(req, res, url) {
     if (req.method === "POST" && pathname === "/v1/categories") {
       const user = requireUser(req);
       const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, "POST /v1/categories", body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
       if (!body.name || String(body.name).trim().length < 2) {
         throw new Error("Category name is required");
       }
@@ -602,6 +757,7 @@ async function handleApiRequest(req, res, url) {
         coarseKey: category.coarseKey
       });
       addAuditEvent(user.id, "category.create", { categoryId: category.id });
+      recordMutationGuardResult(user.id, guard, 201, { category });
       sendJson(res, 201, { category });
       return;
     }
@@ -609,6 +765,11 @@ async function handleApiRequest(req, res, url) {
     if (req.method === "POST" && pathname === "/v1/category-rules") {
       const user = requireUser(req);
       const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, "POST /v1/category-rules", body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
       if (!body.pattern || !body.category) {
         throw new Error("pattern and category are required");
       }
@@ -627,6 +788,7 @@ async function handleApiRequest(req, res, url) {
       store.categoryRules.push(rule);
       saveStore(store);
       addAuditEvent(user.id, "category_rule.create", { ruleId: rule.id });
+      recordMutationGuardResult(user.id, guard, 201, { rule });
       sendJson(res, 201, { rule });
       return;
     }
