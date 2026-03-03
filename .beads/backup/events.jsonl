@@ -1,5 +1,4 @@
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:05:10Z","event_type":"created","id":166,"issue_id":"minance2-xdy","new_value":"","old_value":""}
-{"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:05:30Z","event_type":"created","id":171,"issue_id":"minance2-ind","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:05:30Z","event_type":"created","id":172,"issue_id":"minance2-142","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:05:30Z","event_type":"created","id":173,"issue_id":"minance2-6qq","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:05:31Z","event_type":"created","id":174,"issue_id":"minance2-9ep","new_value":"","old_value":""}
@@ -17,8 +16,6 @@
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:09:24Z","event_type":"created","id":200,"issue_id":"minance2-6qq.3","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:09:24Z","event_type":"created","id":201,"issue_id":"minance2-142.1","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:09:25Z","event_type":"created","id":202,"issue_id":"minance2-142.2","new_value":"","old_value":""}
-{"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:09:25Z","event_type":"created","id":203,"issue_id":"minance2-ind.1","new_value":"","old_value":""}
-{"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:09:26Z","event_type":"created","id":204,"issue_id":"minance2-ind.2","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:10:10Z","event_type":"created","id":209,"issue_id":"minance2-cnq.1","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:10:11Z","event_type":"created","id":210,"issue_id":"minance2-cnq.2","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:10:11Z","event_type":"created","id":211,"issue_id":"minance2-9ep.1","new_value":"","old_value":""}
@@ -32,7 +29,6 @@
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:11:22Z","event_type":"created","id":226,"issue_id":"minance2-xdy.21","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:11:23Z","event_type":"created","id":227,"issue_id":"minance2-xdy.22","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:05:10Z","event_type":"created","id":313,"issue_id":"minance2-xdy","new_value":"","old_value":""}
-{"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:05:30Z","event_type":"created","id":318,"issue_id":"minance2-ind","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:05:30Z","event_type":"created","id":319,"issue_id":"minance2-142","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:05:30Z","event_type":"created","id":320,"issue_id":"minance2-6qq","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:05:31Z","event_type":"created","id":321,"issue_id":"minance2-9ep","new_value":"","old_value":""}
@@ -50,8 +46,6 @@
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:09:24Z","event_type":"created","id":347,"issue_id":"minance2-6qq.3","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:09:24Z","event_type":"created","id":348,"issue_id":"minance2-142.1","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:09:25Z","event_type":"created","id":349,"issue_id":"minance2-142.2","new_value":"","old_value":""}
-{"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:09:25Z","event_type":"created","id":350,"issue_id":"minance2-ind.1","new_value":"","old_value":""}
-{"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:09:26Z","event_type":"created","id":351,"issue_id":"minance2-ind.2","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:10:10Z","event_type":"created","id":356,"issue_id":"minance2-cnq.1","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:10:11Z","event_type":"created","id":357,"issue_id":"minance2-cnq.2","new_value":"","old_value":""}
 {"actor":"ydeng11","comment":null,"created_at":"2026-03-01T11:10:11Z","event_type":"created","id":358,"issue_id":"minance2-9ep.1","new_value":"","old_value":""}
