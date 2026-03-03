@@ -67,7 +67,10 @@ export function useApi() {
         createLinkSession: accountsApi.createLinkSession.bind(null, request),
         supportedAccountTypes: () => accountsApi.supportedAccountTypes(request),
         list: () => accountsApi.list(request),
-        create: accountsApi.create.bind(null, request)
+        create: accountsApi.create.bind(null, request),
+        update: accountsApi.update.bind(null, request),
+        updateSettings: accountsApi.updateSettings.bind(null, request),
+        remove: accountsApi.remove.bind(null, request)
       },
       transactions: {
         list: transactionsApi.list.bind(null, request),

@@ -98,6 +98,15 @@ test("accountsApi routes provider and manual-create requests to /v1/accounts con
     currency: "USD",
     initialBalance: 25
   });
+  await accountsApi.update(request, "acct_123", {
+    displayName: "Travel Card v2",
+    expectedVersion: 1
+  });
+  await accountsApi.updateSettings(request, "acct_123", {
+    hidden: true,
+    expectedVersion: 2
+  });
+  await accountsApi.remove(request, "acct_123");
 
   assert.equal(calls[0].path, "/v1/accounts/providers");
   assert.equal(calls[1].path, "/v1/accounts/providers/manual%20csv");
@@ -107,4 +116,10 @@ test("accountsApi routes provider and manual-create requests to /v1/accounts con
   assert.equal(calls[4].path, "/v1/accounts");
   assert.equal(calls[5].path, "/v1/accounts");
   assert.equal(calls[5].options?.method, "POST");
+  assert.equal(calls[6].path, "/v1/accounts/acct_123");
+  assert.equal(calls[6].options?.method, "PUT");
+  assert.equal(calls[7].path, "/v1/accounts/acct_123/settings");
+  assert.equal(calls[7].options?.method, "PUT");
+  assert.equal(calls[8].path, "/v1/accounts/acct_123");
+  assert.equal(calls[8].options?.method, "DELETE");
 });

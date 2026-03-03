@@ -129,7 +129,35 @@ export const accountsApi = {
       currency?: string;
       initialBalance: number;
     }
-  ) => request<{ account: Account }>("/v1/accounts", { method: "POST", body })
+  ) => request<{ account: Account }>("/v1/accounts", { method: "POST", body }),
+  update: (
+    request: ApiRequest,
+    id: string,
+    body: Partial<{
+      displayName: string;
+      sourceInstitution: string | null;
+      accountType: string;
+      currency: string;
+      initialBalance: number;
+      includeInCharts: boolean;
+      hidden: boolean;
+      closed: boolean;
+      status: "active" | "hidden" | "closed";
+      expectedVersion: number;
+    }>
+  ) => request<{ account: Account }>(`/v1/accounts/${id}`, { method: "PUT", body }),
+  updateSettings: (
+    request: ApiRequest,
+    id: string,
+    body: Partial<{
+      includeInCharts: boolean;
+      hidden: boolean;
+      closed: boolean;
+      status: "active" | "hidden" | "closed";
+      expectedVersion: number;
+    }>
+  ) => request<{ account: Account }>(`/v1/accounts/${id}/settings`, { method: "PUT", body }),
+  remove: (request: ApiRequest, id: string) => request<null>(`/v1/accounts/${id}`, { method: "DELETE" })
 };
 
 export const transactionsApi = {

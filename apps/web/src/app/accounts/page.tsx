@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
-import { Building2, CreditCard, Link2, Loader2, Plus, ShieldAlert, Undo2, X } from "lucide-react";
+import { Archive, Building2, CreditCard, Link2, Loader2, Plus, Save, ShieldAlert, Trash2, Undo2, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import type { Account, AccountProviderSummary } from "@/lib/api/types";
@@ -18,6 +18,34 @@ import {
 
 type MessageTone = "info" | "error";
 type WizardStep = "path" | "provider" | "manual";
+
+interface AccountSettingsDraft {
+  sourceInstitution: string;
+  displayName: string;
+  accountType: string;
+  currency: string;
+  initialBalance: string;
+  status: Account["status"];
+  includeInCharts: boolean;
+}
+
+interface AccountSettingsErrors {
+  sourceInstitution?: string;
+  displayName?: string;
+  accountType?: string;
+  currency?: string;
+  initialBalance?: string;
+}
+
+interface NormalizedAccountSettingsDraft {
+  sourceInstitution: string | null;
+  displayName: string;
+  accountType: string;
+  currency: string;
+  initialBalance: number;
+  status: Account["status"];
+  includeInCharts: boolean;
+}
 
 function messageClasses(tone: MessageTone) {
   if (tone === "error") {
@@ -54,6 +82,79 @@ function formatBalance(amount: number, currency: string) {
   }
 }
 
+function createAccountSettingsDraft(account: Account): AccountSettingsDraft {
+  return {
+    sourceInstitution: account.sourceInstitution || "",
+    displayName: account.displayName,
+    accountType: account.accountType,
+    currency: account.currency,
+    initialBalance: String(account.initialBalance),
+    status: account.status,
+    includeInCharts: account.includeInCharts
+  };
+}
+
+function validateAccountSettingsDraft(draft: AccountSettingsDraft): { errors: AccountSettingsErrors; normalized: NormalizedAccountSettingsDraft | null } {
+  const sourceInstitution = draft.sourceInstitution.trim();
+  const displayName = draft.displayName.trim();
+  const accountType = draft.accountType.trim();
+  const currency = draft.currency.trim().toUpperCase();
+  const initialBalanceRaw = draft.initialBalance.trim();
+  const errors: AccountSettingsErrors = {};
+
+  if (!sourceInstitution) {
+    errors.sourceInstitution = "Institution is required.";
+  }
+  if (displayName.length < 2) {
+    errors.displayName = "Account name is required.";
+  }
+  if (!accountType) {
+    errors.accountType = "Account type is required.";
+  }
+  if (!/^[A-Z]{3}$/.test(currency)) {
+    errors.currency = "Currency must be a 3-letter code.";
+  }
+
+  const parsedBalance = Number(initialBalanceRaw);
+  if (!Number.isFinite(parsedBalance)) {
+    errors.initialBalance = "Starting balance must be numeric.";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return {
+      errors,
+      normalized: null
+    };
+  }
+
+  return {
+    errors: {},
+    normalized: {
+      sourceInstitution: sourceInstitution || null,
+      displayName,
+      accountType,
+      currency,
+      initialBalance: parsedBalance,
+      status: draft.status,
+      includeInCharts: draft.includeInCharts
+    }
+  };
+}
+
+function hasSettingsDraftChanges(account: Account, draft: AccountSettingsDraft) {
+  const initialBalance = Number(draft.initialBalance.trim());
+  return (
+    account.sourceInstitution !== (draft.sourceInstitution.trim() || null) ||
+    account.displayName !== draft.displayName.trim() ||
+    account.accountType !== draft.accountType.trim() ||
+    account.currency !== draft.currency.trim().toUpperCase() ||
+    !Number.isFinite(initialBalance) ||
+    Number(account.initialBalance) !== initialBalance ||
+    account.status !== draft.status ||
+    account.includeInCharts !== draft.includeInCharts
+  );
+}
+
 export default function AccountsPage() {
   const api = useApi();
 
@@ -77,6 +178,14 @@ export default function AccountsPage() {
   const [messageTone, setMessageTone] = useState<MessageTone>("info");
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [isStartingProviderLink, setIsStartingProviderLink] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [settingsDraft, setSettingsDraft] = useState<AccountSettingsDraft | null>(null);
+  const [settingsErrors, setSettingsErrors] = useState<AccountSettingsErrors>({});
+  const [settingsError, setSettingsError] = useState("");
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isUpdatingAccountState, setIsUpdatingAccountState] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const selectedProvider = useMemo(
     () => providers.find((entry) => entry.id === selectedProviderId) || null,
@@ -257,6 +366,156 @@ export default function AccountsPage() {
     }
   }
 
+  function upsertAccountInList(account: Account) {
+    setAccounts((previous) => {
+      let found = false;
+      const next = previous.map((entry) => {
+        if (entry.id !== account.id) {
+          return entry;
+        }
+        found = true;
+        return account;
+      });
+      if (!found) {
+        next.push(account);
+      }
+      return next.sort((left, right) => left.displayName.localeCompare(right.displayName));
+    });
+  }
+
+  function openAccountSettings(account: Account) {
+    setMessage("");
+    setSettingsError("");
+    setSettingsErrors({});
+    setEditingAccount(account);
+    setSettingsDraft(createAccountSettingsDraft(account));
+    setIsSettingsOpen(true);
+  }
+
+  function closeAccountSettings(force = false) {
+    if (!force && editingAccount && settingsDraft && typeof window !== "undefined") {
+      const shouldConfirm = hasSettingsDraftChanges(editingAccount, settingsDraft);
+      if (shouldConfirm && !window.confirm("Discard account setting changes?")) {
+        return;
+      }
+    }
+
+    setIsSettingsOpen(false);
+    setEditingAccount(null);
+    setSettingsDraft(null);
+    setSettingsErrors({});
+    setSettingsError("");
+    setIsSavingSettings(false);
+    setIsUpdatingAccountState(false);
+    setIsDeletingAccount(false);
+  }
+
+  function updateSettingsDraftField<Key extends keyof AccountSettingsDraft>(field: Key, value: AccountSettingsDraft[Key]) {
+    setSettingsDraft((previous) => {
+      if (!previous) {
+        return previous;
+      }
+      return {
+        ...previous,
+        [field]: value
+      };
+    });
+    setSettingsErrors((previous) => ({
+      ...previous,
+      [field]: undefined
+    }));
+    setSettingsError("");
+  }
+
+  async function saveAccountSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingAccount || !settingsDraft) {
+      return;
+    }
+
+    const validation = validateAccountSettingsDraft(settingsDraft);
+    setSettingsErrors(validation.errors);
+    if (!validation.normalized) {
+      return;
+    }
+
+    setIsSavingSettings(true);
+    setSettingsError("");
+
+    try {
+      const response = await api.accounts.update(editingAccount.id, {
+        ...validation.normalized,
+        expectedVersion: editingAccount.version
+      });
+
+      upsertAccountInList(response.account);
+      setEditingAccount(response.account);
+      setSettingsDraft(createAccountSettingsDraft(response.account));
+      setMessage(`Account "${response.account.displayName}" updated.`);
+      setMessageTone("info");
+    } catch (error) {
+      const nextMessage = error instanceof ApiError ? error.message : "Failed to update account settings.";
+      setSettingsError(nextMessage);
+      setMessageTone("error");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  }
+
+  async function updateAccountState(nextStatus: Account["status"]) {
+    if (!editingAccount) {
+      return;
+    }
+
+    const stateLabel = nextStatus === "hidden" ? "archive" : nextStatus === "closed" ? "close" : "restore";
+    if (typeof window !== "undefined" && !window.confirm(`Confirm ${stateLabel} action for "${editingAccount.displayName}"?`)) {
+      return;
+    }
+
+    setIsUpdatingAccountState(true);
+    setSettingsError("");
+
+    try {
+      const response = await api.accounts.updateSettings(editingAccount.id, {
+        status: nextStatus,
+        expectedVersion: editingAccount.version
+      });
+      upsertAccountInList(response.account);
+      setEditingAccount(response.account);
+      setSettingsDraft(createAccountSettingsDraft(response.account));
+      setMessage(`Account "${response.account.displayName}" status set to ${response.account.status}.`);
+      setMessageTone("info");
+    } catch (error) {
+      setSettingsError(error instanceof ApiError ? error.message : "Failed to update account status.");
+    } finally {
+      setIsUpdatingAccountState(false);
+    }
+  }
+
+  async function deleteEditingAccount() {
+    if (!editingAccount) {
+      return;
+    }
+    if (typeof window !== "undefined" && !window.confirm(`Delete "${editingAccount.displayName}"? This cannot be undone.`)) {
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    setSettingsError("");
+
+    try {
+      await api.accounts.remove(editingAccount.id);
+      setAccounts((previous) => previous.filter((entry) => entry.id !== editingAccount.id));
+      setMessage(`Account "${editingAccount.displayName}" deleted.`);
+      setMessageTone("info");
+      closeAccountSettings(true);
+    } catch (error) {
+      setSettingsError(error instanceof ApiError ? error.message : "Failed to delete account.");
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  }
+
   return (
     <div className="space-y-6" data-testid="accounts-page">
       <header className="flex flex-wrap items-center justify-between gap-3">
@@ -301,7 +560,17 @@ export default function AccountsPage() {
                       <p className="text-base font-medium text-neutral-100">{entry.displayName}</p>
                       <p className="text-xs uppercase tracking-wide text-neutral-400">{entry.sourceInstitution || "Manual"}</p>
                     </div>
-                    <span className={`rounded-full px-2 py-1 text-xs ${statusClasses(entry.status)}`}>{entry.status}</span>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className={`rounded-full px-2 py-1 text-xs ${statusClasses(entry.status)}`}>{entry.status}</span>
+                      <button
+                        type="button"
+                        className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-300 transition hover:border-neutral-600"
+                        data-testid={`account-manage-${entry.id}`}
+                        onClick={() => openAccountSettings(entry)}
+                      >
+                        Manage
+                      </button>
+                    </div>
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-3 text-sm text-neutral-300">
                     <div className="flex items-center gap-2">
@@ -326,7 +595,7 @@ export default function AccountsPage() {
       )}
 
       <p className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300">
-        Account detail settings and archive controls are tracked separately. Use{" "}
+        Use account <strong className="text-neutral-100">Manage</strong> actions for rename/type/state updates, and use{" "}
         <Link href="/transactions" className="text-emerald-300 underline decoration-emerald-700 underline-offset-2">
           transactions
         </Link>{" "}
@@ -671,6 +940,186 @@ export default function AccountsPage() {
                 </div>
               ) : null}
             </div>
+          </section>
+        </div>
+      ) : null}
+
+      {isSettingsOpen && editingAccount && settingsDraft ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            closeAccountSettings();
+          }
+        }}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="account-settings-title"
+            data-testid="accounts-settings-modal"
+            className="w-full max-w-2xl rounded-2xl border border-neutral-800 bg-neutral-950 shadow-2xl shadow-black/50"
+          >
+            <header className="flex items-start justify-between gap-3 border-b border-neutral-800 px-5 py-4">
+              <div>
+                <h3 id="account-settings-title" className="text-lg font-semibold text-neutral-100">Account settings</h3>
+                <p className="text-sm text-neutral-400">Rename, retype, archive, close, or delete this account.</p>
+              </div>
+              <button
+                type="button"
+                className="rounded-md border border-neutral-800 bg-neutral-900 p-2 text-neutral-400 transition hover:text-neutral-200"
+                data-testid="accounts-settings-close"
+                onClick={() => closeAccountSettings()}
+              >
+                <span className="sr-only">Close</span>
+                <X className="h-4 w-4" />
+              </button>
+            </header>
+
+            <form className="space-y-4 px-5 py-4" onSubmit={(event) => void saveAccountSettings(event)}>
+              <div className="grid gap-2">
+                <label htmlFor="accounts-settings-institution" className="text-sm font-medium text-neutral-200">Institution</label>
+                <input
+                  id="accounts-settings-institution"
+                  type="text"
+                  value={settingsDraft.sourceInstitution}
+                  onChange={(event) => updateSettingsDraftField("sourceInstitution", event.target.value)}
+                  className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500"
+                />
+                {settingsErrors.sourceInstitution ? <p className="text-xs text-rose-300">{settingsErrors.sourceInstitution}</p> : null}
+              </div>
+
+              <div className="grid gap-2">
+                <label htmlFor="accounts-settings-name" className="text-sm font-medium text-neutral-200">Account name</label>
+                <input
+                  id="accounts-settings-name"
+                  type="text"
+                  value={settingsDraft.displayName}
+                  onChange={(event) => updateSettingsDraftField("displayName", event.target.value)}
+                  className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500"
+                />
+                {settingsErrors.displayName ? <p className="text-xs text-rose-300">{settingsErrors.displayName}</p> : null}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <label htmlFor="accounts-settings-type" className="text-sm font-medium text-neutral-200">Account type</label>
+                  <select
+                    id="accounts-settings-type"
+                    value={settingsDraft.accountType}
+                    onChange={(event) => updateSettingsDraftField("accountType", event.target.value)}
+                    className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+                  >
+                    {supportedAccountTypes.map((type) => (
+                      <option key={type} value={type}>{formatAccountTypeLabel(type)}</option>
+                    ))}
+                  </select>
+                  {settingsErrors.accountType ? <p className="text-xs text-rose-300">{settingsErrors.accountType}</p> : null}
+                </div>
+
+                <div className="grid gap-2">
+                  <label htmlFor="accounts-settings-currency" className="text-sm font-medium text-neutral-200">Currency</label>
+                  <input
+                    id="accounts-settings-currency"
+                    type="text"
+                    maxLength={3}
+                    value={settingsDraft.currency}
+                    onChange={(event) => updateSettingsDraftField("currency", event.target.value.toUpperCase())}
+                    className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm uppercase text-neutral-100 placeholder:text-neutral-500"
+                  />
+                  {settingsErrors.currency ? <p className="text-xs text-rose-300">{settingsErrors.currency}</p> : null}
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <label htmlFor="accounts-settings-balance" className="text-sm font-medium text-neutral-200">Starting balance</label>
+                  <input
+                    id="accounts-settings-balance"
+                    type="text"
+                    inputMode="decimal"
+                    value={settingsDraft.initialBalance}
+                    onChange={(event) => updateSettingsDraftField("initialBalance", event.target.value)}
+                    className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500"
+                  />
+                  {settingsErrors.initialBalance ? <p className="text-xs text-rose-300">{settingsErrors.initialBalance}</p> : null}
+                </div>
+
+                <div className="grid gap-2">
+                  <label htmlFor="accounts-settings-status" className="text-sm font-medium text-neutral-200">State</label>
+                  <select
+                    id="accounts-settings-status"
+                    value={settingsDraft.status}
+                    onChange={(event) => updateSettingsDraftField("status", event.target.value as Account["status"])}
+                    className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+                  >
+                    <option value="active">Active</option>
+                    <option value="hidden">Archived</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-neutral-300">
+                <input
+                  type="checkbox"
+                  checked={settingsDraft.includeInCharts}
+                  onChange={(event) => updateSettingsDraftField("includeInCharts", event.target.checked)}
+                  className="h-4 w-4 rounded border border-neutral-700 bg-neutral-900"
+                />
+                Include in charts and net worth calculations
+              </label>
+
+              {settingsError ? (
+                <p className="rounded-lg border border-rose-700 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{settingsError}</p>
+              ) : null}
+
+              <div className="grid gap-2 border-t border-neutral-800 pt-4 sm:grid-cols-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-md border border-amber-700/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300 transition hover:border-amber-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => void updateAccountState("hidden")}
+                  disabled={isUpdatingAccountState || editingAccount.status === "hidden"}
+                >
+                  {isUpdatingAccountState ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                  Archive
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 transition hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => void updateAccountState(editingAccount.status === "active" ? "closed" : "active")}
+                  disabled={isUpdatingAccountState}
+                >
+                  {isUpdatingAccountState ? <Loader2 className="h-4 w-4 animate-spin" /> : <Undo2 className="h-4 w-4" />}
+                  {editingAccount.status === "active" ? "Close account" : "Restore active"}
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-md border border-rose-700/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-300 transition hover:border-rose-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => void deleteEditingAccount()}
+                  disabled={isDeletingAccount}
+                >
+                  {isDeletingAccount ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Delete
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-neutral-800 pt-4">
+                <button
+                  type="button"
+                  className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 transition hover:border-neutral-600"
+                  onClick={() => closeAccountSettings()}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  data-testid="accounts-settings-save"
+                  className="inline-flex items-center gap-2 rounded-md border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isSavingSettings}
+                >
+                  {isSavingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Save changes
+                </button>
+              </div>
+            </form>
           </section>
         </div>
       ) : null}
