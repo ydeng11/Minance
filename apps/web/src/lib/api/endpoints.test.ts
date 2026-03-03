@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  accountsApi,
   analyticsApi,
   categoriesApi,
   transactionsApi,
@@ -80,4 +81,30 @@ test("categoriesApi strategy endpoints use expected routes and methods", async (
   assert.equal(calls[3].options?.method, "PUT");
   assert.equal(calls[4].path, "/v1/categories/cat_123");
   assert.equal(calls[4].options?.method, "DELETE");
+});
+
+test("accountsApi routes provider and manual-create requests to /v1/accounts contracts", async () => {
+  const { calls, request } = createRecorder();
+
+  await accountsApi.listProviders(request);
+  await accountsApi.getProvider(request, "manual csv");
+  await accountsApi.createLinkSession(request, "manual_csv");
+  await accountsApi.supportedAccountTypes(request);
+  await accountsApi.list(request);
+  await accountsApi.create(request, {
+    sourceInstitution: "Chase",
+    displayName: "Travel Card",
+    accountType: "credit",
+    currency: "USD",
+    initialBalance: 25
+  });
+
+  assert.equal(calls[0].path, "/v1/accounts/providers");
+  assert.equal(calls[1].path, "/v1/accounts/providers/manual%20csv");
+  assert.equal(calls[2].path, "/v1/accounts/providers/manual_csv/link-session");
+  assert.equal(calls[2].options?.method, "POST");
+  assert.equal(calls[3].path, "/v1/accounts/supported-account-types");
+  assert.equal(calls[4].path, "/v1/accounts");
+  assert.equal(calls[5].path, "/v1/accounts");
+  assert.equal(calls[5].options?.method, "POST");
 });

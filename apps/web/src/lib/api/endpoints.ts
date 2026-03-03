@@ -1,4 +1,8 @@
 import type {
+  Account,
+  AccountLinkSession,
+  AccountProvider,
+  AccountProviderSummary,
   AnomalyItem,
   AssistantQuery,
   AuthResponse,
@@ -102,6 +106,30 @@ export const importsApi = {
     request<{ total: number; summary: ProcessedSummary }>(`/v1/imports/${id}/reprocess`, { method: "POST" }),
   commit: (request: ApiRequest, id: string) =>
     request<CommitImportResponse>(`/v1/imports/${id}/commit`, { method: "POST" })
+};
+
+export const accountsApi = {
+  listProviders: (request: ApiRequest) =>
+    request<{ providers: AccountProviderSummary[]; defaultProviderId: string | null }>("/v1/accounts/providers"),
+  getProvider: (request: ApiRequest, providerId: string) =>
+    request<{ provider: AccountProvider }>(`/v1/accounts/providers/${encodeURIComponent(providerId)}`),
+  createLinkSession: (request: ApiRequest, providerId: string) =>
+    request<{ linkSession: AccountLinkSession }>(`/v1/accounts/providers/${encodeURIComponent(providerId)}/link-session`, {
+      method: "POST"
+    }),
+  supportedAccountTypes: (request: ApiRequest) =>
+    request<{ accountTypes: string[] }>("/v1/accounts/supported-account-types"),
+  list: (request: ApiRequest) => request<{ accounts: Account[] }>("/v1/accounts"),
+  create: (
+    request: ApiRequest,
+    body: {
+      displayName: string;
+      sourceInstitution?: string | null;
+      accountType: string;
+      currency?: string;
+      initialBalance: number;
+    }
+  ) => request<{ account: Account }>("/v1/accounts", { method: "POST", body })
 };
 
 export const transactionsApi = {

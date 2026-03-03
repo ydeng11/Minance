@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useSession } from "@/lib/session";
 import {
+  accountsApi,
   aiApi,
   analyticsApi,
   assistantApi,
@@ -59,6 +60,14 @@ export function useApi() {
         updateProcessedRow: importsApi.updateProcessedRow.bind(null, request),
         reprocess: importsApi.reprocess.bind(null, request),
         commit: importsApi.commit.bind(null, request)
+      },
+      accounts: {
+        listProviders: () => accountsApi.listProviders(request),
+        getProvider: accountsApi.getProvider.bind(null, request),
+        createLinkSession: accountsApi.createLinkSession.bind(null, request),
+        supportedAccountTypes: () => accountsApi.supportedAccountTypes(request),
+        list: () => accountsApi.list(request),
+        create: accountsApi.create.bind(null, request)
       },
       transactions: {
         list: transactionsApi.list.bind(null, request),

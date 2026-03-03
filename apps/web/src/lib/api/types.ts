@@ -23,6 +23,69 @@ export interface Provider {
   models: string[];
 }
 
+export interface Account {
+  id: string;
+  userId: string;
+  displayName: string;
+  sourceInstitution: string | null;
+  accountType: string;
+  currency: string;
+  initialBalance: number;
+  version: number;
+  status: "active" | "hidden" | "closed";
+  includeInCharts: boolean;
+  hidden: boolean;
+  closed: boolean;
+  closedAt: string | null;
+  normalizedKey: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface AccountProviderCapabilities {
+  manualAccountCreate: boolean;
+  csvImport: boolean;
+  directAggregation: boolean;
+  institutionLookup: boolean;
+  backgroundSync: boolean;
+  reconnect: boolean;
+}
+
+export interface AccountProviderFallback {
+  strategy: string;
+  remediation: string;
+  recommendedSteps: string[];
+}
+
+export interface AccountProviderSummary {
+  id: string;
+  name: string;
+  status: string;
+  source: string;
+  selfHostDefault: boolean;
+  capabilities: AccountProviderCapabilities;
+  fallback: AccountProviderFallback;
+}
+
+export interface AccountProvider extends AccountProviderSummary {
+  actions: {
+    begin_link_session: boolean;
+    refresh_connection: boolean;
+  };
+  adapter: {
+    key: string;
+    ingestRoute: string;
+    manualEntryRoute: string;
+  };
+}
+
+export interface AccountLinkSession {
+  providerId: string;
+  status: string;
+  linkUrl: string | null;
+  expiresAt: string | null;
+}
+
 export interface Credential {
   id: string;
   provider: string;
