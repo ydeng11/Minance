@@ -10,7 +10,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
 
 ## Decision Matrix
 
-| Area | Copilot-style expectation | Self-host decision | Current implementation (2026-03-02) | Fallback / Notes |
+| Area | Copilot-style expectation | Self-host decision | Current implementation (2026-03-03) | Fallback / Notes |
 |---|---|---|---|---|
 | Authentication and sessions | Email/password auth, session refresh, user profile | Supported | `POST /v1/auth/signup`, `POST /v1/auth/login`, `POST /v1/auth/refresh`, `GET/DELETE /v1/users/me` | Local session/token storage in app data file. |
 | Canonical data store | Durable relational storage | Supported (migration in progress) | JSON store (`services/api/data/store.json`) is active, with SQLite foundation bootstrap and status endpoint (`GET /v1/system/storage`) | Planned default backend is SQLite; see [JSON-to-SQLite runbook](./json-to-sqlite-migration-runbook.md). |
@@ -19,8 +19,9 @@ This document defines how Minance Next maps Copilot-style product expectations t
 | Transactions lifecycle | Create/edit/delete and filter transactions | Partially supported | Manual CRUD and query filters are implemented (`/v1/transactions*`) | Bulk operations, review workflows, and parity details tracked by open parity tasks. |
 | Categories and rules | Category CRUD, strategy tuning, mapping rules | Partially supported | Category list/create/update/delete, rules create, strategy get/update implemented | Group/type/budget parity and full Categories-tab parity are tracked separately. |
 | Accounts workflows | Dedicated accounts onboarding/settings flows | Partially supported | Accounts API create/update/list, supported-type, balance-history, and manual-adjustment endpoints are implemented (`/v1/accounts*`), while the Accounts tab UI is still placeholder | Manual/CSV provider fallback remains default; deeper account UX/settings/archive flows are tracked by open tasks. |
-| Recurring rules | Recurring lifecycle and transaction linkage | Not yet implemented | No recurring routes/endpoints yet | Scoped to future parity work; no hidden/proprietary dependency required. |
-| Investments | Portfolio analytics backed by data model and APIs | Partially supported (UI-first) | `/investments` page is currently static/reference UI | Live investments domain/API is tracked as follow-on work. |
+| Multi-currency reporting | Mixed-currency ledgers with deterministic aggregate reporting | Strategy defined; implementation pending | Canonical strategy documented in [`multi-currency-strategy.md`](./multi-currency-strategy.md); transactions/accounts already persist native `currency` | Baseline remains native-currency storage and nominal rollups until exchange-rate and reporting-currency layers are implemented. |
+| Recurring rules | Recurring lifecycle and transaction linkage | Supported | Recurring lifecycle APIs (`/v1/recurrings*`) and list/detail lifecycle UI (pause/resume/archive/delete/evaluate) are implemented | Linkage behavior remains deterministic and local-only; no managed scheduler dependency required. |
+| Investments | Portfolio analytics backed by data model and APIs | Supported | Investments domain + API (`/v1/investments*`) and live investments UI panels are implemented | Uses local holdings snapshots and deterministic calculations; no mandatory third-party market feed. |
 | Dashboard and analytics | Summary, trends, category/merchant/heatmap/anomaly views | Supported | `/v1/analytics/*` + dashboard UI implemented | Uses local transaction corpus only; no external analytics service required. |
 | AI provider config (BYOK) | Add/rotate keys, choose default/failover providers | Supported | `/v1/ai/providers`, `/v1/ai/credentials*`, `/v1/ai/preferences` implemented | Keys are user-provided; no platform-managed key service required. |
 | AI categorization and assistant | Model-assisted enrichment and chat Q&A | Optional feature | Categorization + assistant endpoints implemented | If keys/providers are missing/unavailable, API returns setup-required or graceful errors; deterministic rules/import remain usable. |
@@ -59,5 +60,5 @@ This document defines how Minance Next maps Copilot-style product expectations t
 ## Open Follow-On Tracks from This Matrix
 
 - SQLite baseline and migration/cutover completion.
-- Accounts/Recurring dedicated tabs and advanced lifecycle flows.
-- Investments live data model + API wiring.
+- Accounts UX refinements plus advanced recurring/reconciliation workflows.
+- Multi-currency reporting and exchange-rate layer rollout.
