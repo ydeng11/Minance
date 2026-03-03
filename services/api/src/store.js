@@ -13,6 +13,8 @@ const defaultStore = {
   sessions: [],
   accounts: [],
   transactions: [],
+  investmentHoldings: [],
+  investmentSnapshots: [],
   categories: [],
   categoryStrategies: [],
   categoryRules: [],
