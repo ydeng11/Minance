@@ -126,7 +126,7 @@ export function parseDate(value) {
   }
 
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return localDateYmd(value);
+    return utcDateYmd(value);
   }
 
   const text = String(value).trim();
@@ -136,24 +136,28 @@ export function parseDate(value) {
 
   const isoLike = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
   if (isoLike) {
-    const normalized = `${isoLike[1]}-${isoLike[2]}-${isoLike[3]}`;
-    const candidate = new Date(`${normalized}T12:00:00Z`);
-    if (!Number.isNaN(candidate.getTime())) {
-      return normalized;
+    const year = Number(isoLike[1]);
+    const month = Number(isoLike[2]);
+    const day = Number(isoLike[3]);
+    if (isValidDateParts(year, month, day)) {
+      return formatDateYmd(year, month, day);
     }
   }
 
   const slash = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
   if (slash) {
-    const month = slash[1].padStart(2, "0");
-    const day = slash[2].padStart(2, "0");
-    const year = slash[3].length === 2 ? `20${slash[3]}` : slash[3];
-    return `${year}-${month}-${day}`;
+    const month = Number(slash[1]);
+    const day = Number(slash[2]);
+    const year = Number(slash[3].length === 2 ? `20${slash[3]}` : slash[3]);
+    if (isValidDateParts(year, month, day)) {
+      return formatDateYmd(year, month, day);
+    }
+    return null;
   }
 
   const fallback = new Date(text);
   if (!Number.isNaN(fallback.getTime())) {
-    return localDateYmd(fallback);
+    return utcDateYmd(fallback);
   }
 
   return null;
@@ -169,14 +173,32 @@ export function monthKey(dateText) {
 
 export function startOfToday() {
   const now = new Date();
-  now.setHours(0, 0, 0, 0);
-  return now;
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
-function localDateYmd(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
-    date.getDate()
-  ).padStart(2, "0")}`;
+function formatDateYmd(year, month, day) {
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function isValidDateParts(year, month, day) {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return false;
+  }
+
+  if (year < 1000 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return false;
+  }
+
+  const candidate = new Date(Date.UTC(year, month - 1, day));
+  return (
+    candidate.getUTCFullYear() === year
+    && candidate.getUTCMonth() === month - 1
+    && candidate.getUTCDate() === day
+  );
+}
+
+function utcDateYmd(date) {
+  return formatDateYmd(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
 }
 
 export function computeDateRange(range = "90d", start = null, end = null) {
@@ -208,8 +230,8 @@ export function computeDateRange(range = "90d", start = null, end = null) {
   }
 
   return {
-    start: localDateYmd(startDate),
-    end: localDateYmd(today)
+    start: utcDateYmd(startDate),
+    end: utcDateYmd(today)
   };
 }
 
