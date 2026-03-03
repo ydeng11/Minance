@@ -627,6 +627,10 @@ async function handleApiRequest(req, res, url) {
         source_type: searchParams.get("source_type"),
         query: searchParams.get("query"),
         needs_category_review: searchParams.get("needs_category_review"),
+        review_status: searchParams.get("review_status"),
+        transaction_type: searchParams.get("transaction_type"),
+        tag: searchParams.get("tag"),
+        recurring_rule_id: searchParams.get("recurring_rule_id"),
         limit: searchParams.get("limit"),
         offset: searchParams.get("offset")
       });

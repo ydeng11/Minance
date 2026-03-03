@@ -345,6 +345,50 @@ test("api parity contract suite for categories/transactions/settings and missing
     });
     const transactionId = created.payload?.transaction?.id;
     assert.equal(typeof transactionId, "string");
+    assert.equal(created.payload?.transaction?.transaction_type, "transfer");
+    assert.equal(Array.isArray(created.payload?.transaction?.tags), true);
+    assert.equal(created.payload?.transaction?.review_status, "reviewed");
+    assert.equal(created.payload?.transaction?.needs_category_review, false);
+    assert.equal(created.payload?.transaction?.recurring_rule_id, null);
+
+    const contractShape = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        transaction_date: "2026-02-03",
+        description: "Rule-linked transfer",
+        merchant_raw: "Rule Linked Merchant",
+        amount: -42.15,
+        direction: "debit",
+        account_name: "Primary Checking",
+        category_final: "Transfer",
+        transaction_type: "transfer",
+        tags: [" Utilities ", "Monthly", "utilities"],
+        review_status: "needs_review",
+        recurring_rule_id: "rr_contract_001"
+      }
+    });
+    const contractShapeTransactionId = contractShape.payload?.transaction?.id;
+    assert.equal(typeof contractShapeTransactionId, "string");
+    assert.equal(contractShape.payload?.transaction?.transaction_type, "transfer");
+    assert.deepEqual(contractShape.payload?.transaction?.tags, ["utilities", "monthly"]);
+    assert.equal(contractShape.payload?.transaction?.review_status, "needs_review");
+    assert.equal(contractShape.payload?.transaction?.needs_category_review, true);
+    assert.equal(contractShape.payload?.transaction?.recurring_rule_id, "rr_contract_001");
+
+    const reviewAndTypeFilters = await apiRequest(
+      context,
+      "GET",
+      "/v1/transactions?range=all&review_status=needs_review&transaction_type=transfer&tag=monthly&recurring_rule_id=rr_contract_001",
+      {
+        token: accessToken,
+        expectedStatus: 200
+      }
+    );
+    assert.equal(
+      reviewAndTypeFilters.payload?.items?.some((entry) => entry.id === contractShapeTransactionId),
+      true
+    );
 
     const listAll = await apiRequest(
       context,
@@ -377,10 +421,78 @@ test("api parity contract suite for categories/transactions/settings and missing
       token: accessToken,
       expectedStatus: 200,
       body: {
-        description: "Transfer to HYSA"
+        description: "Transfer to HYSA",
+        transaction_type: "transfer",
+        tags: ["moving-funds", "internal"],
+        review_status: "needs_review",
+        recurring_rule_id: "rr_contract_002"
       }
     });
     assert.equal(updated.payload?.transaction?.description, "Transfer to HYSA");
+    assert.equal(updated.payload?.transaction?.transaction_type, "transfer");
+    assert.deepEqual(updated.payload?.transaction?.tags, ["moving-funds", "internal"]);
+    assert.equal(updated.payload?.transaction?.review_status, "needs_review");
+    assert.equal(updated.payload?.transaction?.needs_category_review, true);
+    assert.equal(updated.payload?.transaction?.recurring_rule_id, "rr_contract_002");
+
+    const updateClearReviewAndTags = await apiRequest(context, "PUT", `/v1/transactions/${transactionId}`, {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        needs_category_review: false,
+        tags: null,
+        recurring_rule_id: null
+      }
+    });
+    assert.equal(updateClearReviewAndTags.payload?.transaction?.review_status, "reviewed");
+    assert.equal(updateClearReviewAndTags.payload?.transaction?.needs_category_review, false);
+    assert.deepEqual(updateClearReviewAndTags.payload?.transaction?.tags, []);
+    assert.equal(updateClearReviewAndTags.payload?.transaction?.recurring_rule_id, null);
+
+    const invalidType = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        transaction_date: "2026-02-04",
+        description: "Invalid credit expense",
+        merchant_raw: "Type Validation",
+        amount: 25,
+        direction: "credit",
+        account_name: "Primary Checking",
+        category_final: "Income",
+        transaction_type: "expense"
+      }
+    });
+    assert.equal(invalidType.payload?.error?.message, "Invalid transaction type for credit direction");
+
+    const invalidTags = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        transaction_date: "2026-02-05",
+        description: "Invalid tags payload",
+        merchant_raw: "Tag Validation",
+        amount: -8,
+        account_name: "Primary Checking",
+        category_final: "Dining",
+        tags: "dining"
+      }
+    });
+    assert.equal(invalidTags.payload?.error?.message, "Invalid tags");
+
+    const invalidCategory = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        transaction_date: "2026-02-06",
+        description: "Unknown category create",
+        merchant_raw: "Category Validation",
+        amount: -12,
+        account_name: "Primary Checking",
+        category_final: "Not A Category"
+      }
+    });
+    assert.equal(invalidCategory.payload?.error?.message, "Invalid category");
 
     const idempotentCreateBody = {
       transaction_date: "2026-02-02",

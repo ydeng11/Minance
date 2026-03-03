@@ -227,6 +227,7 @@ export interface Transaction {
   amount: number;
   currency: string;
   direction: "debit" | "credit";
+  transaction_type: "expense" | "income" | "transfer";
   category_raw: string | null;
   category_final: string;
   category_coarse?: string | null;
@@ -236,6 +237,9 @@ export interface Transaction {
   category_confidence: number;
   category_strategy: string | null;
   needs_category_review: boolean;
+  review_status: "reviewed" | "needs_review";
+  tags: string[];
+  recurring_rule_id: string | null;
   memo: string | null;
   dedupe_fingerprint: string;
   created_at: string;

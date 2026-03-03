@@ -169,6 +169,10 @@ export const transactionsApi = {
       range?: string;
       category_view?: "granular" | "coarse";
       needs_category_review?: boolean;
+      review_status?: "reviewed" | "needs_review";
+      transaction_type?: "expense" | "income" | "transfer";
+      tag?: string;
+      recurring_rule_id?: string;
       limit?: number;
       offset?: number;
     }
