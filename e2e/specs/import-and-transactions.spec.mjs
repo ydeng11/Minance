@@ -25,6 +25,7 @@ test("@core upload CSV then create/edit/delete a manual transaction", async ({ p
   await form.locator('select[name="category_final"]').selectOption("Dining");
   await form.locator('input[name="account_name"]').fill("Playwright Account");
   await form.locator('input[name="memo"]').fill("Created by E2E");
+  await form.locator('input[name="tags"]').fill("coffee, monthly, coffee");
   await form.locator('button[type="submit"]').click();
   await searchTransactions(page, manualMerchant);
   const manualRow = page.locator('[data-testid="txn-table"] tr', { hasText: manualMerchant });
@@ -32,13 +33,19 @@ test("@core upload CSV then create/edit/delete a manual transaction", async ({ p
 
   const editButton = manualRow.locator('button', { hasText: 'Edit' }).first();
   await editButton.click();
+  await expect(form.locator('input[name="tags"]')).toHaveValue("coffee, monthly");
   await form.locator('input[name="amount"]').fill("55.75");
   await form.locator('input[name="description"]').fill(`${manualMerchant} updated`);
+  await form.locator('input[name="tags"]').fill("coffee, updated");
   await form.locator('button[type="submit"]').click();
   await searchTransactions(page, manualMerchant);
   const updatedRow = page.locator('[data-testid="txn-table"] tr', { hasText: manualMerchant });
   await expect.poll(async () => await updatedRow.count()).toBe(1);
   await expect(updatedRow).toContainText("$55.75");
+
+  await updatedRow.locator('button', { hasText: 'Edit' }).first().click();
+  await expect(form.locator('input[name="tags"]')).toHaveValue("coffee, updated");
+  await page.getByTestId("txn-cancel").click();
 
   await updatedRow.locator('button', { hasText: 'Delete' }).click();
   await searchTransactions(page, manualMerchant);

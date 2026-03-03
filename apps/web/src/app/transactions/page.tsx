@@ -1,78 +1,131 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowDownRight, Filter, Search } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { RANGE_OPTIONS } from "@/lib/constants";
-import { localDateYmd, money, toInputDate } from "@/lib/utils";
+import { money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
-import type { Category, OverviewResponse, Transaction } from "@/lib/api/types";
+import type { Account, Category, OverviewResponse, Transaction } from "@/lib/api/types";
+import {
+  buildDraftFromTransaction,
+  createInitialTransactionDraft,
+  validateTransactionDraft,
+  type TransactionFormDraft,
+  type TransactionFormErrors
+} from "./form";
+import {
+  buildTransactionsFilterSearchParams,
+  createDefaultTransactionsFilterState,
+  parseTransactionsFilterState,
+  toTransactionsListApiParams,
+  toTransactionsOverviewApiParams,
+  toValidFilterState,
+  type TransactionsFilterState
+} from "./filters";
 
-interface TransactionForm {
-  id: string;
-  transaction_date: string;
-  description: string;
-  merchant_raw: string;
-  amount: string;
-  direction: "debit" | "credit";
-  category_final: string;
-  account_name: string;
-  memo: string;
-}
-
-const initialForm = (): TransactionForm => ({
-  id: "",
-  transaction_date: localDateYmd(),
-  description: "",
-  merchant_raw: "",
-  amount: "",
-  direction: "debit",
-  category_final: "",
-  account_name: "Manual Account",
-  memo: ""
-});
+const TRANSACTION_RANGE_OPTIONS = [...RANGE_OPTIONS, { value: "custom", label: "Custom" }];
 
 export default function TransactionsPage() {
   const api = useApi();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const searchParamKey = searchParams.toString();
+
+  const parsedFilters = useMemo(
+    () => toValidFilterState(parseTransactionsFilterState(searchParams)),
+    [searchParamKey, searchParams]
+  );
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
-  const [categoryView, setCategoryView] = useState<"granular" | "coarse">("granular");
-  const [range, setRange] = useState("all");
-  const [needsReview, setNeedsReview] = useState(false);
-  const [form, setForm] = useState<TransactionForm>(initialForm);
+  const [filters, setFilters] = useState<TransactionsFilterState>(createDefaultTransactionsFilterState);
+  const filtersRef = useRef<TransactionsFilterState>(createDefaultTransactionsFilterState());
+  const [form, setForm] = useState<TransactionFormDraft>(() => createInitialTransactionDraft());
+  const [formErrors, setFormErrors] = useState<TransactionFormErrors>({});
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
   const trendBars = useMemo(() => {
     return (overview?.trend || []).slice(-7);
   }, [overview]);
 
+  const categoryFilterOptions = useMemo(() => {
+    if (filters.categoryView === "granular") {
+      return categories.map((entry) => entry.name);
+    }
+
+    const fromTransactions = transactions
+      .map((entry) => entry.category_coarse || "")
+      .filter(Boolean);
+    const fromOverview = (overview?.topCategories || []).map((entry) => entry.category);
+    return Array.from(new Set([...fromTransactions, ...fromOverview]));
+  }, [categories, filters.categoryView, overview, transactions]);
+
+  const accountFilterOptions = useMemo(() => {
+    const options = new Map<string, string>();
+
+    for (const account of accounts) {
+      if (!account.normalizedKey) {
+        continue;
+      }
+      options.set(account.normalizedKey, account.displayName || account.normalizedKey);
+    }
+
+    for (const transaction of transactions) {
+      const key = String(transaction.account_key || "").trim();
+      if (!key || options.has(key)) {
+        continue;
+      }
+      options.set(key, key);
+    }
+
+    return Array.from(options.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [accounts, transactions]);
+
   async function loadCategories() {
-    const categoryData = await api.categories.list();
-    setCategories(categoryData.categories);
-    if (!form.category_final && categoryData.categories[0]) {
-      setForm((prev) => ({ ...prev, category_final: categoryData.categories[0].name }));
+    try {
+      const categoryData = await api.categories.list();
+      setCategories(categoryData.categories);
+      setForm((previous) => {
+        if (previous.category_final || !categoryData.categories[0]) {
+          return previous;
+        }
+        return {
+          ...previous,
+          category_final: categoryData.categories[0].name
+        };
+      });
+    } catch {
+      // Category loading errors are surfaced by transaction list load.
     }
   }
 
-  async function loadTransactions() {
+  async function loadAccounts() {
+    try {
+      const accountData = await api.accounts.list();
+      setAccounts(accountData.accounts);
+    } catch {
+      // Account filters remain optional; keep page usable when this call fails.
+    }
+  }
+
+  async function loadTransactions(nextFilters: TransactionsFilterState, options: { preserveMessage?: boolean } = {}) {
     setLoading(true);
-    setMessage("");
+    if (!options.preserveMessage) {
+      setMessage("");
+    }
+
     try {
       const [transactionData, overviewData] = await Promise.all([
-        api.transactions.list({
-          query: search,
-          category,
-          category_view: categoryView,
-          range,
-          needs_category_review: needsReview,
-          limit: 200
-        }),
-        api.analytics.overview({ range, category_view: categoryView })
+        api.transactions.list(toTransactionsListApiParams(nextFilters)),
+        api.analytics.overview(toTransactionsOverviewApiParams(nextFilters))
       ]);
 
       setTransactions(transactionData.items);
@@ -89,55 +142,75 @@ export default function TransactionsPage() {
   }
 
   useEffect(() => {
-    void Promise.all([loadCategories(), loadTransactions()]);
+    void Promise.all([loadCategories(), loadAccounts()]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const categoryFilterOptions = useMemo(() => {
-    if (categoryView === "granular") {
-      return categories.map((entry) => entry.name);
-    }
-
-    const fromTransactions = transactions
-      .map((entry) => entry.category_coarse || "")
-      .filter(Boolean);
-    const fromOverview = (overview?.topCategories || []).map((entry) => entry.category);
-    return Array.from(new Set([...fromTransactions, ...fromOverview]));
-  }, [categories, categoryView, overview, transactions]);
-
-  function handleCategoryViewChange(nextView: "granular" | "coarse") {
-    if (nextView !== categoryView) {
-      // Granular and coarse filter domains are not compatible; clear stale selection.
-      setCategory("");
-    }
-    setCategoryView(nextView);
-  }
+  useEffect(() => {
+    setFilters(parsedFilters);
+    filtersRef.current = parsedFilters;
+    void loadTransactions(parsedFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParamKey]);
 
   useEffect(() => {
-    if (category && !categoryFilterOptions.includes(category)) {
-      setCategory("");
+    if (filters.category && !categoryFilterOptions.includes(filters.category)) {
+      setFilters((previous) => {
+        const next = { ...previous, category: "" };
+        filtersRef.current = next;
+        return next;
+      });
     }
-  }, [category, categoryFilterOptions]);
+  }, [filters.category, categoryFilterOptions]);
+
+  function updateFilters(updater: TransactionsFilterState | ((previous: TransactionsFilterState) => TransactionsFilterState)) {
+    setFilters((previous) => {
+      const next = typeof updater === "function" ? updater(previous) : updater;
+      filtersRef.current = next;
+      return next;
+    });
+  }
+
+  function applyFilters() {
+    const nextFilters = toValidFilterState(filtersRef.current);
+
+    if (
+      nextFilters.range === "custom" &&
+      nextFilters.start &&
+      nextFilters.end &&
+      nextFilters.start > nextFilters.end
+    ) {
+      setMessage("Custom date range is invalid: start date must be before end date.");
+      return;
+    }
+
+    updateFilters(nextFilters);
+    const nextSearchParams = buildTransactionsFilterSearchParams(nextFilters);
+    const queryText = nextSearchParams.toString();
+    router.replace(queryText ? `/transactions?${queryText}` : "/transactions", { scroll: false });
+  }
+
+  function resetManualForm() {
+    setForm(createInitialTransactionDraft({ category: categories[0]?.name || "" }));
+    setFormErrors({});
+  }
 
   function startEdit(transaction: Transaction) {
-    setForm({
-      id: transaction.id,
-      transaction_date: toInputDate(transaction.transaction_date),
-      description: transaction.description,
-      merchant_raw: transaction.merchant_raw,
-      amount: String(transaction.amount),
-      direction: transaction.direction,
-      category_final: transaction.category_final,
-      account_name: transaction.account_key || "Manual Account",
-      memo: transaction.memo || ""
-    });
+    setForm(buildDraftFromTransaction(transaction));
+    setFormErrors({});
+    setMessage("");
+  }
+
+  function cancelEdit() {
+    resetManualForm();
+    setMessage("Edit canceled.");
   }
 
   async function removeTransaction(transactionId: string) {
     try {
       await api.transactions.remove(transactionId);
       setMessage("Transaction deleted.");
-      await loadTransactions();
+      await loadTransactions(parsedFilters, { preserveMessage: true });
     } catch (error) {
       if (error instanceof ApiError) {
         setMessage(error.message);
@@ -151,34 +224,39 @@ export default function TransactionsPage() {
     event.preventDefault();
     setMessage("");
 
-    const payload = {
-      transaction_date: form.transaction_date,
-      description: form.description,
-      merchant_raw: form.merchant_raw,
-      amount: Number(form.amount),
-      direction: form.direction,
-      category_final: form.category_final,
-      account_name: form.account_name,
-      memo: form.memo
-    };
+    const validation = validateTransactionDraft(form, categories);
+    if (!validation.payload) {
+      setFormErrors(validation.errors);
+      setMessage("Fix form errors before saving.");
+      return;
+    }
+
+    setSaving(true);
+    setFormErrors({});
 
     try {
       if (form.id) {
-        await api.transactions.update(form.id, payload);
+        await api.transactions.update(form.id, validation.payload);
         setMessage("Transaction updated.");
       } else {
-        await api.transactions.create(payload);
+        await api.transactions.create(validation.payload);
         setMessage("Transaction created.");
       }
 
-      setForm(initialForm());
-      await Promise.all([loadCategories(), loadTransactions()]);
+      resetManualForm();
+      await Promise.all([
+        loadCategories(),
+        loadAccounts(),
+        loadTransactions(parsedFilters, { preserveMessage: true })
+      ]);
     } catch (error) {
       if (error instanceof ApiError) {
         setMessage(error.message);
       } else {
         setMessage("Failed to save transaction.");
       }
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -198,8 +276,8 @@ export default function TransactionsPage() {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
             <input
               id="txn-query-input"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              value={filters.query}
+              onChange={(event) => updateFilters((previous) => ({ ...previous, query: event.target.value }))}
               data-testid="txn-query"
               placeholder="Search merchants..."
               className="w-full rounded-lg border border-neutral-700 bg-neutral-900 py-2 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
@@ -208,7 +286,7 @@ export default function TransactionsPage() {
           <button
             type="button"
             data-testid="txn-apply"
-            onClick={() => void loadTransactions()}
+            onClick={applyFilters}
             aria-label="Apply search and filters"
             className="rounded-lg border border-neutral-800 bg-neutral-900 p-2 text-neutral-300 transition hover:bg-neutral-800"
           >
@@ -287,12 +365,17 @@ export default function TransactionsPage() {
                     <span className="inline-flex rounded-full bg-neutral-800 p-1.5">
                       <ArrowDownRight className="h-3 w-3 text-neutral-400" />
                     </span>
-                    {txn.merchant_raw}
+                    <div>
+                      <div>{txn.merchant_raw}</div>
+                      {Array.isArray(txn.tags) && txn.tags.length ? (
+                        <div className="mt-1 text-[11px] text-neutral-400">#{txn.tags.join(" #")}</div>
+                      ) : null}
+                    </div>
                   </div>
                 </td>
                 <td className="px-4 py-3">
                   <span className="rounded-md bg-neutral-800 px-2 py-1 text-[11px] uppercase tracking-wide text-neutral-300">
-                    {(categoryView === "coarse"
+                    {(filters.categoryView === "coarse"
                       ? `${txn.category_coarse_emoji || ""} ${txn.category_coarse || txn.category_final}`
                       : `${txn.category_emoji || ""} ${txn.category_final}`).trim()}
                   </span>
@@ -345,8 +428,8 @@ export default function TransactionsPage() {
             <label className="grid gap-1 text-sm text-neutral-300">
               Category
               <select
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
+                value={filters.category}
+                onChange={(event) => updateFilters((previous) => ({ ...previous, category: event.target.value }))}
                 data-testid="txn-category-filter"
                 className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
               >
@@ -360,14 +443,31 @@ export default function TransactionsPage() {
             </label>
 
             <label className="grid gap-1 text-sm text-neutral-300">
+              Account
+              <select
+                value={filters.account}
+                onChange={(event) => updateFilters((previous) => ({ ...previous, account: event.target.value }))}
+                data-testid="txn-account-filter"
+                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
+              >
+                <option value="">All</option>
+                {accountFilterOptions.map((entry) => (
+                  <option key={entry.value} value={entry.value}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="grid gap-1 text-sm text-neutral-300">
               Range
               <select
-                value={range}
-                onChange={(event) => setRange(event.target.value)}
+                value={filters.range}
+                onChange={(event) => updateFilters((previous) => ({ ...previous, range: event.target.value }))}
                 data-testid="txn-range"
                 className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
               >
-                {RANGE_OPTIONS.map((option) => (
+                {TRANSACTION_RANGE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -378,8 +478,15 @@ export default function TransactionsPage() {
             <label className="grid gap-1 text-sm text-neutral-300">
               Category View
               <select
-                value={categoryView}
-                onChange={(event) => handleCategoryViewChange(event.target.value as "granular" | "coarse")}
+                value={filters.categoryView}
+                onChange={(event) => {
+                  const nextView = event.target.value === "coarse" ? "coarse" : "granular";
+                  updateFilters((previous) => ({
+                    ...previous,
+                    categoryView: nextView,
+                    category: previous.categoryView === nextView ? previous.category : ""
+                  }));
+                }}
                 data-testid="txn-category-view"
                 className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
               >
@@ -389,20 +496,85 @@ export default function TransactionsPage() {
             </label>
 
             <label className="grid gap-1 text-sm text-neutral-300">
-              Needs Review
-              <input
-                type="checkbox"
-                checked={needsReview}
-                onChange={(event) => setNeedsReview(event.target.checked)}
+              Review State
+              <select
+                value={filters.review}
+                onChange={(event) =>
+                  updateFilters((previous) => ({
+                    ...previous,
+                    review: event.target.value as "all" | "reviewed" | "needs_review"
+                  }))
+                }
                 data-testid="txn-review-only"
-                className="h-10 w-10 rounded border-neutral-700 bg-neutral-900"
+                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
+              >
+                <option value="all">All</option>
+                <option value="reviewed">Reviewed</option>
+                <option value="needs_review">Needs Review</option>
+              </select>
+            </label>
+
+            <label className="grid gap-1 text-sm text-neutral-300">
+              Type
+              <select
+                value={filters.transactionType}
+                onChange={(event) =>
+                  updateFilters((previous) => ({
+                    ...previous,
+                    transactionType: event.target.value as "all" | "expense" | "income" | "transfer"
+                  }))
+                }
+                data-testid="txn-type-filter"
+                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
+              >
+                <option value="all">All</option>
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+                <option value="transfer">Transfer</option>
+              </select>
+            </label>
+
+            <label className="grid gap-1 text-sm text-neutral-300">
+              Tag
+              <input
+                value={filters.tag}
+                onChange={(event) => updateFilters((previous) => ({ ...previous, tag: event.target.value }))}
+                data-testid="txn-tag-filter"
+                placeholder="monthly"
+                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
               />
             </label>
+
+            {filters.range === "custom" ? (
+              <>
+                <label className="grid gap-1 text-sm text-neutral-300">
+                  Start
+                  <input
+                    type="date"
+                    value={filters.start}
+                    onChange={(event) => updateFilters((previous) => ({ ...previous, start: event.target.value }))}
+                    data-testid="txn-start-date"
+                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
+                  />
+                </label>
+
+                <label className="grid gap-1 text-sm text-neutral-300">
+                  End
+                  <input
+                    type="date"
+                    value={filters.end}
+                    onChange={(event) => updateFilters((previous) => ({ ...previous, end: event.target.value }))}
+                    data-testid="txn-end-date"
+                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
+                  />
+                </label>
+              </>
+            ) : null}
 
             <div className="flex items-end">
               <button
                 type="button"
-                onClick={() => void loadTransactions()}
+                onClick={applyFilters}
                 className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
               >
                 Apply filters
@@ -414,6 +586,7 @@ export default function TransactionsPage() {
             <h3 className="text-sm font-medium text-neutral-300">Manual Transaction</h3>
             <form onSubmit={submitForm} className="mt-3 grid gap-3" data-testid="txn-form">
               <input type="hidden" value={form.id} readOnly />
+
               <div className="grid gap-3 md:grid-cols-4">
                 <label className="grid gap-1 text-sm text-neutral-300">
                   Date
@@ -421,10 +594,11 @@ export default function TransactionsPage() {
                     type="date"
                     name="transaction_date"
                     value={form.transaction_date}
-                    onChange={(event) => setForm((prev) => ({ ...prev, transaction_date: event.target.value }))}
+                    onChange={(event) => setForm((previous) => ({ ...previous, transaction_date: event.target.value }))}
                     className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                     required
                   />
+                  {formErrors.transaction_date ? <span className="text-xs text-rose-300">{formErrors.transaction_date}</span> : null}
                 </label>
 
                 <label className="grid gap-1 text-sm text-neutral-300">
@@ -432,10 +606,11 @@ export default function TransactionsPage() {
                   <input
                     name="description"
                     value={form.description}
-                    onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+                    onChange={(event) => setForm((previous) => ({ ...previous, description: event.target.value }))}
                     className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                     required
                   />
+                  {formErrors.description ? <span className="text-xs text-rose-300">{formErrors.description}</span> : null}
                 </label>
 
                 <label className="grid gap-1 text-sm text-neutral-300">
@@ -443,7 +618,7 @@ export default function TransactionsPage() {
                   <input
                     name="merchant_raw"
                     value={form.merchant_raw}
-                    onChange={(event) => setForm((prev) => ({ ...prev, merchant_raw: event.target.value }))}
+                    onChange={(event) => setForm((previous) => ({ ...previous, merchant_raw: event.target.value }))}
                     className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                   />
                 </label>
@@ -454,11 +629,13 @@ export default function TransactionsPage() {
                     name="amount"
                     type="number"
                     step="0.01"
+                    min="0"
                     value={form.amount}
-                    onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value }))}
+                    onChange={(event) => setForm((previous) => ({ ...previous, amount: event.target.value }))}
                     className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                     required
                   />
+                  {formErrors.amount ? <span className="text-xs text-rose-300">{formErrors.amount}</span> : null}
                 </label>
               </div>
 
@@ -468,7 +645,9 @@ export default function TransactionsPage() {
                   <select
                     name="direction"
                     value={form.direction}
-                    onChange={(event) => setForm((prev) => ({ ...prev, direction: event.target.value as "debit" | "credit" }))}
+                    onChange={(event) =>
+                      setForm((previous) => ({ ...previous, direction: event.target.value as "debit" | "credit" }))
+                    }
                     className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                   >
                     <option value="debit">debit</option>
@@ -481,15 +660,17 @@ export default function TransactionsPage() {
                   <select
                     name="category_final"
                     value={form.category_final}
-                    onChange={(event) => setForm((prev) => ({ ...prev, category_final: event.target.value }))}
+                    onChange={(event) => setForm((previous) => ({ ...previous, category_final: event.target.value }))}
                     className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                   >
+                    <option value="">Select category</option>
                     {categories.map((entry) => (
                       <option key={entry.id} value={entry.name}>
                         {entry.emoji ? `${entry.emoji} ` : ""}{entry.name}
                       </option>
                     ))}
                   </select>
+                  {formErrors.category_final ? <span className="text-xs text-rose-300">{formErrors.category_final}</span> : null}
                 </label>
 
                 <label className="grid gap-1 text-sm text-neutral-300">
@@ -497,9 +678,64 @@ export default function TransactionsPage() {
                   <input
                     name="account_name"
                     value={form.account_name}
-                    onChange={(event) => setForm((prev) => ({ ...prev, account_name: event.target.value }))}
+                    onChange={(event) => setForm((previous) => ({ ...previous, account_name: event.target.value }))}
                     className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                   />
+                </label>
+
+                <label className="grid gap-1 text-sm text-neutral-300">
+                  Review State
+                  <select
+                    name="review_status"
+                    value={form.review_status}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        review_status: event.target.value as "reviewed" | "needs_review"
+                      }))
+                    }
+                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
+                  >
+                    <option value="reviewed">Reviewed</option>
+                    <option value="needs_review">Needs Review</option>
+                  </select>
+                  {formErrors.review_status ? <span className="text-xs text-rose-300">{formErrors.review_status}</span> : null}
+                </label>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <label className="grid gap-1 text-sm text-neutral-300">
+                  Type
+                  <select
+                    name="transaction_type"
+                    value={form.transaction_type}
+                    onChange={(event) =>
+                      setForm((previous) => ({
+                        ...previous,
+                        transaction_type: event.target.value as "" | "expense" | "income" | "transfer"
+                      }))
+                    }
+                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
+                  >
+                    <option value="">Auto</option>
+                    <option value="expense">expense</option>
+                    <option value="income">income</option>
+                    <option value="transfer">transfer</option>
+                  </select>
+                  {formErrors.transaction_type ? <span className="text-xs text-rose-300">{formErrors.transaction_type}</span> : null}
+                </label>
+
+                <label className="grid gap-1 text-sm text-neutral-300">
+                  Tags
+                  <input
+                    name="tags"
+                    value={form.tags}
+                    onChange={(event) => setForm((previous) => ({ ...previous, tags: event.target.value }))}
+                    placeholder="monthly, rent"
+                    data-testid="txn-tags-input"
+                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
+                  />
+                  {formErrors.tags ? <span className="text-xs text-rose-300">{formErrors.tags}</span> : null}
                 </label>
 
                 <label className="grid gap-1 text-sm text-neutral-300">
@@ -507,7 +743,7 @@ export default function TransactionsPage() {
                   <input
                     name="memo"
                     value={form.memo}
-                    onChange={(event) => setForm((prev) => ({ ...prev, memo: event.target.value }))}
+                    onChange={(event) => setForm((previous) => ({ ...previous, memo: event.target.value }))}
                     className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                   />
                 </label>
@@ -516,17 +752,30 @@ export default function TransactionsPage() {
               <div className="flex flex-wrap justify-end gap-2">
                 <button
                   type="submit"
-                  className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-400"
+                  disabled={saving}
+                  className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {form.id ? "Update" : "Save"}
+                  {saving ? (form.id ? "Updating..." : "Saving...") : form.id ? "Update" : "Save"}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setForm(initialForm())}
-                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
-                >
-                  Reset
-                </button>
+                {form.id ? (
+                  <button
+                    type="button"
+                    onClick={cancelEdit}
+                    data-testid="txn-cancel"
+                    className="rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={resetManualForm}
+                    data-testid="txn-cancel"
+                    className="rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </form>
           </section>

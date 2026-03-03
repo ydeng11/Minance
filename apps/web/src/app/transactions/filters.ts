@@ -1,0 +1,233 @@
+import { RANGE_OPTIONS } from "@/lib/constants";
+
+export type TransactionCategoryView = "granular" | "coarse";
+export type TransactionReviewFilter = "all" | "reviewed" | "needs_review";
+export type TransactionTypeFilter = "all" | "expense" | "income" | "transfer";
+
+export interface TransactionsFilterState {
+  query: string;
+  category: string;
+  account: string;
+  range: string;
+  start: string;
+  end: string;
+  categoryView: TransactionCategoryView;
+  review: TransactionReviewFilter;
+  transactionType: TransactionTypeFilter;
+  tag: string;
+}
+
+export interface TransactionsListApiParams {
+  query?: string;
+  category?: string;
+  account?: string;
+  range?: string;
+  start?: string;
+  end?: string;
+  category_view: TransactionCategoryView;
+  review_status?: "reviewed" | "needs_review";
+  transaction_type?: "expense" | "income" | "transfer";
+  tag?: string;
+  limit: number;
+}
+
+export interface TransactionsOverviewApiParams {
+  range?: string;
+  start?: string;
+  end?: string;
+  category_view: TransactionCategoryView;
+}
+
+const RANGE_VALUES = new Set([...RANGE_OPTIONS.map((option) => option.value), "custom"]);
+const CATEGORY_VIEW_VALUES = new Set(["granular", "coarse"]);
+const REVIEW_VALUES = new Set(["all", "reviewed", "needs_review"]);
+const TRANSACTION_TYPE_VALUES = new Set(["all", "expense", "income", "transfer"]);
+
+interface SearchParamsLike {
+  get(key: string): string | null;
+}
+
+function cleanValue(value: string | null) {
+  return String(value || "").trim();
+}
+
+function cleanIsoDate(value: string | null) {
+  const normalized = cleanValue(value);
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
+}
+
+export function createDefaultTransactionsFilterState(): TransactionsFilterState {
+  return {
+    query: "",
+    category: "",
+    account: "",
+    range: "all",
+    start: "",
+    end: "",
+    categoryView: "granular",
+    review: "all",
+    transactionType: "all",
+    tag: ""
+  };
+}
+
+export function parseTransactionsFilterState(searchParams: SearchParamsLike): TransactionsFilterState {
+  const defaults = createDefaultTransactionsFilterState();
+
+  const range = cleanValue(searchParams.get("range"));
+  const categoryView = cleanValue(searchParams.get("category_view"));
+  const review = cleanValue(searchParams.get("review"));
+  const transactionType = cleanValue(searchParams.get("type"));
+
+  return {
+    query: cleanValue(searchParams.get("query")),
+    category: cleanValue(searchParams.get("category")),
+    account: cleanValue(searchParams.get("account")),
+    range: RANGE_VALUES.has(range) ? range : defaults.range,
+    start: cleanIsoDate(searchParams.get("start")),
+    end: cleanIsoDate(searchParams.get("end")),
+    categoryView: CATEGORY_VIEW_VALUES.has(categoryView)
+      ? (categoryView as TransactionCategoryView)
+      : defaults.categoryView,
+    review: REVIEW_VALUES.has(review) ? (review as TransactionReviewFilter) : defaults.review,
+    transactionType: TRANSACTION_TYPE_VALUES.has(transactionType)
+      ? (transactionType as TransactionTypeFilter)
+      : defaults.transactionType,
+    tag: cleanValue(searchParams.get("tag"))
+  };
+}
+
+export function toTransactionsListApiParams(filters: TransactionsFilterState): TransactionsListApiParams {
+  const params: TransactionsListApiParams = {
+    category_view: filters.categoryView,
+    limit: 200
+  };
+
+  if (filters.query) {
+    params.query = filters.query;
+  }
+  if (filters.category) {
+    params.category = filters.category;
+  }
+  if (filters.account) {
+    params.account = filters.account;
+  }
+  if (filters.review !== "all") {
+    params.review_status = filters.review;
+  }
+  if (filters.transactionType !== "all") {
+    params.transaction_type = filters.transactionType;
+  }
+  if (filters.tag) {
+    params.tag = filters.tag;
+  }
+
+  if (filters.range === "custom") {
+    if (filters.start) {
+      params.start = filters.start;
+    }
+    if (filters.end) {
+      params.end = filters.end;
+    }
+  } else {
+    params.range = filters.range;
+  }
+
+  return params;
+}
+
+export function toTransactionsOverviewApiParams(filters: TransactionsFilterState): TransactionsOverviewApiParams {
+  const params: TransactionsOverviewApiParams = {
+    category_view: filters.categoryView
+  };
+
+  if (filters.range === "custom") {
+    if (filters.start) {
+      params.start = filters.start;
+    }
+    if (filters.end) {
+      params.end = filters.end;
+    }
+    return params;
+  }
+
+  params.range = filters.range;
+  return params;
+}
+
+export function buildTransactionsFilterSearchParams(filters: TransactionsFilterState): URLSearchParams {
+  const defaults = createDefaultTransactionsFilterState();
+  const searchParams = new URLSearchParams();
+
+  if (filters.query) {
+    searchParams.set("query", filters.query);
+  }
+  if (filters.category) {
+    searchParams.set("category", filters.category);
+  }
+  if (filters.account) {
+    searchParams.set("account", filters.account);
+  }
+  if (filters.tag) {
+    searchParams.set("tag", filters.tag);
+  }
+
+  if (filters.range !== defaults.range) {
+    searchParams.set("range", filters.range);
+  }
+
+  if (filters.range === "custom") {
+    if (filters.start) {
+      searchParams.set("start", filters.start);
+    }
+    if (filters.end) {
+      searchParams.set("end", filters.end);
+    }
+  }
+
+  if (filters.categoryView !== defaults.categoryView) {
+    searchParams.set("category_view", filters.categoryView);
+  }
+
+  if (filters.review !== defaults.review) {
+    searchParams.set("review", filters.review);
+  }
+
+  if (filters.transactionType !== defaults.transactionType) {
+    searchParams.set("type", filters.transactionType);
+  }
+
+  return searchParams;
+}
+
+export function toValidFilterState(filters: TransactionsFilterState): TransactionsFilterState {
+  const next = {
+    ...filters,
+    query: cleanValue(filters.query),
+    category: cleanValue(filters.category),
+    account: cleanValue(filters.account),
+    start: cleanIsoDate(filters.start),
+    end: cleanIsoDate(filters.end),
+    tag: cleanValue(filters.tag)
+  };
+
+  if (!RANGE_VALUES.has(next.range)) {
+    next.range = "all";
+  }
+  if (!CATEGORY_VIEW_VALUES.has(next.categoryView)) {
+    next.categoryView = "granular";
+  }
+  if (!REVIEW_VALUES.has(next.review)) {
+    next.review = "all";
+  }
+  if (!TRANSACTION_TYPE_VALUES.has(next.transactionType)) {
+    next.transactionType = "all";
+  }
+
+  if (next.range !== "custom") {
+    next.start = "";
+    next.end = "";
+  }
+
+  return next;
+}
