@@ -1204,14 +1204,89 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(Array.isArray(performance.payload?.security), true);
   });
 
-  await t.test("recurrings and generic settings remain explicit 404 contracts", async () => {
-    const missingEndpoints = ["/v1/recurrings", "/v1/settings"];
-    for (const endpoint of missingEndpoints) {
-      const response = await apiRequest(context, "GET", endpoint, {
-        token: accessToken,
-        expectedStatus: 404
-      });
-      assert.equal(response.payload?.error?.message, `Endpoint not found: GET ${endpoint}`);
-    }
+  await t.test("recurrings endpoints expose rule lifecycle and deterministic evaluation contracts", async () => {
+    const createdRecurring = await apiRequest(context, "POST", "/v1/recurrings", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        name: "Monthly Rent",
+        cadence: "monthly",
+        amount: 1850,
+        direction: "debit",
+        category_final: "Housing",
+        merchant_pattern: "Sunset Apartments"
+      }
+    });
+    const recurringId = createdRecurring.payload?.recurring?.id;
+    assert.equal(typeof recurringId, "string");
+    assert.equal(createdRecurring.payload?.recurring?.status, "active");
+
+    await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 201,
+      body: {
+        transaction_date: "2026-03-05",
+        description: "Rent payment",
+        merchant_raw: "Sunset Apartments",
+        amount: -1850,
+        category_final: "Housing"
+      }
+    });
+
+    const listed = await apiRequest(context, "GET", "/v1/recurrings", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(Array.isArray(listed.payload?.items), true);
+    assert.equal(listed.payload?.items?.length > 0, true);
+
+    const fetched = await apiRequest(context, "GET", `/v1/recurrings/${recurringId}`, {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(fetched.payload?.recurring?.id, recurringId);
+
+    const evaluated = await apiRequest(context, "POST", `/v1/recurrings/${recurringId}/evaluate`, {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        start: "2026-03-01",
+        end: "2026-03-31"
+      }
+    });
+    assert.equal(typeof evaluated.payload?.evaluation?.match_count, "number");
+    assert.equal(Array.isArray(evaluated.payload?.evaluation?.linked_transaction_ids), true);
+
+    const paused = await apiRequest(context, "POST", `/v1/recurrings/${recurringId}/pause`, {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(paused.payload?.recurring?.status, "paused");
+
+    const resumed = await apiRequest(context, "POST", `/v1/recurrings/${recurringId}/resume`, {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(resumed.payload?.recurring?.status, "active");
+
+    const archived = await apiRequest(context, "POST", `/v1/recurrings/${recurringId}/archive`, {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(archived.payload?.recurring?.status, "archived");
+
+    const deleted = await apiRequest(context, "DELETE", `/v1/recurrings/${recurringId}`, {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(deleted.payload?.result?.deleted, true);
+  });
+
+  await t.test("generic settings remain explicit 404 contracts", async () => {
+    const response = await apiRequest(context, "GET", "/v1/settings", {
+      token: accessToken,
+      expectedStatus: 404
+    });
+    assert.equal(response.payload?.error?.message, "Endpoint not found: GET /v1/settings");
   });
 });

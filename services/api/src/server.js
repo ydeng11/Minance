@@ -34,6 +34,14 @@ import {
   restoreTransaction
 } from "./transactions.js";
 import {
+  listRecurringRules,
+  getRecurringRule,
+  createRecurringRule,
+  updateRecurringRule,
+  deleteRecurringRule,
+  evaluateRecurringRule
+} from "./recurrings.js";
+import {
   listInvestmentHoldings,
   createManualInvestmentHolding,
   importInvestmentHoldingsFromCsv,
@@ -733,6 +741,153 @@ async function handleApiRequest(req, res, url) {
       const transaction = restoreTransaction(user.id, transactionRestoreParams.id);
       recordMutationGuardResult(user.id, guard, 200, { transaction });
       sendJson(res, 200, { transaction });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/recurrings") {
+      const user = requireUser(req);
+      const recurrings = listRecurringRules(user.id, {
+        status: searchParams.get("status")
+      });
+      sendJson(res, 200, recurrings);
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/v1/recurrings") {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(req, user.id, "POST /v1/recurrings", body);
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const recurring = createRecurringRule(user.id, body || {});
+      recordMutationGuardResult(user.id, guard, 201, { recurring });
+      sendJson(res, 201, { recurring });
+      return;
+    }
+
+    const recurringEvaluateParams = matchPath(pathname, "/v1/recurrings/:id/evaluate");
+    if (req.method === "POST" && recurringEvaluateParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `POST /v1/recurrings/:id/evaluate#${recurringEvaluateParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const evaluation = evaluateRecurringRule(user.id, recurringEvaluateParams.id, body || {});
+      recordMutationGuardResult(user.id, guard, 200, { evaluation });
+      sendJson(res, 200, { evaluation });
+      return;
+    }
+
+    const recurringPauseParams = matchPath(pathname, "/v1/recurrings/:id/pause");
+    if (req.method === "POST" && recurringPauseParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `POST /v1/recurrings/:id/pause#${recurringPauseParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const recurring = updateRecurringRule(user.id, recurringPauseParams.id, { status: "paused" });
+      recordMutationGuardResult(user.id, guard, 200, { recurring });
+      sendJson(res, 200, { recurring });
+      return;
+    }
+
+    const recurringResumeParams = matchPath(pathname, "/v1/recurrings/:id/resume");
+    if (req.method === "POST" && recurringResumeParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `POST /v1/recurrings/:id/resume#${recurringResumeParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const recurring = updateRecurringRule(user.id, recurringResumeParams.id, { status: "active" });
+      recordMutationGuardResult(user.id, guard, 200, { recurring });
+      sendJson(res, 200, { recurring });
+      return;
+    }
+
+    const recurringArchiveParams = matchPath(pathname, "/v1/recurrings/:id/archive");
+    if (req.method === "POST" && recurringArchiveParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `POST /v1/recurrings/:id/archive#${recurringArchiveParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const recurring = updateRecurringRule(user.id, recurringArchiveParams.id, { status: "archived" });
+      recordMutationGuardResult(user.id, guard, 200, { recurring });
+      sendJson(res, 200, { recurring });
+      return;
+    }
+
+    const recurringParams = matchPath(pathname, "/v1/recurrings/:id");
+    if (req.method === "GET" && recurringParams) {
+      const user = requireUser(req);
+      const recurring = getRecurringRule(user.id, recurringParams.id);
+      sendJson(res, 200, { recurring });
+      return;
+    }
+
+    if (req.method === "PUT" && recurringParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `PUT /v1/recurrings/:id#${recurringParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const recurring = updateRecurringRule(user.id, recurringParams.id, body || {});
+      recordMutationGuardResult(user.id, guard, 200, { recurring });
+      sendJson(res, 200, { recurring });
+      return;
+    }
+
+    if (req.method === "DELETE" && recurringParams) {
+      const user = requireUser(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `DELETE /v1/recurrings/:id#${recurringParams.id}`
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const result = deleteRecurringRule(user.id, recurringParams.id);
+      recordMutationGuardResult(user.id, guard, 200, { result });
+      sendJson(res, 200, { result });
       return;
     }
 
