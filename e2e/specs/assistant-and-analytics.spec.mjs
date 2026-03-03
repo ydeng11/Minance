@@ -26,7 +26,7 @@ test("@core assistant and analytics visualizations render with imported data", a
   await expect(firstResponse).toContainText(new RegExp(`${aiConfig.provider}/`, "i"));
 
   await gotoView(page, "dashboard");
-  const dashboardKpis = page.locator('[data-testid="dashboard-kpis"] article');
+  const dashboardKpis = page.locator('[data-testid="dashboard-kpis"] button');
   await expect(dashboardKpis).toHaveCount(4);
 
   await expect(analyticsCategoryBars(page).first()).toBeVisible();

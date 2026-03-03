@@ -62,7 +62,7 @@ test("@core full user flow covers auth, AI settings, imports, transactions, anal
   await expect.poll(async () => await page.locator('[data-testid="txn-table"] tr', { hasText: manualMerchant }).count()).toBe(0);
 
   await gotoView(page, "dashboard");
-  const dashboardKpis = page.locator('[data-testid="dashboard-kpis"] article');
+  const dashboardKpis = page.locator('[data-testid="dashboard-kpis"] button');
   await expect(dashboardKpis).toHaveCount(4);
   const kpiTexts = await dashboardKpis.allTextContents();
   for (const text of kpiTexts) {

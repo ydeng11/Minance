@@ -73,6 +73,7 @@ Reference deployment and operations profile:
 - `docker-compose.selfhost.yml`
 - `.env.selfhost.example`
 - `docs/self-host-operations-runbook.md`
+- `docs/self-host-breaking-migration-guide.md`
 - `docs/self-host-security-hardening-checklist.md`
 - `docs/transaction-category-operator-runbook.md`
 - `scripts/selfhost-backup.sh`

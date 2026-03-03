@@ -458,6 +458,7 @@ export default function TransactionsPage() {
                   type="checkbox"
                   checked={allVisibleSelected}
                   onChange={toggleSelectVisibleTransactions}
+                  aria-label="Select all visible transactions"
                   className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
                   data-testid="txn-select-all"
                 />
@@ -477,6 +478,7 @@ export default function TransactionsPage() {
                     type="checkbox"
                     checked={selectedTransactionIdSet.has(txn.id)}
                     onChange={() => toggleTransactionSelection(txn.id)}
+                    aria-label={`Select transaction ${txn.merchant_raw} on ${txn.transaction_date}`}
                     className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
                     data-testid={`txn-select-${txn.id}`}
                   />

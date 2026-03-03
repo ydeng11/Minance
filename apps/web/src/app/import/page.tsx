@@ -20,18 +20,12 @@ import type {
   ImportProcessedRowsResponse,
   ProcessedRow
 } from "@/lib/api/types";
+import {
+  CANONICAL_IMPORT_FIELDS,
+  getImportMappingTemplates,
+  resolveTemplateMapping
+} from "@/lib/import/mappingTemplates";
 import { money } from "@/lib/utils";
-
-const CANONICAL_FIELDS = [
-  "date",
-  "merchant",
-  "description",
-  "amount",
-  "currency",
-  "account",
-  "category_raw",
-  "memo"
-] as const;
 
 export default function ImportPage() {
   const api = useApi();
@@ -42,7 +36,10 @@ export default function ImportPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [mappingDraft, setMappingDraft] = useState<Record<string, string | null>>({});
+  const [selectedTemplateId, setSelectedTemplateId] = useState("generic_statement");
+  const [mappingTemplateNotice, setMappingTemplateNotice] = useState("");
   const [state, dispatch] = useReducer(importWorkflowReducer, initialImportWorkflowState);
+  const mappingTemplates = useMemo(() => getImportMappingTemplates(), []);
 
   const globalMessage = state.error || state.notice || "";
 
@@ -107,8 +104,39 @@ export default function ImportPage() {
   useEffect(() => {
     if (state.details?.importJob?.mapping) {
       setMappingDraft(state.details.importJob.mapping);
+      setMappingTemplateNotice("");
     }
   }, [state.details]);
+
+  function applyMappingTemplate() {
+    if (!state.details) {
+      return;
+    }
+
+    const template = mappingTemplates.find((entry) => entry.id === selectedTemplateId) || mappingTemplates[0];
+    if (!template) {
+      return;
+    }
+
+    const resolved = resolveTemplateMapping(
+      template,
+      state.details.importJob.headers || [],
+      mappingDraft
+    );
+    setMappingDraft(resolved.mapping);
+
+    const requiredMissing = ["date", "merchant", "amount"].filter((field) =>
+      resolved.unmatchedFields.includes(field as (typeof CANONICAL_IMPORT_FIELDS)[number])
+    );
+    if (requiredMissing.length) {
+      setMappingTemplateNotice(`${template.label} applied. Review required fields: ${requiredMissing.join(", ")}.`);
+      return;
+    }
+
+    setMappingTemplateNotice(
+      `${template.label} applied (${resolved.matchedFields.length}/${CANONICAL_IMPORT_FIELDS.length} fields matched).`
+    );
+  }
 
   async function processFile() {
     if (!file) {
@@ -461,7 +489,43 @@ export default function ImportPage() {
             {state.details ? (
               <>
                 <div className="mt-3 grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-                  {CANONICAL_FIELDS.map((field) => (
+                  <div className="md:col-span-2 lg:col-span-4 rounded-lg border border-neutral-800 bg-neutral-900/40 p-3">
+                    <div className="flex flex-wrap items-end gap-2">
+                      <label className="grid min-w-48 flex-1 gap-1 text-xs text-neutral-300">
+                        Mapping template
+                        <select
+                          value={selectedTemplateId}
+                          onChange={(event) => setSelectedTemplateId(event.target.value)}
+                          data-testid="mapping-template-select"
+                          className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-neutral-200 outline-none transition focus:border-emerald-500"
+                        >
+                          {mappingTemplates.map((template) => (
+                            <option key={template.id} value={template.id}>
+                              {template.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={applyMappingTemplate}
+                        data-testid="mapping-template-apply"
+                        className="inline-flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs text-neutral-200 transition hover:bg-neutral-800"
+                      >
+                        Apply Template
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-neutral-400">
+                      {(mappingTemplates.find((entry) => entry.id === selectedTemplateId) || mappingTemplates[0])?.description}
+                    </p>
+                    {mappingTemplateNotice ? (
+                      <p className="mt-2 text-xs text-emerald-300" data-testid="mapping-template-notice">
+                        {mappingTemplateNotice}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  {CANONICAL_IMPORT_FIELDS.map((field) => (
                     <label key={field} className="grid gap-1 text-xs text-neutral-300">
                       {field}
                       <select
@@ -472,6 +536,7 @@ export default function ImportPage() {
                             [field]: event.target.value || null
                           }))
                         }
+                        data-testid={`mapping-field-${field}`}
                         className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-neutral-200 outline-none transition focus:border-emerald-500"
                       >
                         <option value="">(not mapped)</option>

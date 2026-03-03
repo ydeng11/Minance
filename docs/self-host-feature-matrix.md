@@ -52,6 +52,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
   - `docker-compose.selfhost.yml`
   - `.env.selfhost.example`
   - [`self-host-operations-runbook.md`](./self-host-operations-runbook.md)
+  - [`self-host-breaking-migration-guide.md`](./self-host-breaking-migration-guide.md)
 - App remains usable without any AI keys:
   - import, manual transaction CRUD, analytics, categories, and migration UI continue to function.
 - Development defaults:

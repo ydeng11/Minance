@@ -90,11 +90,11 @@ export function assistantResponseCards(page) {
 }
 
 export function analyticsCategoryBars(page) {
-  return page.locator('[data-testid="analytics-category-bars"] > div');
+  return page.locator('[data-testid="analytics-category-bars"] > :is(div, button)');
 }
 
 export function analyticsMerchantBars(page) {
-  return page.locator('[data-testid="analytics-merchant-bars"] > div');
+  return page.locator('[data-testid="analytics-merchant-bars"] > :is(div, button)');
 }
 
 export function analyticsHeatmapCells(page) {

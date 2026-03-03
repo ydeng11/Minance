@@ -4,6 +4,7 @@ This runbook defines the baseline self-host profile for Minance Next, including 
 
 Security baseline companion checklist:
 - [`self-host-security-hardening-checklist.md`](./self-host-security-hardening-checklist.md)
+- [`self-host-breaking-migration-guide.md`](./self-host-breaking-migration-guide.md)
 
 ## 1. Deployment Profile (Docker Compose + Env Template)
 
