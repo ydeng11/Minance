@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
-import { Loader2, Pencil, Plus, Search, Tags, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Save, Search, Tags, Trash2 } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
-import type { Category, CategoryStrategyCoarse } from "@/lib/api/types";
+import type { Category, CategoryStrategyCoarse, CategoryStrategyGranular } from "@/lib/api/types";
 import {
   buildCategoryDraftFromCategory,
   createDefaultCategoryDraft,
@@ -12,6 +12,13 @@ import {
   type CategoryFormErrors,
   validateCategoryDraft
 } from "./categoryForm";
+import {
+  createCoarseGroup,
+  groupCategoriesByCoarse,
+  moveCoarseGroup,
+  sortCoarseGroups,
+  syncGranularAssignment
+} from "./categoryTaxonomy";
 
 type MessageTone = "info" | "error";
 type ModalMode = "create" | "edit";
@@ -49,12 +56,19 @@ export default function CategoriesPage() {
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [coarseGroups, setCoarseGroups] = useState<CategoryStrategyCoarse[]>([]);
+  const [granularDraft, setGranularDraft] = useState<CategoryStrategyGranular[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingStrategy, setIsSavingStrategy] = useState(false);
+  const [movingCategoryId, setMovingCategoryId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [groupFilter, setGroupFilter] = useState("all");
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<MessageTone>("info");
+  const [strategyDirty, setStrategyDirty] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupEmoji, setNewGroupEmoji] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>("create");
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
@@ -69,11 +83,13 @@ export default function CategoriesPage() {
 
   const filteredCategories = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) {
-      return categories;
-    }
-
     return categories.filter((category) => {
+      if (groupFilter !== "all" && String(category.coarseKey || "") !== groupFilter) {
+        return false;
+      }
+      if (!normalizedQuery) {
+        return true;
+      }
       const coarseLabel = coarseLabelByKey.get(String(category.coarseKey || "")) || category.coarseKey || "";
       return [
         category.name,
@@ -82,7 +98,11 @@ export default function CategoriesPage() {
         coarseLabel
       ].some((value) => String(value).toLowerCase().includes(normalizedQuery));
     });
-  }, [categories, coarseLabelByKey, query]);
+  }, [categories, coarseLabelByKey, groupFilter, query]);
+  const groupedBuckets = useMemo(
+    () => groupCategoriesByCoarse(filteredCategories, coarseGroups),
+    [coarseGroups, filteredCategories]
+  );
 
   const loadPageData = useCallback(async () => {
     setIsLoading(true);
@@ -92,7 +112,9 @@ export default function CategoriesPage() {
         api.categories.getStrategy()
       ]);
       setCategories(categoryResponse.categories || []);
-      setCoarseGroups(strategyResponse.strategy.coarseCategories || []);
+      setCoarseGroups(sortCoarseGroups(strategyResponse.strategy.coarseCategories || []));
+      setGranularDraft(strategyResponse.strategy.granularCategories || []);
+      setStrategyDirty(false);
     } catch (error) {
       setMessage(error instanceof ApiError ? error.message : "Failed to load categories.");
       setMessageTone("error");
@@ -118,6 +140,12 @@ export default function CategoriesPage() {
     }
   }, [coarseGroups, draft.coarseKey, isSaving, modalOpen]);
 
+  useEffect(() => {
+    if (groupFilter !== "all" && !coarseGroups.some((entry) => entry.key === groupFilter)) {
+      setGroupFilter("all");
+    }
+  }, [coarseGroups, groupFilter]);
+
   function updateDraft(field: keyof CategoryFormDraft, value: string) {
     setDraft((previous) => ({
       ...previous,
@@ -138,7 +166,10 @@ export default function CategoriesPage() {
   function openCreateModal() {
     setModalMode("create");
     setEditingCategoryId(null);
-    setDraft(createDefaultCategoryDraft(resolveDefaultCoarseKey(coarseGroups)));
+    const defaultCoarseKey = groupFilter !== "all" && coarseGroups.some((entry) => entry.key === groupFilter)
+      ? groupFilter
+      : resolveDefaultCoarseKey(coarseGroups);
+    setDraft(createDefaultCategoryDraft(defaultCoarseKey));
     setFormErrors({});
     setModalOpen(true);
   }
@@ -229,6 +260,78 @@ export default function CategoriesPage() {
     }
   }
 
+  function updateCoarseGroup(key: string, patch: Partial<CategoryStrategyCoarse>) {
+    setCoarseGroups((previous) =>
+      previous.map((entry) => (entry.key === key ? { ...entry, ...patch } : entry))
+    );
+    setStrategyDirty(true);
+  }
+
+  function reorderCoarseGroup(key: string, direction: "up" | "down") {
+    setCoarseGroups((previous) => moveCoarseGroup(previous, key, direction));
+    setStrategyDirty(true);
+  }
+
+  function addCoarseGroupDraft() {
+    const created = createCoarseGroup(newGroupName, newGroupEmoji, coarseGroups);
+    if (!created) {
+      setMessage("Group name is required.");
+      setMessageTone("error");
+      return;
+    }
+
+    setCoarseGroups((previous) => sortCoarseGroups([...previous, created]));
+    setNewGroupName("");
+    setNewGroupEmoji("");
+    setStrategyDirty(true);
+    setMessage("Coarse group added. Save taxonomy to persist.");
+    setMessageTone("info");
+  }
+
+  async function moveCategoryToGroup(category: Category, nextCoarseKey: string) {
+    if (!nextCoarseKey || String(category.coarseKey || "") === nextCoarseKey) {
+      return;
+    }
+
+    setMessage("");
+    setMovingCategoryId(category.id);
+    try {
+      await api.categories.update(category.id, { coarseKey: nextCoarseKey });
+      setCategories((previous) =>
+        previous.map((entry) => (entry.id === category.id ? { ...entry, coarseKey: nextCoarseKey } : entry))
+      );
+      setGranularDraft((previous) => syncGranularAssignment(previous, category, nextCoarseKey));
+      setMessage(`Moved ${category.name} to ${coarseLabelByKey.get(nextCoarseKey) || nextCoarseKey}.`);
+      setMessageTone("info");
+    } catch (error) {
+      setMessage(error instanceof ApiError ? error.message : "Failed to update category group.");
+      setMessageTone("error");
+    } finally {
+      setMovingCategoryId(null);
+    }
+  }
+
+  async function saveTaxonomy() {
+    setMessage("");
+    setIsSavingStrategy(true);
+    try {
+      const normalizedCoarseGroups = sortCoarseGroups(coarseGroups);
+      await api.categories.saveStrategy({
+        coarseCategories: normalizedCoarseGroups,
+        granularCategories: granularDraft
+      });
+      setMessage("Category taxonomy saved.");
+      setMessageTone("info");
+      setStrategyDirty(false);
+      await loadPageData();
+    } catch (error) {
+      setMessage(error instanceof ApiError ? error.message : "Failed to save category taxonomy.");
+      setMessageTone("error");
+    } finally {
+      setIsSavingStrategy(false);
+    }
+  }
+
   return (
     <div className="space-y-6" data-testid="categories-page">
       <header className="flex flex-wrap items-start justify-between gap-3">
@@ -265,7 +368,7 @@ export default function CategoriesPage() {
           </span>
         </div>
 
-        <div className="mt-3">
+        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_220px]">
           <label htmlFor="categories-query" className="sr-only">
             Search categories
           </label>
@@ -280,6 +383,23 @@ export default function CategoriesPage() {
               className="w-full rounded-lg border border-neutral-700 bg-neutral-900 py-2 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
             />
           </div>
+          <label htmlFor="categories-group-filter" className="grid gap-1 text-xs uppercase tracking-wide text-neutral-400">
+            Group filter
+            <select
+              id="categories-group-filter"
+              value={groupFilter}
+              onChange={(event) => setGroupFilter(event.target.value)}
+              data-testid="categories-group-filter"
+              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm font-normal tracking-normal text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+            >
+              <option value="all">All groups</option>
+              {coarseGroups.map((entry) => (
+                <option key={entry.key} value={entry.key}>
+                  {entry.emoji ? `${entry.emoji} ` : ""}{entry.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-800">
@@ -355,6 +475,193 @@ export default function CategoriesPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4" data-testid="taxonomy-management">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-medium text-neutral-300">Grouping &amp; taxonomy management</h3>
+            <p className="mt-1 text-xs text-neutral-400">
+              Reorder and edit coarse groups, then save once to synchronize grouped list views and filters.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void loadPageData()}
+              disabled={isSavingStrategy}
+              data-testid="taxonomy-reset"
+              className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveTaxonomy()}
+              disabled={isSavingStrategy || !coarseGroups.length || !strategyDirty}
+              data-testid="taxonomy-save"
+              className="inline-flex items-center gap-2 rounded-lg border border-emerald-700/60 bg-emerald-900/30 px-3 py-2 text-sm text-emerald-200 transition hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSavingStrategy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save taxonomy
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-800">
+          <table className="min-w-full divide-y divide-neutral-800 text-sm" data-testid="taxonomy-groups-table">
+            <caption className="sr-only">Coarse group taxonomy editor</caption>
+            <thead className="bg-neutral-900/70 text-left text-xs uppercase tracking-wide text-neutral-400">
+              <tr>
+                <th scope="col" className="px-3 py-2 font-medium">Order</th>
+                <th scope="col" className="px-3 py-2 font-medium">Emoji</th>
+                <th scope="col" className="px-3 py-2 font-medium">Label</th>
+                <th scope="col" className="px-3 py-2 font-medium">Excluded</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-800 bg-neutral-950/20 text-neutral-200">
+              {coarseGroups.map((entry, index) => (
+                <tr key={entry.key}>
+                  <td className="px-3 py-2">
+                    <div className="inline-flex items-center gap-1 rounded-md border border-neutral-800 bg-neutral-900/70 px-2 py-1">
+                      <button
+                        type="button"
+                        onClick={() => reorderCoarseGroup(entry.key, "up")}
+                        disabled={index === 0}
+                        data-testid={`taxonomy-order-up-${entry.key}`}
+                        className="rounded p-1 text-neutral-300 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:text-neutral-600"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="min-w-5 text-center text-xs text-neutral-300">{index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => reorderCoarseGroup(entry.key, "down")}
+                        disabled={index === coarseGroups.length - 1}
+                        data-testid={`taxonomy-order-down-${entry.key}`}
+                        className="rounded p-1 text-neutral-300 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:text-neutral-600"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      value={entry.emoji}
+                      onChange={(event) => updateCoarseGroup(entry.key, { emoji: event.target.value })}
+                      aria-label={`Emoji for ${entry.name}`}
+                      data-testid={`taxonomy-emoji-${entry.key}`}
+                      className="w-20 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100 outline-none transition focus:border-emerald-400"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      value={entry.name}
+                      onChange={(event) => updateCoarseGroup(entry.key, { name: event.target.value })}
+                      aria-label={`Name for ${entry.key}`}
+                      data-testid={`taxonomy-name-${entry.key}`}
+                      className="w-full min-w-48 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100 outline-none transition focus:border-emerald-400"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <label className="inline-flex items-center gap-2 text-xs text-neutral-300">
+                      <input
+                        type="checkbox"
+                        checked={entry.isExcluded}
+                        onChange={(event) => updateCoarseGroup(entry.key, { isExcluded: event.target.checked })}
+                        data-testid={`taxonomy-excluded-${entry.key}`}
+                        className="h-4 w-4 rounded border-neutral-600 bg-neutral-900 text-emerald-400 focus:ring-emerald-500/50"
+                      />
+                      Exclude from rollups
+                    </label>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 p-3">
+            <h4 className="text-sm font-medium text-neutral-200">Grouped category lists</h4>
+            <p className="mt-1 text-xs text-neutral-400">Reassign categories between groups to keep board and filters aligned.</p>
+            <div className="mt-3 grid gap-3 xl:grid-cols-2">
+              {groupedBuckets.map((bucket) => (
+                <article key={bucket.key} className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-3" data-testid={`taxonomy-group-${bucket.key}`}>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-neutral-100">
+                      {bucket.emoji ? `${bucket.emoji} ` : ""}{bucket.name}
+                    </p>
+                    <span className="rounded-md border border-neutral-800 bg-neutral-900/70 px-2 py-0.5 text-xs text-neutral-400">
+                      {bucket.count}
+                    </span>
+                  </div>
+                  <div className="mt-2 space-y-2">
+                    {bucket.items.length ? bucket.items.map((category) => (
+                      <div key={category.id} className="grid grid-cols-[1fr_130px] items-center gap-2 rounded-md border border-neutral-800 bg-neutral-900/40 px-2 py-1.5">
+                        <span className="truncate text-xs text-neutral-200">
+                          {category.emoji ? `${category.emoji} ` : ""}{category.name}
+                        </span>
+                        <select
+                          value={String(category.coarseKey || "")}
+                          onChange={(event) => void moveCategoryToGroup(category, event.target.value)}
+                          disabled={movingCategoryId === category.id}
+                          data-testid={`taxonomy-move-${category.id}`}
+                          className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-100 outline-none transition focus:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {coarseGroups.map((entry) => (
+                            <option key={entry.key} value={entry.key}>
+                              {entry.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )) : (
+                      <p className="rounded-md border border-dashed border-neutral-800 px-2 py-3 text-xs text-neutral-500">
+                        No categories in this group.
+                      </p>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 p-3">
+            <h4 className="text-sm font-medium text-neutral-200">Add coarse group</h4>
+            <p className="mt-1 text-xs text-neutral-400">
+              Create custom taxonomy buckets and save to persist the new filter/group option.
+            </p>
+            <label className="mt-3 grid gap-1 text-xs text-neutral-400">
+              Group name
+              <input
+                value={newGroupName}
+                onChange={(event) => setNewGroupName(event.target.value)}
+                data-testid="taxonomy-new-group-name"
+                className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400"
+              />
+            </label>
+            <label className="mt-3 grid gap-1 text-xs text-neutral-400">
+              Emoji
+              <input
+                value={newGroupEmoji}
+                onChange={(event) => setNewGroupEmoji(event.target.value)}
+                data-testid="taxonomy-new-group-emoji"
+                placeholder="Optional"
+                className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={addCoarseGroupDraft}
+              data-testid="taxonomy-add-group"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 transition hover:border-emerald-500/50 hover:text-emerald-200"
+            >
+              <Plus className="h-4 w-4" />
+              Add group draft
+            </button>
+          </div>
         </div>
       </section>
 
