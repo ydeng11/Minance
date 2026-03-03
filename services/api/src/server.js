@@ -82,7 +82,9 @@ import {
   listAccounts,
   createAccount,
   updateAccount,
-  getSupportedAccountTypes
+  getSupportedAccountTypes,
+  listAccountBalanceHistory,
+  createAccountManualAdjustment
 } from "./accounts.js";
 
 const contentTypeByExt = {
@@ -395,6 +397,37 @@ async function handleApiRequest(req, res, url) {
       const account = updateAccount(user.id, accountPutParams.id, body);
       recordMutationGuardResult(user.id, guard, 200, { account });
       sendJson(res, 200, { account });
+      return;
+    }
+
+    const accountBalanceHistoryParams = matchPath(pathname, "/v1/accounts/:id/balance-history");
+    if (req.method === "GET" && accountBalanceHistoryParams) {
+      const user = requireUser(req);
+      const history = listAccountBalanceHistory(user.id, accountBalanceHistoryParams.id, {
+        start: searchParams.get("start"),
+        end: searchParams.get("end")
+      });
+      sendJson(res, 200, history);
+      return;
+    }
+
+    const accountManualAdjustmentParams = matchPath(pathname, "/v1/accounts/:id/manual-adjustments");
+    if (req.method === "POST" && accountManualAdjustmentParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `POST /v1/accounts/:id/manual-adjustments#${accountManualAdjustmentParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const adjustmentResult = createAccountManualAdjustment(user.id, accountManualAdjustmentParams.id, body);
+      recordMutationGuardResult(user.id, guard, 201, adjustmentResult);
+      sendJson(res, 201, adjustmentResult);
       return;
     }
 

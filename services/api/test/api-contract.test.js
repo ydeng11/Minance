@@ -495,6 +495,7 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(createAsset.payload?.account?.currency, "USD");
     assert.equal(createAsset.payload?.account?.accountType, "checking");
     assert.equal(createAsset.payload?.account?.initialBalance, 250.55);
+    assert.equal(Number.isInteger(createAsset.payload?.account?.version), true);
 
     const createLiability = await apiRequest(context, "POST", "/v1/accounts", {
       token: accessToken,
@@ -545,6 +546,99 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(updated.payload?.account?.accountType, "savings");
     assert.equal(updated.payload?.account?.currency, "EUR");
     assert.equal(updated.payload?.account?.initialBalance, 111);
+    const updatedVersion = updated.payload?.account?.version;
+    assert.equal(Number.isInteger(updatedVersion), true);
+
+    const staleManualAdjustment = await apiRequest(
+      context,
+      "POST",
+      `/v1/accounts/${assetAccountId}/manual-adjustments`,
+      {
+        token: accessToken,
+        expectedStatus: 400,
+        body: {
+          amountDelta: 25.5,
+          effectiveAt: "2026-02-18",
+          reason: "Quarterly reconciliation",
+          expectedVersion: Number(updatedVersion) - 1
+        }
+      }
+    );
+    assert.equal(staleManualAdjustment.payload?.error?.message, "Invalid account version conflict");
+
+    const adjustmentKey = "acct-adjustment-idem-001";
+    const firstAdjustment = await apiRequest(
+      context,
+      "POST",
+      `/v1/accounts/${assetAccountId}/manual-adjustments`,
+      {
+        token: accessToken,
+        expectedStatus: 201,
+        headers: {
+          "Idempotency-Key": adjustmentKey
+        },
+        body: {
+          amountDelta: 25.5,
+          effectiveAt: "2026-02-18",
+          reason: "Quarterly reconciliation",
+          note: "Bank statement aligned",
+          expectedVersion: Number(updatedVersion)
+        }
+      }
+    );
+    const adjustmentId = firstAdjustment.payload?.adjustment?.id;
+    assert.equal(typeof adjustmentId, "string");
+    assert.equal(firstAdjustment.payload?.account?.version, Number(updatedVersion) + 1);
+
+    const replayAdjustment = await apiRequest(
+      context,
+      "POST",
+      `/v1/accounts/${assetAccountId}/manual-adjustments`,
+      {
+        token: accessToken,
+        expectedStatus: 201,
+        headers: {
+          "Idempotency-Key": adjustmentKey
+        },
+        body: {
+          amountDelta: 25.5,
+          effectiveAt: "2026-02-18",
+          reason: "Quarterly reconciliation",
+          note: "Bank statement aligned",
+          expectedVersion: Number(updatedVersion)
+        }
+      }
+    );
+    assert.equal(replayAdjustment.payload?.adjustment?.id, adjustmentId);
+    assert.equal(replayAdjustment.payload?.account?.version, Number(updatedVersion) + 1);
+
+    const staleAfterAdjustment = await apiRequest(
+      context,
+      "POST",
+      `/v1/accounts/${assetAccountId}/manual-adjustments`,
+      {
+        token: accessToken,
+        expectedStatus: 400,
+        body: {
+          amountDelta: 5,
+          effectiveAt: "2026-02-20",
+          reason: "Late correction",
+          expectedVersion: Number(updatedVersion)
+        }
+      }
+    );
+    assert.equal(staleAfterAdjustment.payload?.error?.message, "Invalid account version conflict");
+
+    const history = await apiRequest(context, "GET", `/v1/accounts/${assetAccountId}/balance-history`, {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(Array.isArray(history.payload?.items), true);
+    assert.equal(history.payload?.currentBalance, 136.5);
+    assert.equal(
+      history.payload?.items?.some((entry) => entry.kind === "manual_adjustment" && entry.sourceId === adjustmentId),
+      true
+    );
 
     const list = await apiRequest(context, "GET", "/v1/accounts", {
       token: accessToken,
