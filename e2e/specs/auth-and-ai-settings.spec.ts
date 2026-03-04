@@ -4,7 +4,7 @@ import {
   ensureAiCredential,
   loginWithSeedAccount,
   settingsCredentialContainer
-} from "./helpers.mjs";
+} from "./helpers.ts";
 
 test("@core login and configure AI provider settings", async ({ page }) => {
   await loginWithSeedAccount(page);

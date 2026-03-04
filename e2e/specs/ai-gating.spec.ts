@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { clearAllCredentials, gotoView, loginWithSeedAccount } from "./helpers.mjs";
+import { clearAllCredentials, gotoView, loginWithSeedAccount } from "./helpers.ts";
 
 test("@core assistant is gated when no AI credential is configured", async ({ page }) => {
   await loginWithSeedAccount(page);

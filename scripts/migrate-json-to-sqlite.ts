@@ -8,10 +8,10 @@ import {
   resolvePathFromRoot,
   loadStoreFromPath,
   getRowsForSpec
-} from "./sqlite-cutover-lib.mjs";
+} from "./sqlite-cutover-lib.ts";
 
 function printHelp() {
-  console.log(`Usage: node scripts/migrate-json-to-sqlite.mjs [--source <json>] [--db <sqlite>] [--schema <sql>]
+  console.log(`Usage: tsx scripts/migrate-json-to-sqlite.ts [--source <json>] [--db <sqlite>] [--schema <sql>]
 
 Options:
   --source   Source JSON store path (default: MINANCE_DATA_FILE or services/api/data/store.json)

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginWithSeedAccount } from "./helpers.mjs";
+import { loginWithSeedAccount } from "./helpers.ts";
 
 test("@core AI settings supports end-to-end credential and preference actions", async ({ page }) => {
   await loginWithSeedAccount(page);

@@ -4,7 +4,7 @@ import {
   appApi,
   gotoView,
   loginWithSeedAccount
-} from "./helpers.mjs";
+} from "./helpers.ts";
 
 test("@core imports infer positive_is_debit for positive expense files", async ({ page }) => {
   await loginWithSeedAccount(page);

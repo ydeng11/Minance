@@ -8,10 +8,10 @@ import {
   loadStoreFromPath,
   getRowsForSpec,
   stableStringify
-} from "./sqlite-cutover-lib.mjs";
+} from "./sqlite-cutover-lib.ts";
 
 function printHelp() {
-  console.log(`Usage: node scripts/validate-json-vs-sqlite.mjs [--source <json>] [--db <sqlite>] [--sample-size <n>] [--fail-fast <true|false>]
+  console.log(`Usage: tsx scripts/validate-json-vs-sqlite.ts [--source <json>] [--db <sqlite>] [--sample-size <n>] [--fail-fast <true|false>]
 
 Options:
   --source       Source JSON store path (default: MINANCE_DATA_FILE or services/api/data/store.json)

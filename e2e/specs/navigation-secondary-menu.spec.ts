@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginWithSeedAccount } from "./helpers.mjs";
+import { loginWithSeedAccount } from "./helpers.ts";
 
 test("@core AI settings and migration are available in the settings menu", async ({ page }) => {
   await loginWithSeedAccount(page);

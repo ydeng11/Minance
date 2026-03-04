@@ -4,7 +4,7 @@ import {
   loginWithSeedAccount,
   searchTransactions,
   uploadAndCommitFixtureCsv
-} from "./helpers.mjs";
+} from "./helpers.ts";
 
 test("@core upload CSV then create/edit/delete a manual transaction", async ({ page }) => {
   await loginWithSeedAccount(page);

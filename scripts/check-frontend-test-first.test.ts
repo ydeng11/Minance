@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { evaluateFrontendTestFirst } from "./check-frontend-test-first.mjs";
+import { evaluateFrontendTestFirst } from "./check-frontend-test-first.ts";
 
 test("passes when no frontend .tsx files changed", () => {
-  const result = evaluateFrontendTestFirst(["README.md", "services/api/src/server.js"]);
+  const result = evaluateFrontendTestFirst(["README.md", "services/api/src/server.ts"]);
 
   assert.equal(result.ok, true);
   assert.equal(result.reason, "no_frontend_changes");
@@ -26,7 +26,7 @@ test("fails when frontend .tsx changed but no tests changed", () => {
 test("passes when frontend .tsx and e2e/frontend tests both changed", () => {
   const result = evaluateFrontendTestFirst([
     "apps/web/src/app/investments/page.tsx",
-    "e2e/specs/investments-layout-parity.spec.mjs",
+    "e2e/specs/investments-layout-parity.spec.ts",
     "apps/web/src/lib/import/reducer.test.ts"
   ]);
 
@@ -34,6 +34,6 @@ test("passes when frontend .tsx and e2e/frontend tests both changed", () => {
   assert.equal(result.reason, "tests_present");
   assert.deepEqual(result.testFiles, [
     "apps/web/src/lib/import/reducer.test.ts",
-    "e2e/specs/investments-layout-parity.spec.mjs"
+    "e2e/specs/investments-layout-parity.spec.ts"
   ]);
 });

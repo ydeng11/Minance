@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { CSV_FIXTURE_PATH, gotoView, loginWithSeedAccount } from "./helpers.mjs";
+import { CSV_FIXTURE_PATH, gotoView, loginWithSeedAccount } from "./helpers.ts";
 
 test("@core import mapping templates apply deterministic field mappings", async ({ page }) => {
   await loginWithSeedAccount(page);

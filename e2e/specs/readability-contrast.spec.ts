@@ -6,7 +6,7 @@ import {
   loginWithSeedAccount,
   searchTransactions,
   uploadAndCommitFixtureCsv
-} from "./helpers.mjs";
+} from "./helpers.ts";
 
 const CONTRAST_TARGETS = {
   body: 4.5,

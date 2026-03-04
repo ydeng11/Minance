@@ -9,7 +9,7 @@ import {
   gotoView,
   loginWithSeedAccount,
   uploadAndCommitFixtureCsv
-} from "./helpers.mjs";
+} from "./helpers.ts";
 
 test("@core assistant and analytics visualizations render with imported data", async ({ page }) => {
   await loginWithSeedAccount(page);

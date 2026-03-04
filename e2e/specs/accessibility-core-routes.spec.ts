@@ -1,6 +1,6 @@
 import axe from "axe-core";
 import { test, expect } from "@playwright/test";
-import { gotoView, loginWithSeedAccount } from "./helpers.mjs";
+import { gotoView, loginWithSeedAccount } from "./helpers.ts";
 
 const CORE_ROUTE_FLOWS = [
   { label: "dashboard", viewName: "dashboard", testId: "dashboard-page" },

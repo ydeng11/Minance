@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { getLocalDateYmd, gotoView, loginWithSeedAccount } from "./helpers.mjs";
+import { getLocalDateYmd, gotoView, loginWithSeedAccount } from "./helpers.ts";
 
 test("@core transactions clears stale category filter when switching category view", async ({ page }) => {
   await loginWithSeedAccount(page);

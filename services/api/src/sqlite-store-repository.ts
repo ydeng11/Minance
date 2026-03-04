@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { SQLITE_FILE } from "./config.ts";
-import { STORE_TABLE_SPECS, getRowsForSpec } from "../../../scripts/sqlite-cutover-lib.mjs";
+import { STORE_TABLE_SPECS, getRowsForSpec } from "../../../scripts/sqlite-cutover-lib.ts";
 
 const SQLITE_MAX_BUFFER = 1024 * 1024 * 20;
 

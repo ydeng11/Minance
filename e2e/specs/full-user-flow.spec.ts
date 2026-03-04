@@ -14,7 +14,7 @@ import {
   searchTransactions,
   settingsCredentialContainer,
   uploadAndCommitFixtureCsv
-} from "./helpers.mjs";
+} from "./helpers.ts";
 
 test("@core full user flow covers auth, AI settings, imports, transactions, analytics, and assistant", async ({
   page

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, expect } from "@playwright/test";
-import { gotoView, loginWithSeedAccount } from "./helpers.mjs";
+import { gotoView, loginWithSeedAccount } from "./helpers.ts";
 
 test("@core investments screen keeps Copilot-style structural parity", async ({ page }) => {
   await loginWithSeedAccount(page);

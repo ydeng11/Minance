@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginWithSeedAccount } from "./helpers.mjs";
+import { loginWithSeedAccount } from "./helpers.ts";
 
 test("@core assistant is available as a shell sidebar", async ({ page }) => {
   await loginWithSeedAccount(page);

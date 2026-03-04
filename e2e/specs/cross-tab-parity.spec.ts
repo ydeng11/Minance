@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { gotoView, loginWithSeedAccount, logout } from "./helpers.mjs";
+import { gotoView, loginWithSeedAccount, logout } from "./helpers.ts";
 
 test("@core cross-tab parity covers dashboard, transactions, accounts, categories, recurrings, and investments", async ({
   page

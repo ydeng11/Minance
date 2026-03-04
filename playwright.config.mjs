@@ -38,7 +38,7 @@ export default defineConfig({
       }
     }
   ],
-  globalSetup: path.join(__dirname, "e2e/global-setup.mjs"),
+  globalSetup: path.join(__dirname, "e2e/global-setup.ts"),
   webServer: [
     {
       command: `env PORT=${E2E_API_PORT} MINANCE_DATA_FILE=${E2E_DATA_FILE} MINANCE_ALLOWED_ORIGINS=http://127.0.0.1:${E2E_FRONTEND_PORT} MINANCE_SEED_TEST_ACCOUNT=true DEV_TEST_ACCOUNT_EMAIL=dev@minance.local DEV_TEST_ACCOUNT_PASSWORD=devpassword123 tsx services/api/src/server.ts`,

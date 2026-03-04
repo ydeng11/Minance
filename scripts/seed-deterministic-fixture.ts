@@ -41,7 +41,7 @@ function parseArgs(argv) {
       continue;
     }
     if (token === "-h" || token === "--help") {
-      console.log(`Usage: node scripts/seed-deterministic-fixture.mjs [--target <path>] [--dry-run]\n\nOptions:\n  --target   Target JSON file path (default: MINANCE_DATA_FILE or services/api/data/store.json)\n  --dry-run  Print fixture summary without writing file`);
+      console.log(`Usage: tsx scripts/seed-deterministic-fixture.ts [--target <path>] [--dry-run]\n\nOptions:\n  --target   Target JSON file path (default: MINANCE_DATA_FILE or services/api/data/store.json)\n  --dry-run  Print fixture summary without writing file`);
       process.exit(0);
     }
   }
