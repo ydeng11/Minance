@@ -19,4 +19,4 @@ COPY scripts ./scripts
 COPY services ./services
 
 EXPOSE 3001
-CMD ["node", "services/api/src/server.js"]
+CMD ["node", "--import", "tsx/esm", "services/api/src/server.ts"]

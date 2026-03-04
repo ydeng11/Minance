@@ -15,8 +15,8 @@
 
 - [x] 3.1 Wave A: Migrate `apps/web` JavaScript-family files to `.tsx`/`.ts` and update imports/references.
 - [x] 3.2 Run Wave A quality gates (typecheck, lint, tests/build as applicable) and fix regressions.
-- [ ] 3.3 Wave B: Migrate `packages/domain` and `services/api` JavaScript-family files to `.ts`/`.tsx` where applicable.
-- [ ] 3.4 Run Wave B quality gates and resolve runtime/type issues.
+- [x] 3.3 Wave B: Migrate `packages/domain` and `services/api` JavaScript-family files to `.ts`/`.tsx` where applicable.
+- [x] 3.4 Run Wave B quality gates and resolve runtime/type issues.
 - [ ] 3.5 Wave C: Migrate `e2e` and `scripts` JavaScript-family files to `.ts` (or `.tsx` for UI-rendering utilities).
 - [ ] 3.6 Run Wave C quality gates and verify end-to-end command execution under pnpm.
 
