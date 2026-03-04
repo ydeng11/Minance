@@ -44,6 +44,7 @@ export default function TransactionsPage() {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [filters, setFilters] = useState<TransactionsFilterState>(createDefaultTransactionsFilterState);
   const filtersRef = useRef<TransactionsFilterState>(createDefaultTransactionsFilterState());
+  const lastAppliedQueryRef = useRef<string | null>(null);
   const [form, setForm] = useState<TransactionFormDraft>(() => createInitialTransactionDraft());
   const [formErrors, setFormErrors] = useState<TransactionFormErrors>({});
   const [loading, setLoading] = useState(false);
@@ -155,8 +156,10 @@ export default function TransactionsPage() {
   }, []);
 
   useEffect(() => {
-    setFilters(parsedFilters);
-    filtersRef.current = parsedFilters;
+    if (lastAppliedQueryRef.current !== searchParamKey) {
+      setFilters(parsedFilters);
+      filtersRef.current = parsedFilters;
+    }
     void loadTransactions(parsedFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParamKey]);
@@ -200,6 +203,7 @@ export default function TransactionsPage() {
     updateFilters(nextFilters);
     const nextSearchParams = buildTransactionsFilterSearchParams(nextFilters);
     const queryText = nextSearchParams.toString();
+    lastAppliedQueryRef.current = queryText;
     router.replace(queryText ? `/transactions?${queryText}` : "/transactions", { scroll: false });
   }
 

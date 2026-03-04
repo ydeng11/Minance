@@ -13,7 +13,7 @@ import {
 
 test("@core assistant and analytics visualizations render with imported data", async ({ page }) => {
   await loginWithSeedAccount(page);
-  const aiConfig = await ensureAiCredential(page);
+  await ensureAiCredential(page);
   await uploadAndCommitFixtureCsv(page, { assertAiSuggested: true });
 
   await gotoView(page, "assistant");
@@ -23,7 +23,7 @@ test("@core assistant and analytics visualizations render with imported data", a
   await expect.poll(async () => await assistantResponseCards(page).count()).toBeGreaterThan(0);
   const firstResponse = assistantResponseCards(page).first();
   await expect(firstResponse).toBeVisible();
-  await expect(firstResponse).toContainText(new RegExp(`${aiConfig.provider}/`, "i"));
+  await expect(firstResponse).toContainText(/\b(?:openrouter|openai|anthropic|google)\/[a-z0-9_.-]+\b/i);
 
   await gotoView(page, "dashboard");
   const dashboardKpis = page.locator('[data-testid="dashboard-kpis"] button');

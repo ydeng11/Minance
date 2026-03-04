@@ -31,36 +31,105 @@ async function collectContrast(locator, options = {}) {
           return { r: 0, g: 0, b: 0, a: 0 };
         }
 
+        const probe = document.createElement("span");
+        probe.style.color = "";
+        probe.style.color = value;
+        if (!probe.style.color) {
+          return null;
+        }
+
+        probe.style.position = "absolute";
+        probe.style.left = "-9999px";
+        probe.style.top = "-9999px";
+        document.body.appendChild(probe);
+        const resolved = getComputedStyle(probe).color;
+        probe.remove();
+
+        if (!resolved || resolved === "transparent") {
+          return { r: 0, g: 0, b: 0, a: 0 };
+        }
+
         const canvas = document.createElement("canvas");
         canvas.width = 1;
         canvas.height = 1;
         const context = canvas.getContext("2d");
-        if (!context) {
+        if (context) {
+          context.clearRect(0, 0, 1, 1);
+          context.fillStyle = "rgb(1 2 3)";
+          const sentinel = context.fillStyle;
+          try {
+            context.fillStyle = resolved;
+          } catch {
+            // Fall through to custom parsers.
+          }
+          if (context.fillStyle !== sentinel || resolved.toLowerCase() === sentinel.toLowerCase()) {
+            context.fillRect(0, 0, 1, 1);
+            const pixel = context.getImageData(0, 0, 1, 1).data;
+            return {
+              r: pixel[0],
+              g: pixel[1],
+              b: pixel[2],
+              a: pixel[3] / 255
+            };
+          }
+        }
+
+        if (resolved.toLowerCase().startsWith("oklch(")) {
+          const channels = resolved.match(/[0-9]*\.?[0-9]+/g);
+          if (channels && channels.length >= 3) {
+            const L = Number(channels[0]);
+            const C = Number(channels[1]);
+            const hDegrees = Number(channels[2]);
+            const alpha = channels[3] == null ? 1 : Number(channels[3]);
+
+            const hRadians = (hDegrees * Math.PI) / 180;
+            const aLab = C * Math.cos(hRadians);
+            const bLab = C * Math.sin(hRadians);
+
+            const l_ = L + 0.3963377774 * aLab + 0.2158037573 * bLab;
+            const m_ = L - 0.1055613458 * aLab - 0.0638541728 * bLab;
+            const s_ = L - 0.0894841775 * aLab - 1.291485548 * bLab;
+
+            const l = l_ ** 3;
+            const m = m_ ** 3;
+            const s = s_ ** 3;
+
+            const linearR = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+            const linearG = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+            const linearB = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+
+            function toSrgb(channel) {
+              if (!Number.isFinite(channel)) {
+                return 0;
+              }
+              const clamped = Math.max(0, Math.min(1, channel));
+              if (clamped <= 0.0031308) {
+                return 12.92 * clamped;
+              }
+              return 1.055 * clamped ** (1 / 2.4) - 0.055;
+            }
+
+            return {
+              r: Math.round(toSrgb(linearR) * 255),
+              g: Math.round(toSrgb(linearG) * 255),
+              b: Math.round(toSrgb(linearB) * 255),
+              a: Number.isFinite(alpha) ? alpha : 1
+            };
+          }
+        }
+
+        const channels = resolved.match(/[0-9]*\.?[0-9]+/g);
+        if (!channels || channels.length < 3) {
           return null;
         }
 
-        context.clearRect(0, 0, 1, 1);
-        context.fillStyle = "rgba(1, 2, 3, 0.5)";
-        const sentinel = context.fillStyle;
-
-        try {
-          context.fillStyle = value;
-        } catch {
-          return null;
-        }
-
-        if (context.fillStyle === sentinel && lower !== sentinel) {
-          return null;
-        }
-
-        context.fillRect(0, 0, 1, 1);
-        const pixel = context.getImageData(0, 0, 1, 1).data;
+        const alpha = channels[3] == null ? 1 : Number(channels[3]);
 
         return {
-          r: pixel[0],
-          g: pixel[1],
-          b: pixel[2],
-          a: pixel[3] / 255
+          r: Number(channels[0]),
+          g: Number(channels[1]),
+          b: Number(channels[2]),
+          a: Number.isFinite(alpha) ? alpha : 1
         };
       }
 
@@ -178,6 +247,7 @@ test("@core major tab text and input contrast meets dark-theme thresholds", asyn
     minRatio: CONTRAST_TARGETS.emphasizedText
   });
 
+  await queryInput.fill("");
   await expectContrast(queryInput, {
     label: "transactions search input placeholder",
     minRatio: CONTRAST_TARGETS.placeholder,

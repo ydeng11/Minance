@@ -415,6 +415,7 @@ export default function ImportPage() {
           ref={fileInputRef}
           type="file"
           accept=".csv,.ofx,.qfx,text/csv,application/x-ofx,text/plain"
+          aria-label="Upload import file"
           data-testid="import-file"
           className="hidden"
           onClick={(event) => {

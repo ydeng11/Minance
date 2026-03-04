@@ -5,6 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const E2E_HOST = "localhost";
 const E2E_FRONTEND_PORT = 4173;
 const E2E_API_PORT = 4174;
 const E2E_DATA_FILE = "services/api/tmp/e2e-store.json";
@@ -24,7 +25,7 @@ export default defineConfig({
     ["html", { outputFolder: path.join(__dirname, "output/playwright/report"), open: "never" }]
   ],
   use: {
-    baseURL: `http://127.0.0.1:${E2E_FRONTEND_PORT}`,
+    baseURL: `http://${E2E_HOST}:${E2E_FRONTEND_PORT}`,
     headless: true,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
@@ -41,14 +42,14 @@ export default defineConfig({
   globalSetup: path.join(__dirname, "e2e/global-setup.ts"),
   webServer: [
     {
-      command: `env PORT=${E2E_API_PORT} MINANCE_DATA_FILE=${E2E_DATA_FILE} MINANCE_ALLOWED_ORIGINS=http://127.0.0.1:${E2E_FRONTEND_PORT} MINANCE_SEED_TEST_ACCOUNT=true DEV_TEST_ACCOUNT_EMAIL=dev@minance.local DEV_TEST_ACCOUNT_PASSWORD=devpassword123 tsx services/api/src/server.ts`,
-      url: `http://127.0.0.1:${E2E_API_PORT}`,
+      command: `env PORT=${E2E_API_PORT} MINANCE_DATA_FILE=${E2E_DATA_FILE} MINANCE_ALLOWED_ORIGINS=http://${E2E_HOST}:${E2E_FRONTEND_PORT} MINANCE_SEED_TEST_ACCOUNT=true DEV_TEST_ACCOUNT_EMAIL=dev@minance.local DEV_TEST_ACCOUNT_PASSWORD=devpassword123 tsx services/api/src/server.ts`,
+      url: `http://${E2E_HOST}:${E2E_API_PORT}`,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI
     },
     {
-      command: `env MINANCE_API_ORIGIN=http://127.0.0.1:${E2E_API_PORT} MINANCE_NEXT_DIST_DIR=.next-e2e npm run dev --workspace @minance/web -- -p ${E2E_FRONTEND_PORT}`,
-      url: `http://127.0.0.1:${E2E_FRONTEND_PORT}`,
+      command: `cd apps/web && env MINANCE_API_ORIGIN=http://${E2E_HOST}:${E2E_API_PORT} MINANCE_NEXT_DIST_DIR=.next-e2e pnpm dev --webpack --port ${E2E_FRONTEND_PORT}`,
+      url: `http://${E2E_HOST}:${E2E_FRONTEND_PORT}`,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI
     }
