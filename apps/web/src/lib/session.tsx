@@ -21,6 +21,10 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+export function deriveBootstrapStatus(storedTokens: Tokens | null): SessionStatus {
+  return storedTokens ? "loading" : "unauthenticated";
+}
+
 function readStoredTokens(): Tokens | null {
   if (typeof window === "undefined") {
     return null;
@@ -51,8 +55,8 @@ function persistTokens(tokens: Tokens | null) {
 }
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const [tokens, setTokensState] = useState<Tokens | null>(() => readStoredTokens());
-  const [status, setStatus] = useState<SessionStatus>(tokens ? "loading" : "unauthenticated");
+  const [tokens, setTokensState] = useState<Tokens | null>(null);
+  const [status, setStatus] = useState<SessionStatus>("loading");
   const [user, setUser] = useState<User | null>(null);
 
   const setTokens = useCallback((nextTokens: Tokens | null) => {
@@ -107,6 +111,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setStatus("unauthenticated");
   }, [setTokens]);
+
+  useEffect(() => {
+    const storedTokens = readStoredTokens();
+    const nextStatus = deriveBootstrapStatus(storedTokens);
+    setStatus(nextStatus);
+
+    if (nextStatus === "unauthenticated") {
+      return;
+    }
+
+    setTokensState(storedTokens);
+  }, []);
 
   useEffect(() => {
     if (!tokens) {
