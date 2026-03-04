@@ -8,6 +8,8 @@ services/api/tmp/*
 coverage
 output/playwright
 playwright-report
+apps/web/.next/
+apps/web/.next-e2e/
 
 # bv (beads viewer) local config and caches
 .bv/
