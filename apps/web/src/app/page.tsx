@@ -10,7 +10,7 @@ import { useApi } from "@/hooks/useApi";
 import type { AnomalyItem, HeatmapItem, OverviewResponse, SavedView } from "@/lib/api/types";
 
 const DASHBOARD_FILTERS_STORAGE_KEY = "minance:dashboard:filters";
-const RANGE_VALUES = new Set(RANGE_OPTIONS.map((entry) => entry.value));
+const RANGE_VALUES = new Set<string>(RANGE_OPTIONS.map((entry) => entry.value));
 
 type TransactionsDrillDown = {
   category?: string;

@@ -21,7 +21,7 @@ export interface ApiClientContext {
 export interface RequestOptions extends Omit<RequestInit, "body"> {
   auth?: boolean;
   retry?: boolean;
-  body?: BodyInit | Record<string, unknown> | null;
+  body?: BodyInit | object | null;
 }
 
 function parseErrorMessage(status: number, payload: ApiErrorPayload | null) {

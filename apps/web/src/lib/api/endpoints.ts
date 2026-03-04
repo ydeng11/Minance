@@ -42,7 +42,7 @@ import type {
 export type ApiRequest = <T>(path: string, options?: {
   method?: string;
   auth?: boolean;
-  body?: BodyInit | Record<string, unknown> | null;
+  body?: BodyInit | object | null;
 }) => Promise<T>;
 
 function buildQuery(params: Record<string, string | number | boolean | null | undefined>) {
