@@ -1,0 +1,3 @@
+# JavaScript-family files intentionally permitted inside managed scopes.
+# Keep this list minimal and remove entries as migrations complete.
+services/api/test/fixtures/deterministic-financial-fixture.js

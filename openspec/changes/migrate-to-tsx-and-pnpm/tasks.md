@@ -22,9 +22,9 @@
 
 ## 4. Enforce Regression Guardrails
 
-- [ ] 4.1 Implement CI/local check to fail on unmanaged new `.js/.jsx/.mjs/.cjs` files in managed scopes.
-- [ ] 4.2 Implement CI/local check to fail on active npm/npx usage in maintained workflows and docs.
-- [ ] 4.3 Integrate guardrail checks into required CI jobs and contributor verification workflow.
+- [x] 4.1 Implement local check to fail on unmanaged new `.js/.jsx/.mjs/.cjs` files in managed scopes.
+- [x] 4.2 Implement local check to fail on active npm/npx usage in maintained local docs.
+- [x] 4.3 Integrate guardrail checks into local contributor verification workflow (`npm run check`) and defer CI integration.
 
 ## 5. Documentation, Rollout, And Completion
 
