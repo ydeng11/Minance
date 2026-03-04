@@ -118,6 +118,7 @@ export interface ImportJob {
   id: string;
   userId: string;
   fileName: string;
+  sourceFormat?: "csv" | "ofx_qfx";
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -210,6 +211,74 @@ export interface ImportProcessedRowsResponse {
   limit: number;
   items: ProcessedRow[];
   summary: ProcessedSummary;
+}
+
+export interface ImportReconciliationRecommendation {
+  type: string;
+  message: string;
+  amountDelta?: number;
+}
+
+export interface ImportReconciliationAccount {
+  accountKey: string;
+  accountName: string;
+  accountId: string | null;
+  status: "balanced" | "needs_review" | "account_missing" | "no_data";
+  totalRows: number;
+  includedValidRows: number;
+  invalidRows: number;
+  duplicateRows: number;
+  excludedRows: number;
+  lowDirectionConfidenceRows: number;
+  importedNet: number;
+  existingWindowNet: number;
+  discrepancyAmount: number;
+  existingWindowCount: number;
+  matchedExistingCount: number;
+  unmatchedImportedCount: number;
+  dateBounds: {
+    start: string | null;
+    end: string | null;
+  };
+  recommendations: ImportReconciliationRecommendation[];
+}
+
+export interface ImportReconciliationResponse {
+  importId: string;
+  importStatus: string;
+  generatedAt: string;
+  summary: {
+    accountsTotal: number;
+    balancedAccounts: number;
+    needsReviewAccounts: number;
+    missingAccounts: number;
+    unresolvedRows: number;
+    importedNet: number;
+    existingWindowNet: number;
+    discrepancyAmount: number;
+    actionRequired: boolean;
+  };
+  accounts: ImportReconciliationAccount[];
+}
+
+export interface ImportReconciliationResolutionResponse {
+  resolution: {
+    action: string;
+    accountId: string;
+    adjustment: {
+      id: string;
+      accountId: string;
+      userId: string;
+      amountDelta: number;
+      effectiveAt: string;
+      reason: string;
+      note: string | null;
+      createdAt: string;
+      createdByUserId: string;
+      expectedVersion: number;
+    };
+  };
+  reconciliation: ImportReconciliationResponse;
 }
 
 export interface Transaction {

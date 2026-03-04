@@ -61,6 +61,8 @@ export function useApi() {
         listProcessedRows: importsApi.listProcessedRows.bind(null, request),
         updateProcessedRow: importsApi.updateProcessedRow.bind(null, request),
         reprocess: importsApi.reprocess.bind(null, request),
+        getReconciliation: importsApi.getReconciliation.bind(null, request),
+        resolveReconciliation: importsApi.resolveReconciliation.bind(null, request),
         commit: importsApi.commit.bind(null, request)
       },
       accounts: {

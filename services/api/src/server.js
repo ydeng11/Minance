@@ -23,7 +23,9 @@ import {
   commitImport,
   listImportProcessedRows,
   updateImportProcessedRow,
-  reprocessImportRows
+  reprocessImportRows,
+  getImportReconciliation,
+  resolveImportReconciliation
 } from "./imports.js";
 import {
   createManualTransaction,
@@ -608,6 +610,34 @@ async function handleApiRequest(req, res, url) {
       const user = requireUser(req);
       const result = await commitImport(user.id, commitParams.id);
       sendJson(res, 200, result);
+      return;
+    }
+
+    const reconciliationGetParams = matchPath(pathname, "/v1/imports/:id/reconciliation");
+    if (req.method === "GET" && reconciliationGetParams) {
+      const user = requireUser(req);
+      const result = getImportReconciliation(user.id, reconciliationGetParams.id);
+      sendJson(res, 200, result);
+      return;
+    }
+
+    const reconciliationResolveParams = matchPath(pathname, "/v1/imports/:id/reconciliation/resolve");
+    if (req.method === "POST" && reconciliationResolveParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `POST /v1/imports/:id/reconciliation/resolve#${reconciliationResolveParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const result = resolveImportReconciliation(user.id, reconciliationResolveParams.id, body);
+      recordMutationGuardResult(user.id, guard, 201, result);
+      sendJson(res, 201, result);
       return;
     }
 

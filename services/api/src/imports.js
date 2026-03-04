@@ -1,7 +1,9 @@
 import { loadStore, saveStore, addAuditEvent } from "./store.js";
 import { parseCsv, inferMapping } from "./csv.js";
+import { isOfxQfxFile, parseOfxQfx } from "./ofx-qfx.js";
 import { normalizeMerchant, categorizeTransaction, buildMerchantMemory } from "./categorization.js";
 import { parseDate, toDecimal, nowIso, createId, stableHash, normalizeText, clamp } from "./utils.js";
+import { createAccountManualAdjustment } from "./accounts.js";
 import { requireAiFeature } from "./ai.js";
 import {
   IMPORT_PROCESSED_EDITOR_ENABLED,
@@ -583,8 +585,28 @@ async function computeDirectionInference({ userId, parsedCsv, mapping, auxiliary
   };
 }
 
+function parseImportInput(fileName, inputText) {
+  const content = String(inputText || "");
+  const ofxOrQfx = isOfxQfxFile(fileName) || /<OFX>/i.test(content);
+  if (ofxOrQfx) {
+    const parsed = parseOfxQfx(content, { fileName });
+    return {
+      parsed,
+      sourceFormat: "ofx_qfx",
+      sourceWarnings: parsed.warnings || []
+    };
+  }
+
+  return {
+    parsed: parseCsv(content),
+    sourceFormat: "csv",
+    sourceWarnings: []
+  };
+}
+
 export async function createImportJob({ userId, fileName, csvText }) {
-  const parsed = parseCsv(csvText);
+  const normalizedFileName = fileName || `import-${Date.now()}.csv`;
+  const { parsed, sourceFormat, sourceWarnings } = parseImportInput(normalizedFileName, csvText);
 
   let aiEnabled = true;
   try {
@@ -603,12 +625,13 @@ export async function createImportJob({ userId, fileName, csvText }) {
 
   const store = loadStore();
   const now = nowIso();
-  const allWarnings = combineWarnings(inferred.warnings, directionInference.warnings);
+  const allWarnings = combineWarnings(sourceWarnings, inferred.warnings, directionInference.warnings);
 
   const importJob = {
     id: createId("imp"),
     userId,
-    fileName: fileName || `import-${Date.now()}.csv`,
+    fileName: normalizedFileName,
+    sourceFormat,
     status: allWarnings.length > 0 ? "needs_review" : "processing",
     createdAt: now,
     updatedAt: now,
@@ -645,6 +668,7 @@ export async function createImportJob({ userId, fileName, csvText }) {
   addAuditEvent(userId, "import.created", {
     importId: importJob.id,
     rowCount: parsed.rows.length,
+    sourceFormat: importJob.sourceFormat,
     directionInference: {
       amountMode: directionInference.amountMode,
       signConvention: directionInference.signConvention,
@@ -841,8 +865,332 @@ function buildDateBounds(transactions = []) {
   };
 }
 
+function roundCurrency(value) {
+  return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function toSignedRowAmount(normalized) {
+  const amount = Number(normalized?.amount);
+  if (!Number.isFinite(amount)) {
+    return 0;
+  }
+  const absolute = Math.abs(amount);
+  return normalized?.direction === "credit" ? absolute : -absolute;
+}
+
+function getImportProcessedRowsForReconciliation(store, userId, importJob) {
+  const existing = processedRowsForImport(store, importJob.id);
+  if (existing.length > 0) {
+    return existing;
+  }
+  return buildProcessedRows(store, userId, importJob, importJob.mapping, []);
+}
+
+function findMatchingAccount(store, userId, accountKey) {
+  return store.accounts.find((entry) => entry.userId === userId && entry.normalizedKey === accountKey) || null;
+}
+
+function listAccountWindowTransactions(store, userId, accountKey, start, end) {
+  return store.transactions.filter((entry) => {
+    if (entry.user_id !== userId || entry.account_key !== accountKey || entry.deleted_at) {
+      return false;
+    }
+    const transactionDate = parseDate(entry.transaction_date) || parseDate(entry.created_at) || null;
+    if (!transactionDate) {
+      return false;
+    }
+    if (start && transactionDate < start) {
+      return false;
+    }
+    if (end && transactionDate > end) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function describeReconciliationStatus(entry) {
+  if (entry.includedValidRows === 0) {
+    return "no_data";
+  }
+  if (!entry.accountId) {
+    return "account_missing";
+  }
+  if (
+    entry.invalidRows > 0
+    || entry.duplicateRows > 0
+    || entry.lowDirectionConfidenceRows > 0
+    || Math.abs(entry.discrepancyAmount) >= 0.01
+  ) {
+    return "needs_review";
+  }
+  return "balanced";
+}
+
+function buildReconciliationRecommendations(entry) {
+  const recommendations = [];
+  if (entry.includedValidRows === 0) {
+    recommendations.push({
+      type: "no_valid_rows",
+      message: "No included valid rows found for this account in the staged import."
+    });
+    return recommendations;
+  }
+
+  if (!entry.accountId) {
+    recommendations.push({
+      type: "link_account",
+      message: "No matching account exists. Create or map an account before final reconciliation."
+    });
+  }
+
+  if (entry.invalidRows > 0) {
+    recommendations.push({
+      type: "resolve_invalid_rows",
+      message: `${entry.invalidRows} invalid row(s) must be corrected or excluded.`
+    });
+  }
+
+  if (entry.duplicateRows > 0) {
+    recommendations.push({
+      type: "review_duplicates",
+      message: `${entry.duplicateRows} duplicate row(s) detected and should be reviewed.`
+    });
+  }
+
+  if (entry.lowDirectionConfidenceRows > 0) {
+    recommendations.push({
+      type: "review_direction_confidence",
+      message: `${entry.lowDirectionConfidenceRows} row(s) have low direction confidence.`
+    });
+  }
+
+  if (entry.accountId && Math.abs(entry.discrepancyAmount) >= 0.01) {
+    recommendations.push({
+      type: "create_manual_adjustment",
+      amountDelta: entry.discrepancyAmount,
+      message: `Create a manual adjustment of ${entry.discrepancyAmount.toFixed(2)} to reconcile this account window.`
+    });
+  }
+
+  return recommendations;
+}
+
 function isEligibleProcessedRow(row) {
   return row.include === true && row.status === "valid";
+}
+
+export function getImportReconciliation(userId, importId) {
+  const store = loadStore();
+  const importJob = store.imports.find((entry) => entry.id === importId && entry.userId === userId);
+  if (!importJob) {
+    throw new Error("Import not found");
+  }
+
+  const rows = getImportProcessedRowsForReconciliation(store, userId, importJob);
+  const grouped = new Map();
+
+  for (const row of rows) {
+    const accountName = String(row?.normalized?.account_name || "Imported Account").trim() || "Imported Account";
+    const accountKey = normalizeText(accountName);
+    if (!grouped.has(accountKey)) {
+      grouped.set(accountKey, {
+        accountKey,
+        accountName,
+        totalRows: 0,
+        includedValidRows: 0,
+        invalidRows: 0,
+        duplicateRows: 0,
+        excludedRows: 0,
+        lowDirectionConfidenceRows: 0,
+        importedNet: 0,
+        dateStart: null,
+        dateEnd: null,
+        importedFingerprints: new Set()
+      });
+    }
+
+    const bucket = grouped.get(accountKey);
+    bucket.totalRows += 1;
+
+    if (row.status === "invalid") {
+      bucket.invalidRows += 1;
+    } else if (row.status === "duplicate") {
+      bucket.duplicateRows += 1;
+    } else if (row.status === "excluded") {
+      bucket.excludedRows += 1;
+    }
+
+    if (row.normalized?.needs_direction_review) {
+      bucket.lowDirectionConfidenceRows += 1;
+    }
+
+    if (!isEligibleProcessedRow(row)) {
+      continue;
+    }
+
+    bucket.includedValidRows += 1;
+    bucket.importedNet += toSignedRowAmount(row.normalized);
+
+    const rowDate = parseDate(row.normalized?.transaction_date);
+    if (rowDate) {
+      bucket.dateStart = bucket.dateStart ? (rowDate < bucket.dateStart ? rowDate : bucket.dateStart) : rowDate;
+      bucket.dateEnd = bucket.dateEnd ? (rowDate > bucket.dateEnd ? rowDate : bucket.dateEnd) : rowDate;
+    }
+
+    if (row.normalized?.dedupe_fingerprint) {
+      bucket.importedFingerprints.add(row.normalized.dedupe_fingerprint);
+    }
+  }
+
+  const accountSummaries = [];
+  for (const bucket of grouped.values()) {
+    const account = findMatchingAccount(store, userId, bucket.accountKey);
+    const windowTransactions = listAccountWindowTransactions(
+      store,
+      userId,
+      bucket.accountKey,
+      bucket.dateStart,
+      bucket.dateEnd
+    );
+
+    const existingWindowNet = roundCurrency(
+      windowTransactions.reduce((sum, entry) => {
+        const amount = Number(entry.amount || 0);
+        const signed = entry.direction === "debit" ? -Math.abs(amount) : Math.abs(amount);
+        return sum + (Number.isFinite(signed) ? signed : 0);
+      }, 0)
+    );
+
+    const matchedExistingCount = windowTransactions.reduce((count, entry) => {
+      if (entry.dedupe_fingerprint && bucket.importedFingerprints.has(entry.dedupe_fingerprint)) {
+        return count + 1;
+      }
+      return count;
+    }, 0);
+
+    const importedNet = roundCurrency(bucket.importedNet);
+    const discrepancyAmount = roundCurrency(importedNet - existingWindowNet);
+    const summary = {
+      accountKey: bucket.accountKey,
+      accountName: bucket.accountName,
+      accountId: account?.id || null,
+      totalRows: bucket.totalRows,
+      includedValidRows: bucket.includedValidRows,
+      invalidRows: bucket.invalidRows,
+      duplicateRows: bucket.duplicateRows,
+      excludedRows: bucket.excludedRows,
+      lowDirectionConfidenceRows: bucket.lowDirectionConfidenceRows,
+      importedNet,
+      existingWindowNet,
+      discrepancyAmount,
+      existingWindowCount: windowTransactions.length,
+      matchedExistingCount,
+      unmatchedImportedCount: Math.max(0, bucket.includedValidRows - matchedExistingCount),
+      dateBounds: {
+        start: bucket.dateStart,
+        end: bucket.dateEnd
+      }
+    };
+
+    const status = describeReconciliationStatus(summary);
+    accountSummaries.push({
+      ...summary,
+      status,
+      recommendations: buildReconciliationRecommendations(summary)
+    });
+  }
+
+  accountSummaries.sort((left, right) => {
+    if (left.status !== right.status) {
+      return left.status.localeCompare(right.status);
+    }
+    return left.accountName.localeCompare(right.accountName);
+  });
+
+  const summary = {
+    accountsTotal: accountSummaries.length,
+    balancedAccounts: accountSummaries.filter((entry) => entry.status === "balanced").length,
+    needsReviewAccounts: accountSummaries.filter((entry) => entry.status === "needs_review").length,
+    missingAccounts: accountSummaries.filter((entry) => entry.status === "account_missing").length,
+    unresolvedRows: accountSummaries.reduce(
+      (sum, entry) => sum + entry.invalidRows + entry.duplicateRows + entry.lowDirectionConfidenceRows,
+      0
+    ),
+    importedNet: roundCurrency(accountSummaries.reduce((sum, entry) => sum + entry.importedNet, 0)),
+    existingWindowNet: roundCurrency(accountSummaries.reduce((sum, entry) => sum + entry.existingWindowNet, 0)),
+    discrepancyAmount: roundCurrency(accountSummaries.reduce((sum, entry) => sum + entry.discrepancyAmount, 0)),
+    actionRequired: accountSummaries.some((entry) => entry.status !== "balanced")
+  };
+
+  return {
+    importId,
+    importStatus: importJob.status,
+    generatedAt: nowIso(),
+    summary,
+    accounts: accountSummaries
+  };
+}
+
+export function resolveImportReconciliation(userId, importId, payload = {}) {
+  const action = String(payload.action || "").trim();
+  if (action !== "create_manual_adjustment") {
+    throw new Error("Unsupported reconciliation action");
+  }
+
+  const accountId = String(payload.accountId || "").trim();
+  if (!accountId) {
+    throw new Error("Missing reconciliation account");
+  }
+
+  const requestedAmount = toDecimal(payload.amountDelta ?? payload.amount_delta);
+  if (requestedAmount == null || requestedAmount === 0) {
+    throw new Error("Invalid reconciliation adjustment amount");
+  }
+
+  const reconciliation = getImportReconciliation(userId, importId);
+  const accountSummary = reconciliation.accounts.find((entry) => entry.accountId === accountId) || null;
+  if (!accountSummary) {
+    throw new Error("Reconciliation account not found");
+  }
+  if (Math.abs(accountSummary.discrepancyAmount) < 0.01) {
+    throw new Error("No discrepancy to resolve for this account");
+  }
+
+  const amountDelta = roundCurrency(requestedAmount);
+  if (Math.abs(roundCurrency(amountDelta - accountSummary.discrepancyAmount)) >= 0.01) {
+    throw new Error("Adjustment amount must match the computed discrepancy");
+  }
+
+  const reason = String(payload.reason || "").trim() || `Import reconciliation adjustment (${importId})`;
+  const note = String(payload.note || "").trim() || `Generated from import reconciliation ${importId}`;
+  const effectiveAt = parseDate(payload.effectiveAt ?? payload.effective_at ?? nowIso());
+  if (!effectiveAt) {
+    throw new Error("Invalid reconciliation effective date");
+  }
+
+  const adjustmentResult = createAccountManualAdjustment(userId, accountId, {
+    amountDelta,
+    reason,
+    note,
+    effectiveAt
+  });
+
+  addAuditEvent(userId, "import.reconciliation.resolved", {
+    importId,
+    accountId,
+    action,
+    amountDelta
+  });
+
+  return {
+    resolution: {
+      action,
+      accountId,
+      adjustment: adjustmentResult.adjustment
+    },
+    reconciliation: getImportReconciliation(userId, importId)
+  };
 }
 
 export async function commitImport(userId, importId) {

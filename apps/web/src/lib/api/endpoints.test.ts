@@ -4,6 +4,7 @@ import {
   accountsApi,
   analyticsApi,
   categoriesApi,
+  importsApi,
   investmentsApi,
   recurringsApi,
   transactionsApi,
@@ -179,6 +180,22 @@ test("investmentsApi query builder omits empty optional filters", async () => {
   assert.equal(calls[0].path, "/v1/investments/overview");
   assert.equal(calls[1].path, "/v1/investments/positions");
   assert.equal(calls[2].path, "/v1/investments/performance");
+});
+
+test("importsApi exposes reconciliation query and resolution mutation contracts", async () => {
+  const { calls, request } = createRecorder();
+
+  await importsApi.getReconciliation(request, "imp_123");
+  await importsApi.resolveReconciliation(request, "imp_123", {
+    action: "create_manual_adjustment",
+    accountId: "acct_123",
+    amountDelta: -42.5,
+    reason: "Resolve mismatch"
+  });
+
+  assert.equal(calls[0].path, "/v1/imports/imp_123/reconciliation");
+  assert.equal(calls[1].path, "/v1/imports/imp_123/reconciliation/resolve");
+  assert.equal(calls[1].options?.method, "POST");
 });
 
 test("recurringsApi routes lifecycle and evaluation contracts", async () => {

@@ -14,6 +14,8 @@ import type {
   HeatmapItem,
   ImportDetailsResponse,
   ImportJob,
+  ImportReconciliationResolutionResponse,
+  ImportReconciliationResponse,
   InvestmentAccountSummary,
   InvestmentHolding,
   InvestmentOverviewResponse,
@@ -113,6 +115,24 @@ export const importsApi = {
     }),
   reprocess: (request: ApiRequest, id: string) =>
     request<{ total: number; summary: ProcessedSummary }>(`/v1/imports/${id}/reprocess`, { method: "POST" }),
+  getReconciliation: (request: ApiRequest, id: string) =>
+    request<ImportReconciliationResponse>(`/v1/imports/${id}/reconciliation`),
+  resolveReconciliation: (
+    request: ApiRequest,
+    id: string,
+    body: {
+      action: "create_manual_adjustment";
+      accountId: string;
+      amountDelta: number;
+      reason?: string;
+      note?: string;
+      effectiveAt?: string;
+    }
+  ) =>
+    request<ImportReconciliationResolutionResponse>(`/v1/imports/${id}/reconciliation/resolve`, {
+      method: "POST",
+      body
+    }),
   commit: (request: ApiRequest, id: string) =>
     request<CommitImportResponse>(`/v1/imports/${id}/commit`, { method: "POST" })
 };

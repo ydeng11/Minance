@@ -17,6 +17,8 @@ import type {
   Category,
   ImportDetailsResponse,
   ImportJob,
+  ImportReconciliationAccount,
+  ImportReconciliationResponse,
   ImportProcessedRowsResponse,
   ProcessedRow
 } from "@/lib/api/types";
@@ -38,10 +40,14 @@ export default function ImportPage() {
   const [mappingDraft, setMappingDraft] = useState<Record<string, string | null>>({});
   const [selectedTemplateId, setSelectedTemplateId] = useState("generic_statement");
   const [mappingTemplateNotice, setMappingTemplateNotice] = useState("");
+  const [reconciliation, setReconciliation] = useState<ImportReconciliationResponse | null>(null);
+  const [isReconciliationLoading, setIsReconciliationLoading] = useState(false);
+  const [isResolvingReconciliation, setIsResolvingReconciliation] = useState(false);
+  const [reconciliationNotice, setReconciliationNotice] = useState("");
   const [state, dispatch] = useReducer(importWorkflowReducer, initialImportWorkflowState);
   const mappingTemplates = useMemo(() => getImportMappingTemplates(), []);
 
-  const globalMessage = state.error || state.notice || "";
+  const globalMessage = state.error || reconciliationNotice || state.notice || "";
 
   const currentImportId = state.currentImport?.id || null;
 
@@ -70,21 +76,38 @@ export default function ImportPage() {
     setCategories(data.categories);
   }
 
-  async function openImport(importId: string, nextStatusFilter = statusFilter) {
-    const [details, processedRows] = await Promise.all([
-      api.imports.getById(importId),
-      api.imports.listProcessedRows(importId, {
-        limit: 200,
-        status: nextStatusFilter || undefined
-      })
-    ]);
+  async function loadImportContext(importId: string, nextStatusFilter = statusFilter) {
+    setIsReconciliationLoading(true);
+    try {
+      const [details, processedRows, nextReconciliation] = await Promise.all([
+        api.imports.getById(importId),
+        api.imports.listProcessedRows(importId, {
+          limit: 200,
+          status: nextStatusFilter || undefined
+        }),
+        api.imports.getReconciliation(importId)
+      ]);
+      setReconciliation(nextReconciliation);
+      return { details, processedRows };
+    } finally {
+      setIsReconciliationLoading(false);
+    }
+  }
 
-    dispatch({
-      type: "analyze_succeeded",
-      importJob: details.importJob,
-      details,
-      processedRows
-    });
+  async function openImport(importId: string, nextStatusFilter = statusFilter) {
+    try {
+      const { details, processedRows } = await loadImportContext(importId, nextStatusFilter);
+      dispatch({
+        type: "analyze_succeeded",
+        importJob: details.importJob,
+        details,
+        processedRows
+      });
+      setReconciliationNotice("");
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Failed to load import details.";
+      dispatch({ type: "error", message });
+    }
   }
 
   async function initialize() {
@@ -150,13 +173,7 @@ export default function ImportPage() {
       const csvText = await file.text();
       const created = await api.imports.create({ fileName: file.name, csvText });
 
-      const [details, processedRows] = await Promise.all([
-        api.imports.getById(created.importJob.id),
-        api.imports.listProcessedRows(created.importJob.id, {
-          limit: 200,
-          status: statusFilter || undefined
-        })
-      ]);
+      const { details, processedRows } = await loadImportContext(created.importJob.id, statusFilter);
 
       dispatch({
         type: "analyze_succeeded",
@@ -184,13 +201,7 @@ export default function ImportPage() {
 
     try {
       await api.imports.saveMapping(currentImportId, mappingDraft);
-      const [details, processedRows] = await Promise.all([
-        api.imports.getById(currentImportId),
-        api.imports.listProcessedRows(currentImportId, {
-          limit: 200,
-          status: statusFilter || undefined
-        })
-      ]);
+      const { details, processedRows } = await loadImportContext(currentImportId, statusFilter);
 
       dispatch({ type: "mapping_save_succeeded", details, processedRows });
       await refreshImports();
@@ -201,13 +212,7 @@ export default function ImportPage() {
   }
 
   async function refreshProcessedRows(importId: string, nextStatusFilter = statusFilter) {
-    const [details, processedRows] = await Promise.all([
-      api.imports.getById(importId),
-      api.imports.listProcessedRows(importId, {
-        limit: 200,
-        status: nextStatusFilter || undefined
-      })
-    ]);
+    const { details, processedRows } = await loadImportContext(importId, nextStatusFilter);
 
     dispatch({ type: "mapping_save_succeeded", details, processedRows });
   }
@@ -251,9 +256,33 @@ export default function ImportPage() {
       const result = await api.imports.commit(currentImportId);
       dispatch({ type: "commit_succeeded", result });
       await Promise.all([refreshImports(), refreshProcessedRows(currentImportId)]);
+      setReconciliationNotice("");
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Failed to commit import.";
       dispatch({ type: "error", message });
+    }
+  }
+
+  async function resolveReconciliationDiscrepancy(entry: ImportReconciliationAccount) {
+    if (!currentImportId || !entry.accountId || Math.abs(entry.discrepancyAmount) < 0.01) {
+      return;
+    }
+
+    setIsResolvingReconciliation(true);
+    try {
+      await api.imports.resolveReconciliation(currentImportId, {
+        action: "create_manual_adjustment",
+        accountId: entry.accountId,
+        amountDelta: entry.discrepancyAmount,
+        reason: `Import reconciliation adjustment for ${entry.accountName}`
+      });
+      await Promise.all([refreshImports(), refreshProcessedRows(currentImportId)]);
+      setReconciliationNotice(`Manual adjustment created for ${entry.accountName}.`);
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Failed to resolve discrepancy.";
+      dispatch({ type: "error", message });
+    } finally {
+      setIsResolvingReconciliation(false);
     }
   }
 
@@ -372,7 +401,7 @@ export default function ImportPage() {
     <div className="space-y-6" data-testid="import-page">
       <header>
         <h2 className="text-3xl font-semibold tracking-tight">Import Transactions</h2>
-        <p className="mt-1 text-neutral-400">Upload a CSV from any bank. Our AI will automatically categorize and format it.</p>
+        <p className="mt-1 text-neutral-400">Upload CSV, OFX, or QFX exports from any bank. Our AI will automatically categorize and format them.</p>
       </header>
 
       {globalMessage ? (
@@ -385,7 +414,7 @@ export default function ImportPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.ofx,.qfx,text/csv,application/x-ofx,text/plain"
           data-testid="import-file"
           className="hidden"
           onClick={(event) => {
@@ -417,7 +446,7 @@ export default function ImportPage() {
                 <UploadCloud className="h-8 w-8 text-neutral-400" />
               </div>
               <p className="text-lg font-medium text-neutral-200">Upload a CSV file to begin</p>
-              <p className="text-sm text-neutral-400">Supports Chase, Amex, Apple, Citi &amp; more...</p>
+              <p className="text-sm text-neutral-400">Supports CSV, OFX, QFX exports from major banks.</p>
             </div>
           )}
         </div>
@@ -652,6 +681,90 @@ export default function ImportPage() {
                 <tbody>{renderProcessedRowsTable(state.processedRows)}</tbody>
               </table>
             </div>
+          </section>
+
+          <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4" data-testid="reconciliation-panel">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-medium text-neutral-300">Reconciliation</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentImportId) {
+                    void refreshProcessedRows(currentImportId);
+                  }
+                }}
+                disabled={!currentImportId || isReconciliationLoading}
+                className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isReconciliationLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />}
+                Refresh
+              </button>
+            </div>
+
+            {!currentImportId ? (
+              <p className="mt-2 text-xs text-neutral-400">Analyze a CSV to compute reconciliation.</p>
+            ) : reconciliation ? (
+              <>
+                <p className="mt-2 text-xs text-neutral-400" data-testid="reconciliation-summary">
+                  Accounts: {reconciliation.summary.accountsTotal}
+                  {" · "}Balanced: {reconciliation.summary.balancedAccounts}
+                  {" · "}Needs review: {reconciliation.summary.needsReviewAccounts}
+                  {" · "}Missing account links: {reconciliation.summary.missingAccounts}
+                  {" · "}Net discrepancy: {money(reconciliation.summary.discrepancyAmount)}
+                </p>
+                <div className="mt-3 overflow-auto">
+                  <table className="min-w-[1100px] w-full text-xs" data-testid="reconciliation-table">
+                    <caption className="sr-only">Reconciliation summary by account</caption>
+                    <thead>
+                      <tr className="border-b border-neutral-900 text-left text-neutral-300">
+                        <th scope="col" className="px-2 py-2">Account</th>
+                        <th scope="col" className="px-2 py-2">Status</th>
+                        <th scope="col" className="px-2 py-2">Rows</th>
+                        <th scope="col" className="px-2 py-2">Imported Net</th>
+                        <th scope="col" className="px-2 py-2">Ledger Net</th>
+                        <th scope="col" className="px-2 py-2">Discrepancy</th>
+                        <th scope="col" className="px-2 py-2">Recommendations</th>
+                        <th scope="col" className="px-2 py-2">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reconciliation.accounts.map((entry) => (
+                        <tr key={entry.accountKey} className="border-b border-neutral-900 align-top">
+                          <td className="px-2 py-2 text-neutral-200">{entry.accountName}</td>
+                          <td className="px-2 py-2 text-neutral-300">{entry.status}</td>
+                          <td className="px-2 py-2 text-neutral-300">{entry.includedValidRows}/{entry.totalRows}</td>
+                          <td className="px-2 py-2 text-neutral-200">{money(entry.importedNet)}</td>
+                          <td className="px-2 py-2 text-neutral-300">{money(entry.existingWindowNet)}</td>
+                          <td className="px-2 py-2 text-neutral-200">{money(entry.discrepancyAmount)}</td>
+                          <td className="px-2 py-2 text-neutral-400">
+                            {entry.recommendations.length > 0
+                              ? entry.recommendations.map((recommendation) => recommendation.message).join(" ")
+                              : "None"}
+                          </td>
+                          <td className="px-2 py-2">
+                            <button
+                              type="button"
+                              onClick={() => void resolveReconciliationDiscrepancy(entry)}
+                              disabled={
+                                isResolvingReconciliation
+                                || !entry.accountId
+                                || Math.abs(entry.discrepancyAmount) < 0.01
+                              }
+                              data-testid={`reconcile-adjust-${entry.accountKey}`}
+                              className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {isResolvingReconciliation ? "Applying..." : "Create Adjustment"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-neutral-400">No reconciliation data loaded yet.</p>
+            )}
           </section>
 
           <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
