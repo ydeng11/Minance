@@ -20,3 +20,7 @@ apps/web/.next-e2e/
 .db
 
 # Planning docs
+
+# npm lockfiles are not authoritative in this repo.
+package-lock.json
+**/package-lock.json

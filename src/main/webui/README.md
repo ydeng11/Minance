@@ -15,29 +15,27 @@ The frontend application for Minance, built with React, TypeScript, and Vite.
 ### Prerequisites
 
 - Node.js 20+ (match the CI environment)
-- npm 10.x (important: npm version matters for lockfile consistency)
+- pnpm 10.x
 
-> **Note**: This project uses npm 10.x in CI. Using a different npm version locally (e.g., npm 11.x) can cause `package-lock.json` to resolve dependencies differently, leading to CI failures. If you're using Node.js 20, it comes with npm 10.x by default. To check your versions:
+> **Note**: This project uses pnpm in CI. Use the same major pnpm version locally for consistent installs.
 >
 > ```bash
 > node --version  # Should be v20.x
-> npm --version   # Should be 10.x
+> pnpm --version  # Should be 10.x
 > ```
->
-> If you have npm 11 or higher, you can use `npx -y --package=npm@10 npm install` to ensure lockfile compatibility with CI.
 
 ### Getting Started
 
 1. Install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 2. Start development server:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 The development server will start at http://localhost:3000
@@ -47,7 +45,7 @@ The development server will start at http://localhost:3000
 Create production build:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 Build output will be in the `dist` directory.
@@ -57,13 +55,13 @@ Build output will be in the `dist` directory.
 Run tests:
 
 ```bash
-npm run test
+pnpm test
 ```
 
 For a tight TDD loop, keep Vitest in watch mode:
 
 ```bash
-npm run test -- --watch
+pnpm test -- --watch
 ```
 
 ## Project Structure

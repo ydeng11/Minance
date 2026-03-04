@@ -80,7 +80,7 @@ jobs:
 
       - name: Build application
         run: ./mvnw package -DskipTests
-        # Quinoa automatically builds the frontend (npm install + npm run build) during this step
+        # Quinoa automatically builds the frontend (pnpm install + pnpm build:web) during this step
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5

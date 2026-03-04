@@ -28,8 +28,9 @@ const MANAGED_SCOPE_EXCLUDE_SEGMENTS = [
   "/output/"
 ];
 
-const NPM_SCAN_PATHS = ["README.md", "TESTING.md", "docs"];
+const NPM_SCAN_PATHS = ["README.md", "TESTING.md", "docs", ".github/workflows", "deploy/docker", "src/main/webui/README.md"];
 const NPM_TOKEN_RE = /\b(?:npm|npx)\b/;
+const NPM_LOCKFILE_NAME = "package-lock.json";
 
 const JS_ALLOWLIST_PATH = "config/guardrails/js-extension-allowlist.txt";
 
@@ -229,6 +230,21 @@ function isJsFamily(filePath: string) {
   return JS_FAMILY_EXTENSIONS.has(path.extname(filePath).toLowerCase());
 }
 
+function isNpmLockfilePath(filePath: string) {
+  const normalized = normalizePath(filePath);
+  return normalized === NPM_LOCKFILE_NAME || normalized.endsWith(`/${NPM_LOCKFILE_NAME}`);
+}
+
+function listTrackedNpmLockfiles() {
+  return runGit("ls-files")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => normalizePath(line))
+    .filter((filePath) => isNpmLockfilePath(filePath))
+    .sort((a, b) => a.localeCompare(b));
+}
+
 function runJsExtensionGuardrail(against: string | null) {
   const changedFiles = collectChangedFiles(against);
   const allowlist = loadJsAllowlist();
@@ -271,8 +287,9 @@ function main() {
 
   const jsViolations = runJsExtensionGuardrail(against);
   const npmViolations = runNpmDriftGuardrail(against);
+  const npmLockfileViolations = listTrackedNpmLockfiles();
 
-  if (jsViolations.length === 0 && npmViolations.length === 0) {
+  if (jsViolations.length === 0 && npmViolations.length === 0 && npmLockfileViolations.length === 0) {
     const rangeLabel = against ? ` against ${against}` : "";
     console.log(`Guardrails passed${rangeLabel}.`);
     return;
@@ -287,9 +304,16 @@ function main() {
   }
 
   if (npmViolations.length > 0) {
-    console.error("Guardrail failed: added npm/npx usage detected in maintained local docs.");
+    console.error("Guardrail failed: added npm/npx usage detected in maintained docs/automation.");
     for (const violation of npmViolations) {
       console.error(`  - ${violation.filePath}:${violation.lineNumber} -> ${violation.content}`);
+    }
+  }
+
+  if (npmLockfileViolations.length > 0) {
+    console.error("Guardrail failed: npm lockfiles are forbidden. Use pnpm-lock.yaml only.");
+    for (const filePath of npmLockfileViolations) {
+      console.error(`  - ${filePath}`);
     }
   }
 

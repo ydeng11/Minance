@@ -1,18 +1,20 @@
 FROM node:20-bookworm-slim AS deps
 WORKDIR /app
+RUN corepack enable
 
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/package.json
 COPY services/api/package.json services/api/package.json
 COPY packages/domain/package.json packages/domain/package.json
-RUN npm ci
+RUN pnpm install --frozen-lockfile
 
 FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+RUN corepack enable
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps ./apps
 COPY packages ./packages
 COPY scripts ./scripts
