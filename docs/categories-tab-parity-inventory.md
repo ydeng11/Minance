@@ -4,7 +4,7 @@ Captured on **March 1, 2026 (America/New_York)** using Playwright CLI against lo
 
 ## Capture environment
 
-- App runtime: `npm run dev` (`http://localhost:3000` web, `http://localhost:3001` API)
+- App runtime: `pnpm dev` (`http://localhost:3000` web, `http://localhost:3001` API)
 - Account used: `dev@minance.local`
 - Playwright artifacts:
   - `output/playwright/parity/minance2-xdy.1/dashboard-post-login.snapshot.yml`
@@ -141,4 +141,3 @@ Missing for parity with Categories tab behavior:
 5. Save status visibly cycles through saving/saved/error; failed writes rollback to previous persisted snapshot.
 6. Category API contract includes retrieval of linked/unlinked sets and replace-set mapping write for selected Minance category.
 7. Validation errors are surfaced to users with non-silent error UI.
-

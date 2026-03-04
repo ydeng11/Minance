@@ -8,7 +8,7 @@ Network calls inside Vitest are mocked via **MSW** (`src/main/webui/src/test/set
 ### Running Tests
 ```bash
 cd src/main/webui
-npm run test
+pnpm test
 ```
 
 ### Writing Tests

@@ -50,8 +50,8 @@ Verify backup output contains:
 If your current runtime still uses JSON storage, migrate before upgrading app containers:
 
 ```bash
-MINANCE_STORE_BACKEND=json npm run migrate:sqlite
-MINANCE_STORE_BACKEND=json npm run validate:sqlite
+MINANCE_STORE_BACKEND=json pnpm migrate:sqlite
+MINANCE_STORE_BACKEND=json pnpm validate:sqlite
 ```
 
 Validation must complete without mismatched totals/counts before cutover.

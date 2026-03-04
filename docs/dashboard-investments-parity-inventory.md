@@ -4,13 +4,13 @@ Captured on **March 3, 2026 (America/New_York)** using the current Playwright E2
 
 ## Capture environment
 
-- App runtime: `npm run dev` (`http://localhost:3000` web, `http://localhost:3001` API)
+- App runtime: `pnpm dev` (`http://localhost:3000` web, `http://localhost:3001` API)
 - Account used by E2E: `dev@minance.local`
 - Playwright coverage used for parity capture:
-  - `e2e/specs/assistant-and-analytics.spec.mjs`
-  - `e2e/specs/full-user-flow.spec.mjs`
-  - `e2e/specs/investments-layout-parity.spec.mjs`
-  - `e2e/specs/readability-contrast.spec.mjs`
+  - `e2e/specs/assistant-and-analytics.spec.ts`
+  - `e2e/specs/full-user-flow.spec.ts`
+  - `e2e/specs/investments-layout-parity.spec.ts`
+  - `e2e/specs/readability-contrast.spec.ts`
 
 ## Dashboard interaction inventory (current Next UI)
 
@@ -52,7 +52,7 @@ Captured on **March 3, 2026 (America/New_York)** using the current Playwright E2
 
 ### Structural parity observed
 
-From `e2e/specs/investments-layout-parity.spec.mjs` and `apps/web/src/app/investments/page.tsx`:
+From `e2e/specs/investments-layout-parity.spec.ts` and `apps/web/src/app/investments/page.tsx`:
 
 - Page shell and two-column desktop layout (`data-testid="investments-main-grid"`) are stable.
 - Required panels are present:

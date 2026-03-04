@@ -4,7 +4,7 @@ Captured on **March 1, 2026 (America/New_York)** using Playwright CLI against lo
 
 ## Capture environment
 
-- App runtime: `npm run dev` (`http://localhost:3000` web, `http://localhost:3001` API)
+- App runtime: `pnpm dev` (`http://localhost:3000` web, `http://localhost:3001` API)
 - Account used: `dev@minance.local`
 - Playwright artifacts:
   - `output/playwright/parity/minance2-xdy.4/recurrings-page.snapshot.yml`
@@ -67,4 +67,3 @@ The parity task requires recurring rule lifecycle coverage for:
 5. API provides explicit rule lifecycle endpoints and stable response envelopes for UI rendering.
 6. Rule matching/evaluation is deterministic for a given timezone/date context and documented in contract tests.
 7. Deletion and archive behaviors are safe and auditable (state transitions and side effects are explicit).
-

@@ -4,7 +4,7 @@ Captured on **March 1, 2026 (America/New_York)** using Playwright CLI against lo
 
 ## Capture environment
 
-- App runtime: `npm run dev` (`http://localhost:3000` web, `http://localhost:3001` API)
+- App runtime: `pnpm dev` (`http://localhost:3000` web, `http://localhost:3001` API)
 - Account used: `dev@minance.local`
 - Playwright artifacts:
   - `output/playwright/parity/minance2-xdy.2/transactions-initial.snapshot.yml`
@@ -120,4 +120,3 @@ Currently missing or incomplete in Transactions UI/API:
 5. Review lifecycle is first-class: user can mark/unmark review state and filter by it deterministically.
 6. Filter model avoids stale parameter leakage across category-view mode changes.
 7. Delete operation includes confirmation or undo semantics to reduce destructive mistakes.
-

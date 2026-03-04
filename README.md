@@ -17,8 +17,8 @@ Minance Next is a privacy-first personal finance web app built from the PRD/impl
 ## Quick start
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
@@ -30,37 +30,37 @@ Development services:
 ## Test
 
 ```bash
-npm test
+pnpm test
 ```
 
-`npm test` now includes a frontend test-first guard:
+`pnpm test` now includes a frontend test-first guard:
 - If files under `apps/web/src/**/*.tsx` change, at least one frontend/e2e test file must change in the same changeset.
 - Accepted test paths: `apps/web/src/**/*.test.ts(x)` and `e2e/specs/**/*.spec.*`.
 
 ## E2E (Playwright)
 
 ```bash
-npm run e2e
+pnpm e2e
 ```
 
 Useful variants:
-- `npm run e2e:headed` for local debugging.
-- `npm run e2e:ci` for CI-style execution and HTML report output.
+- `pnpm e2e:headed` for local debugging.
+- `pnpm e2e:ci` for CI-style execution and HTML report output.
 - Seed deterministic financial fixture for parity flows:
-  - `E2E_SEED_DATASET=deterministic-financial npm run e2e`
+  - `E2E_SEED_DATASET=deterministic-financial pnpm e2e`
 
 ## Deterministic fixture seed
 
 Create a repeatable baseline dataset (accounts/categories/transactions/recurring/investments):
 
 ```bash
-node scripts/seed-deterministic-fixture.mjs --target services/api/data/store.json
+pnpm seed:fixture -- --target services/api/data/store.json
 ```
 
 Dry-run summary:
 
 ```bash
-node scripts/seed-deterministic-fixture.mjs --dry-run
+pnpm seed:fixture -- --dry-run
 ```
 
 Fixture source of truth:

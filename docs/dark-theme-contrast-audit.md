@@ -6,7 +6,7 @@
   - Desktop sidebar
   - Major tabs: Dashboard, Transactions, Accounts, Categories, Recurrings, Investments, Import, Settings
   - Assistant sidebar panel
-- Automated suite: `e2e/specs/dark-theme-token-contrast.spec.mjs`
+- Automated suite: `e2e/specs/readability-contrast.spec.ts`
 - Token focus: visible text nodes using `text-neutral-500` and `text-neutral-600`
 - Target threshold: standard text contrast `>= 4.5:1`
 
@@ -30,10 +30,9 @@
   - `apps/web/src/app/recurrings/page.tsx`
   - `apps/web/src/components/assistant/AssistantConversation.tsx`
 - Added guardrail regression suite:
-  - `e2e/specs/dark-theme-token-contrast.spec.mjs`
+  - `e2e/specs/readability-contrast.spec.ts`
   - Asserts no low-contrast `text-neutral-500/600` text usages across major tabs in dark theme.
 
 ## Validation
 
-- `npm run e2e -- e2e/specs/dark-theme-token-contrast.spec.mjs` -> pass
-- `npm run e2e -- e2e/specs/readability-contrast.spec.mjs` -> pass
+- `pnpm e2e -- e2e/specs/readability-contrast.spec.ts` -> pass

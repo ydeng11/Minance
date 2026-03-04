@@ -36,7 +36,7 @@ Use this checklist before exposing Minance Next outside a trusted local network.
 ## 5. Dependency and Patch Hygiene
 
 - [ ] Apply OS/package/runtime security updates monthly (or faster for critical CVEs).
-- [ ] Run dependency audits (`npm audit`, container image scans, base image updates).
+- [ ] Run dependency audits (`pnpm audit`, container image scans, base image updates).
 - [ ] Pin deployment to reviewed git tag/commit and keep rollback artifact available.
 
 ## 6. Network and Host Hardening

@@ -4,7 +4,7 @@ Captured on **March 1, 2026 (America/New_York)** using Playwright CLI against lo
 
 ## Capture environment
 
-- App runtime: `npm run dev` (`http://localhost:3000` web, `http://localhost:3001` API)
+- App runtime: `pnpm dev` (`http://localhost:3000` web, `http://localhost:3001` API)
 - Account used: `dev@minance.local`
 - Playwright artifacts:
   - `output/playwright/parity/minance2-xdy.3/accounts-page.snapshot.yml`
@@ -106,4 +106,3 @@ Legacy base path: `/1.0/minance/account`
   - supported institutions/account types (if provider flow remains in scope)
 6. UI exposes account detail/settings actions and reflects backend state transitions (connected/manual, active/archived, reconnect-needed).
 7. Accounts tab emits account-specific network traffic for core operations; parity capture artifacts can assert route usage.
-

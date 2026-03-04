@@ -173,9 +173,9 @@ If failure:
 
 Add these scripts before cutover:
 
-- `scripts/migrate-json-to-sqlite.mjs`
+- `scripts/migrate-json-to-sqlite.ts`
   - Reads JSON, writes SQLite via idempotent upserts, prints migration summary.
-- `scripts/validate-json-vs-sqlite.mjs`
+- `scripts/validate-json-vs-sqlite.ts`
   - Executes parity checks and exits non-zero on any mismatch.
 - `services/api/sql/schema.sql`
   - Canonical SQLite DDL and indexes.
