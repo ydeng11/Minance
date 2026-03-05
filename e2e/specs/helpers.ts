@@ -142,8 +142,9 @@ export async function gotoView(page, viewName) {
   }
 
   if (viewName === "investments") {
-    await page.getByTestId("nav-investments").click();
-    await expect(page.getByTestId("investments-page")).toBeVisible();
+    await page.goto("/investments");
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByTestId("dashboard-page")).toBeVisible();
     return;
   }
 

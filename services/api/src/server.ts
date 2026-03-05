@@ -52,6 +52,7 @@ import {
   getInvestmentPerformance,
   getInvestmentOverview
 } from "./investments.ts";
+// TODO(maybe-later): Keep investments API support for future re-enable while frontend hides this module.
 import {
   getOverview,
   getCategoryRollup,
@@ -920,6 +921,7 @@ async function handleApiRequest(req, res, url) {
       return;
     }
 
+    // TODO(maybe-later): These investments endpoints are intentionally kept active while UI entry points stay hidden.
     if (req.method === "GET" && pathname === "/v1/investments/overview") {
       const user = requireUser(req);
       const overview = getInvestmentOverview(user.id, {

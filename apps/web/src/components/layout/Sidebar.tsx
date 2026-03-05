@@ -8,7 +8,6 @@ import {
   WalletCards,
   Tags,
   Repeat2,
-  LineChart,
   UploadCloud,
   Settings
 } from "lucide-react";
@@ -20,7 +19,7 @@ const PRIMARY_NAV_ITEMS = [
   { name: "Accounts", href: "/accounts", icon: WalletCards, testId: "nav-accounts" },
   { name: "Categories", href: "/categories", icon: Tags, testId: "nav-categories" },
   { name: "Recurrings", href: "/recurrings", icon: Repeat2, testId: "nav-recurrings" },
-  { name: "Investments", href: "/investments", icon: LineChart, testId: "nav-investments" },
+  // TODO(maybe-later): Re-enable Investments navigation when product scope includes investments again.
   { name: "Import CSV", href: "/import", icon: UploadCloud, testId: "nav-import" },
   { name: "Settings", href: "/settings", icon: Settings, testId: "nav-settings" }
 ];

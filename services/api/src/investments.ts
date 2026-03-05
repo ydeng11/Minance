@@ -1,6 +1,7 @@
 import { loadStore, saveStore, addAuditEvent } from "./store.ts";
 import { parseCsv } from "./csv.ts";
 import { parseDate, toDecimal, normalizeText, createId, nowIso, stableHash } from "./utils.ts";
+// TODO(maybe-later): Backend investments domain is retained for potential product reactivation.
 
 const MAX_TEXT_LENGTH = 120;
 const MAX_SYMBOL_LENGTH = 32;
