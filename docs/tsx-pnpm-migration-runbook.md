@@ -33,10 +33,10 @@ pnpm test -- --run
 
 Use exceptions only when a JS-family file cannot be migrated immediately.
 
-1. Add a `bd` issue with rationale and timeline.
+1. Add a tracking issue with rationale and timeline.
 2. Add exact path to `config/guardrails/js-extension-allowlist.txt`.
 3. Keep scope minimal and remove the allowlist entry once migrated.
-4. Link follow-up issue with `discovered-from:<parent-issue>`.
+4. Link the follow-up issue to the parent migration issue.
 
 ## 4. Lockfile Policy
 
@@ -51,7 +51,7 @@ If a migration wave introduces instability:
 1. Revert only the wave-specific commit(s).
 2. Keep prior validated waves in place.
 3. Re-run `pnpm check` and affected package tests.
-4. Record blocker details in `bd` and create follow-up issues.
+4. Record blocker details in the issue tracker and create follow-up issues.
 
 ## 6. CI Expectations
 
