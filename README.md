@@ -14,6 +14,10 @@ Minance Next is a privacy-first personal finance web app built from the PRD/impl
 - Responsive web UI covering dashboard, imports, transactions, analytics, assistant, settings, and migration
 - Saved views/bookmarks
 
+## Under consideration
+- Banking provider support for direct bank connections (beyond manual CSV).
+- Expanded investments feature coverage.
+
 ## Quick start
 
 ```bash

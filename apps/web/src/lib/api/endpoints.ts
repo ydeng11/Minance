@@ -412,13 +412,9 @@ export const savedViewsApi = {
 export const migrationApi = {
   run: (
     request: ApiRequest,
-    body:
-      | {
-          sqlitePath: string;
-        }
-      | {
-          fileName: string;
-          sqliteBase64: string;
-        }
+    body: {
+      fileName: string;
+      sqliteBase64: string;
+    }
   ) => request<{ migration: MigrationRun }>("/v1/migrations/minance/sqlite", { method: "POST", body })
 };

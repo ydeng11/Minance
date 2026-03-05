@@ -102,10 +102,12 @@ export function createApiClient(context: ApiClientContext) {
       body: requestBody
     });
 
-    if (response.status === 401 && auth && retry && tokens?.refreshToken) {
-      const refreshed = await refreshAccessToken(tokens);
-      if (refreshed) {
-        return request<T>(path, { ...options, retry: false });
+    if (response.status === 401 && auth) {
+      if (retry && tokens?.refreshToken) {
+        const refreshed = await refreshAccessToken(tokens);
+        if (refreshed) {
+          return request<T>(path, { ...options, retry: false });
+        }
       }
       context.setTokens(null);
       context.onAuthFailure();

@@ -59,3 +59,36 @@ test("api client refreshes token on 401 and retries request", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("api client clears auth state on 401 when refresh token is missing", async () => {
+  let currentTokens: Tokens | null = {
+    accessToken: "access-stale",
+    accessExpiresAt: "2026-01-01T00:00:00.000Z"
+  } as unknown as Tokens;
+
+  const client = createApiClient({
+    getTokens: () => currentTokens,
+    setTokens: (next) => {
+      currentTokens = next;
+    },
+    onAuthFailure: () => {
+      currentTokens = null;
+    }
+  });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/v1/data")) {
+      return new Response(JSON.stringify({ error: { message: "Unauthorized" } }), { status: 401 });
+    }
+    return new Response(JSON.stringify({ error: { message: "Unknown route" } }), { status: 404 });
+  }) as typeof fetch;
+
+  try {
+    await assert.rejects(() => client.request("/v1/data"));
+    assert.equal(currentTokens, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

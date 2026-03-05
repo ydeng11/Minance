@@ -645,11 +645,7 @@ async function handleApiRequest(req, res, url) {
       const user = requireUser(req);
       const body = await parseJsonBody(req);
 
-      let sqlitePath = body.sqlitePath;
-      if (!sqlitePath && body.sqliteBase64) {
-        sqlitePath = writeUploadedSqliteFile(body.fileName, body.sqliteBase64);
-      }
-
+      const sqlitePath = writeUploadedSqliteFile(body.fileName, body.sqliteBase64);
       const run = await runLegacyMigration({ userId: user.id, sqlitePath });
       sendJson(res, 201, { migration: run });
       return;

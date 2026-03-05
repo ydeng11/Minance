@@ -10,15 +10,14 @@ import { SettingsMenu } from "@/components/settings/SettingsMenu";
 export default function MigrationSettingsPage() {
   const api = useApi();
 
-  const [migrationPath, setMigrationPath] = useState("");
   const [migrationFile, setMigrationFile] = useState<File | null>(null);
   const [migrationReport, setMigrationReport] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [message, setMessage] = useState("");
 
   async function runMigration() {
-    if (!migrationPath.trim() && !migrationFile) {
-      setMessage("Select a migration file or provide a server path.");
+    if (!migrationFile) {
+      setMessage("Select a migration SQLite file to upload.");
       return;
     }
 
@@ -26,17 +25,12 @@ export default function MigrationSettingsPage() {
     setMessage("");
 
     try {
-      if (migrationPath.trim()) {
-        const result = await api.migration.run({ sqlitePath: migrationPath.trim() });
-        setMigrationReport(JSON.stringify(result.migration.report, null, 2));
-      } else if (migrationFile) {
-        const sqliteBase64 = await readFileAsBase64(migrationFile);
-        const result = await api.migration.run({
-          fileName: migrationFile.name,
-          sqliteBase64
-        });
-        setMigrationReport(JSON.stringify(result.migration.report, null, 2));
-      }
+      const sqliteBase64 = await readFileAsBase64(migrationFile);
+      const result = await api.migration.run({
+        fileName: migrationFile.name,
+        sqliteBase64
+      });
+      setMigrationReport(JSON.stringify(result.migration.report, null, 2));
 
       setMessage("Migration completed.");
     } catch (error) {
@@ -75,17 +69,6 @@ export default function MigrationSettingsPage() {
               accept=".db,.sqlite,.sqlite3"
               onChange={(event) => setMigrationFile(event.target.files?.[0] || null)}
               data-testid="migration-file"
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-200"
-            />
-          </label>
-
-          <label className="grid gap-1 text-sm text-neutral-300">
-            or Server path
-            <input
-              value={migrationPath}
-              onChange={(event) => setMigrationPath(event.target.value)}
-              data-testid="migration-path"
-              placeholder="/absolute/path/to/data.db"
               className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-200"
             />
           </label>

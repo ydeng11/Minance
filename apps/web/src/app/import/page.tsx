@@ -14,6 +14,7 @@ import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import { importWorkflowReducer, initialImportWorkflowState } from "@/lib/import/reducer";
 import type {
+  Account,
   Category,
   ImportDetailsResponse,
   ImportJob,
@@ -27,6 +28,11 @@ import {
   getImportMappingTemplates,
   resolveTemplateMapping
 } from "@/lib/import/mappingTemplates";
+import {
+  collectRowIdsByAccountKey,
+  collectVisibleSelectedRowIds,
+  getReconciliationActionMode
+} from "./accountAssignment";
 import { money } from "@/lib/utils";
 
 export default function ImportPage() {
@@ -37,12 +43,17 @@ export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [mappingDraft, setMappingDraft] = useState<Record<string, string | null>>({});
   const [selectedTemplateId, setSelectedTemplateId] = useState("generic_statement");
   const [mappingTemplateNotice, setMappingTemplateNotice] = useState("");
   const [reconciliation, setReconciliation] = useState<ImportReconciliationResponse | null>(null);
   const [isReconciliationLoading, setIsReconciliationLoading] = useState(false);
   const [isResolvingReconciliation, setIsResolvingReconciliation] = useState(false);
+  const [isAssigningAccount, setIsAssigningAccount] = useState(false);
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+  const [batchAccountId, setBatchAccountId] = useState("");
+  const [reconciliationAssignments, setReconciliationAssignments] = useState<Record<string, string>>({});
   const [reconciliationNotice, setReconciliationNotice] = useState("");
   const [state, dispatch] = useReducer(importWorkflowReducer, initialImportWorkflowState);
   const mappingTemplates = useMemo(() => getImportMappingTemplates(), []);
@@ -50,6 +61,16 @@ export default function ImportPage() {
   const globalMessage = state.error || reconciliationNotice || state.notice || "";
 
   const currentImportId = state.currentImport?.id || null;
+  const accountOptions = useMemo(
+    () => accounts.slice().sort((left, right) => left.displayName.localeCompare(right.displayName)),
+    [accounts]
+  );
+  const visibleRows = state.processedRows?.items || [];
+  const selectedVisibleRowIds = useMemo(
+    () => collectVisibleSelectedRowIds(visibleRows, selectedRowIds),
+    [visibleRows, selectedRowIds]
+  );
+  const allVisibleRowsSelected = visibleRows.length > 0 && selectedVisibleRowIds.length === visibleRows.length;
 
   const commitSummaryJson = useMemo(() => {
     if (!state.commitResult) {
@@ -74,6 +95,11 @@ export default function ImportPage() {
   async function refreshCategories() {
     const data = await api.categories.list();
     setCategories(data.categories);
+  }
+
+  async function refreshAccounts() {
+    const data = await api.accounts.list();
+    setAccounts(data.accounts);
   }
 
   async function loadImportContext(importId: string, nextStatusFilter = statusFilter) {
@@ -112,7 +138,7 @@ export default function ImportPage() {
 
   async function initialize() {
     try {
-      await Promise.all([refreshImports(), refreshCategories()]);
+      await Promise.all([refreshImports(), refreshCategories(), refreshAccounts()]);
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Failed to load import data.";
       dispatch({ type: "error", message });
@@ -130,6 +156,28 @@ export default function ImportPage() {
       setMappingTemplateNotice("");
     }
   }, [state.details]);
+
+  useEffect(() => {
+    if (!state.processedRows?.items?.length) {
+      setSelectedRowIds(new Set());
+      return;
+    }
+
+    const visibleIds = new Set(state.processedRows.items.map((entry) => entry.rowId));
+    setSelectedRowIds((previous) => {
+      const next = new Set(Array.from(previous).filter((rowId) => visibleIds.has(rowId)));
+      if (next.size === previous.size && Array.from(next).every((rowId) => previous.has(rowId))) {
+        return previous;
+      }
+      return next;
+    });
+  }, [state.processedRows]);
+
+  useEffect(() => {
+    setSelectedRowIds(new Set());
+    setBatchAccountId("");
+    setReconciliationAssignments({});
+  }, [currentImportId]);
 
   function applyMappingTemplate() {
     if (!state.details) {
@@ -231,6 +279,118 @@ export default function ImportPage() {
     }
   }
 
+  function selectVisibleRows(nextSelected: boolean) {
+    setSelectedRowIds((previous) => {
+      const next = new Set(previous);
+      for (const row of visibleRows) {
+        if (nextSelected) {
+          next.add(row.rowId);
+        } else {
+          next.delete(row.rowId);
+        }
+      }
+      return next;
+    });
+  }
+
+  function selectSingleRow(rowId: string, nextSelected: boolean) {
+    setSelectedRowIds((previous) => {
+      const next = new Set(previous);
+      if (nextSelected) {
+        next.add(rowId);
+      } else {
+        next.delete(rowId);
+      }
+      return next;
+    });
+  }
+
+  async function listAllProcessedRows(importId: string): Promise<ProcessedRow[]> {
+    const rows: ProcessedRow[] = [];
+    let offset = 0;
+    const pageSize = 500;
+
+    while (true) {
+      const response = await api.imports.listProcessedRows(importId, {
+        limit: pageSize,
+        offset
+      });
+      rows.push(...response.items);
+      offset += response.items.length;
+      if (response.items.length === 0 || rows.length >= response.total) {
+        break;
+      }
+    }
+
+    return rows;
+  }
+
+  async function applyAccountToRows(rowIds: string[], accountId: string, successPrefix: string) {
+    if (!currentImportId || !rowIds.length) {
+      return;
+    }
+
+    const account = accountOptions.find((entry) => entry.id === accountId);
+    if (!account) {
+      dispatch({ type: "error", message: "Select a valid account before assigning." });
+      return;
+    }
+
+    setIsAssigningAccount(true);
+    try {
+      await Promise.all(
+        rowIds.map((rowId) => api.imports.updateProcessedRow(currentImportId, rowId, { account_name: account.displayName }))
+      );
+      await refreshProcessedRows(currentImportId);
+      setReconciliationNotice(`${successPrefix}: ${account.displayName} (${rowIds.length} row${rowIds.length === 1 ? "" : "s"}).`);
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Failed to assign account to rows.";
+      dispatch({ type: "error", message });
+    } finally {
+      setIsAssigningAccount(false);
+    }
+  }
+
+  async function assignAccountToSelectedRows() {
+    const rowIds = collectVisibleSelectedRowIds(visibleRows, selectedRowIds);
+    if (!rowIds.length || !batchAccountId) {
+      return;
+    }
+    await applyAccountToRows(rowIds, batchAccountId, "Assigned selected rows");
+    setSelectedRowIds(new Set());
+  }
+
+  async function assignReconciliationAccount(entry: ImportReconciliationAccount) {
+    if (!currentImportId) {
+      return;
+    }
+
+    const assignedAccountId = reconciliationAssignments[entry.accountKey];
+    if (!assignedAccountId) {
+      dispatch({ type: "error", message: `Select an account to map ${entry.accountName}.` });
+      return;
+    }
+
+    try {
+      const allRows = await listAllProcessedRows(currentImportId);
+      const rowIds = collectRowIdsByAccountKey(allRows, entry.accountKey);
+      if (!rowIds.length) {
+        dispatch({ type: "error", message: `No processed rows found for ${entry.accountName}.` });
+        return;
+      }
+
+      await applyAccountToRows(rowIds, assignedAccountId, `Mapped ${entry.accountName}`);
+      setReconciliationAssignments((previous) => {
+        const next = { ...previous };
+        delete next[entry.accountKey];
+        return next;
+      });
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Failed to map reconciliation account.";
+      dispatch({ type: "error", message });
+    }
+  }
+
   async function reprocessRows() {
     if (!currentImportId) {
       return;
@@ -293,7 +453,7 @@ export default function ImportPage() {
     if (!data || !data.items.length) {
       return (
         <tr>
-          <td colSpan={11} className="px-3 py-6 text-center text-xs text-neutral-400">
+          <td colSpan={12} className="px-3 py-6 text-center text-xs text-neutral-400">
             No rows found for the selected filter.
           </td>
         </tr>
@@ -302,6 +462,15 @@ export default function ImportPage() {
 
     return data.items.map((row) => (
       <tr key={row.rowId} className="border-b border-neutral-900 align-top">
+        <td className="px-2 py-2">
+          <input
+            type="checkbox"
+            data-testid={`processed-select-${row.rowId}`}
+            checked={selectedRowIds.has(row.rowId)}
+            aria-label={`Select row ${row.rowId}`}
+            onChange={(event) => selectSingleRow(row.rowId, event.target.checked)}
+          />
+        </td>
         <td className="px-2 py-2">
           <input
             type="checkbox"
@@ -657,6 +826,45 @@ export default function ImportPage() {
                 : "No processed rows loaded yet."}
             </p>
 
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-900 bg-neutral-900/50 px-3 py-2">
+              <button
+                type="button"
+                onClick={() => selectVisibleRows(!allVisibleRowsSelected)}
+                disabled={!visibleRows.length}
+                data-testid="processed-select-visible"
+                className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {allVisibleRowsSelected ? "Clear visible" : "Select visible"}
+              </button>
+              <label htmlFor="processed-batch-account" className="text-xs text-neutral-300">
+                Assign account:
+              </label>
+              <select
+                id="processed-batch-account"
+                value={batchAccountId}
+                onChange={(event) => setBatchAccountId(event.target.value)}
+                data-testid="processed-batch-account"
+                className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+              >
+                <option value="">Select account</option>
+                {accountOptions.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.displayName}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => void assignAccountToSelectedRows()}
+                disabled={isAssigningAccount || !batchAccountId || selectedVisibleRowIds.length === 0}
+                data-testid="processed-assign-account"
+                className="inline-flex items-center gap-1 rounded-lg border border-emerald-600/70 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isAssigningAccount ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Assign to {selectedVisibleRowIds.length} selected
+              </button>
+            </div>
+
             <div
               className="mt-3 overflow-auto"
               tabIndex={0}
@@ -666,6 +874,14 @@ export default function ImportPage() {
                 <caption className="sr-only">Processed row editor table</caption>
                 <thead>
                   <tr className="border-b border-neutral-900 text-left text-neutral-300">
+                    <th scope="col" className="px-2 py-2">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleRowsSelected}
+                        aria-label="Select visible rows"
+                        onChange={(event) => selectVisibleRows(event.target.checked)}
+                      />
+                    </th>
                     <th scope="col" className="px-2 py-2">Include</th>
                     <th scope="col" className="px-2 py-2">Status</th>
                     <th scope="col" className="px-2 py-2">Date</th>
@@ -729,36 +945,70 @@ export default function ImportPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {reconciliation.accounts.map((entry) => (
-                        <tr key={entry.accountKey} className="border-b border-neutral-900 align-top">
-                          <td className="px-2 py-2 text-neutral-200">{entry.accountName}</td>
-                          <td className="px-2 py-2 text-neutral-300">{entry.status}</td>
-                          <td className="px-2 py-2 text-neutral-300">{entry.includedValidRows}/{entry.totalRows}</td>
-                          <td className="px-2 py-2 text-neutral-200">{money(entry.importedNet)}</td>
-                          <td className="px-2 py-2 text-neutral-300">{money(entry.existingWindowNet)}</td>
-                          <td className="px-2 py-2 text-neutral-200">{money(entry.discrepancyAmount)}</td>
-                          <td className="px-2 py-2 text-neutral-400">
-                            {entry.recommendations.length > 0
-                              ? entry.recommendations.map((recommendation) => recommendation.message).join(" ")
-                              : "None"}
-                          </td>
-                          <td className="px-2 py-2">
-                            <button
-                              type="button"
-                              onClick={() => void resolveReconciliationDiscrepancy(entry)}
-                              disabled={
-                                isResolvingReconciliation
-                                || !entry.accountId
-                                || Math.abs(entry.discrepancyAmount) < 0.01
-                              }
-                              data-testid={`reconcile-adjust-${entry.accountKey}`}
-                              className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {isResolvingReconciliation ? "Applying..." : "Create Adjustment"}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {reconciliation.accounts.map((entry) => {
+                        const actionMode = getReconciliationActionMode(entry);
+                        const selectedAccountId = reconciliationAssignments[entry.accountKey] || "";
+                        return (
+                          <tr key={entry.accountKey} className="border-b border-neutral-900 align-top">
+                            <td className="px-2 py-2 text-neutral-200">{entry.accountName}</td>
+                            <td className="px-2 py-2 text-neutral-300">{entry.status}</td>
+                            <td className="px-2 py-2 text-neutral-300">{entry.includedValidRows}/{entry.totalRows}</td>
+                            <td className="px-2 py-2 text-neutral-200">{money(entry.importedNet)}</td>
+                            <td className="px-2 py-2 text-neutral-300">{money(entry.existingWindowNet)}</td>
+                            <td className="px-2 py-2 text-neutral-200">{money(entry.discrepancyAmount)}</td>
+                            <td className="px-2 py-2 text-neutral-400">
+                              {entry.recommendations.length > 0
+                                ? entry.recommendations.map((recommendation) => recommendation.message).join(" ")
+                                : "None"}
+                            </td>
+                            <td className="px-2 py-2">
+                              {actionMode === "assign_account" ? (
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <select
+                                    value={selectedAccountId}
+                                    onChange={(event) =>
+                                      setReconciliationAssignments((previous) => ({
+                                        ...previous,
+                                        [entry.accountKey]: event.target.value
+                                      }))
+                                    }
+                                    data-testid={`reconcile-account-select-${entry.accountKey}`}
+                                    className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+                                  >
+                                    <option value="">Select account</option>
+                                    {accountOptions.map((account) => (
+                                      <option key={account.id} value={account.id}>
+                                        {account.displayName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    type="button"
+                                    onClick={() => void assignReconciliationAccount(entry)}
+                                    disabled={isAssigningAccount || !selectedAccountId}
+                                    data-testid={`reconcile-assign-${entry.accountKey}`}
+                                    className="rounded-lg border border-amber-600/70 bg-amber-500/10 px-2 py-1 text-xs text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                    {isAssigningAccount ? "Assigning..." : "Assign account"}
+                                  </button>
+                                </div>
+                              ) : actionMode === "create_adjustment" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => void resolveReconciliationDiscrepancy(entry)}
+                                  disabled={isResolvingReconciliation || isAssigningAccount || Math.abs(entry.discrepancyAmount) < 0.01}
+                                  data-testid={`reconcile-adjust-${entry.accountKey}`}
+                                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  {isResolvingReconciliation ? "Applying..." : "Create Adjustment"}
+                                </button>
+                              ) : (
+                                <span className="text-[11px] text-neutral-500">No action</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

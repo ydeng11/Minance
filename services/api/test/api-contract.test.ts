@@ -1289,4 +1289,31 @@ test("api parity contract suite for categories/transactions/settings and missing
     });
     assert.equal(response.payload?.error?.message, "Endpoint not found: GET /v1/settings");
   });
+
+  await t.test("migration endpoint only supports manual sqlite upload payloads", async () => {
+    const sqlitePathPayload = await apiRequest(context, "POST", "/v1/migrations/minance/sqlite", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        sqlitePath: "/tmp/legacy-data.db"
+      }
+    });
+    assert.equal(sqlitePathPayload.payload?.error?.message, "sqliteBase64 is required");
+
+    const backupPath = path.resolve(process.cwd(), "backup_2026-02-26_00-00-03.db");
+    const backupBase64 = fs.readFileSync(backupPath).toString("base64");
+    const backupUploadPayload = await apiRequest(context, "POST", "/v1/migrations/minance/sqlite", {
+      token: accessToken,
+      body: {
+        fileName: path.basename(backupPath),
+        sqliteBase64: backupBase64
+      }
+    });
+    if (!backupBase64) {
+      assert.equal(backupUploadPayload.status, 400);
+      assert.equal(backupUploadPayload.payload?.error?.message, "sqliteBase64 is required");
+      return;
+    }
+    assert.notEqual(backupUploadPayload.payload?.error?.message, "sqlitePath is required");
+  });
 });
