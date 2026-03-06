@@ -207,21 +207,6 @@ export async function gotoAiSettings(page) {
   await expect(page.getByTestId("ai-settings-page")).toBeVisible();
 }
 
-export async function gotoMigrationSettings(page) {
-  const settingsMenuMigration = page.getByTestId("settings-menu-migration");
-  if (await settingsMenuMigration.count()) {
-    await settingsMenuMigration.click();
-  } else {
-    const secondaryMigrationLink = page.getByTestId("secnav-migration");
-    if (await secondaryMigrationLink.count()) {
-      await secondaryMigrationLink.click();
-    } else {
-      await page.goto("/settings/migration");
-    }
-  }
-  await expect(page.getByTestId("migration-settings-page")).toBeVisible();
-}
-
 export async function clearAllCredentials(page) {
   await gotoAiSettings(page);
 

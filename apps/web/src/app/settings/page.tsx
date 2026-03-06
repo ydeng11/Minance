@@ -268,15 +268,6 @@ export default function SettingsPage() {
             Open CSV Import
           </Link>
 
-          <Link
-            href="/settings/migration"
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
-            data-testid="settings-migration-open"
-          >
-            <ArrowRight className="h-4 w-4 text-emerald-400" />
-            Legacy Migration
-          </Link>
-
           <button
             type="button"
             onClick={() => void exportDataSnapshot()}

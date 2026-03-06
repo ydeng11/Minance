@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { loginWithSeedAccount } from "./helpers.ts";
 
-test("@core AI settings and migration are available in the settings menu", async ({ page }) => {
+test("@core AI settings are available in the settings menu", async ({ page }) => {
   await loginWithSeedAccount(page);
 
   const primaryNav = page.getByTestId("primary-nav");
@@ -17,8 +17,7 @@ test("@core AI settings and migration are available in the settings menu", async
   await settingsMenu.getByTestId("settings-menu-ai").click();
   await expect(page.getByTestId("ai-settings-page")).toBeVisible();
 
-  await page.getByTestId("settings-menu-migration").click();
-  await expect(page.getByTestId("migration-settings-page")).toBeVisible();
+  await expect(page.getByTestId("settings-menu-migration")).toHaveCount(0);
 
   const helpMenuToggle = page.getByTestId("help-menu-toggle");
   await expect(helpMenuToggle).toBeVisible();

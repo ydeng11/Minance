@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_FILE, STORE_BACKEND } from "./config.ts";
-import { DEFAULT_CATEGORIES } from "../../../packages/domain/src/constants.ts";
 import { nowIso, createId } from "./utils.ts";
 import {
   readStoreCollectionsFromSqlite,
@@ -32,12 +31,32 @@ const defaultStore = {
 };
 
 let cache = null;
+let cacheFileMtimeMs = null;
 
 function ensureDataFile() {
   fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
   if (!fs.existsSync(DATA_FILE)) {
     fs.writeFileSync(DATA_FILE, JSON.stringify(defaultStore, null, 2));
   }
+}
+
+function getDataFileMtimeMs() {
+  return fs.statSync(DATA_FILE).mtimeMs;
+}
+
+function loadJsonStoreIntoCache() {
+  ensureDataFile();
+  const raw = fs.readFileSync(DATA_FILE, "utf8");
+  cache = normalizeStore(JSON.parse(raw));
+  cacheFileMtimeMs = getDataFileMtimeMs();
+  return cache;
+}
+
+function writeJsonStoreFromCache() {
+  const tmpPath = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(cache, null, 2));
+  fs.renameSync(tmpPath, DATA_FILE);
+  cacheFileMtimeMs = getDataFileMtimeMs();
 }
 
 function normalizeStore(store) {
@@ -60,10 +79,27 @@ export function loadStore() {
     return cache;
   }
 
+  return loadJsonStoreIntoCache();
+}
+
+export function refreshStoreCacheIfChanged() {
+  if (STORE_BACKEND !== "json") {
+    return false;
+  }
+
+  if (!cache) {
+    loadJsonStoreIntoCache();
+    return true;
+  }
+
   ensureDataFile();
-  const raw = fs.readFileSync(DATA_FILE, "utf8");
-  cache = normalizeStore(JSON.parse(raw));
-  return cache;
+  const currentMtimeMs = getDataFileMtimeMs();
+  if (cacheFileMtimeMs != null && currentMtimeMs === cacheFileMtimeMs) {
+    return false;
+  }
+
+  loadJsonStoreIntoCache();
+  return true;
 }
 
 export function saveStore(nextStore = null) {
@@ -80,7 +116,7 @@ export function saveStore(nextStore = null) {
     return;
   }
 
-  fs.writeFileSync(DATA_FILE, JSON.stringify(cache, null, 2));
+  writeJsonStoreFromCache();
 }
 
 export function withStore(mutator) {
@@ -93,29 +129,6 @@ export function withStore(mutator) {
 export function resetStoreForTests(nextStore = null) {
   cache = normalizeStore(nextStore || defaultStore);
   saveStore(cache);
-}
-
-export function ensureDefaultCategoriesForUser(userId) {
-  return withStore((store) => {
-    const existing = store.categories.filter((entry) => entry.userId === userId);
-    if (existing.length > 0) {
-      return existing;
-    }
-
-    const createdAt = nowIso();
-    const seeded = DEFAULT_CATEGORIES.map((name) => ({
-      id: createId("cat"),
-      userId,
-      name,
-      isSystem: true,
-      createdAt,
-      updatedAt: createdAt
-    }));
-
-    store.categories.push(...seeded);
-
-    return seeded;
-  });
 }
 
 export function addAuditEvent(userId, action, details = {}) {

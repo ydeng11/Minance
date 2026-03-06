@@ -59,12 +59,6 @@ export function getHelpResources(): HelpResources {
       href: DEFAULT_HELP_CENTER_PATH
     },
     {
-      id: "migration-runbook",
-      label: "Migration Runbook",
-      description: "Legacy SQLite import flow and reconciliation guidance.",
-      href: "/settings/migration"
-    },
-    {
       id: "csv-import-guide",
       label: "CSV Import",
       description: "Open import tools for mapping, review, and commit.",

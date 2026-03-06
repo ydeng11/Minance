@@ -155,6 +155,30 @@ async function apiRequest(context, method, pathName, { token = null, body, expec
   return { status: response.status, payload };
 }
 
+async function ensureCategoryExists(context, token, name, coarseKey = "neutral", type = "expense") {
+  const listed = await apiRequest(context, "GET", "/v1/categories", {
+    token,
+    expectedStatus: 200
+  });
+  const existing = (listed.payload?.categories || []).find(
+    (entry) => String(entry?.name || "").toLowerCase() === String(name || "").toLowerCase()
+  );
+  if (existing) {
+    return existing;
+  }
+
+  const created = await apiRequest(context, "POST", "/v1/categories", {
+    token,
+    expectedStatus: 201,
+    body: {
+      name,
+      coarseKey,
+      type
+    }
+  });
+  return created.payload?.category || null;
+}
+
 test("api parity contract suite for categories/transactions/settings and missing domains", async (t) => {
   const context = await startApiServer(t);
 
@@ -331,6 +355,9 @@ test("api parity contract suite for categories/transactions/settings and missing
   });
 
   await t.test("transactions endpoints support captured query patterns and CRUD lifecycle", async () => {
+    await ensureCategoryExists(context, accessToken, "Transfer", "neutral", "transfer");
+    await ensureCategoryExists(context, accessToken, "Income", "neutral", "income");
+
     const created = await apiRequest(context, "POST", "/v1/transactions", {
       token: accessToken,
       expectedStatus: 201,
@@ -432,6 +459,8 @@ test("api parity contract suite for categories/transactions/settings and missing
       accountFilterMatch.payload?.items?.some((entry) => entry.id === transactionId),
       true
     );
+
+    await ensureCategoryExists(context, accessToken, "Dining", "extra", "expense");
 
     const bulkOne = await apiRequest(context, "POST", "/v1/transactions", {
       token: accessToken,
@@ -1076,6 +1105,8 @@ test("api parity contract suite for categories/transactions/settings and missing
     const referencedAccountId = referencedAccount.payload?.account?.id;
     assert.equal(typeof referencedAccountId, "string");
 
+    await ensureCategoryExists(context, accessToken, "Dining", "extra", "expense");
+
     await apiRequest(context, "POST", "/v1/transactions", {
       token: accessToken,
       expectedStatus: 201,
@@ -1205,6 +1236,8 @@ test("api parity contract suite for categories/transactions/settings and missing
   });
 
   await t.test("recurrings endpoints expose rule lifecycle and deterministic evaluation contracts", async () => {
+    await ensureCategoryExists(context, accessToken, "Housing", "essential", "expense");
+
     const createdRecurring = await apiRequest(context, "POST", "/v1/recurrings", {
       token: accessToken,
       expectedStatus: 201,
@@ -1290,30 +1323,15 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(response.payload?.error?.message, "Endpoint not found: GET /v1/settings");
   });
 
-  await t.test("migration endpoint only supports manual sqlite upload payloads", async () => {
-    const sqlitePathPayload = await apiRequest(context, "POST", "/v1/migrations/minance/sqlite", {
+  await t.test("legacy migration endpoint is not exposed", async () => {
+    const response = await apiRequest(context, "POST", "/v1/migrations/minance/sqlite", {
       token: accessToken,
-      expectedStatus: 400,
+      expectedStatus: 404,
       body: {
-        sqlitePath: "/tmp/legacy-data.db"
+        fileName: "legacy.db",
+        sqliteBase64: "abcd"
       }
     });
-    assert.equal(sqlitePathPayload.payload?.error?.message, "sqliteBase64 is required");
-
-    const backupPath = path.resolve(process.cwd(), "backup_2026-02-26_00-00-03.db");
-    const backupBase64 = fs.readFileSync(backupPath).toString("base64");
-    const backupUploadPayload = await apiRequest(context, "POST", "/v1/migrations/minance/sqlite", {
-      token: accessToken,
-      body: {
-        fileName: path.basename(backupPath),
-        sqliteBase64: backupBase64
-      }
-    });
-    if (!backupBase64) {
-      assert.equal(backupUploadPayload.status, 400);
-      assert.equal(backupUploadPayload.payload?.error?.message, "sqliteBase64 is required");
-      return;
-    }
-    assert.notEqual(backupUploadPayload.payload?.error?.message, "sqlitePath is required");
+    assert.equal(response.payload?.error?.message, "Endpoint not found: POST /v1/migrations/minance/sqlite");
   });
 });

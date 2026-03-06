@@ -15,6 +15,7 @@
     "migrate:sqlite": "tsx scripts/migrate-json-to-sqlite.ts",
     "validate:sqlite": "tsx scripts/validate-json-vs-sqlite.ts",
     "seed:fixture": "tsx scripts/seed-deterministic-fixture.ts",
+    "seed:legacy-api": "tsx scripts/load-legacy-api.ts",
     "guardrails": "tsx scripts/run-guardrails.ts",
     "test:test-first": "tsx --test scripts/check-frontend-test-first.test.ts && tsx scripts/check-frontend-test-first.ts",
     "test": "pnpm test:test-first && tsx --test services/api/test/**/*.test.ts && pnpm --filter @minance/web test",

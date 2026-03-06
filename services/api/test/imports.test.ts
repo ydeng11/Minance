@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { loadStore, resetStoreForTests, saveStore, ensureDefaultCategoriesForUser } from "../src/store.ts";
+import { loadStore, resetStoreForTests, saveStore } from "../src/store.ts";
 import {
   createImportJob,
   listImportProcessedRows,
@@ -34,7 +34,6 @@ const EMPTY_STORE = {
 
 test("processed import rows can be edited, reprocessed, and committed", async () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
-  ensureDefaultCategoriesForUser("user_1");
 
   const csvText = [
     "date,merchant,description,amount,account",
@@ -79,9 +78,37 @@ test("processed import rows can be edited, reprocessed, and committed", async ()
   assert.equal(Boolean(committed.dateBounds.end), true);
 });
 
+test("csv import keeps debit expense amounts positive while preserving debit direction", async () => {
+  resetStoreForTests(structuredClone(EMPTY_STORE));
+
+  const csvText = [
+    "date,merchant,description,amount,account",
+    "2025-02-01,COSTCO WHSE #00,General PayPal Debit Card Transaction,-80.30,Checking",
+    "2025-02-02,ENSON MARKET,General PayPal Debit Card Transaction,-25.70,Checking"
+  ].join("\n");
+
+  const created = await createImportJob({
+    userId: "user_1",
+    fileName: "paypal-like.csv",
+    csvText
+  });
+  const committed = await commitImport("user_1", created.importJob.id);
+  assert.equal(committed.summary.imported, 2);
+
+  const store = loadStore();
+  const imported = store.transactions
+    .filter((entry) => entry.user_id === "user_1")
+    .filter((entry) => entry.description === "General PayPal Debit Card Transaction");
+
+  assert.equal(imported.length, 2);
+  imported.forEach((entry) => {
+    assert.equal(entry.direction, "debit");
+    assert.equal(entry.amount > 0, true);
+  });
+});
+
 test("ambiguous sign files use one LLM fallback attempt and continue with review flags", async () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
-  ensureDefaultCategoriesForUser("user_1");
 
   const csvText = [
     "date,merchant,description,amount,account",
@@ -114,7 +141,6 @@ test("ambiguous sign files use one LLM fallback attempt and continue with review
 
 test("ofx/qfx input is normalized through the canonical import pipeline", async () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
-  ensureDefaultCategoriesForUser("user_1");
 
   const ofxText = [
     "OFXHEADER:100",
@@ -163,7 +189,6 @@ test("ofx/qfx input is normalized through the canonical import pipeline", async 
 
 test("reconciliation compares staged import rows and applies safe manual adjustments", async () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
-  ensureDefaultCategoriesForUser("user_1");
 
   const account = createAccount("user_1", {
     displayName: "Checking",

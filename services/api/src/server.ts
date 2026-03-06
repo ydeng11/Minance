@@ -72,8 +72,7 @@ import {
   deleteCategory
 } from "./categories.ts";
 import { runAssistantQuery, getAssistantQuery } from "./assistant.ts";
-import { writeUploadedSqliteFile, runLegacyMigration, getMigrationReport } from "./migration.ts";
-import { loadStore, saveStore, addAuditEvent } from "./store.ts";
+import { loadStore, saveStore, addAuditEvent, refreshStoreCacheIfChanged } from "./store.ts";
 import { getTrainingStatus } from "./training.ts";
 import {
   listSavedViews,
@@ -291,6 +290,7 @@ function recordMutationGuardResult(userId, guard, statusCode, responseBody = nul
 
 async function handleApiRequest(req, res, url) {
   const { pathname, searchParams } = url;
+  refreshStoreCacheIfChanged();
 
   try {
     if (req.method === "POST" && pathname === "/v1/auth/signup") {
@@ -638,24 +638,6 @@ async function handleApiRequest(req, res, url) {
       const result = resolveImportReconciliation(user.id, reconciliationResolveParams.id, body);
       recordMutationGuardResult(user.id, guard, 201, result);
       sendJson(res, 201, result);
-      return;
-    }
-
-    if (req.method === "POST" && pathname === "/v1/migrations/minance/sqlite") {
-      const user = requireUser(req);
-      const body = await parseJsonBody(req);
-
-      const sqlitePath = writeUploadedSqliteFile(body.fileName, body.sqliteBase64);
-      const run = await runLegacyMigration({ userId: user.id, sqlitePath });
-      sendJson(res, 201, { migration: run });
-      return;
-    }
-
-    const migrationReportParams = matchPath(pathname, "/v1/migrations/:id/report");
-    if (req.method === "GET" && migrationReportParams) {
-      const user = requireUser(req);
-      const run = getMigrationReport(user.id, migrationReportParams.id);
-      sendJson(res, 200, { report: run.report, migration: run });
       return;
     }
 

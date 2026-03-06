@@ -18,6 +18,25 @@ function resolveTxnCategory(resolveCategory, txn) {
   });
 }
 
+function normalizeTransactionForAnalytics(txn) {
+  const rawAmount = Number(txn?.amount ?? 0);
+  const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
+  const rawDirection = String(txn?.direction || "").trim().toLowerCase();
+
+  let direction = "debit";
+  if (rawDirection === "credit" || rawDirection === "debit") {
+    direction = rawDirection;
+  } else if (rawAmount > 0) {
+    direction = "credit";
+  }
+
+  return {
+    ...txn,
+    amount,
+    direction
+  };
+}
+
 export function filterUserTransactions(userId, filters = {}) {
   const store = loadStore();
   const { start, end } = computeDateRange(filters.range, filters.start, filters.end);
@@ -25,33 +44,38 @@ export function filterUserTransactions(userId, filters = {}) {
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
 
-  return store.transactions.filter((txn) => {
+  const filtered = [];
+  for (const txn of store.transactions) {
     if (txn.user_id !== userId) {
-      return false;
+      continue;
     }
     if (txn.deleted_at) {
-      return false;
+      continue;
     }
     if (!inDateRange(txn.transaction_date, start, end)) {
-      return false;
+      continue;
     }
+
+    const normalizedTxn = normalizeTransactionForAnalytics(txn);
     if (filters.category) {
-      const resolved = resolveTxnCategory(resolveCategory, txn);
+      const resolved = resolveTxnCategory(resolveCategory, normalizedTxn);
       const categoryToMatch = categoryView === CATEGORY_VIEW_COARSE
         ? resolved.categoryCoarse
         : resolved.categoryGranular;
       if (categoryToMatch !== filters.category) {
-        return false;
+        continue;
       }
     }
-    if (filters.merchant && txn.merchant_normalized !== filters.merchant) {
-      return false;
+    if (filters.merchant && normalizedTxn.merchant_normalized !== filters.merchant) {
+      continue;
     }
-    if (filters.direction && txn.direction !== filters.direction) {
-      return false;
+    if (filters.direction && normalizedTxn.direction !== filters.direction) {
+      continue;
     }
-    return true;
-  });
+    filtered.push(normalizedTxn);
+  }
+
+  return filtered;
 }
 
 export function getUserDataBounds(userId) {
@@ -96,7 +120,11 @@ export function buildAnalyticsMeta(userId, filters = {}) {
 }
 
 function toAmount(txn) {
-  return Number(txn.amount || 0);
+  const amount = Number(txn?.amount || 0);
+  if (!Number.isFinite(amount)) {
+    return 0;
+  }
+  return Math.abs(amount);
 }
 
 function buildCategoryRollupFromTransactions(txns, resolveCategory, categoryView) {

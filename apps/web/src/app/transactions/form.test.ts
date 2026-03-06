@@ -79,6 +79,12 @@ test("buildDraftFromTransaction maps existing transaction into editable draft", 
   assert.equal(draft.transaction_type, "expense");
 });
 
+test("buildDraftFromTransaction normalizes negative persisted amount into positive edit value", () => {
+  const draft = buildDraftFromTransaction(createTransaction({ amount: -24.5, direction: "debit" }));
+  assert.equal(draft.amount, "24.5");
+  assert.equal(draft.direction, "debit");
+});
+
 test("parseTagListInput normalizes, deduplicates, and lowercases tags", () => {
   const parsed = parseTagListInput(" Monthly, groceries,monthly , groceries ");
   assert.equal(parsed.error, undefined);

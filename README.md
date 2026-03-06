@@ -10,8 +10,8 @@ Minance Next is a privacy-first personal finance web app built from the PRD/impl
 - Multi-stage categorization (rules -> merchant memory -> model fallback) with confidence thresholds
 - Dashboard + analytics APIs (overview, categories, merchants, heatmap, anomalies)
 - Conversational assistant endpoint with explainable output and drill-down filters
-- Legacy Minance SQLite migration endpoint and reconciliation report
-- Responsive web UI covering dashboard, imports, transactions, analytics, assistant, settings, and migration
+- Legacy Minance API loader script for dev database seeding
+- Responsive web UI covering dashboard, imports, transactions, analytics, assistant, and settings
 - Saved views/bookmarks
 
 ## Under consideration
@@ -65,6 +65,14 @@ Dry-run summary:
 
 ```bash
 pnpm seed:fixture -- --dry-run
+```
+
+## Legacy API seed (dev)
+
+Load accounts + transactions from legacy Minance API into the current dev database (mapped category as tier-2, inferred tier-1 group):
+
+```bash
+pnpm seed:legacy-api -- --base-url http://10.0.0.20:18080 --start 2024-01-01 --end 2026-12-31
 ```
 
 Fixture source of truth:

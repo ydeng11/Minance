@@ -10,7 +10,6 @@ import {
   categoriesApi,
   importsApi,
   investmentsApi,
-  migrationApi,
   recurringsApi,
   savedViewsApi,
   systemApi,
@@ -107,9 +106,6 @@ export function useApi() {
         list: () => savedViewsApi.list(request),
         create: savedViewsApi.create.bind(null, request),
         remove: savedViewsApi.remove.bind(null, request)
-      },
-      migration: {
-        run: migrationApi.run.bind(null, request)
       }
     }),
     [request]

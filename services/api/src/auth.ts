@@ -1,5 +1,5 @@
 import { TOKEN_TTL_MS, REFRESH_TTL_MS } from "./config.ts";
-import { loadStore, saveStore, ensureDefaultCategoriesForUser, addAuditEvent } from "./store.ts";
+import { loadStore, saveStore, addAuditEvent } from "./store.ts";
 import { ensureDevOpenRouterCredential } from "./ai.ts";
 import {
   nowIso,
@@ -98,7 +98,6 @@ export function ensureDevTestAccount() {
   store.users.push(user);
   saveStore(store);
 
-  ensureDefaultCategoriesForUser(user.id);
   seedDevOpenRouterDefaults(user.id);
   addAuditEvent(user.id, "user.seeded_dev_test", { email });
 
@@ -142,7 +141,6 @@ export function signup(email, password) {
   pruneSessions(store);
   saveStore(store);
 
-  ensureDefaultCategoriesForUser(user.id);
   seedDevOpenRouterDefaults(user.id);
   addAuditEvent(user.id, "user.signup", { email: normalizedEmail });
 

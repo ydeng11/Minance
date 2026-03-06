@@ -20,7 +20,8 @@ test("createDefaultTransactionsFilterState returns expected defaults", () => {
     categoryView: "granular",
     review: "all",
     transactionType: "all",
-    tag: ""
+    tag: "",
+    page: 1
   });
 });
 
@@ -41,8 +42,15 @@ test("parseTransactionsFilterState reads supported query tokens", () => {
     categoryView: "coarse",
     review: "needs_review",
     transactionType: "transfer",
-    tag: "monthly"
+    tag: "monthly",
+    page: 1
   });
+});
+
+test("parseTransactionsFilterState reads and normalizes pagination page number", () => {
+  const parsed = parseTransactionsFilterState(new URLSearchParams("query=Coffee&page=3"));
+  assert.equal(parsed.query, "Coffee");
+  assert.equal(parsed.page, 3);
 });
 
 test("parseTransactionsFilterState falls back for invalid values", () => {
@@ -58,6 +66,7 @@ test("parseTransactionsFilterState falls back for invalid values", () => {
   assert.equal(parsed.categoryView, "granular");
   assert.equal(parsed.review, "all");
   assert.equal(parsed.transactionType, "all");
+  assert.equal(parsed.page, 1);
 });
 
 test("toTransactionsListApiParams serializes custom date mode and semantic filters", () => {
@@ -71,7 +80,8 @@ test("toTransactionsListApiParams serializes custom date mode and semantic filte
     categoryView: "coarse",
     review: "reviewed",
     transactionType: "expense",
-    tag: "monthly"
+    tag: "monthly",
+    page: 3
   });
 
   assert.deepEqual(params, {
@@ -84,7 +94,8 @@ test("toTransactionsListApiParams serializes custom date mode and semantic filte
     review_status: "reviewed",
     transaction_type: "expense",
     tag: "monthly",
-    limit: 200
+    limit: 50,
+    offset: 100
   });
 });
 
@@ -126,12 +137,13 @@ test("buildTransactionsFilterSearchParams writes only non-default tokens", () =>
     start: "2026-01-01",
     end: "2026-01-31",
     review: "needs_review",
-    transactionType: "transfer"
+    transactionType: "transfer",
+    page: 4
   });
 
   assert.equal(
     searchParams.toString(),
-    "query=Transfer&account=primary-checking&range=custom&start=2026-01-01&end=2026-01-31&review=needs_review&type=transfer"
+    "query=Transfer&account=primary-checking&range=custom&start=2026-01-01&end=2026-01-31&review=needs_review&type=transfer&page=4"
   );
 });
 
@@ -146,7 +158,8 @@ test("toValidFilterState trims values and clears custom dates when not in custom
     categoryView: "granular",
     review: "all",
     transactionType: "all",
-    tag: "  monthly  "
+    tag: "  monthly  ",
+    page: 0
   });
 
   assert.deepEqual(validated, {
@@ -159,6 +172,7 @@ test("toValidFilterState trims values and clears custom dates when not in custom
     categoryView: "granular",
     review: "all",
     transactionType: "all",
-    tag: "monthly"
+    tag: "monthly",
+    page: 1
   });
 });

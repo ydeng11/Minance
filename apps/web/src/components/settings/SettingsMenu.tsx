@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, Settings2, DatabaseZap } from "lucide-react";
+import { Sparkles, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SETTINGS_MENU_ITEMS = [
@@ -17,12 +17,6 @@ const SETTINGS_MENU_ITEMS = [
     href: "/settings/ai",
     icon: Sparkles,
     testId: "settings-menu-ai"
-  },
-  {
-    name: "Migration",
-    href: "/settings/migration",
-    icon: DatabaseZap,
-    testId: "settings-menu-migration"
   }
 ];
 

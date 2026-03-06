@@ -321,7 +321,16 @@ function normalizeRecurringRuleId(rawValue, fallback = null) {
 }
 
 function normalizeTransactionRecord(transaction) {
-  const direction = transaction?.direction === "credit" ? "credit" : "debit";
+  const rawAmount = Number(transaction?.amount ?? 0);
+  const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
+  const rawDirection = String(transaction?.direction || "").trim().toLowerCase();
+  let direction = "debit";
+  if (rawDirection === "credit" || rawDirection === "debit") {
+    direction = rawDirection;
+  } else if (rawAmount > 0) {
+    direction = "credit";
+  }
+
   const categoryFinal = String(
     transaction?.category_final || (direction === "credit" ? "Income" : "Uncategorized")
   ).trim() || (direction === "credit" ? "Income" : "Uncategorized");
@@ -338,6 +347,7 @@ function normalizeTransactionRecord(transaction) {
   return {
     ...transaction,
     direction,
+    amount,
     category_final: categoryFinal,
     transaction_type: transactionType,
     tags: normalizeExistingTags(transaction?.tags),

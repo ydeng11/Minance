@@ -69,12 +69,16 @@ export function createInitialTransactionDraft(options: { category?: string; toda
 }
 
 export function buildDraftFromTransaction(transaction: Transaction): TransactionFormDraft {
+  const normalizedAmount = Number.isFinite(Number(transaction.amount))
+    ? Math.abs(Number(transaction.amount))
+    : 0;
+
   return {
     id: transaction.id,
     transaction_date: toInputDate(transaction.transaction_date),
     description: transaction.description || "",
     merchant_raw: transaction.merchant_raw || "",
-    amount: String(transaction.amount ?? ""),
+    amount: String(normalizedAmount),
     direction: transaction.direction === "credit" ? "credit" : "debit",
     category_final: transaction.category_final || "",
     account_name: transaction.account_key || "Manual Account",

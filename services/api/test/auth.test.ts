@@ -71,6 +71,7 @@ test("ensureDevTestAccount seeds a reusable account in non-production", () => {
 
       const store = loadStore();
       assert.equal(store.users.length, 1);
+      assert.equal(store.categories.length, 0);
     }
   );
 });

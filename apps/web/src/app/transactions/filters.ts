@@ -15,6 +15,7 @@ export interface TransactionsFilterState {
   review: TransactionReviewFilter;
   transactionType: TransactionTypeFilter;
   tag: string;
+  page: number;
 }
 
 export interface TransactionsListApiParams {
@@ -29,6 +30,7 @@ export interface TransactionsListApiParams {
   transaction_type?: "expense" | "income" | "transfer";
   tag?: string;
   limit: number;
+  offset: number;
 }
 
 export interface TransactionsOverviewApiParams {
@@ -42,6 +44,7 @@ const RANGE_VALUES = new Set([...RANGE_OPTIONS.map((option) => option.value), "c
 const CATEGORY_VIEW_VALUES = new Set(["granular", "coarse"]);
 const REVIEW_VALUES = new Set(["all", "reviewed", "needs_review"]);
 const TRANSACTION_TYPE_VALUES = new Set(["all", "expense", "income", "transfer"]);
+export const TRANSACTIONS_PAGE_SIZE = 50;
 
 interface SearchParamsLike {
   get(key: string): string | null;
@@ -56,6 +59,18 @@ function cleanIsoDate(value: string | null) {
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
 }
 
+function cleanPositiveInteger(value: string | null, fallback = 1) {
+  const normalized = cleanValue(value);
+  if (!normalized) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(normalized, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return fallback;
+  }
+  return parsed;
+}
+
 export function createDefaultTransactionsFilterState(): TransactionsFilterState {
   return {
     query: "",
@@ -67,7 +82,8 @@ export function createDefaultTransactionsFilterState(): TransactionsFilterState 
     categoryView: "granular",
     review: "all",
     transactionType: "all",
-    tag: ""
+    tag: "",
+    page: 1
   };
 }
 
@@ -93,14 +109,17 @@ export function parseTransactionsFilterState(searchParams: SearchParamsLike): Tr
     transactionType: TRANSACTION_TYPE_VALUES.has(transactionType)
       ? (transactionType as TransactionTypeFilter)
       : defaults.transactionType,
-    tag: cleanValue(searchParams.get("tag"))
+    tag: cleanValue(searchParams.get("tag")),
+    page: cleanPositiveInteger(searchParams.get("page"), defaults.page)
   };
 }
 
 export function toTransactionsListApiParams(filters: TransactionsFilterState): TransactionsListApiParams {
+  const safePage = Math.max(1, Number.isFinite(filters.page) ? Math.trunc(filters.page) : 1);
   const params: TransactionsListApiParams = {
     category_view: filters.categoryView,
-    limit: 200
+    limit: TRANSACTIONS_PAGE_SIZE,
+    offset: (safePage - 1) * TRANSACTIONS_PAGE_SIZE
   };
 
   if (filters.query) {
@@ -197,6 +216,10 @@ export function buildTransactionsFilterSearchParams(filters: TransactionsFilterS
     searchParams.set("type", filters.transactionType);
   }
 
+  if (filters.page > defaults.page) {
+    searchParams.set("page", String(filters.page));
+  }
+
   return searchParams;
 }
 
@@ -208,7 +231,8 @@ export function toValidFilterState(filters: TransactionsFilterState): Transactio
     account: cleanValue(filters.account),
     start: cleanIsoDate(filters.start),
     end: cleanIsoDate(filters.end),
-    tag: cleanValue(filters.tag)
+    tag: cleanValue(filters.tag),
+    page: Math.max(1, Number.isFinite(filters.page) ? Math.trunc(filters.page) : 1)
   };
 
   if (!RANGE_VALUES.has(next.range)) {

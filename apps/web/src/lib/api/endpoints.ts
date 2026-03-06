@@ -22,7 +22,6 @@ import type {
   InvestmentPerformancePoint,
   InvestmentPosition,
   ImportProcessedRowsResponse,
-  MigrationRun,
   OverviewResponse,
   ProcessedRow,
   ProcessedSummary,
@@ -407,14 +406,4 @@ export const savedViewsApi = {
   create: (request: ApiRequest, name: string, filters: Record<string, unknown>) =>
     request<{ view: SavedView }>("/v1/saved-views", { method: "POST", body: { name, filters } }),
   remove: (request: ApiRequest, id: string) => request<null>(`/v1/saved-views/${id}`, { method: "DELETE" })
-};
-
-export const migrationApi = {
-  run: (
-    request: ApiRequest,
-    body: {
-      fileName: string;
-      sqliteBase64: string;
-    }
-  ) => request<{ migration: MigrationRun }>("/v1/migrations/minance/sqlite", { method: "POST", body })
 };

@@ -639,25 +639,6 @@ export interface CommitImportResponse {
   processedTotals: ProcessedSummary;
 }
 
-export interface MigrationRun {
-  id: string;
-  userId: string;
-  status: string;
-  sqlitePath: string;
-  createdAt: string;
-  updatedAt: string;
-  report: {
-    scanned: number;
-    imported: number;
-    duplicatesSkipped: number;
-    invalidRows: number;
-    accountsImported: number;
-    categoriesImported: number;
-    rulesImported: number;
-    warnings: string[];
-  };
-}
-
 export interface SqliteFoundationStatus {
   backend: "json" | "sqlite";
   jsonFilePath: string;
