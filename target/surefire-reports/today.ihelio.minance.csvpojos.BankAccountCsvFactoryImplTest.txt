@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: today.ihelio.minance.csvpojos.BankAccountCsvFactoryImplTest
+-------------------------------------------------------------------------------
+Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.106 s -- in today.ihelio.minance.csvpojos.BankAccountCsvFactoryImplTest

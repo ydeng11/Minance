@@ -154,7 +154,7 @@ export function buildImportDirectionPrompt({
     "Expense-majority (most rows are expenses) is a soft prior, not an absolute rule.",
     "Never force all rows into one direction when explicit row signals disagree.",
     "Output schema:",
-    '{"amount_mode":"single_amount|split_debit_credit","sign_convention":"negative_is_debit|positive_is_debit|split_columns","confidence_internal":0.0,"reason_short":"<1 sentence>","warnings":["<optional warning>"]}'
+    '{"amount_mode":"single_amount|split_outflow_inflow","sign_convention":"negative_is_outflow|positive_is_outflow|split_columns","confidence_internal":0.0,"reason_short":"<1 sentence>","warnings":["<optional warning>"]}'
   ].join("\n");
 
   const userPrompt = [
@@ -168,7 +168,7 @@ export function buildImportDirectionPrompt({
     safeJson(sample),
     "",
     "Rules:",
-    "- Respect split debit/credit columns when clearly present.",
+    "- Respect split outflow/inflow columns when clearly present.",
     "- If amount_mode is single_amount, choose sign convention that best matches keyword evidence.",
     "- Keep confidence_internal in [0,1].",
     "- Keep reason_short concise and factual."

@@ -3,8 +3,8 @@ import { IMPORT_DIRECTION_LLM_ENABLED } from "../flags.ts";
 import { runStructuredLlm } from "./client.ts";
 import { buildImportDirectionPrompt } from "./prompts.ts";
 
-const ALLOWED_AMOUNT_MODES = new Set(["single_amount", "split_debit_credit"]);
-const ALLOWED_SIGN_CONVENTIONS = new Set(["negative_is_debit", "positive_is_debit", "split_columns"]);
+const ALLOWED_AMOUNT_MODES = new Set(["single_amount", "split_outflow_inflow"]);
+const ALLOWED_SIGN_CONVENTIONS = new Set(["negative_is_outflow", "positive_is_outflow", "split_columns"]);
 
 function normalizeConfidence(value, fallback = 0.5) {
   const numeric = Number(value);
@@ -68,16 +68,21 @@ export async function inferImportDirectionWithLlm({
   }
 
   const rawConvention = String(llm.data?.sign_convention || "").trim();
-  const signConvention = amountMode === "split_debit_credit" ? "split_columns" : rawConvention;
+  const signConvention = amountMode === "split_outflow_inflow" ? "split_columns" : rawConvention;
 
-  if (!ALLOWED_SIGN_CONVENTIONS.has(signConvention)) {
+  // Map legacy sign conventions for backward compatibility
+  const mappedConvention = signConvention === "negative_is_debit" ? "negative_is_outflow"
+    : signConvention === "positive_is_debit" ? "positive_is_outflow"
+      : signConvention;
+
+  if (!ALLOWED_SIGN_CONVENTIONS.has(mappedConvention)) {
     return { ok: false, reason: "invalid_sign_convention" };
   }
 
   return {
     ok: true,
     amountMode,
-    signConvention,
+    signConvention: mappedConvention,
     confidence_internal: normalizeConfidence(llm.data?.confidence_internal, 0.7),
     reason_short: String(llm.data?.reason_short || "").trim() || "LLM direction inference",
     warnings: normalizeStringArray(llm.data?.warnings),

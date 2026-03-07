@@ -41,14 +41,14 @@ const IMPORT_MAPPING_TEMPLATES: ImportMappingTemplate[] = [
     }
   },
   {
-    id: "split_debit_credit",
-    label: "Split Debit/Credit",
-    description: "Statements that provide debit and credit columns.",
+    id: "split_outflow_inflow",
+    label: "Split Outflow/Inflow",
+    description: "Statements that provide separate outflow and inflow columns.",
     aliases: {
       date: ["date", "transaction date"],
       merchant: ["description", "merchant", "payee", "name"],
       description: ["memo", "details", "reference"],
-      amount: ["debit", "credit", "amount"],
+      amount: ["outflow", "inflow", "debit", "credit", "amount"],
       currency: ["currency"],
       account: ["account", "account name"],
       category_raw: ["category"],

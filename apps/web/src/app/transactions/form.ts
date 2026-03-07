@@ -13,7 +13,7 @@ export interface TransactionFormDraft {
   description: string;
   merchant_raw: string;
   amount: string;
-  direction: "debit" | "credit";
+  direction: "outflow" | "inflow";
   category_final: string;
   account_name: string;
   memo: string;
@@ -37,7 +37,7 @@ export interface TransactionFormPayload {
   description: string;
   merchant_raw: string;
   amount: number;
-  direction: "debit" | "credit";
+  direction: "outflow" | "inflow";
   category_final: string;
   account_name: string;
   memo: string | null;
@@ -58,7 +58,7 @@ export function createInitialTransactionDraft(options: { category?: string; toda
     description: "",
     merchant_raw: "",
     amount: "",
-    direction: "debit",
+    direction: "outflow",
     category_final: options.category || "",
     account_name: "Manual Account",
     memo: "",
@@ -79,7 +79,7 @@ export function buildDraftFromTransaction(transaction: Transaction): Transaction
     description: transaction.description || "",
     merchant_raw: transaction.merchant_raw || "",
     amount: String(normalizedAmount),
-    direction: transaction.direction === "credit" ? "credit" : "debit",
+    direction: transaction.direction === "inflow" ? "inflow" : "outflow",
     category_final: transaction.category_final || "",
     account_name: transaction.account_key || "Manual Account",
     memo: transaction.memo || "",
@@ -201,11 +201,11 @@ export function validateTransactionDraft(
     errors.transaction_type = "Transaction type is invalid.";
   }
 
-  if (transactionType === "expense" && draft.direction === "credit") {
-    errors.transaction_type = "Expense type cannot use credit direction.";
+  if (transactionType === "expense" && draft.direction === "inflow") {
+    errors.transaction_type = "Expense type cannot use inflow direction.";
   }
-  if (transactionType === "income" && draft.direction === "debit") {
-    errors.transaction_type = "Income type cannot use debit direction.";
+  if (transactionType === "income" && draft.direction === "outflow") {
+    errors.transaction_type = "Income type cannot use outflow direction.";
   }
   if (normalizeComparable(categoryName) === "transfer" && transactionType && transactionType !== "transfer") {
     errors.transaction_type = "Transfer category must use transfer type.";

@@ -94,8 +94,8 @@ function applyKeywordModel(transaction) {
   )}`;
 
   let best = {
-    category: transaction.direction === "credit" ? "Income" : "Uncategorized",
-    confidence: transaction.direction === "credit" ? 0.8 : 0.45,
+    category: transaction.direction === "inflow" ? "Income" : "Uncategorized",
+    confidence: transaction.direction === "inflow" ? 0.8 : 0.45,
     strategy: "heuristic_fallback"
   };
 

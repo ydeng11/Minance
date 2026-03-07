@@ -39,7 +39,7 @@ function createTransaction(overrides: Partial<Transaction> = {}): Transaction {
     description: "Lunch",
     amount: 24.5,
     currency: "USD",
-    direction: "debit",
+    direction: "outflow",
     transaction_type: "expense",
     category_raw: "Dining",
     category_final: "Dining",
@@ -80,9 +80,9 @@ test("buildDraftFromTransaction maps existing transaction into editable draft", 
 });
 
 test("buildDraftFromTransaction normalizes negative persisted amount into positive edit value", () => {
-  const draft = buildDraftFromTransaction(createTransaction({ amount: -24.5, direction: "debit" }));
+  const draft = buildDraftFromTransaction(createTransaction({ amount: -24.5, direction: "outflow" }));
   assert.equal(draft.amount, "24.5");
-  assert.equal(draft.direction, "debit");
+  assert.equal(draft.direction, "outflow");
 });
 
 test("parseTagListInput normalizes, deduplicates, and lowercases tags", () => {
@@ -141,14 +141,14 @@ test("validateTransactionDraft rejects incompatible transaction type and directi
       ...createInitialTransactionDraft({ category: "Dining", today: "2026-03-02" }),
       description: "Refund",
       amount: "12.50",
-      direction: "credit",
+      direction: "inflow",
       transaction_type: "expense"
     },
     [createCategory({ name: "Dining" })]
   );
 
   assert.equal(result.payload, null);
-  assert.equal(result.errors.transaction_type, "Expense type cannot use credit direction.");
+  assert.equal(result.errors.transaction_type, "Expense type cannot use inflow direction.");
 });
 
 test("validateTransactionDraft builds normalized payload for valid input", () => {
@@ -158,7 +158,7 @@ test("validateTransactionDraft builds normalized payload for valid input", () =>
       description: "Lunch",
       merchant_raw: "",
       amount: "18.40",
-      direction: "debit",
+      direction: "outflow",
       account_name: "  Main Checking  ",
       memo: "  Team sync  ",
       tags: "Food, weekday, food",
@@ -174,7 +174,7 @@ test("validateTransactionDraft builds normalized payload for valid input", () =>
     description: "Lunch",
     merchant_raw: "Lunch",
     amount: 18.4,
-    direction: "debit",
+    direction: "outflow",
     category_final: "Dining",
     account_name: "Main Checking",
     memo: "Team sync",

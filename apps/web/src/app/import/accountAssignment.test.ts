@@ -62,7 +62,7 @@ function createProcessedRow(rowId: string, accountName: string): ProcessedRow {
       merchant_normalized: "coffee",
       description: "Coffee",
       amount: 3,
-      direction: "debit",
+      direction: "outflow",
       direction_confidence: 1,
       direction_strategy: "manual_override",
       needs_direction_review: false,

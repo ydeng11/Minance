@@ -1,5 +1,9 @@
 package today.ihelio.minance.csvpojos;
 
+import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.CREDIT;
+import static today.ihelio.minance.csvpojos.BankAccountPair.AccountType.DEBIT;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.PAYPAL;
+
 import com.google.common.annotations.VisibleForTesting;
 import io.quarkus.arc.All;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -40,6 +44,12 @@ public class BankAccountCsvFactoryImpl implements BankAccountCsvFactory {
     }
 
     private void initializeMap() {
-        templates.forEach(t -> templateMap.put(t.getBankAccount(), t));
+        templates.forEach(t -> {
+            templateMap.put(t.getBankAccount(), t);
+
+            if (BankAccountPair.of(PAYPAL, DEBIT).equals(t.getBankAccount())) {
+                templateMap.put(BankAccountPair.of(PAYPAL, CREDIT), t);
+            }
+        });
     }
 }

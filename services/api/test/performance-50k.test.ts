@@ -26,8 +26,8 @@ function createLargeStore() {
     const date = `2025-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     const merchant = merchants[index % merchants.length];
     const category = categories[index % categories.length];
-    const direction = merchant === "salary" ? "credit" : "debit";
-    const amount = direction === "credit" ? 2500 + (index % 300) : 5 + (index % 120);
+    const direction = merchant === "salary" ? "inflow" : "outflow";
+    const amount = direction === "inflow" ? 2500 + (index % 300) : 5 + (index % 120);
 
     transactions.push({
       id: `txn_perf_${index}`,
@@ -44,7 +44,7 @@ function createLargeStore() {
       amount,
       currency: "USD",
       direction,
-      transaction_type: direction === "credit" ? "income" : "expense",
+      transaction_type: direction === "inflow" ? "income" : "expense",
       category_raw: category,
       category_final: category,
       category_confidence: 0.95,
@@ -104,7 +104,7 @@ test("50k transaction dataset stays within guardrails for filtering and dashboar
     listTransactions(USER_ID, {
       range: "all",
       category: "Groceries",
-      direction: "debit",
+      direction: "outflow",
       query: "transaction",
       sort_by: "date",
       sort_order: "desc",

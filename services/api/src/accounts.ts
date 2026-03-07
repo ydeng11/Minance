@@ -411,7 +411,7 @@ function toSignedTransactionAmount(transaction) {
   if (!Number.isFinite(amount)) {
     return 0;
   }
-  return transaction.direction === "debit" ? -Math.abs(amount) : Math.abs(amount);
+  return transaction.direction === "outflow" ? -Math.abs(amount) : Math.abs(amount);
 }
 
 function findAccount(store, userId, accountId) {

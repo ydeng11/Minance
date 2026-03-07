@@ -1,0 +1,9 @@
+Transaction ID,Date,Transaction Type,Currency,Amount,Fee,Net Amount,Asset Type,Asset Price,Asset Amount,Status,Notes,Name of sender/receiver,Account
+atqvua,06/07/2023,Bitcoin Boost,USD,7.06,0.00,7.06,BTC,26358.04,0.00026785,COMPLETED,#boost sale of USD 7.06,,Your Cash
+439x2v,06/07/2023,Cash Card Debit,USD,-78,0.00,-78,,,,CARD CHARGED,TST* take31,,Visa Debit 2222
+7dofq5,06/07/2023,Cash Card Debit,USD,-3.75,0.00,-3.75,,,,CARD CHARGED,MTA*NYCT PAYGO,,Visa Debit 2222
+id16yj,06/07/2023,Cash Card Debit,USD,-4.75,0.00,-4.75,,,,CARD CHARGED,OMNYPYG*,,Visa Debit 2222
+71iiv8,06/06/2023,Cash Card Debit,USD,-2.75,0.00,-2.75,,,,CARD CHARGED,MTA*NYCT PAYGO RECOVER,,Visa Debit 2222
+y7f07k,05/28/2023,Boost Payment,USD,7.29,0.00,7.29,,,,CARD REFUNDED,Cash Reward,,Visa Debit 2222
+1vcwsz,05/27/2023,Cash Card Debit,USD,-145.95,0.00,-145.95,,,,CARD CHARGED,ENSON MARKET,,Visa Debit 2222
+q0v01ef,04/30/2023,Sent P2P,USD,-88,0.00,-88,,,,PAYMENT SENT,,Jill Chan,Your Cash

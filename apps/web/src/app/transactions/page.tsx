@@ -541,8 +541,8 @@ export default function TransactionsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right font-medium">
-                      <span className={txn.direction === "credit" ? "text-emerald-400" : "text-neutral-100"}>
-                        {txn.direction === "credit" ? "+" : "-"}
+                      <span className={txn.direction === "inflow" ? "text-emerald-400" : "text-neutral-100"}>
+                        {txn.direction === "inflow" ? "+" : "-"}
                         {money(Math.abs(txn.amount))}
                       </span>
                     </td>
@@ -629,12 +629,12 @@ export default function TransactionsPage() {
                                 name="direction"
                                 value={form.direction}
                                 onChange={(event) =>
-                                  setForm((previous) => ({ ...previous, direction: event.target.value as "debit" | "credit" }))
+                                  setForm((previous) => ({ ...previous, direction: event.target.value as "outflow" | "inflow" }))
                                 }
                                 className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                               >
-                                <option value="debit">debit</option>
-                                <option value="credit">credit</option>
+                                <option value="outflow">outflow</option>
+                                <option value="inflow">inflow</option>
                               </select>
                             </label>
                             <label className="grid gap-1 text-sm text-neutral-300">
@@ -1026,12 +1026,12 @@ export default function TransactionsPage() {
                     name="direction"
                     value={form.direction}
                     onChange={(event) =>
-                      setForm((previous) => ({ ...previous, direction: event.target.value as "debit" | "credit" }))
+                      setForm((previous) => ({ ...previous, direction: event.target.value as "outflow" | "inflow" }))
                     }
                     className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                   >
-                    <option value="debit">debit</option>
-                    <option value="credit">credit</option>
+                    <option value="outflow">outflow</option>
+                    <option value="inflow">inflow</option>
                   </select>
                 </label>
 

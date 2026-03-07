@@ -125,7 +125,7 @@ function inferLegacyTier2Emoji(mappedCategory, coarseKey) {
   return "⚫";
 }
 
-function inferLegacyCategoryType(mappedCategory, coarseKey, direction = null) {
+function inferLegacyCategoryType(mappedCategory, coarseKey, flowDirection = null) {
   const normalized = normalizeText(mappedCategory || "");
 
   if (/\b(transfer|payment|withdraw|deposit)\b/.test(normalized)) {
@@ -141,10 +141,10 @@ function inferLegacyCategoryType(mappedCategory, coarseKey, direction = null) {
   }
 
   if (coarseKey === "neutral") {
-    return direction === "credit" ? "income" : "transfer";
+    return flowDirection === "inflow" ? "income" : "transfer";
   }
 
-  return direction === "credit" ? "income" : "expense";
+  return flowDirection === "inflow" ? "income" : "expense";
 }
 
 export function resolveLegacyMappedCategory(rawCategory, rawToMappedCategory = new Map()) {
@@ -206,15 +206,16 @@ function normalizeLegacyAccountType(rawType) {
   return "checking";
 }
 
-function inferLegacyDirection(rawType, amount) {
+function inferLegacyFlowDirection(rawType, amount) {
   const normalizedType = normalizeText(rawType || "");
   if (normalizedType.includes("debit") || normalizedType.includes("withdraw")) {
-    return "debit";
+    return "outflow";
   }
   if (normalizedType.includes("credit") || normalizedType.includes("deposit")) {
-    return "credit";
+    return "inflow";
   }
-  return amount < 0 ? "debit" : "credit";
+  // Legacy convention: positive = outflow (debit), negative = inflow (credit)
+  return amount < 0 ? "inflow" : "outflow";
 }
 
 function parseLegacyUploadAt(rawValue) {
@@ -236,14 +237,14 @@ function parseLegacyUploadAt(rawValue) {
   return nowIso();
 }
 
-function buildFingerprint({ userId, accountKey, merchantNormalized, amount, direction, transactionDate, memo }) {
+function buildFingerprint({ userId, accountKey, merchantNormalized, amount, flowDirection, transactionDate, memo }) {
   return stableHash(
     [
       userId,
       accountKey,
       merchantNormalized,
       Math.abs(Number(amount || 0)).toFixed(2),
-      direction,
+      flowDirection,
       transactionDate,
       memo ? stableHash(String(memo)) : ""
     ].join("|")
@@ -342,10 +343,24 @@ export async function fetchLegacyApiData({ baseUrl, startDate, endDate }) {
   };
 }
 
-function resolveLegacyLoaderUserId(userEmail = null) {
+function resolveLegacyLoaderPassword(userPassword = null) {
+  const passwordSource =
+    userPassword == null ? process.env.DEV_TEST_ACCOUNT_PASSWORD || "devpassword123" : userPassword;
+  const password = String(passwordSource);
+  if (password.length < 8) {
+    throw new Error("Legacy loader user password must be at least 8 characters");
+  }
+  return password;
+}
+
+export function resolveLegacyLoaderUserId(userEmail = null, userPassword = null) {
   const normalizedEmail = String(userEmail || "").trim().toLowerCase();
 
   if (!normalizedEmail) {
+    if (userPassword != null) {
+      throw new Error("--user-password requires --user-email");
+    }
+
     const seeded = ensureDevTestAccount();
     if (seeded?.user?.id) {
       return seeded.user.id;
@@ -362,12 +377,20 @@ function resolveLegacyLoaderUserId(userEmail = null) {
   const store = loadStore();
   const existing = store.users.find((entry) => String(entry.email || "").toLowerCase() === normalizedEmail);
   if (existing) {
+    if (userPassword != null) {
+      const nextPassword = resolveLegacyLoaderPassword(userPassword);
+      const { passwordHash, salt } = hashPassword(nextPassword);
+      existing.passwordHash = passwordHash;
+      existing.passwordSalt = salt;
+      existing.updatedAt = nowIso();
+      saveStore(store);
+    }
     return existing.id;
   }
 
   const now = nowIso();
-  const defaultPassword = String(process.env.DEV_TEST_ACCOUNT_PASSWORD || "devpassword123");
-  const { passwordHash, salt } = hashPassword(defaultPassword);
+  const password = resolveLegacyLoaderPassword(userPassword);
+  const { passwordHash, salt } = hashPassword(password);
   const user = {
     id: createId("user"),
     email: normalizedEmail,
@@ -493,7 +516,7 @@ export function applyLegacyApiDataToStore({
     const account = accountId ? store.accounts.find((entry) => entry.id === accountId) : null;
     const accountKey = account?.normalizedKey || normalizeText(accountName) || "legacy_account";
 
-    const direction = inferLegacyDirection(readField(row, ["transaction_type", "transactionType", "type"], ""), rawAmount);
+    const flowDirection = inferLegacyFlowDirection(readField(row, ["transaction_type", "transactionType", "type"], ""), rawAmount);
     const amount = Math.abs(rawAmount);
 
     const rawCategory = String(readField(row, ["category", "raw_category", "category_raw"], "")).trim();
@@ -505,7 +528,7 @@ export function applyLegacyApiDataToStore({
     const coarseKey = inferLegacyTier1CoarseKey(categoryFinal);
     const coarseName = COARSE_NAME_BY_KEY.get(coarseKey) || "Other";
     const categoryEmoji = inferLegacyTier2Emoji(categoryFinal, coarseKey);
-    const transactionType = inferLegacyCategoryType(categoryFinal, coarseKey, direction);
+    const transactionType = inferLegacyCategoryType(categoryFinal, coarseKey, flowDirection);
 
     const memo = readField(row, ["memo", "notes"], null);
     const merchantRaw = description;
@@ -515,7 +538,7 @@ export function applyLegacyApiDataToStore({
       accountKey,
       merchantNormalized,
       amount,
-      direction,
+      flowDirection,
       transactionDate,
       memo
     });
@@ -541,7 +564,7 @@ export function applyLegacyApiDataToStore({
       description,
       amount,
       currency: String(readField(row, ["currency"], "USD")).toUpperCase(),
-      direction,
+      direction: flowDirection,
       transaction_type: transactionType,
       category_raw: null,
       category_final: categoryFinal,
@@ -632,9 +655,10 @@ export async function seedFromLegacyApiToStore({
   startDate,
   endDate,
   userEmail = null,
+  userPassword = null,
   resetUserData = true
 }) {
-  const userId = resolveLegacyLoaderUserId(userEmail);
+  const userId = resolveLegacyLoaderUserId(userEmail, userPassword);
   const dataset = await fetchLegacyApiData({ baseUrl, startDate, endDate });
   const summary = applyLegacyApiDataToStore({
     userId,

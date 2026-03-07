@@ -69,10 +69,13 @@ function ensureAccount(store, userId, accountId, accountName) {
 
 function deriveDirection(rawDirection, rawAmount) {
   const direction = String(rawDirection || "").toLowerCase();
-  if (direction === "debit" || direction === "credit") {
+  if (direction === "outflow" || direction === "inflow") {
     return direction;
   }
-  return rawAmount < 0 ? "debit" : "credit";
+  // Map legacy values
+  if (direction === "debit") return "outflow";
+  if (direction === "credit") return "inflow";
+  return rawAmount < 0 ? "outflow" : "inflow";
 }
 
 function dedupeFingerprint(userId, accountKey, merchantNormalized, amount, transactionDate, memo) {
@@ -121,7 +124,7 @@ function inferTransactionType(direction, categoryFinal, categoryType = null) {
   if (normalizeText(categoryFinal) === "transfer") {
     return "transfer";
   }
-  return direction === "credit" ? "income" : "expense";
+  return direction === "inflow" ? "income" : "expense";
 }
 
 function normalizeTransactionType(rawValue, direction, categoryFinal, categoryType = null) {
@@ -135,11 +138,11 @@ function normalizeTransactionType(rawValue, direction, categoryFinal, categoryTy
     throw new Error("Invalid transaction type");
   }
 
-  if (transactionType === "expense" && direction === "credit") {
-    throw new Error("Invalid transaction type for credit direction");
+  if (transactionType === "expense" && direction === "inflow") {
+    throw new Error("Invalid transaction type for inflow direction");
   }
-  if (transactionType === "income" && direction === "debit") {
-    throw new Error("Invalid transaction type for debit direction");
+  if (transactionType === "income" && direction === "outflow") {
+    throw new Error("Invalid transaction type for outflow direction");
   }
   if (normalizeText(categoryFinal) === "transfer" && transactionType !== "transfer") {
     throw new Error("Invalid transaction type for transfer category");
@@ -324,16 +327,20 @@ function normalizeTransactionRecord(transaction) {
   const rawAmount = Number(transaction?.amount ?? 0);
   const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
   const rawDirection = String(transaction?.direction || "").trim().toLowerCase();
-  let direction = "debit";
-  if (rawDirection === "credit" || rawDirection === "debit") {
+  let direction = "outflow";
+  if (rawDirection === "inflow" || rawDirection === "outflow") {
     direction = rawDirection;
+  } else if (rawDirection === "credit") {
+    direction = "inflow";
+  } else if (rawDirection === "debit") {
+    direction = "outflow";
   } else if (rawAmount > 0) {
-    direction = "credit";
+    direction = "inflow";
   }
 
   const categoryFinal = String(
-    transaction?.category_final || (direction === "credit" ? "Income" : "Uncategorized")
-  ).trim() || (direction === "credit" ? "Income" : "Uncategorized");
+    transaction?.category_final || (direction === "inflow" ? "Income" : "Uncategorized")
+  ).trim() || (direction === "inflow" ? "Income" : "Uncategorized");
 
   let transactionType;
   try {
@@ -393,7 +400,7 @@ function normalizeManualInput(input, options = {}) {
     throw new Error("Invalid category value");
   }
 
-  let categoryFinal = String(input.category_final || (direction === "credit" ? "Income" : "Uncategorized")).trim();
+  let categoryFinal = String(input.category_final || (direction === "inflow" ? "Income" : "Uncategorized")).trim();
   if (!categoryFinal) {
     throw new Error("category_final is required");
   }
@@ -672,7 +679,7 @@ export function createManualTransaction(userId, payload) {
       userId,
       account.normalizedKey,
       normalized.merchant_normalized,
-      normalized.direction === "debit" ? -normalized.amount : normalized.amount,
+      normalized.direction === "outflow" ? -normalized.amount : normalized.amount,
       normalized.transaction_date,
       normalized.memo
     ),
@@ -759,7 +766,7 @@ export function updateTransaction(userId, transactionId, payload) {
     userId,
     tx.account_key,
     tx.merchant_normalized,
-    tx.direction === "debit" ? -tx.amount : tx.amount,
+    tx.direction === "outflow" ? -tx.amount : tx.amount,
     tx.transaction_date,
     tx.memo
   );

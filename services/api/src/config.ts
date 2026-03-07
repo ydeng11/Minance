@@ -1,14 +1,15 @@
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
+import { getEnvFileName, resolveRuntimePaths } from "./runtime-env.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const ROOT_DIR = path.resolve(__dirname, "../../..");
 
-function loadDotEnvLocal() {
-  const envPath = path.join(ROOT_DIR, ".env.local");
+function loadDotEnvFile(fileName) {
+  const envPath = path.join(ROOT_DIR, fileName);
   if (!fs.existsSync(envPath)) {
     return;
   }
@@ -42,15 +43,7 @@ function loadDotEnvLocal() {
   }
 }
 
-loadDotEnvLocal();
-
-function resolvePathFromRoot(configuredPath, fallbackPath) {
-  const raw = configuredPath || fallbackPath;
-  if (!raw) {
-    throw new Error("Path configuration is required");
-  }
-  return path.isAbsolute(raw) ? raw : path.join(ROOT_DIR, raw);
-}
+loadDotEnvFile(getEnvFileName(process.env.NODE_ENV));
 
 function parseBoolean(value, defaultValue) {
   if (value == null) {
@@ -93,16 +86,15 @@ function normalizeStoreBackend(value) {
   return normalized === "sqlite" ? "sqlite" : "json";
 }
 
-const configuredDataFile = process.env.MINANCE_DATA_FILE || "services/api/data/store.json";
-const configuredSqliteFile = process.env.MINANCE_SQLITE_FILE || "services/api/data/minance.sqlite";
-const configuredSqliteSchema = process.env.MINANCE_SQLITE_SCHEMA_FILE || "services/api/sql/schema.sql";
+const runtimePaths = resolveRuntimePaths({
+  rootDir: ROOT_DIR,
+  env: process.env,
+  nodeEnv: process.env.NODE_ENV
+});
 
-export const DATA_FILE = resolvePathFromRoot(configuredDataFile, "services/api/data/store.json");
-export const SQLITE_FILE = resolvePathFromRoot(configuredSqliteFile, "services/api/data/minance.sqlite");
-export const SQLITE_SCHEMA_FILE = resolvePathFromRoot(
-  configuredSqliteSchema,
-  "services/api/sql/schema.sql"
-);
+export const DATA_FILE = runtimePaths.dataFile;
+export const SQLITE_FILE = runtimePaths.sqliteFile;
+export const SQLITE_SCHEMA_FILE = runtimePaths.sqliteSchemaFile;
 export const STORE_BACKEND = normalizeStoreBackend(process.env.MINANCE_STORE_BACKEND || "json");
 export const SQLITE_AUTO_INIT = parseBoolean(process.env.MINANCE_SQLITE_AUTO_INIT, true);
 export const TMP_DIR = path.join(__dirname, "../tmp");

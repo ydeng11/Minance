@@ -190,3 +190,90 @@ test("sqlite store repository round-trips payload collections", { skip: !isSqlit
     fs.rmSync(temp.dir, { recursive: true, force: true });
   }
 });
+
+test(
+  "sqlite store repository reads large transaction tables without exhausting the sqlite3 buffer",
+  { skip: !isSqliteCliAvailable() },
+  () => {
+    const temp = createTempPaths();
+    const now = "2026-03-01T00:00:00.000Z";
+    const oversizedMemo = "x".repeat(4096);
+    const transactionCount = 6000;
+    const sampleStore = {
+      users: [
+        {
+          id: "usr_buffer",
+          email: "buffer@minance.local",
+          passwordHash: "hash_buffer",
+          passwordSalt: "salt_buffer",
+          createdAt: now,
+          updatedAt: now
+        }
+      ],
+      sessions: [],
+      accounts: [
+        {
+          id: "acct_buffer",
+          userId: "usr_buffer",
+          normalizedKey: "buffer-bank:checking",
+          displayName: "Checking",
+          sourceInstitution: "Buffer Bank",
+          accountType: "depository",
+          createdAt: now,
+          updatedAt: now
+        }
+      ],
+      transactions: Array.from({ length: transactionCount }, (_, index) => ({
+        id: `txn_buffer_${index}`,
+        userId: "usr_buffer",
+        accountId: "acct_buffer",
+        sourceType: "manual",
+        transactionDate: "2026-02-15",
+        merchantRaw: `Merchant ${index}`,
+        merchantNormalized: `merchant ${index}`,
+        description: "Oversized regression transaction",
+        amount: index + 0.01,
+        currency: "USD",
+        direction: "debit",
+        categoryRaw: "Dining",
+        categoryFinal: "Dining",
+        categoryCoarse: "extra",
+        memo: oversizedMemo,
+        dedupeFingerprint: `txn_buffer_${index}`,
+        createdAt: now,
+        updatedAt: now
+      })),
+      categories: [],
+      categoryStrategies: [],
+      categoryRules: [],
+      imports: [],
+      importRowsRaw: [],
+      importRowsProcessed: [],
+      importRowDiagnostics: [],
+      aiProviderCredentials: [],
+      aiProviderPreferences: [],
+      assistantQueries: [],
+      savedViews: [],
+      migrationRuns: [],
+      auditEvents: []
+    };
+
+    try {
+      ensureSqliteFoundation({
+        backend: "json",
+        sqliteFile: temp.dbPath,
+        schemaFile: temp.schemaPath,
+        autoInit: true
+      });
+
+      writeStoreCollectionsToSqlite(sampleStore, { dbPath: temp.dbPath });
+      const loaded = readStoreCollectionsFromSqlite({ dbPath: temp.dbPath });
+
+      assert.equal(loaded.transactions.length, transactionCount);
+      assert.equal(loaded.transactions[0].memo, oversizedMemo);
+      assert.equal(loaded.transactions.at(-1)?.id, `txn_buffer_${transactionCount - 1}`);
+    } finally {
+      fs.rmSync(temp.dir, { recursive: true, force: true });
+    }
+  }
+);

@@ -301,7 +301,7 @@ export const recurringsApi = {
       name: string;
       cadence: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
       amount: number;
-      direction?: "debit" | "credit";
+      direction?: "outflow" | "inflow";
       category_final?: string | null;
       account_id?: string | null;
       merchant_pattern?: string | null;

@@ -78,7 +78,7 @@ test("processed import rows can be edited, reprocessed, and committed", async ()
   assert.equal(Boolean(committed.dateBounds.end), true);
 });
 
-test("csv import keeps debit expense amounts positive while preserving debit direction", async () => {
+test("csv import keeps outflow expense amounts positive while preserving outflow direction", async () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
 
   const csvText = [
@@ -102,7 +102,7 @@ test("csv import keeps debit expense amounts positive while preserving debit dir
 
   assert.equal(imported.length, 2);
   imported.forEach((entry) => {
-    assert.equal(entry.direction, "debit");
+    assert.equal(entry.direction, "outflow");
     assert.equal(entry.amount > 0, true);
   });
 });
@@ -212,7 +212,7 @@ test("reconciliation compares staged import rows and applies safe manual adjustm
     description: "Pre-existing debit",
     amount: 40,
     currency: "USD",
-    direction: "debit",
+    direction: "outflow",
     category_raw: null,
     category_final: "Uncategorized",
     category_confidence: 0.5,

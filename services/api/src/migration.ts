@@ -76,13 +76,13 @@ function normalizeLegacyAmount(value) {
 function inferDirection(transactionType, amount) {
   const normalizedType = String(transactionType || "").toLowerCase();
   if (normalizedType.includes("debit") || normalizedType.includes("withdraw")) {
-    return "debit";
+    return "outflow";
   }
   if (normalizedType.includes("credit") || normalizedType.includes("deposit")) {
-    return "credit";
+    return "inflow";
   }
 
-  return amount < 0 ? "debit" : "credit";
+  return amount < 0 ? "outflow" : "inflow";
 }
 
 function dedupeFingerprint(userId, accountKey, merchantNormalized, amount, date, memo) {

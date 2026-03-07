@@ -23,11 +23,15 @@ function normalizeTransactionForAnalytics(txn) {
   const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
   const rawDirection = String(txn?.direction || "").trim().toLowerCase();
 
-  let direction = "debit";
-  if (rawDirection === "credit" || rawDirection === "debit") {
+  let direction = "outflow";
+  if (rawDirection === "inflow" || rawDirection === "outflow") {
     direction = rawDirection;
+  } else if (rawDirection === "credit") {
+    direction = "inflow";
+  } else if (rawDirection === "debit") {
+    direction = "outflow";
   } else if (rawAmount > 0) {
-    direction = "credit";
+    direction = "inflow";
   }
 
   return {
@@ -132,7 +136,7 @@ function buildCategoryRollupFromTransactions(txns, resolveCategory, categoryView
   let totalAmount = 0;
 
   for (const txn of txns) {
-    if (txn.direction !== "debit") {
+    if (txn.direction !== "outflow") {
       continue;
     }
 
@@ -176,8 +180,8 @@ export function getOverview(userId, filters = {}) {
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
   const txns = filterUserTransactions(userId, filters);
-  const spend = txns.filter((txn) => txn.direction === "debit").reduce((sum, txn) => sum + toAmount(txn), 0);
-  const income = txns.filter((txn) => txn.direction === "credit").reduce((sum, txn) => sum + toAmount(txn), 0);
+  const spend = txns.filter((txn) => txn.direction === "outflow").reduce((sum, txn) => sum + toAmount(txn), 0);
+  const income = txns.filter((txn) => txn.direction === "inflow").reduce((sum, txn) => sum + toAmount(txn), 0);
 
   const byMonth = {};
   for (const txn of txns) {
@@ -185,7 +189,7 @@ export function getOverview(userId, filters = {}) {
     if (!byMonth[key]) {
       byMonth[key] = { month: key, spend: 0, income: 0, net: 0 };
     }
-    if (txn.direction === "debit") {
+    if (txn.direction === "outflow") {
       byMonth[key].spend += toAmount(txn);
     } else {
       byMonth[key].income += toAmount(txn);
@@ -196,7 +200,7 @@ export function getOverview(userId, filters = {}) {
   const merchantCounts = {};
   const merchantByMonth = {};
   for (const txn of txns) {
-    if (txn.direction !== "debit") {
+    if (txn.direction !== "outflow") {
       continue;
     }
     merchantCounts[txn.merchant_normalized] = (merchantCounts[txn.merchant_normalized] || 0) + toAmount(txn);
@@ -250,7 +254,7 @@ export function getCategoryRollup(userId, filters = {}) {
 }
 
 export function getMerchantRollup(userId, filters = {}) {
-  const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "debit");
+  const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "outflow");
   const grouped = {};
   for (const txn of txns) {
     grouped[txn.merchant_normalized] = (grouped[txn.merchant_normalized] || 0) + toAmount(txn);
@@ -272,7 +276,7 @@ export function getMerchantRollup(userId, filters = {}) {
 }
 
 export function getHeatmap(userId, filters = {}) {
-  const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "debit");
+  const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "outflow");
   const buckets = new Map();
 
   for (const txn of txns) {
@@ -308,7 +312,7 @@ export function getAnomalies(userId, filters = {}) {
   const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
-  const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "debit");
+  const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "outflow");
   if (!txns.length) {
     return [];
   }

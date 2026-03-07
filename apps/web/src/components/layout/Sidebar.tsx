@@ -9,12 +9,14 @@ import {
   Tags,
   Repeat2,
   UploadCloud,
-  Settings
+  Settings,
+  LineChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const PRIMARY_NAV_ITEMS = [
   { name: "Dashboard", href: "/", icon: Home, testId: "nav-dashboard" },
+  { name: "Explorer", href: "/explorer", icon: LineChart, testId: "nav-explorer" },
   { name: "Transactions", href: "/transactions", icon: PieChart, testId: "nav-transactions" },
   { name: "Accounts", href: "/accounts", icon: WalletCards, testId: "nav-accounts" },
   { name: "Categories", href: "/categories", icon: Tags, testId: "nav-categories" },

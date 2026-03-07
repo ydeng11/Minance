@@ -127,7 +127,7 @@ function buildDrillDownUrl(filters) {
 
 function sumSpend(transactions) {
   return transactions
-    .filter((txn) => txn.direction === "debit")
+    .filter((txn) => txn.direction === "outflow")
     .reduce((sum, txn) => sum + Number(txn.amount || 0), 0);
 }
 
@@ -181,8 +181,8 @@ function runQueryPlan(userId, plan) {
       end: shiftMonth(thisMonth.end, -1)
     };
 
-    const current = filterUserTransactions(userId, thisMonth).filter((txn) => txn.direction === "debit");
-    const previous = filterUserTransactions(userId, previousMonth).filter((txn) => txn.direction === "debit");
+    const current = filterUserTransactions(userId, thisMonth).filter((txn) => txn.direction === "outflow");
+    const previous = filterUserTransactions(userId, previousMonth).filter((txn) => txn.direction === "outflow");
 
     const currentByCategory = groupAmount(current, (txn) => txn.category_final);
     const previousByCategory = groupAmount(previous, (txn) => txn.category_final);
@@ -226,7 +226,7 @@ function runQueryPlan(userId, plan) {
   }
 
   if (plan.intent === "top_merchants") {
-    const txns = filterUserTransactions(userId, plan.filters).filter((txn) => txn.direction === "debit");
+    const txns = filterUserTransactions(userId, plan.filters).filter((txn) => txn.direction === "outflow");
     const grouped = groupAmount(txns, (txn) => txn.merchant_normalized);
     const top = Object.entries(grouped)
       .map(([merchant, amount]) => ({ merchant, amount }))
@@ -235,7 +235,7 @@ function runQueryPlan(userId, plan) {
 
     if (!top.length) {
       return {
-        answer: "No debit transactions found for this period.",
+        answer: "No outflow transactions found for this period.",
         numbers: {},
         confidence: 0.65,
         filters: plan.filters,
@@ -254,7 +254,7 @@ function runQueryPlan(userId, plan) {
   }
 
   if (plan.intent === "top_categories") {
-    const txns = filterUserTransactions(userId, plan.filters).filter((txn) => txn.direction === "debit");
+    const txns = filterUserTransactions(userId, plan.filters).filter((txn) => txn.direction === "outflow");
     const grouped = groupAmount(txns, (txn) => txn.category_final);
     const top = Object.entries(grouped)
       .map(([category, amount]) => ({ category, amount }))
@@ -319,9 +319,9 @@ function buildAnalysisDataset(userId, filters) {
       source_type: entry.source_type
     }));
 
-  const debit = selected.filter((entry) => entry.direction === "debit");
-  const credit = selected.filter((entry) => entry.direction === "credit");
-  const topCategories = Object.entries(groupAmount(debit, (entry) => entry.category || "Uncategorized"))
+  const outflow = selected.filter((entry) => entry.direction === "outflow");
+  const inflow = selected.filter((entry) => entry.direction === "inflow");
+  const topCategories = Object.entries(groupAmount(outflow, (entry) => entry.category || "Uncategorized"))
     .map(([category, amount]) => ({ category, amount: Math.round(amount * 100) / 100 }))
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 8);
@@ -332,9 +332,9 @@ function buildAnalysisDataset(userId, filters) {
     summary: {
       transactionCount: selected.length,
       importedCount: imported.length,
-      totalSpend: Math.round(sumSpend(debit) * 100) / 100,
+      totalSpend: Math.round(sumSpend(outflow) * 100) / 100,
       totalIncome: Math.round(
-        credit.reduce((sum, entry) => sum + Number(entry.amount || 0), 0) * 100
+        inflow.reduce((sum, entry) => sum + Number(entry.amount || 0), 0) * 100
       ) / 100,
       topCategories
     }

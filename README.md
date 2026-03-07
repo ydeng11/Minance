@@ -91,6 +91,8 @@ Reference deployment and operations profile:
 - `scripts/selfhost-backup.sh`
 - `scripts/selfhost-restore.sh`
 
+`.env.selfhost.example` is for the Docker self-host stack. Local `pnpm dev` uses `.env.local`. Test runs use `.env.test`.
+
 ## Notes
 - Data defaults to JSON persistence at `services/api/data/store.json` (`MINANCE_STORE_BACKEND=json`).
 - SQLite foundation bootstrap is available for cutover prep:
@@ -98,11 +100,13 @@ Reference deployment and operations profile:
   - `MINANCE_SQLITE_FILE` to select the SQLite file path (default `services/api/data/minance.sqlite`).
   - `MINANCE_SQLITE_SCHEMA_FILE` to select the schema file (default `services/api/sql/schema.sql`).
   - `MINANCE_SQLITE_AUTO_INIT=false` to disable startup schema initialization.
+- The stock `docker-compose.selfhost.yml` stack already sets the API container's internal SQLite/data paths. Only add `MINANCE_DATA_FILE`, `MINANCE_SQLITE_FILE`, or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize that compose file or run the API outside the stock stack.
 - Authenticated storage status can be inspected via `GET /v1/system/storage`.
 - Authenticated metrics snapshot can be inspected via `GET /v1/system/metrics`.
 - Health/readiness probes are available at `GET /healthz` and `GET /readyz`.
-- E2E runs use isolated storage via `MINANCE_DATA_FILE=services/api/tmp/e2e-store.json`.
-- API now reads `.env.local` automatically for local development settings.
+- E2E runs use isolated storage via `MINANCE_DATA_FILE_TEST=services/api/tmp/e2e-store.json`.
+- API reads `.env.local` for non-test local development and `.env.test` for `NODE_ENV=test`.
+- Test-mode storage uses `MINANCE_DATA_FILE_TEST` / `MINANCE_SQLITE_FILE_TEST` and otherwise falls back to isolated files under `services/api/tmp/`.
 - Dev/test account is auto-seeded when `NODE_ENV` is not `production`:
   - Email: `dev@minance.local` (override with `DEV_TEST_ACCOUNT_EMAIL`)
   - Password: `devpassword123` (override with `DEV_TEST_ACCOUNT_PASSWORD`)

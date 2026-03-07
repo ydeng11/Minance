@@ -24,7 +24,7 @@ const BASE_STORE = {
       description: "General PayPal Debit Card Transaction",
       amount: -120.45,
       currency: "USD",
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_raw: "Groceries",
       category_final: "Groceries",
@@ -53,7 +53,7 @@ const BASE_STORE = {
       description: "General PayPal Debit Card Transaction",
       amount: -56.1,
       currency: "USD",
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_raw: "Groceries",
       category_final: "Groceries",
@@ -82,7 +82,7 @@ const BASE_STORE = {
       description: "Payroll Deposit",
       amount: 2000,
       currency: "USD",
-      direction: "credit",
+      direction: "inflow",
       transaction_type: "income",
       category_raw: null,
       category_final: "Income",
@@ -116,19 +116,19 @@ const BASE_STORE = {
   auditEvents: []
 };
 
-test("listTransactions normalizes negative debit amounts to positive expense amounts", () => {
+test("listTransactions normalizes negative outflow amounts to positive expense amounts", () => {
   resetStoreForTests(structuredClone(BASE_STORE));
 
   const listed = listTransactions("user_1", { range: "all", limit: 50, offset: 0 });
   const byId = new Map(listed.items.map((entry) => [entry.id, entry]));
 
-  assert.equal(byId.get("txn_imported_neg")?.direction, "debit");
+  assert.equal(byId.get("txn_imported_neg")?.direction, "outflow");
   assert.equal(byId.get("txn_imported_neg")?.amount, 120.45);
-  assert.equal(byId.get("txn_legacy_neg")?.direction, "debit");
+  assert.equal(byId.get("txn_legacy_neg")?.direction, "outflow");
   assert.equal(byId.get("txn_legacy_neg")?.amount, 56.1);
 });
 
-test("overview spend remains positive even if persisted debit rows are signed negative", () => {
+test("overview spend remains positive even if persisted outflow rows are signed negative", () => {
   resetStoreForTests(structuredClone(BASE_STORE));
 
   const overview = getOverview("user_1", { start: "2026-01-01", end: "2026-01-31" });

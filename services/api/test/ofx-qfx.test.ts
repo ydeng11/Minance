@@ -41,7 +41,7 @@ test("parseOfxQfx maps OFX statement transactions to canonical rows", () => {
   assert.deepEqual(parsed.headers.slice(0, 5), ["date", "merchant", "description", "amount", "direction"]);
   assert.equal(parsed.rows[0].row.date, "2025-01-01");
   assert.equal(parsed.rows[0].row.amount, "-12.34");
-  assert.equal(parsed.rows[0].row.direction, "debit");
+  assert.equal(parsed.rows[0].row.direction, "outflow");
   assert.equal(parsed.rows[1].row.amount, "1500.00");
-  assert.equal(parsed.rows[1].row.direction, "credit");
+  assert.equal(parsed.rows[1].row.direction, "inflow");
 });

@@ -3,7 +3,7 @@ import { createId, nowIso, normalizeText, parseDate, toDecimal } from "./utils.t
 
 const CADENCE_VALUES = new Set(["weekly", "biweekly", "monthly", "quarterly", "yearly"]);
 const STATUS_VALUES = new Set(["active", "paused", "archived"]);
-const DIRECTION_VALUES = new Set(["debit", "credit"]);
+const DIRECTION_VALUES = new Set(["outflow", "inflow"]);
 const MAX_NAME_LENGTH = 120;
 const MAX_PATTERN_LENGTH = 160;
 const AMOUNT_TOLERANCE = 0.01;
@@ -70,6 +70,9 @@ function normalizeDirection(rawValue, fallback = null) {
     return fallback;
   }
   const direction = String(rawValue).trim().toLowerCase();
+  // Map legacy values
+  if (direction === "debit") return "outflow";
+  if (direction === "credit") return "inflow";
   if (!DIRECTION_VALUES.has(direction)) {
     throw new Error("Invalid recurring direction");
   }

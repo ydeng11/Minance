@@ -48,10 +48,10 @@ test("deterministic direction inference handles major fixture conventions", () =
     auxiliaryColumns: citi.inferred.auxiliary
   });
 
-  assert.equal(amexDirection.signConvention, "positive_is_debit");
-  assert.equal(chaseDirection.signConvention, "negative_is_debit");
-  assert.equal(minanceDirection.signConvention, "positive_is_debit");
-  assert.equal(cashAppDirection.signConvention, "negative_is_debit");
-  assert.equal(citiDirection.amountMode, "split_debit_credit");
+  assert.equal(amexDirection.signConvention, "positive_is_outflow");
+  assert.equal(chaseDirection.signConvention, "negative_is_outflow");
+  assert.equal(minanceDirection.signConvention, "positive_is_outflow");
+  assert.equal(cashAppDirection.signConvention, "negative_is_outflow");
+  assert.equal(citiDirection.amountMode, "split_outflow_inflow");
   assert.equal(citiDirection.signConvention, "split_columns");
 });

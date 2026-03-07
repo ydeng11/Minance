@@ -58,12 +58,21 @@ Validation must complete without mismatched totals/counts before cutover.
 
 ## 6. Runtime Config for Breaking Release
 
-Set/confirm these values in `.env.selfhost`:
+For the stock `docker-compose.selfhost.yml` stack, the API container already sets:
 
 - `MINANCE_STORE_BACKEND=sqlite`
-- `MINANCE_SQLITE_FILE=services/api/data/minance.sqlite` (or your persistent path)
-- `MINANCE_SQLITE_SCHEMA_FILE=services/api/sql/schema.sql`
-- `MINANCE_SQLITE_AUTO_INIT=true` (or explicitly managed by your migration pipeline)
+- `MINANCE_DATA_FILE=/var/lib/minance/store.json`
+- `MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite`
+- `MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql`
+- `MINANCE_SQLITE_AUTO_INIT=true`
+
+In `.env.selfhost`, normally set or confirm:
+
+- `AI_CREDENTIAL_SECRET=<strong-random-secret>`
+- `MINANCE_WEB_PORT=<host-port>`
+- `MINANCE_API_PORT=<host-port>`
+
+Add `MINANCE_DATA_FILE`, `MINANCE_SQLITE_FILE`, `MINANCE_SQLITE_SCHEMA_FILE`, or `MINANCE_SQLITE_AUTO_INIT` to `.env.selfhost` only if you customize the compose file or run the API outside the stock stack.
 
 Keep secrets out of git and lock file permissions:
 

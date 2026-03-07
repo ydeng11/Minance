@@ -523,10 +523,10 @@ export default function ImportPage() {
             defaultValue={row.normalized.direction}
             className={`w-20 ${processedFieldClass}`}
             aria-label={`Direction for row ${row.rowId}`}
-            onChange={(event) => void updateProcessedRow(row.rowId, { direction: event.target.value as "debit" | "credit" })}
+            onChange={(event) => void updateProcessedRow(row.rowId, { direction: event.target.value as "outflow" | "inflow" })}
           >
-            <option value="debit">debit</option>
-            <option value="credit">credit</option>
+            <option value="outflow">outflow</option>
+            <option value="inflow">inflow</option>
           </select>
         </td>
         <td className="px-2 py-2">

@@ -11,6 +11,7 @@ Options:
   --start <YYYY-MM-DD>  Transaction start date (default: LEGACY_MINANCE_START or 2024-01-01)
   --end <YYYY-MM-DD>    Transaction end date (default: LEGACY_MINANCE_END or 2026-12-31)
   --user-email <email>  Target Minance2 user email (default: dev seeded user)
+  --user-password <pw>  Password for the target Minance2 user (requires --user-email)
   --no-reset            Keep existing user data and append with dedupe (default resets user financial data first)
   --help                Show this help message
 `);
@@ -22,6 +23,7 @@ function parseArgs(argv) {
     startDate: String(process.env.LEGACY_MINANCE_START || "2024-01-01").trim(),
     endDate: String(process.env.LEGACY_MINANCE_END || "2026-12-31").trim(),
     userEmail: process.env.LEGACY_MINANCE_USER_EMAIL || null,
+    userPassword: null,
     resetUserData: true,
     help: false
   };
@@ -48,6 +50,11 @@ function parseArgs(argv) {
       index += 1;
       continue;
     }
+    if (token === "--user-password") {
+      options.userPassword = String(argv[index + 1] || "");
+      index += 1;
+      continue;
+    }
     if (token === "--no-reset") {
       options.resetUserData = false;
       continue;
@@ -67,12 +74,16 @@ async function main() {
     printHelp();
     return;
   }
+  if (args.userPassword != null && !args.userEmail) {
+    throw new Error("--user-password requires --user-email");
+  }
 
   const result = await seedFromLegacyApiToStore({
     baseUrl: args.baseUrl,
     startDate: args.startDate,
     endDate: args.endDate,
     userEmail: args.userEmail,
+    userPassword: args.userPassword,
     resetUserData: args.resetUserData
   });
 

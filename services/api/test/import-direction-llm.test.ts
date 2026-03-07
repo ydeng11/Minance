@@ -16,7 +16,7 @@ const BASE_INPUT = {
   },
   deterministicInference: {
     amountMode: "single_amount",
-    signConvention: "negative_is_debit",
+    signConvention: "negative_is_outflow",
     confidence: 0.42,
     strategy: "deterministic",
     warnings: []
@@ -31,7 +31,7 @@ test("LLM direction inference returns validated payload", async () => {
       ok: true,
       data: {
         amount_mode: "single_amount",
-        sign_convention: "positive_is_debit",
+        sign_convention: "positive_is_outflow",
         confidence_internal: 0.81,
         reason_short: "Purchases are mostly positive",
         warnings: ["Some rows are mixed"]
@@ -40,7 +40,7 @@ test("LLM direction inference returns validated payload", async () => {
   });
 
   assert.equal(result.ok, true);
-  assert.equal(result.signConvention, "positive_is_debit");
+  assert.equal(result.signConvention, "positive_is_outflow");
   assert.equal(result.amountMode, "single_amount");
   assert.equal(result.confidence_internal, 0.81);
   assert.deepEqual(result.warnings, ["Some rows are mixed"]);

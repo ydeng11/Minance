@@ -63,12 +63,12 @@ test("inferMapping avoids account/member columns for merchant", () => {
   assert.ok(Boolean(citiInferred.mapping.merchant));
 });
 
-test("inferMapping surfaces auxiliary debit/credit/type/status columns", () => {
-  const parsed = parseCsv("Date,Description,Debit,Credit,Status,Type\n2026-01-01,Store,20,,Cleared,Sale\n2026-01-02,Autopay,,200,Cleared,Payment");
+test("inferMapping surfaces auxiliary outflow/inflow/type/status columns", () => {
+  const parsed = parseCsv("Date,Description,Outflow,Inflow,Status,Type\n2026-01-01,Store,20,,Cleared,Sale\n2026-01-02,Autopay,,200,Cleared,Payment");
   const inferred = inferMapping(parsed, true);
 
-  assert.equal(inferred.auxiliary.debit, "Debit");
-  assert.equal(inferred.auxiliary.credit, "Credit");
+  assert.equal(inferred.auxiliary.outflow, "Outflow");
+  assert.equal(inferred.auxiliary.inflow, "Inflow");
   assert.equal(inferred.auxiliary.status, "Status");
   assert.equal(inferred.auxiliary.type, "Type");
 });

@@ -11,6 +11,7 @@ import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CHASE;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.CITI;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.DISCOVER;
 import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.MINANCE;
+import static today.ihelio.minance.csvpojos.BankAccountPair.BankName.PAYPAL;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -546,6 +547,46 @@ class BankAccountCsvFactoryImplTest {
 			BigDecimal regularAmount = regularTransaction.getAmount();
 			String sanitizedTotal = regularTransaction.total.replace(",", "");
 			assertThat(regularAmount).isEqualTo(new BigDecimal(sanitizedTotal));
+		}
+	}
+
+	@Nested
+	class PayPalCreditTests {
+		private final BankAccountPair PAYPAL_CREDIT = BankAccountPair.of(PAYPAL, CREDIT);
+
+		@Test
+		void reusesPaypalParsingForCreditAccounts() {
+			// Given
+			AbstractBankAccountCsvTemplate template = bankAccountCsvFactory.get(PAYPAL_CREDIT);
+
+			// Then
+			assertThat(template).isNotNull();
+
+			// When
+			List<? extends AbstractBankAccountCsvTemplate> rawTransactions = CsvTestUtils.parseCsvFile(
+					"testCsv/paypal_balance_debit_correct.csv", template);
+			List<? extends AbstractBankAccountCsvTemplate> completedTransactions = rawTransactions.stream()
+					.filter(t -> {
+						try {
+							t.validate();
+							return true;
+						} catch (IllegalStateException e) {
+							return false;
+						}
+					})
+					.toList();
+
+			PayPalDebitCsvTemplate expenseTemplate = completedTransactions.stream()
+					.map(t -> (PayPalDebitCsvTemplate) t)
+					.filter(t -> t.name != null && t.name.contains("SAM'S CLUB"))
+					.findFirst()
+					.orElseThrow();
+
+			Transactions expenseTransaction = expenseTemplate.toTransactions();
+
+			// PayPal purchase rows come through the CSV as negative totals and must display as positive spend.
+			assertThat(expenseTransaction.getAmount()).isEqualTo(new BigDecimal("200"));
+			assertThat(expenseTransaction.getDescription()).isEqualTo("SAM'S CLUB WHSE #07 - General PayPal Debit Card Transaction");
 		}
 	}
 }

@@ -7,7 +7,32 @@ import {
   buildLegacyCategoryStrategy,
   applyLegacyApiDataToStore
 } from "../src/legacy-api-loader.ts";
+import * as legacyApiLoader from "../src/legacy-api-loader.ts";
+import { login } from "../src/auth.ts";
 import { loadStore, resetStoreForTests } from "../src/store.ts";
+
+const EMPTY_STORE = {
+  users: [],
+  sessions: [],
+  accounts: [],
+  transactions: [],
+  recurringRules: [],
+  investmentHoldings: [],
+  investmentSnapshots: [],
+  categories: [],
+  categoryStrategies: [],
+  categoryRules: [],
+  imports: [],
+  importRowsRaw: [],
+  importRowsProcessed: [],
+  importRowDiagnostics: [],
+  aiProviderCredentials: [],
+  aiProviderPreferences: [],
+  assistantQueries: [],
+  savedViews: [],
+  migrationRuns: [],
+  auditEvents: []
+};
 
 test("inferLegacyTier1CoarseKey groups mapped categories into first-tier buckets", () => {
   assert.equal(inferLegacyTier1CoarseKey("Groceries"), "essential");
@@ -100,7 +125,44 @@ test("legacy api loader stores debit expenses as positive amounts", () => {
 
   assert.equal(imported.length, 2);
   imported.forEach((entry) => {
-    assert.equal(entry.direction, "debit");
+    assert.equal(entry.direction, "outflow");
     assert.equal(entry.amount > 0, true);
   });
+});
+
+test("legacy loader creates a loginable user for explicit migration credentials", () => {
+  resetStoreForTests(structuredClone(EMPTY_STORE));
+
+  assert.equal(typeof legacyApiLoader.resolveLegacyLoaderUserId, "function");
+
+  const userId = legacyApiLoader.resolveLegacyLoaderUserId("dev@minance.local", "12345678");
+  const result = login("dev@minance.local", "12345678");
+
+  assert.equal(result.user.id, userId);
+  assert.equal(result.user.email, "dev@minance.local");
+});
+
+test("legacy loader updates an existing migration user's password when rerun with explicit credentials", () => {
+  resetStoreForTests(structuredClone(EMPTY_STORE));
+
+  assert.equal(typeof legacyApiLoader.resolveLegacyLoaderUserId, "function");
+
+  const firstUserId = legacyApiLoader.resolveLegacyLoaderUserId("dev@minance.local", "12345678");
+  const secondUserId = legacyApiLoader.resolveLegacyLoaderUserId("dev@minance.local", "abcdefgh");
+
+  assert.equal(secondUserId, firstUserId);
+  assert.throws(() => login("dev@minance.local", "12345678"), /Invalid credentials/);
+
+  const result = login("dev@minance.local", "abcdefgh");
+  assert.equal(result.user.id, firstUserId);
+});
+
+test("legacy loader rejects a blank explicit migration password", () => {
+  resetStoreForTests(structuredClone(EMPTY_STORE));
+
+  assert.equal(typeof legacyApiLoader.resolveLegacyLoaderUserId, "function");
+  assert.throws(
+    () => legacyApiLoader.resolveLegacyLoaderUserId("dev@minance.local", ""),
+    /at least 8 characters/
+  );
 });

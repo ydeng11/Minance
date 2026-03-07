@@ -96,7 +96,7 @@ function getMapped(row, mapping, key) {
 }
 
 function computeFingerprint({ userId, accountName, merchantNormalized, amount, direction, transactionDate, memo }) {
-  const signedAmount = direction === "credit" ? amount : -amount;
+  const signedAmount = direction === "inflow" ? amount : -amount;
   return stableHash(
     [
       userId,
@@ -152,15 +152,18 @@ function summarizeProcessedRows(rows = []) {
   return totals;
 }
 
-function normalizeDirection(value, fallbackAmount = null, signConvention = "negative_is_debit") {
+function normalizeDirection(value, fallbackAmount = null, signConvention = "negative_is_outflow") {
   const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === "debit" || normalized === "credit") {
+  if (normalized === "outflow" || normalized === "inflow") {
     return normalized;
   }
+  // Map legacy values
+  if (normalized === "debit") return "outflow";
+  if (normalized === "credit") return "inflow";
   if (typeof fallbackAmount === "number") {
     return inferDirectionFromSignedAmount(fallbackAmount, signConvention);
   }
-  return "debit";
+  return "outflow";
 }
 
 function normalizeStagedRow({
@@ -208,12 +211,12 @@ function normalizeStagedRow({
     signedAmount = amountExtraction.signedAmount;
   }
 
-  let direction = "debit";
+  let direction = "outflow";
   let directionConfidence = normalizedDirectionInference.confidence;
   let directionStrategy = normalizedDirectionInference.strategy;
 
   const explicitDirection = String(merged.direction || "").trim().toLowerCase();
-  if (explicitDirection === "debit" || explicitDirection === "credit") {
+  if (explicitDirection === "outflow" || explicitDirection === "inflow") {
     direction = explicitDirection;
     directionConfidence = 1;
     directionStrategy = "manual_override";
@@ -875,7 +878,7 @@ function toSignedRowAmount(normalized) {
     return 0;
   }
   const absolute = Math.abs(amount);
-  return normalized?.direction === "credit" ? absolute : -absolute;
+  return normalized?.direction === "inflow" ? absolute : -absolute;
 }
 
 function getImportProcessedRowsForReconciliation(store, userId, importJob) {
@@ -1057,7 +1060,7 @@ export function getImportReconciliation(userId, importId) {
     const existingWindowNet = roundCurrency(
       windowTransactions.reduce((sum, entry) => {
         const amount = Number(entry.amount || 0);
-        const signed = entry.direction === "debit" ? -Math.abs(amount) : Math.abs(amount);
+        const signed = entry.direction === "outflow" ? -Math.abs(amount) : Math.abs(amount);
         return sum + (Number.isFinite(signed) ? signed : 0);
       }, 0)
     );
@@ -1295,7 +1298,7 @@ export async function commitImport(userId, importId) {
     }
 
     const normalized = rowEntry.normalized;
-    const signedAmount = normalized.direction === "debit" ? -normalized.amount : normalized.amount;
+    const signedAmount = normalized.direction === "outflow" ? -normalized.amount : normalized.amount;
     if (existingFingerprints.has(normalized.dedupe_fingerprint)) {
       summary.duplicatesSkipped += 1;
       continue;

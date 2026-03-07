@@ -1,6 +1,6 @@
 import { clamp, normalizeText, toDecimal } from "./utils.ts";
 
-const CREDIT_SIGNAL_KEYWORDS = [
+const INFLOW_SIGNAL_KEYWORDS = [
   "payment",
   "autopay",
   "deposit",
@@ -13,7 +13,7 @@ const CREDIT_SIGNAL_KEYWORDS = [
   "reward"
 ];
 
-const DEBIT_SIGNAL_KEYWORDS = [
+const OUTFLOW_SIGNAL_KEYWORDS = [
   "purchase",
   "sale",
   "card charged",
@@ -28,13 +28,13 @@ const DEBIT_SIGNAL_KEYWORDS = [
 export function getDefaultDirectionInference() {
   return {
     amountMode: "single_amount",
-    signConvention: "negative_is_debit",
+    signConvention: "negative_is_outflow",
     strategy: "default",
     confidence: 0.5,
     warnings: [],
     auxiliaryColumns: {
-      debit: null,
-      credit: null,
+      outflow: null,
+      inflow: null,
       type: null,
       status: null,
       direction: null
@@ -74,12 +74,12 @@ function predictedDirectionForConvention(signedAmount, signConvention) {
     return null;
   }
   if (signedAmount === 0) {
-    return "debit";
+    return "outflow";
   }
-  if (signConvention === "positive_is_debit") {
-    return signedAmount > 0 ? "debit" : "credit";
+  if (signConvention === "positive_is_outflow") {
+    return signedAmount > 0 ? "outflow" : "inflow";
   }
-  return signedAmount < 0 ? "debit" : "credit";
+  return signedAmount < 0 ? "outflow" : "inflow";
 }
 
 function amountFromMappedColumn(row, mapping) {
@@ -98,8 +98,8 @@ function amountFromMappedColumn(row, mapping) {
 
 function normalizeAuxiliary(auxiliary = {}) {
   return {
-    debit: auxiliary?.debit || null,
-    credit: auxiliary?.credit || null,
+    outflow: auxiliary?.outflow || auxiliary?.debit || null,
+    inflow: auxiliary?.inflow || auxiliary?.credit || null,
     type: auxiliary?.type || null,
     status: auxiliary?.status || null,
     direction: auxiliary?.direction || null
@@ -107,9 +107,9 @@ function normalizeAuxiliary(auxiliary = {}) {
 }
 
 function detectSplitColumnMode(rows, auxiliaryColumns) {
-  const debitHeader = auxiliaryColumns?.debit;
-  const creditHeader = auxiliaryColumns?.credit;
-  if (!debitHeader || !creditHeader || debitHeader === creditHeader) {
+  const outflowHeader = auxiliaryColumns?.outflow;
+  const inflowHeader = auxiliaryColumns?.inflow;
+  if (!outflowHeader || !inflowHeader || outflowHeader === inflowHeader) {
     return {
       amountMode: "single_amount",
       confidence: 0,
@@ -122,17 +122,17 @@ function detectSplitColumnMode(rows, auxiliaryColumns) {
   let mutuallyExclusiveRows = 0;
 
   for (const entry of rows.slice(0, 250)) {
-    const debitAmount = parseSignedAmount(entry.row?.[debitHeader]);
-    const creditAmount = parseSignedAmount(entry.row?.[creditHeader]);
-    const hasDebit = debitAmount != null;
-    const hasCredit = creditAmount != null;
+    const outflowAmount = parseSignedAmount(entry.row?.[outflowHeader]);
+    const inflowAmount = parseSignedAmount(entry.row?.[inflowHeader]);
+    const hasOutflow = outflowAmount != null;
+    const hasInflow = inflowAmount != null;
 
-    if (!hasDebit && !hasCredit) {
+    if (!hasOutflow && !hasInflow) {
       continue;
     }
 
     consideredRows += 1;
-    if ((hasDebit && !hasCredit) || (!hasDebit && hasCredit)) {
+    if ((hasOutflow && !hasInflow) || (!hasOutflow && hasInflow)) {
       mutuallyExclusiveRows += 1;
     }
   }
@@ -141,7 +141,7 @@ function detectSplitColumnMode(rows, auxiliaryColumns) {
   const isSplit = consideredRows >= 3 && mutuallyExclusiveRatio >= 0.85;
 
   return {
-    amountMode: isSplit ? "split_debit_credit" : "single_amount",
+    amountMode: isSplit ? "split_outflow_inflow" : "single_amount",
     confidence: isSplit ? clamp(mutuallyExclusiveRatio, 0, 1) : 0,
     consideredRows,
     mutuallyExclusiveRatio
@@ -164,20 +164,20 @@ function extractSignalText(row, mapping, auxiliaryColumns) {
 
 function buildSignScores(rows, mapping, auxiliaryColumns) {
   const scoreMap = {
-    negative_is_debit: {
+    negative_is_outflow: {
       signalRows: 0,
       matchedSignalRows: 0,
       amountRows: 0,
-      predictedDebitRows: 0,
+      predictedOutflowRows: 0,
       keywordAgreement: 0.5,
       expensePriorScore: 0,
       totalScore: 0
     },
-    positive_is_debit: {
+    positive_is_outflow: {
       signalRows: 0,
       matchedSignalRows: 0,
       amountRows: 0,
-      predictedDebitRows: 0,
+      predictedOutflowRows: 0,
       keywordAgreement: 0.5,
       expensePriorScore: 0,
       totalScore: 0
@@ -191,22 +191,22 @@ function buildSignScores(rows, mapping, auxiliaryColumns) {
     }
 
     const text = extractSignalText(entry.row, mapping, auxiliaryColumns);
-    const hasCreditSignal = isSignalMatch(text, CREDIT_SIGNAL_KEYWORDS);
-    const hasDebitSignal = isSignalMatch(text, DEBIT_SIGNAL_KEYWORDS);
-    const hasExclusiveSignal = hasCreditSignal !== hasDebitSignal;
+    const hasInflowSignal = isSignalMatch(text, INFLOW_SIGNAL_KEYWORDS);
+    const hasOutflowSignal = isSignalMatch(text, OUTFLOW_SIGNAL_KEYWORDS);
+    const hasExclusiveSignal = hasInflowSignal !== hasOutflowSignal;
 
     for (const signConvention of Object.keys(scoreMap)) {
       const bucket = scoreMap[signConvention];
       const predictedDirection = predictedDirectionForConvention(extraction.signedAmount, signConvention);
 
       bucket.amountRows += 1;
-      if (predictedDirection === "debit") {
-        bucket.predictedDebitRows += 1;
+      if (predictedDirection === "outflow") {
+        bucket.predictedOutflowRows += 1;
       }
 
       if (hasExclusiveSignal) {
         bucket.signalRows += 1;
-        if ((hasCreditSignal && predictedDirection === "credit") || (hasDebitSignal && predictedDirection === "debit")) {
+        if ((hasInflowSignal && predictedDirection === "inflow") || (hasOutflowSignal && predictedDirection === "outflow")) {
           bucket.matchedSignalRows += 1;
         }
       }
@@ -215,9 +215,9 @@ function buildSignScores(rows, mapping, auxiliaryColumns) {
 
   for (const signConvention of Object.keys(scoreMap)) {
     const bucket = scoreMap[signConvention];
-    const debitRatio = bucket.amountRows ? bucket.predictedDebitRows / bucket.amountRows : 0;
+    const outflowRatio = bucket.amountRows ? bucket.predictedOutflowRows / bucket.amountRows : 0;
     bucket.keywordAgreement = bucket.signalRows ? bucket.matchedSignalRows / bucket.signalRows : 0.5;
-    bucket.expensePriorScore = clamp(1 - Math.abs(debitRatio - 0.8) / 0.5, 0, 1);
+    bucket.expensePriorScore = clamp(1 - Math.abs(outflowRatio - 0.8) / 0.5, 0, 1);
     bucket.totalScore = (0.7 * bucket.keywordAgreement) + (0.3 * bucket.expensePriorScore);
   }
 
@@ -238,9 +238,9 @@ export function inferImportDirectionDeterministic({ parsedCsv, mapping, auxiliar
   }
 
   const splitMode = detectSplitColumnMode(parsedCsv.rows, normalizedAuxiliary);
-  if (splitMode.amountMode === "split_debit_credit") {
+  if (splitMode.amountMode === "split_outflow_inflow") {
     return {
-      amountMode: "split_debit_credit",
+      amountMode: "split_outflow_inflow",
       signConvention: "split_columns",
       strategy: "deterministic",
       confidence: clamp(0.85 + (0.15 * splitMode.confidence), 0, 1),
@@ -251,12 +251,12 @@ export function inferImportDirectionDeterministic({ parsedCsv, mapping, auxiliar
   }
 
   const scoreByConvention = buildSignScores(parsedCsv.rows, mapping, normalizedAuxiliary);
-  const negativeScore = scoreByConvention.negative_is_debit.totalScore;
-  const positiveScore = scoreByConvention.positive_is_debit.totalScore;
+  const negativeScore = scoreByConvention.negative_is_outflow.totalScore;
+  const positiveScore = scoreByConvention.positive_is_outflow.totalScore;
   const delta = Math.abs(negativeScore - positiveScore);
   const ambiguous = delta < 0.12;
 
-  const bestConvention = negativeScore >= positiveScore ? "negative_is_debit" : "positive_is_debit";
+  const bestConvention = negativeScore >= positiveScore ? "negative_is_outflow" : "positive_is_outflow";
   const bestScore = Math.max(negativeScore, positiveScore);
 
   const warnings = [];
@@ -317,40 +317,40 @@ export function extractRowAmountAndDirection({ row, mapping, directionInference 
   const inference = directionInference || getDefaultDirectionInference();
   const auxiliaryColumns = normalizeAuxiliary(inference.auxiliaryColumns);
 
-  if (inference.amountMode === "split_debit_credit" && auxiliaryColumns.debit && auxiliaryColumns.credit) {
-    const rawDebit = row?.[auxiliaryColumns.debit] ?? "";
-    const rawCredit = row?.[auxiliaryColumns.credit] ?? "";
-    const debitAmount = parseSignedAmount(rawDebit);
-    const creditAmount = parseSignedAmount(rawCredit);
+  if ((inference.amountMode === "split_outflow_inflow" || inference.amountMode === "split_debit_credit") && auxiliaryColumns.outflow && auxiliaryColumns.inflow) {
+    const rawOutflow = row?.[auxiliaryColumns.outflow] ?? "";
+    const rawInflow = row?.[auxiliaryColumns.inflow] ?? "";
+    const outflowAmount = parseSignedAmount(rawOutflow);
+    const inflowAmount = parseSignedAmount(rawInflow);
 
-    if (debitAmount != null && creditAmount == null) {
+    if (outflowAmount != null && inflowAmount == null) {
       return {
-        rawAmount: String(rawDebit),
-        signedAmount: -Math.abs(debitAmount),
-        directionFromColumns: "debit"
+        rawAmount: String(rawOutflow),
+        signedAmount: -Math.abs(outflowAmount),
+        directionFromColumns: "outflow"
       };
     }
 
-    if (creditAmount != null && debitAmount == null) {
+    if (inflowAmount != null && outflowAmount == null) {
       return {
-        rawAmount: String(rawCredit),
-        signedAmount: Math.abs(creditAmount),
-        directionFromColumns: "credit"
+        rawAmount: String(rawInflow),
+        signedAmount: Math.abs(inflowAmount),
+        directionFromColumns: "inflow"
       };
     }
 
-    if (debitAmount != null && creditAmount != null) {
-      if (Math.abs(debitAmount) >= Math.abs(creditAmount)) {
+    if (outflowAmount != null && inflowAmount != null) {
+      if (Math.abs(outflowAmount) >= Math.abs(inflowAmount)) {
         return {
-          rawAmount: String(rawDebit),
-          signedAmount: -Math.abs(debitAmount),
-          directionFromColumns: "debit"
+          rawAmount: String(rawOutflow),
+          signedAmount: -Math.abs(outflowAmount),
+          directionFromColumns: "outflow"
         };
       }
       return {
-        rawAmount: String(rawCredit),
-        signedAmount: Math.abs(creditAmount),
-        directionFromColumns: "credit"
+        rawAmount: String(rawInflow),
+        signedAmount: Math.abs(inflowAmount),
+        directionFromColumns: "inflow"
       };
     }
   }
@@ -359,5 +359,5 @@ export function extractRowAmountAndDirection({ row, mapping, directionInference 
 }
 
 export function inferDirectionFromSignedAmount(signedAmount, signConvention) {
-  return predictedDirectionForConvention(signedAmount, signConvention || "negative_is_debit") || "debit";
+  return predictedDirectionForConvention(signedAmount, signConvention || "negative_is_outflow") || "outflow";
 }

@@ -8,7 +8,7 @@ export const IMPORT_DIRECTION_FEW_SHOT_EXAMPLES = [
     ],
     expected: {
       amount_mode: "single_amount",
-      sign_convention: "positive_is_debit"
+      sign_convention: "positive_is_outflow"
     }
   },
   {
@@ -20,7 +20,7 @@ export const IMPORT_DIRECTION_FEW_SHOT_EXAMPLES = [
     ],
     expected: {
       amount_mode: "single_amount",
-      sign_convention: "negative_is_debit"
+      sign_convention: "negative_is_outflow"
     }
   },
   {
@@ -31,7 +31,7 @@ export const IMPORT_DIRECTION_FEW_SHOT_EXAMPLES = [
       "Debit column indicates expenses and Credit column indicates inflows/payments."
     ],
     expected: {
-      amount_mode: "split_debit_credit",
+      amount_mode: "split_outflow_inflow",
       sign_convention: "split_columns"
     }
   },
@@ -44,7 +44,7 @@ export const IMPORT_DIRECTION_FEW_SHOT_EXAMPLES = [
     ],
     expected: {
       amount_mode: "single_amount",
-      sign_convention: "negative_is_debit"
+      sign_convention: "negative_is_outflow"
     }
   },
   {
@@ -56,7 +56,7 @@ export const IMPORT_DIRECTION_FEW_SHOT_EXAMPLES = [
     ],
     expected: {
       amount_mode: "single_amount",
-      sign_convention: "positive_is_debit"
+      sign_convention: "positive_is_outflow"
     }
   }
 ];

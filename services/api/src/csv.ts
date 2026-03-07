@@ -115,7 +115,7 @@ function scoreHeaderForField(header, field) {
     date: ["date", "posted", "transaction date", "post date", "clearing date", "trans. date"],
     merchant: ["merchant", "payee", "vendor", "counterparty", "name", "original description"],
     description: ["description", "details", "narrative", "memo", "notes"],
-    amount: ["amount", "value", "total", "debit", "credit", "withdrawal", "deposit"],
+    amount: ["amount", "value", "total", "outflow", "inflow", "debit", "credit", "withdrawal", "deposit"],
     currency: ["currency", "curr", "iso"],
     account: ["account", "card", "source", "institution"],
     category_raw: ["category", "type", "class"],
@@ -134,10 +134,10 @@ function scoreHeaderForField(header, field) {
   }
 
   if (field === "amount") {
-    if (value.includes("debit") || value.includes("withdraw")) {
+    if (value.includes("outflow") || value.includes("debit") || value.includes("withdraw")) {
       best = Math.max(best, 0.9);
     }
-    if (value.includes("credit") || value.includes("deposit")) {
+    if (value.includes("inflow") || value.includes("credit") || value.includes("deposit")) {
       best = Math.max(best, 0.9);
     }
   }
@@ -276,21 +276,21 @@ function inferAuxiliaryColumns(headers, rows) {
     return bestScore >= 0.55 ? best : null;
   }
 
-  const debit = pickBest((value) => {
-    if (value === "debit") {
+  const outflow = pickBest((value) => {
+    if (value === "outflow" || value === "debit") {
       return 1;
     }
-    if (value.includes("debit") || value.includes("withdraw") || value.includes("charge")) {
+    if (value.includes("outflow") || value.includes("debit") || value.includes("withdraw") || value.includes("charge")) {
       return 0.9;
     }
     return 0;
   });
 
-  const credit = pickBest((value) => {
-    if (value === "credit") {
+  const inflow = pickBest((value) => {
+    if (value === "inflow" || value === "credit") {
       return 1;
     }
-    if (value.includes("credit") || value.includes("deposit") || value.includes("refund")) {
+    if (value.includes("inflow") || value.includes("credit") || value.includes("deposit") || value.includes("refund")) {
       return 0.9;
     }
     return 0;
@@ -327,24 +327,24 @@ function inferAuxiliaryColumns(headers, rows) {
   });
 
   const out = {
-    debit,
-    credit,
+    outflow,
+    inflow,
     type,
     status,
     direction
   };
 
-  if (debit) {
-    const debitNumericRatio = rows.slice(0, 50).filter((entry) => toDecimal(entry.row[debit]) !== null).length / Math.max(1, Math.min(50, rows.length));
-    if (debitNumericRatio < 0.2) {
-      out.debit = null;
+  if (outflow) {
+    const outflowNumericRatio = rows.slice(0, 50).filter((entry) => toDecimal(entry.row[outflow]) !== null).length / Math.max(1, Math.min(50, rows.length));
+    if (outflowNumericRatio < 0.2) {
+      out.outflow = null;
     }
   }
 
-  if (credit) {
-    const creditNumericRatio = rows.slice(0, 50).filter((entry) => toDecimal(entry.row[credit]) !== null).length / Math.max(1, Math.min(50, rows.length));
-    if (creditNumericRatio < 0.2) {
-      out.credit = null;
+  if (inflow) {
+    const inflowNumericRatio = rows.slice(0, 50).filter((entry) => toDecimal(entry.row[inflow]) !== null).length / Math.max(1, Math.min(50, rows.length));
+    if (inflowNumericRatio < 0.2) {
+      out.inflow = null;
     }
   }
 
@@ -368,7 +368,7 @@ export function inferMapping(parsedCsv, aiBoost = false) {
       }
 
       const headerNormalized = String(header || "").toLowerCase();
-      if (field === "description" && /(amount|debit|credit|value|total)/.test(headerNormalized)) {
+      if (field === "description" && /(amount|outflow|inflow|debit|credit|value|total)/.test(headerNormalized)) {
         continue;
       }
 

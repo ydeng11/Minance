@@ -93,7 +93,7 @@ async function startApiServer(t) {
     PORT: String(port),
     NODE_ENV: "test",
     MINANCE_STORE_BACKEND: "json",
-    MINANCE_DATA_FILE: dataFile,
+    MINANCE_DATA_FILE_TEST: dataFile,
     MINANCE_SEED_TEST_ACCOUNT: "false",
     OPENROUTER_API_KEY: ""
   };
@@ -388,7 +388,7 @@ test("api parity contract suite for categories/transactions/settings and missing
         description: "Rule-linked transfer",
         merchant_raw: "Rule Linked Merchant",
         amount: -42.15,
-        direction: "debit",
+        direction: "outflow",
         account_name: "Primary Checking",
         category_final: "Transfer",
         transaction_type: "transfer",
@@ -654,13 +654,13 @@ test("api parity contract suite for categories/transactions/settings and missing
         description: "Invalid credit expense",
         merchant_raw: "Type Validation",
         amount: 25,
-        direction: "credit",
+        direction: "inflow",
         account_name: "Primary Checking",
         category_final: "Income",
         transaction_type: "expense"
       }
     });
-    assert.equal(invalidType.payload?.error?.message, "Invalid transaction type for credit direction");
+    assert.equal(invalidType.payload?.error?.message, "Invalid transaction type for inflow direction");
 
     const invalidTags = await apiRequest(context, "POST", "/v1/transactions", {
       token: accessToken,
@@ -1245,7 +1245,7 @@ test("api parity contract suite for categories/transactions/settings and missing
         name: "Monthly Rent",
         cadence: "monthly",
         amount: 1850,
-        direction: "debit",
+        direction: "outflow",
         category_final: "Housing",
         merchant_pattern: "Sunset Apartments"
       }

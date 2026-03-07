@@ -5,6 +5,7 @@ import { SQLITE_FILE } from "./config.ts";
 import { STORE_TABLE_SPECS, getRowsForSpec } from "../../../scripts/sqlite-cutover-lib.ts";
 
 const SQLITE_MAX_BUFFER = 1024 * 1024 * 20;
+const SQLITE_READ_BATCH_SIZE = 1000;
 
 function sqlLiteral(value) {
   if (value == null) {
@@ -50,6 +51,51 @@ function sqliteQueryJson(dbPath, sql) {
 
   const parsed = JSON.parse(raw);
   return Array.isArray(parsed) ? parsed : [];
+}
+
+function isSqliteBufferError(error) {
+  return error instanceof Error && error.message.includes("ENOBUFS");
+}
+
+function readPayloadRowsInBatches(dbPath, tableName) {
+  const rows = [];
+  let lastRowId = 0;
+  let batchSize = SQLITE_READ_BATCH_SIZE;
+
+  while (true) {
+    try {
+      const batch = sqliteQueryJson(
+        dbPath,
+        `SELECT rowid AS __rowid__, payload_json
+         FROM ${tableName}
+         WHERE rowid > ${lastRowId}
+         ORDER BY rowid
+         LIMIT ${batchSize};`
+      );
+
+      if (batch.length === 0) {
+        break;
+      }
+
+      for (const row of batch) {
+        const parsedRowId = Number(row.__rowid__);
+        if (Number.isFinite(parsedRowId)) {
+          lastRowId = parsedRowId;
+        }
+        rows.push({ payload_json: row.payload_json });
+      }
+
+      batchSize = SQLITE_READ_BATCH_SIZE;
+    } catch (error) {
+      if (isSqliteBufferError(error) && batchSize > 1) {
+        batchSize = Math.max(1, Math.floor(batchSize / 2));
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  return rows;
 }
 
 function resolveDbPath(options = {}) {
@@ -167,10 +213,7 @@ export function readStoreCollectionsFromSqlite(options = {}) {
   const result = {};
 
   for (const spec of STORE_TABLE_SPECS) {
-    const rows = sqliteQueryJson(
-      dbPath,
-      `SELECT payload_json FROM ${spec.tableName} ORDER BY rowid;`
-    );
+    const rows = readPayloadRowsInBatches(dbPath, spec.tableName);
     result[spec.storeKey] = rows.map((row) => parsePayloadRow(row, spec.tableName));
   }
 

@@ -17,7 +17,8 @@ Security baseline companion checklist:
 ### Quick start
 1. Copy `.env.selfhost.example` to `.env.selfhost`.
 2. Set `AI_CREDENTIAL_SECRET` in `.env.selfhost` to a strong random secret.
-3. Build and launch:
+3. Treat `.env.selfhost` as the Docker self-host env file only. Local `pnpm dev` should use `.env.local`.
+4. Build and launch:
 
 ```bash
 docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d --build
@@ -34,6 +35,11 @@ docker compose -f docker-compose.selfhost.yml logs --tail=100 api web
 - `AI_CREDENTIAL_SECRET` (required): encrypts provider keys at rest.
 - `MINANCE_WEB_PORT` (recommended): host port for web.
 - `MINANCE_API_PORT` (recommended): host port for API (debug/admin use).
+
+### Compose defaults and advanced overrides
+- The stock `docker-compose.selfhost.yml` stack already sets `MINANCE_STORE_BACKEND=sqlite`, `MINANCE_DATA_FILE=/var/lib/minance/store.json`, `MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite`, `MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql`, and `MINANCE_SQLITE_AUTO_INIT=true` inside the API container.
+- Only add `MINANCE_DATA_FILE`, `MINANCE_SQLITE_FILE`, or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize the compose file or run the API outside the stock stack.
+- The env template also includes commented optional runtime flags supported by the current codebase, including `AI_LLM_CATEGORIZATION_ENABLED`, `AI_LLM_ASSISTANT_SYNTHESIS_ENABLED`, `IMPORT_PROCESSED_EDITOR_ENABLED`, `IMPORT_PROCESSING_LOGS_ENABLED`, `IMPORT_DIRECTION_INFERENCE_ENABLED`, `IMPORT_DIRECTION_LLM_ENABLED`, `AI_CREW_ANALYSIS_ENABLED`, `CREWAI_PYTHON_BIN`, `AI_CREW_ANALYSIS_TIMEOUT_MS`, `AI_LLM_TIMEOUT_MS`, and `MINANCE_TRAINING_DB_PATH`.
 
 ### Upgrade-safe practices
 1. Pin deployments to a git tag/commit before building.

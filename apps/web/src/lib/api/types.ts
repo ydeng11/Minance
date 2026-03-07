@@ -132,8 +132,8 @@ export interface ImportJob {
   warnings: string[];
   aiSuggested: boolean;
   directionInference?: {
-    amountMode: "single_amount" | "split_debit_credit";
-    signConvention: "negative_is_debit" | "positive_is_debit" | "split_columns";
+    amountMode: "single_amount" | "split_outflow_inflow";
+    signConvention: "negative_is_outflow" | "positive_is_outflow" | "split_columns";
     strategy: string;
     confidence: number;
     warnings: string[];
@@ -169,7 +169,7 @@ export interface ProcessedRow {
     merchant_normalized: string | null;
     description: string;
     amount: number | null;
-    direction: "debit" | "credit";
+    direction: "outflow" | "inflow";
     direction_confidence?: number;
     direction_strategy?: string | null;
     needs_direction_review?: boolean;
@@ -295,7 +295,7 @@ export interface Transaction {
   description: string;
   amount: number;
   currency: string;
-  direction: "debit" | "credit";
+  direction: "outflow" | "inflow";
   transaction_type: "expense" | "income" | "transfer";
   category_raw: string | null;
   category_final: string;
@@ -427,7 +427,7 @@ export interface RecurringRule {
   name: string;
   cadence: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
   amount: number;
-  direction: "debit" | "credit" | null;
+  direction: "outflow" | "inflow" | null;
   category_final: string | null;
   account_id: string | null;
   merchant_pattern: string | null;
@@ -445,7 +445,7 @@ export interface RecurringMatch {
   transaction_date: string;
   merchant_raw: string;
   amount: number;
-  direction: "debit" | "credit";
+  direction: "outflow" | "inflow";
   account_id: string | null;
   category_final: string;
   recurring_rule_id: string | null;

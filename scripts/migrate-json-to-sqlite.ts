@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import fs from "node:fs";
-import path from "node:path";
 import { spawnSync } from "node:child_process";
 import {
   STORE_TABLE_SPECS,
@@ -9,6 +8,8 @@ import {
   loadStoreFromPath,
   getRowsForSpec
 } from "./sqlite-cutover-lib.ts";
+import { ensureSqliteFoundation } from "../services/api/src/sqlite-foundation.ts";
+import { writeStoreCollectionsToSqlite } from "../services/api/src/sqlite-store-repository.ts";
 
 function printHelp() {
   console.log(`Usage: tsx scripts/migrate-json-to-sqlite.ts [--source <json>] [--db <sqlite>] [--schema <sql>]
@@ -28,17 +29,6 @@ function ensureSqliteCliAvailable() {
   }
 }
 
-function runSqlite(dbPath, sql) {
-  const result = spawnSync("sqlite3", [dbPath], {
-    input: sql,
-    encoding: "utf8",
-    maxBuffer: 1024 * 1024 * 20
-  });
-  if (result.status !== 0) {
-    throw new Error(result.stderr || "sqlite3 command failed");
-  }
-}
-
 function queryJson(dbPath, sql) {
   const result = spawnSync("sqlite3", ["-json", dbPath, sql], {
     encoding: "utf8",
@@ -52,47 +42,6 @@ function queryJson(dbPath, sql) {
     return [];
   }
   return JSON.parse(raw);
-}
-
-function sqlLiteral(value) {
-  if (value == null) {
-    return "NULL";
-  }
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? String(value) : "NULL";
-  }
-  if (typeof value === "boolean") {
-    return value ? "1" : "0";
-  }
-  const text = String(value);
-  return `'${text.replace(/'/g, "''")}'`;
-}
-
-function buildUpsertSql(tableName, keyColumns, mappedRow) {
-  const columns = Object.keys(mappedRow);
-  const valueSql = columns.map((column) => sqlLiteral(mappedRow[column]));
-  const updateColumns = columns.filter((column) => !keyColumns.includes(column));
-
-  const updateClause = updateColumns.length
-    ? `DO UPDATE SET ${updateColumns.map((column) => `${column}=excluded.${column}`).join(", ")}`
-    : "DO NOTHING";
-
-  return `INSERT INTO ${tableName} (${columns.join(", ")}) VALUES (${valueSql.join(", ")}) ON CONFLICT(${keyColumns.join(", ")}) ${updateClause};`;
-}
-
-function uniqueKey(keyColumns, mappedRow) {
-  return keyColumns.map((column) => String(mappedRow[column])).join("|");
-}
-
-function ensureKeyColumnsPresent(spec, mappedRow, rowIndex) {
-  for (const keyColumn of spec.keyColumns) {
-    const value = mappedRow[keyColumn];
-    if (value == null || String(value).trim() === "") {
-      throw new Error(
-        `Missing key column "${keyColumn}" for ${spec.tableName} row at source index ${rowIndex}.`
-      );
-    }
-  }
 }
 
 function main() {
@@ -116,37 +65,20 @@ function main() {
   ensureSqliteCliAvailable();
 
   const store = loadStoreFromPath(sourcePath);
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-
-  const schemaSql = fs.readFileSync(schemaPath, "utf8");
-  runSqlite(dbPath, schemaSql);
-
-  const statements = ["PRAGMA foreign_keys = ON;", "BEGIN IMMEDIATE;"];
   const sourceCounts = {};
 
   for (const spec of STORE_TABLE_SPECS) {
     const sourceRows = getRowsForSpec(store, spec);
     sourceCounts[spec.tableName] = sourceRows.length;
-
-    const seenKeys = new Set();
-    for (let rowIndex = 0; rowIndex < sourceRows.length; rowIndex += 1) {
-      const sourceRow = sourceRows[rowIndex];
-      const mappedRow = spec.mapRow(sourceRow || {});
-
-      ensureKeyColumnsPresent(spec, mappedRow, rowIndex);
-      const dedupeKey = uniqueKey(spec.keyColumns, mappedRow);
-      if (seenKeys.has(dedupeKey)) {
-        throw new Error(
-          `Duplicate key in source data for ${spec.tableName}: ${dedupeKey}. Aborting to avoid silent collapse.`
-        );
-      }
-      seenKeys.add(dedupeKey);
-      statements.push(buildUpsertSql(spec.tableName, spec.keyColumns, mappedRow));
-    }
   }
 
-  statements.push("COMMIT;");
-  runSqlite(dbPath, statements.join("\n"));
+  ensureSqliteFoundation({
+    backend: "json",
+    sqliteFile: dbPath,
+    schemaFile: schemaPath,
+    autoInit: true
+  });
+  writeStoreCollectionsToSqlite(store, { dbPath });
 
   const tableSummary = [];
   let mismatchDetected = false;

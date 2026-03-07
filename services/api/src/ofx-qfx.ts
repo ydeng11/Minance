@@ -42,16 +42,16 @@ function normalizeAmount(value) {
 
 function inferDirection(amount, transactionType) {
   if (amount < 0) {
-    return "debit";
+    return "outflow";
   }
   if (amount > 0) {
-    return "credit";
+    return "inflow";
   }
   const normalizedType = String(transactionType || "").trim().toUpperCase();
   if (["DEBIT", "CHECK", "PAYMENT", "ATM", "POS", "FEE"].includes(normalizedType)) {
-    return "debit";
+    return "outflow";
   }
-  return "credit";
+  return "inflow";
 }
 
 export function isOfxQfxFile(fileName = "") {
@@ -100,7 +100,7 @@ export function parseOfxQfx(text, options = {}) {
 
     const safeAmount = amount == null ? 0 : amount;
     const direction = inferDirection(safeAmount, transactionType);
-    const signedAmount = direction === "debit" ? -Math.abs(safeAmount) : Math.abs(safeAmount);
+    const signedAmount = direction === "outflow" ? -Math.abs(safeAmount) : Math.abs(safeAmount);
 
     rows.push({
       rowIndex: index + 1,
