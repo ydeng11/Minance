@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Download, LineChart, SlidersHorizontal } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
-import type { Account, Category, OverviewResponse } from "@/lib/api/types";
+import type { Account, Category, OverviewResponse, HeatmapItem, AnomalyItem, SavedView } from "@/lib/api/types";
 import {
   buildExplorerFilterSearchParams,
   createDefaultExplorerFilterState,
@@ -14,7 +14,7 @@ import {
   toExplorerAnalyticsApiParams
 } from "./filters";
 import { FilterSidebar } from "./components/FilterSidebar";
-import { KpiCards } from "./components/KpiCards";
+import { SavedViews } from "./components/SavedViews";
 import { VisualizationGrid } from "./components/VisualizationGrid";
 
 export default function ExplorerPage() {
@@ -34,6 +34,9 @@ export default function ExplorerPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
+  const [heatmap, setHeatmap] = useState<HeatmapItem[]>([]);
+  const [anomalies, setAnomalies] = useState<AnomalyItem[]>([]);
+  const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -47,12 +50,14 @@ export default function ExplorerPage() {
   useEffect(() => {
     async function loadMetadata() {
       try {
-        const [categoriesData, accountsData] = await Promise.all([
+        const [categoriesData, accountsData, viewsData] = await Promise.all([
           api.categories.list(),
-          api.accounts.list()
+          api.accounts.list(),
+          api.savedViews.list()
         ]);
         setCategories(categoriesData.categories);
         setAccounts(accountsData.accounts);
+        setSavedViews(viewsData.items);
       } catch (error) {
         if (error instanceof ApiError) {
           setMessage(error.message);
@@ -72,8 +77,16 @@ export default function ExplorerPage() {
 
       try {
         const analyticsParams = toExplorerAnalyticsApiParams(filters);
-        const overviewData = await api.analytics.overview(analyticsParams);
+        const [overviewData, heatmapData, anomaliesData, viewsData] = await Promise.all([
+          api.analytics.overview(analyticsParams),
+          api.analytics.heatmap(analyticsParams),
+          api.analytics.anomalies(analyticsParams),
+          api.savedViews.list()
+        ]);
         setOverview(overviewData);
+        setHeatmap(heatmapData.items);
+        setAnomalies(anomaliesData.items);
+        setSavedViews(viewsData.items);
       } catch (error) {
         if (error instanceof ApiError) {
           setMessage(error.message);
@@ -138,6 +151,44 @@ export default function ExplorerPage() {
     [updateFilters]
   );
 
+  // Saved views handlers
+  async function handleSaveView(name: string) {
+    try {
+      await api.savedViews.create(name, { range: filters.range, categoryView: "granular" });
+      setMessage("Saved view created.");
+      const viewsData = await api.savedViews.list();
+      setSavedViews(viewsData.items);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setMessage(error.message);
+      } else {
+        setMessage("Failed to save view.");
+      }
+    }
+  }
+
+  function handleApplyView(view: SavedView) {
+    const savedRange = typeof view.filters?.range === "string" ? view.filters.range : null;
+    if (savedRange) {
+      updateFilters({ range: savedRange });
+    }
+    setMessage(`Applied view: ${view.name}`);
+  }
+
+  async function handleDeleteView(viewId: string) {
+    try {
+      await api.savedViews.remove(viewId);
+      setSavedViews((previous) => previous.filter((view) => view.id !== viewId));
+      setMessage("Saved view removed.");
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setMessage(error.message);
+      } else {
+        setMessage("Failed to delete view.");
+      }
+    }
+  }
+
   // Calculate date range display
   const dateRangeDisplay = useMemo(() => {
     if (filters.range === "custom" && filters.start && filters.end) {
@@ -164,7 +215,7 @@ export default function ExplorerPage() {
           <div>
             <h2 className="text-3xl font-semibold tracking-tight">Explorer</h2>
             <p className="text-neutral-400">
-              Analyze and explore your transactions. {dateRangeDisplay}
+              Deep dive analytics and insights. {dateRangeDisplay}
             </p>
           </div>
         </div>
@@ -212,17 +263,24 @@ export default function ExplorerPage() {
 
         {/* Main Content Area */}
         <main className="flex-1 space-y-6">
-          {/* KPI Cards */}
-          <KpiCards overview={overview} loading={loading} />
-
           {/* Visualizations */}
           <VisualizationGrid
             overview={overview}
+            heatmap={heatmap}
+            anomalies={anomalies}
             onMonthClick={handleMonthClick}
             onCategoryClick={handleCategoryClick}
             onAccountClick={handleAccountClick}
             onMerchantClick={handleMerchantClick}
             loading={loading}
+          />
+
+          {/* Saved Views */}
+          <SavedViews
+            savedViews={savedViews}
+            onSave={handleSaveView}
+            onApply={handleApplyView}
+            onDelete={handleDeleteView}
           />
         </main>
       </div>

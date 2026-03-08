@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowDownRight, ArrowUpRight, CreditCard, DollarSign, Save } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CreditCard, DollarSign } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { RANGE_OPTIONS } from "@/lib/constants";
 import { money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
-import type { AnomalyItem, HeatmapItem, OverviewResponse, SavedView } from "@/lib/api/types";
+import type { OverviewResponse } from "@/lib/api/types";
 
 const DASHBOARD_FILTERS_STORAGE_KEY = "minance:dashboard:filters";
 const RANGE_VALUES = new Set<string>(RANGE_OPTIONS.map((entry) => entry.value));
@@ -27,10 +27,6 @@ export default function DashboardPage() {
   const [categoryView, setCategoryView] = useState<"granular" | "coarse">("granular");
   const [hydrated, setHydrated] = useState(false);
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
-  const [heatmap, setHeatmap] = useState<HeatmapItem[]>([]);
-  const [anomalies, setAnomalies] = useState<AnomalyItem[]>([]);
-  const [savedViews, setSavedViews] = useState<SavedView[]>([]);
-  const [savedViewName, setSavedViewName] = useState("");
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -51,17 +47,11 @@ export default function DashboardPage() {
     }
 
     try {
-      const [overviewData, heatmapData, anomaliesData, viewsData] = await Promise.all([
-        api.analytics.overview({ range: nextRange, category_view: nextCategoryView }),
-        api.analytics.heatmap({ range: nextRange, category_view: nextCategoryView }),
-        api.analytics.anomalies({ range: nextRange, category_view: nextCategoryView }),
-        api.savedViews.list()
+      const [overviewData] = await Promise.all([
+        api.analytics.overview({ range: nextRange, category_view: nextCategoryView })
       ]);
 
       setOverview(overviewData);
-      setHeatmap(heatmapData.items);
-      setAnomalies(anomaliesData.items);
-      setSavedViews(viewsData.items);
 
       const outOfRange =
         nextRange !== "all" &&
@@ -139,60 +129,12 @@ export default function DashboardPage() {
   const trendBars = useMemo(() => {
     return (overview?.trend || []).slice(-6).map((entry) => {
       const maxSpend = Math.max(1, ...(overview?.trend || []).map((item) => item.spend));
-      const maxIncome = Math.max(1, ...(overview?.trend || []).map((item) => item.income));
       return {
         ...entry,
-        spendHeight: Math.max(14, Math.round((entry.spend / maxSpend) * 120)),
-        incomeHeight: Math.max(10, Math.round((entry.income / maxIncome) * 90))
+        spendHeight: Math.max(14, Math.round((entry.spend / maxSpend) * 120))
       };
     });
   }, [overview]);
-
-  async function saveCurrentView() {
-    if (!savedViewName.trim()) {
-      setMessage("Saved view name is required.");
-      return;
-    }
-
-    try {
-      await api.savedViews.create(savedViewName.trim(), { range, categoryView });
-      setSavedViewName("");
-      setMessage("Saved view created.");
-      const nextViews = await api.savedViews.list();
-      setSavedViews(nextViews.items);
-    } catch (error) {
-      if (error instanceof ApiError) {
-        setMessage(error.message);
-      } else {
-        setMessage("Failed to save view.");
-      }
-    }
-  }
-
-  async function deleteSavedView(viewId: string) {
-    try {
-      await api.savedViews.remove(viewId);
-      const nextViews = await api.savedViews.list();
-      setSavedViews(nextViews.items);
-      setMessage("Saved view removed.");
-    } catch (error) {
-      if (error instanceof ApiError) {
-        setMessage(error.message);
-      } else {
-        setMessage("Failed to delete saved view.");
-      }
-    }
-  }
-
-  function applySavedView(view: SavedView) {
-    const savedRange = typeof view.filters?.range === "string" ? view.filters.range : null;
-    const savedCategoryView = view.filters?.categoryView === "coarse" ? "coarse" : "granular";
-    if (savedRange) {
-      setRange(savedRange);
-    }
-    setCategoryView(savedCategoryView);
-    setMessage(`Applied view: ${view.name}`);
-  }
 
   function buildTransactionsDrillDownUrl(drillDown: TransactionsDrillDown = {}) {
     const searchParams = new URLSearchParams();
@@ -224,7 +166,7 @@ export default function DashboardPage() {
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-3xl font-semibold tracking-tight">Dashboard</h2>
-          <p className="text-neutral-400">Welcome back. Here is your financial overview.</p>
+          <p className="text-neutral-400">Quick overview of your finances at a glance.</p>
         </div>
         <div className="flex gap-2">
           <select
@@ -327,147 +269,50 @@ export default function DashboardPage() {
               )
               : trendBars.map((item) => (
                   <div key={item.month} className="flex flex-col items-center gap-2">
-                    <div className="flex w-full items-end gap-1">
-                      <div className="w-1/2 rounded-md bg-emerald-500/80" style={{ height: item.spendHeight }} />
-                      <div className="w-1/2 rounded-md bg-sky-400/70" style={{ height: item.incomeHeight }} />
-                    </div>
+                    <div className="w-full rounded-md bg-emerald-500/80" style={{ height: item.spendHeight }} />
                     <div className="text-[11px] text-neutral-400">{item.month.slice(5)}</div>
                   </div>
                 ))}
         </div>
       </section>
 
-      <details className="rounded-2xl border border-neutral-900 bg-neutral-950/70" data-testid="advanced-insights" open>
-        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-neutral-300">Advanced Insights</summary>
-        <div className="space-y-5 px-4 pb-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Top Categories</h4>
-              <div className="mt-3 space-y-2" data-testid="analytics-category-bars">
-                {(overview?.topCategories || []).slice(0, 8).map((entry, index) => (
-                  <button
-                    type="button"
-                    key={entry.category}
-                    onClick={() => openTransactionsDrillDown({ category: entry.category })}
-                    data-testid={`dashboard-category-drilldown-${index}`}
-                    className="flex w-full items-center justify-between rounded-md bg-neutral-900 px-3 py-2 text-left text-sm transition hover:bg-neutral-800"
-                  >
-                    <span className="text-neutral-300">{entry.emoji ? `${entry.emoji} ` : ""}{entry.category}</span>
-                    <strong className="text-neutral-100">{money(entry.amount)}</strong>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Top Merchants</h4>
-              <div className="mt-3 space-y-2" data-testid="analytics-merchant-bars">
-                {(overview?.topMerchants || []).slice(0, 8).map((entry, index) => (
-                  <button
-                    type="button"
-                    key={entry.merchant}
-                    onClick={() => openTransactionsDrillDown({ query: entry.merchant })}
-                    data-testid={`dashboard-merchant-drilldown-${index}`}
-                    className="flex w-full items-center justify-between rounded-md bg-neutral-900 px-3 py-2 text-left text-sm transition hover:bg-neutral-800"
-                  >
-                    <span className="text-neutral-300">{entry.merchant}</span>
-                    <strong className="text-neutral-100">{money(entry.amount)}</strong>
-                  </button>
-                ))}
-              </div>
-            </section>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Spending Heatmap</h4>
-              <div className="mt-3 grid grid-cols-7 gap-1.5" data-testid="analytics-heatmap">
-                {heatmap.length ? (
-                  heatmap.slice(0, 49).map((entry) => {
-                    const intensity = Math.min(0.9, Math.max(0.1, entry.amount / Math.max(...heatmap.map((item) => item.amount), 1)));
-                    return (
-                      <div
-                        key={`${entry.week}-${entry.weekday}`}
-                        className="grid aspect-square place-items-center rounded-md text-[11px] text-neutral-950"
-                        style={{ backgroundColor: `rgba(16, 185, 129, ${intensity})` }}
-                      >
-                        {entry.weekday}
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="col-span-7 text-sm text-neutral-400">No spend data for range.</p>
-                )}
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Anomalies</h4>
-              <div className="mt-3 space-y-2" data-testid="analytics-anomalies">
-                {anomalies.length ? (
-                  anomalies.slice(0, 8).map((entry) => (
-                    <div key={entry.transactionId} className="flex items-center justify-between rounded-md bg-neutral-900 px-3 py-2 text-sm">
-                      <span className="text-neutral-300">{entry.transactionDate} · {entry.merchant} · {entry.emoji ? `${entry.emoji} ` : ""}{entry.category}</span>
-                      <strong className="text-neutral-100">{money(entry.amount)}</strong>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-neutral-400">No anomalies detected.</p>
-                )}
-              </div>
-            </section>
-          </div>
-
-          <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Saved Views</h4>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-              <label className="grid flex-1 gap-1 text-sm text-neutral-300">
-                Name
-                <input
-                  value={savedViewName}
-                  onChange={(event) => setSavedViewName(event.target.value)}
-                  data-testid="saved-view-name"
-                  placeholder="Quarterly dining check"
-                  className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                />
-              </label>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Top Categories</h4>
+          <div className="mt-3 space-y-2" data-testid="analytics-category-bars">
+            {(overview?.topCategories || []).slice(0, 8).map((entry, index) => (
               <button
                 type="button"
-                onClick={saveCurrentView}
-                data-testid="save-view-button"
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-200 transition hover:bg-neutral-800"
+                key={entry.category}
+                onClick={() => openTransactionsDrillDown({ category: entry.category })}
+                data-testid={`dashboard-category-drilldown-${index}`}
+                className="flex w-full items-center justify-between rounded-md bg-neutral-900 px-3 py-2 text-left text-sm transition hover:bg-neutral-800"
               >
-                <Save className="h-4 w-4" />
-                Save Current View
+                <span className="text-neutral-300">{entry.emoji ? `${entry.emoji} ` : ""}{entry.category}</span>
+                <strong className="text-neutral-100">{money(entry.amount)}</strong>
               </button>
-            </div>
+            ))}
+          </div>
+        </section>
 
-            <div className="mt-4 space-y-2" data-testid="saved-views-list">
-              {savedViews.map((view) => (
-                <div key={view.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-neutral-900 px-3 py-2 text-sm">
-                  <span className="text-neutral-300">{view.name}</span>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => applySavedView(view)}
-                      className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1 text-xs text-neutral-200 transition hover:bg-neutral-700"
-                    >
-                      Apply
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void deleteSavedView(view.id)}
-                      className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1 text-xs text-neutral-200 transition hover:bg-neutral-700"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      </details>
+        <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">Top Merchants</h4>
+          <div className="mt-3 space-y-2" data-testid="analytics-merchant-bars">
+            {(overview?.topMerchants || []).slice(0, 8).map((entry, index) => (
+              <button
+                type="button"
+                key={entry.merchant}
+                onClick={() => openTransactionsDrillDown({ query: entry.merchant })}
+                data-testid={`dashboard-merchant-drilldown-${index}`}
+                className="flex w-full items-center justify-between rounded-md bg-neutral-900 px-3 py-2 text-left text-sm transition hover:bg-neutral-800"
+              >
+                <span className="text-neutral-300">{entry.merchant}</span>
+                <strong className="text-neutral-100">{money(entry.amount)}</strong>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

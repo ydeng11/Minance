@@ -7,7 +7,7 @@ import { ApiError } from "@/lib/api/client";
 import { RANGE_OPTIONS } from "@/lib/constants";
 import { money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
-import type { Account, Category, OverviewResponse, Transaction } from "@/lib/api/types";
+import type { Account, Category, Transaction } from "@/lib/api/types";
 import {
   buildDraftFromTransaction,
   createInitialTransactionDraft,
@@ -21,7 +21,6 @@ import {
   parseTransactionsFilterState,
   TRANSACTIONS_PAGE_SIZE,
   toTransactionsListApiParams,
-  toTransactionsOverviewApiParams,
   toValidFilterState,
   type TransactionsFilterState
 } from "./filters";
@@ -43,7 +42,6 @@ export default function TransactionsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [totalTransactions, setTotalTransactions] = useState(0);
-  const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [filters, setFilters] = useState<TransactionsFilterState>(createDefaultTransactionsFilterState);
   const filtersRef = useRef<TransactionsFilterState>(createDefaultTransactionsFilterState());
   const lastAppliedQueryRef = useRef<string | null>(null);
@@ -55,10 +53,6 @@ export default function TransactionsPage() {
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
 
-  const trendBars = useMemo(() => {
-    return (overview?.trend || []).slice(-7);
-  }, [overview]);
-
   const categoryFilterOptions = useMemo(() => {
     if (filters.categoryView === "granular") {
       return categories.map((entry) => entry.name);
@@ -67,9 +61,8 @@ export default function TransactionsPage() {
     const fromTransactions = transactions
       .map((entry) => entry.category_coarse || "")
       .filter(Boolean);
-    const fromOverview = (overview?.topCategories || []).map((entry) => entry.category);
-    return Array.from(new Set([...fromTransactions, ...fromOverview]));
-  }, [categories, filters.categoryView, overview, transactions]);
+    return Array.from(new Set([...fromTransactions]));
+  }, [categories, filters.categoryView, transactions]);
 
   const accountFilterOptions = useMemo(() => {
     const options = new Map<string, string>();
@@ -140,14 +133,12 @@ export default function TransactionsPage() {
     }
 
     try {
-      const [transactionData, overviewData] = await Promise.all([
-        api.transactions.list(toTransactionsListApiParams(nextFilters)),
-        api.analytics.overview(toTransactionsOverviewApiParams(nextFilters))
+      const [transactionData] = await Promise.all([
+        api.transactions.list(toTransactionsListApiParams(nextFilters))
       ]);
 
       setTransactions(transactionData.items);
       setTotalTransactions(transactionData.total);
-      setOverview(overviewData);
     } catch (error) {
       if (error instanceof ApiError) {
         setMessage(error.message);
@@ -374,7 +365,7 @@ export default function TransactionsPage() {
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-3xl font-semibold tracking-tight">Transactions</h2>
-          <p className="text-neutral-400">Review and filter your parsed financial data.</p>
+          <p className="text-neutral-400">Manage, edit, and organize your transactions.</p>
         </div>
 
         <div className="flex w-full items-center gap-2 md:w-auto">
@@ -409,49 +400,6 @@ export default function TransactionsPage() {
           {message}
         </p>
       ) : null}
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-6 lg:col-span-2">
-          <h3 className="text-sm font-medium text-neutral-300">Spending Trend</h3>
-          <div className="mt-4 grid h-56 grid-cols-7 items-end gap-2" data-testid="transactions-trend">
-            {trendBars.length
-              ? trendBars.map((entry) => {
-                  const max = Math.max(1, ...trendBars.map((item) => item.spend));
-                  const height = Math.max(18, Math.round((entry.spend / max) * 180));
-                  return (
-                    <div key={entry.month} className="flex flex-col items-center gap-2">
-                      <div className="w-full rounded bg-neutral-700/80" style={{ height }} />
-                      <span className="text-[11px] text-neutral-400">{entry.month.slice(5)}</span>
-                    </div>
-                  );
-                })
-              : Array.from({ length: 7 }).map((_, index) => <div key={index} className="h-10 rounded bg-neutral-900" />)}
-          </div>
-        </section>
-
-        <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-6">
-          <h3 className="text-sm text-neutral-400">Total Expenses</h3>
-          <p className="mt-2 text-4xl font-semibold text-neutral-100">{money(overview?.summary.totalSpend || 0)}</p>
-
-          <div className="mt-6 space-y-4">
-            {(overview?.topCategories || []).slice(0, 2).map((entry) => {
-              const total = Math.max(1, overview?.summary.totalSpend || 1);
-              const width = Math.min(100, Math.round((entry.amount / total) * 100));
-              return (
-                <div key={entry.category}>
-                  <div className="mb-1 flex justify-between text-sm text-neutral-300">
-                    <span>{entry.emoji ? `${entry.emoji} ` : ""}{entry.category}</span>
-                    <span>{money(entry.amount)}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-neutral-800">
-                    <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${width}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      </div>
 
       <section className="overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-950/70">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-900 bg-neutral-900/40 px-4 py-3">
