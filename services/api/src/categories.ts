@@ -189,7 +189,7 @@ function resolveCategoryCoarseKey(rawValue, coarseKeySet, categoryType, fallback
   const normalizedRaw = normalizeCoarseKey(rawValue);
   if (normalizedRaw) {
     if (!coarseKeySet.has(normalizedRaw)) {
-      throw new Error("Invalid category group");
+      throw new Error(`Invalid category group: ${rawValue}`);
     }
     return normalizedRaw;
   }
@@ -217,7 +217,7 @@ function validateCategoryGroupTypeCompatibility(coarseKey, categoryType) {
   }
 
   if ((categoryType === "income" || categoryType === "transfer") && (coarseKey === "essential" || coarseKey === "extra")) {
-    throw new Error("Invalid category type for selected group");
+    throw new Error(`Invalid category type "${categoryType}" for selected group "${coarseKey}". Income and transfer categories cannot be assigned to essential or extra groups.`);
   }
 }
 

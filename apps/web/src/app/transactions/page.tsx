@@ -49,8 +49,6 @@ export default function TransactionsPage() {
   const [formErrors, setFormErrors] = useState<TransactionFormErrors>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [bulkSaving, setBulkSaving] = useState(false);
-  const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
   const [message, setMessage] = useState("");
 
   const categoryFilterOptions = useMemo(() => {
@@ -87,11 +85,6 @@ export default function TransactionsPage() {
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [accounts, transactions]);
 
-  const selectedTransactionIdSet = useMemo(
-    () => new Set(selectedTransactionIds),
-    [selectedTransactionIds]
-  );
-  const allVisibleSelected = transactions.length > 0 && transactions.every((entry) => selectedTransactionIdSet.has(entry.id));
   const totalPages = Math.max(1, Math.ceil(totalTransactions / TRANSACTIONS_PAGE_SIZE));
   const currentPage = Math.min(Math.max(1, filters.page), totalPages);
   const pageStart = totalTransactions === 0 ? 0 : ((currentPage - 1) * TRANSACTIONS_PAGE_SIZE) + 1;
@@ -243,69 +236,6 @@ export default function TransactionsPage() {
     setMessage("Edit canceled.");
   }
 
-  function toggleTransactionSelection(transactionId: string) {
-    setSelectedTransactionIds((previous) => {
-      if (previous.includes(transactionId)) {
-        return previous.filter((id) => id !== transactionId);
-      }
-      return [...previous, transactionId];
-    });
-  }
-
-  function toggleSelectVisibleTransactions() {
-    if (allVisibleSelected) {
-      setSelectedTransactionIds([]);
-      return;
-    }
-    setSelectedTransactionIds(transactions.map((entry) => entry.id));
-  }
-
-  async function applyBulkReviewStatus(reviewStatus: "reviewed" | "needs_review") {
-    if (!selectedTransactionIds.length) {
-      setMessage("Select at least one transaction for bulk actions.");
-      return;
-    }
-
-    const selectedIds = [...selectedTransactionIds];
-    const optimisticTransactions = transactions.map((entry) => {
-      if (!selectedIds.includes(entry.id)) {
-        return entry;
-      }
-      const needsReview = reviewStatus === "needs_review";
-      return {
-        ...entry,
-        review_status: reviewStatus,
-        needs_category_review: needsReview
-      };
-    });
-
-    setBulkSaving(true);
-    setTransactions(optimisticTransactions);
-
-    try {
-      await api.transactions.bulkUpdate({
-        transaction_ids: selectedIds,
-        review_status: reviewStatus
-      });
-      setMessage(
-        reviewStatus === "reviewed"
-          ? `Marked ${selectedIds.length} transaction(s) as reviewed.`
-          : `Marked ${selectedIds.length} transaction(s) as needs review.`
-      );
-      setSelectedTransactionIds([]);
-      await loadTransactions(parsedFilters, { preserveMessage: true });
-    } catch (error) {
-      setTransactions(transactions);
-      if (error instanceof ApiError) {
-        setMessage(error.message);
-      } else {
-        setMessage("Bulk update failed.");
-      }
-    } finally {
-      setBulkSaving(false);
-    }
-  }
-
   async function removeTransaction(transactionId: string) {
     try {
       await api.transactions.remove(transactionId);
@@ -402,48 +332,10 @@ export default function TransactionsPage() {
       ) : null}
 
       <section className="overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-950/70">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-900 bg-neutral-900/40 px-4 py-3">
-          <p className="text-xs uppercase tracking-wide text-neutral-400">
-            {selectedTransactionIds.length
-              ? `${selectedTransactionIds.length} selected`
-              : "Select rows for bulk actions"}
-          </p>
-          <div className="inline-flex gap-2">
-            <button
-              type="button"
-              onClick={() => void applyBulkReviewStatus("reviewed")}
-              disabled={bulkSaving || selectedTransactionIds.length === 0}
-              className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
-              data-testid="txn-bulk-reviewed"
-            >
-              Mark reviewed
-            </button>
-            <button
-              type="button"
-              onClick={() => void applyBulkReviewStatus("needs_review")}
-              disabled={bulkSaving || selectedTransactionIds.length === 0}
-              className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
-              data-testid="txn-bulk-needs-review"
-            >
-              Mark needs review
-            </button>
-          </div>
-        </div>
-
         <table className="w-full text-left text-sm" data-testid="txn-table">
           <caption className="sr-only">Transactions results with row actions</caption>
           <thead className="bg-neutral-900/60 text-neutral-300">
             <tr>
-              <th scope="col" className="px-4 py-3 font-medium">
-                <input
-                  type="checkbox"
-                  checked={allVisibleSelected}
-                  onChange={toggleSelectVisibleTransactions}
-                  aria-label="Select all visible transactions"
-                  className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
-                  data-testid="txn-select-all"
-                />
-              </th>
               <th scope="col" className="px-4 py-3 font-medium">Date</th>
               <th scope="col" className="px-4 py-3 font-medium">Merchant</th>
               <th scope="col" className="px-4 py-3 font-medium">Category</th>
@@ -457,16 +349,6 @@ export default function TransactionsPage() {
               return (
                 <Fragment key={txn.id}>
                   <tr className="hover:bg-neutral-900/40">
-                    <td className="px-4 py-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedTransactionIdSet.has(txn.id)}
-                        onChange={() => toggleTransactionSelection(txn.id)}
-                        aria-label={`Select transaction ${txn.merchant_raw} on ${txn.transaction_date}`}
-                        className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-500 focus:ring-emerald-500"
-                        data-testid={`txn-select-${txn.id}`}
-                      />
-                    </td>
                     <td className="px-4 py-3 text-neutral-300">{txn.transaction_date}</td>
                     <td className="px-4 py-3 font-medium text-neutral-200">
                       <div className="flex items-center gap-3">
@@ -499,7 +381,6 @@ export default function TransactionsPage() {
                         <button
                           type="button"
                           onClick={() => startEdit(txn)}
-                          disabled={bulkSaving}
                           data-testid={`txn-edit-${txn.id}`}
                           aria-label={`Edit transaction ${txn.merchant_raw}`}
                           className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
@@ -509,7 +390,6 @@ export default function TransactionsPage() {
                         <button
                           type="button"
                           onClick={() => void removeTransaction(txn.id)}
-                          disabled={bulkSaving}
                           data-testid={`txn-delete-${txn.id}`}
                           aria-label={`Delete transaction ${txn.merchant_raw}`}
                           className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
@@ -610,23 +490,6 @@ export default function TransactionsPage() {
                                 className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                               />
                             </label>
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Review State
-                              <select
-                                name="review_status"
-                                value={form.review_status}
-                                onChange={(event) =>
-                                  setForm((previous) => ({
-                                    ...previous,
-                                    review_status: event.target.value as "reviewed" | "needs_review"
-                                  }))
-                                }
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                              >
-                                <option value="reviewed">Reviewed</option>
-                                <option value="needs_review">Needs Review</option>
-                              </select>
-                            </label>
                           </div>
 
                           <div className="grid gap-3 md:grid-cols-3">
@@ -722,7 +585,7 @@ export default function TransactionsPage() {
             <button
               type="button"
               onClick={() => navigateToPage(currentPage - 1)}
-              disabled={currentPage <= 1 || loading || saving || bulkSaving}
+              disabled={currentPage <= 1 || loading || saving}
               data-testid="txn-page-prev"
               className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
             >
@@ -734,7 +597,7 @@ export default function TransactionsPage() {
             <button
               type="button"
               onClick={() => navigateToPage(currentPage + 1)}
-              disabled={currentPage >= totalPages || loading || saving || bulkSaving}
+              disabled={currentPage >= totalPages || loading || saving}
               data-testid="txn-page-next"
               className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
             >
@@ -815,25 +678,6 @@ export default function TransactionsPage() {
               >
                 <option value="granular">Granular</option>
                 <option value="coarse">Coarse</option>
-              </select>
-            </label>
-
-            <label className="grid gap-1 text-sm text-neutral-300">
-              Review State
-              <select
-                value={filters.review}
-                onChange={(event) =>
-                  updateFilters((previous) => ({
-                    ...previous,
-                    review: event.target.value as "all" | "reviewed" | "needs_review"
-                  }))
-                }
-                data-testid="txn-review-only"
-                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-              >
-                <option value="all">All</option>
-                <option value="reviewed">Reviewed</option>
-                <option value="needs_review">Needs Review</option>
               </select>
             </label>
 
@@ -1009,25 +853,6 @@ export default function TransactionsPage() {
                     onChange={(event) => setForm((previous) => ({ ...previous, account_name: event.target.value }))}
                     className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
                   />
-                </label>
-
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Review State
-                  <select
-                    name="review_status"
-                    value={form.review_status}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        review_status: event.target.value as "reviewed" | "needs_review"
-                      }))
-                    }
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                  >
-                    <option value="reviewed">Reviewed</option>
-                    <option value="needs_review">Needs Review</option>
-                  </select>
-                  {formErrors.review_status ? <span className="text-xs text-rose-300">{formErrors.review_status}</span> : null}
                 </label>
               </div>
 

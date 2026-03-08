@@ -1,7 +1,6 @@
 import { RANGE_OPTIONS } from "@/lib/constants";
 
 export type TransactionCategoryView = "granular" | "coarse";
-export type TransactionReviewFilter = "all" | "reviewed" | "needs_review";
 export type TransactionTypeFilter = "all" | "expense" | "income" | "transfer";
 
 export interface TransactionsFilterState {
@@ -12,7 +11,6 @@ export interface TransactionsFilterState {
   start: string;
   end: string;
   categoryView: TransactionCategoryView;
-  review: TransactionReviewFilter;
   transactionType: TransactionTypeFilter;
   tag: string;
   page: number;
@@ -26,7 +24,6 @@ export interface TransactionsListApiParams {
   start?: string;
   end?: string;
   category_view: TransactionCategoryView;
-  review_status?: "reviewed" | "needs_review";
   transaction_type?: "expense" | "income" | "transfer";
   tag?: string;
   limit: number;
@@ -42,7 +39,6 @@ export interface TransactionsOverviewApiParams {
 
 const RANGE_VALUES = new Set([...RANGE_OPTIONS.map((option) => option.value), "custom"]);
 const CATEGORY_VIEW_VALUES = new Set(["granular", "coarse"]);
-const REVIEW_VALUES = new Set(["all", "reviewed", "needs_review"]);
 const TRANSACTION_TYPE_VALUES = new Set(["all", "expense", "income", "transfer"]);
 export const TRANSACTIONS_PAGE_SIZE = 50;
 
@@ -80,7 +76,6 @@ export function createDefaultTransactionsFilterState(): TransactionsFilterState 
     start: "",
     end: "",
     categoryView: "granular",
-    review: "all",
     transactionType: "all",
     tag: "",
     page: 1
@@ -92,7 +87,6 @@ export function parseTransactionsFilterState(searchParams: SearchParamsLike): Tr
 
   const range = cleanValue(searchParams.get("range"));
   const categoryView = cleanValue(searchParams.get("category_view"));
-  const review = cleanValue(searchParams.get("review"));
   const transactionType = cleanValue(searchParams.get("type"));
 
   return {
@@ -105,7 +99,6 @@ export function parseTransactionsFilterState(searchParams: SearchParamsLike): Tr
     categoryView: CATEGORY_VIEW_VALUES.has(categoryView)
       ? (categoryView as TransactionCategoryView)
       : defaults.categoryView,
-    review: REVIEW_VALUES.has(review) ? (review as TransactionReviewFilter) : defaults.review,
     transactionType: TRANSACTION_TYPE_VALUES.has(transactionType)
       ? (transactionType as TransactionTypeFilter)
       : defaults.transactionType,
@@ -130,9 +123,6 @@ export function toTransactionsListApiParams(filters: TransactionsFilterState): T
   }
   if (filters.account) {
     params.account = filters.account;
-  }
-  if (filters.review !== "all") {
-    params.review_status = filters.review;
   }
   if (filters.transactionType !== "all") {
     params.transaction_type = filters.transactionType;
@@ -208,10 +198,6 @@ export function buildTransactionsFilterSearchParams(filters: TransactionsFilterS
     searchParams.set("category_view", filters.categoryView);
   }
 
-  if (filters.review !== defaults.review) {
-    searchParams.set("review", filters.review);
-  }
-
   if (filters.transactionType !== defaults.transactionType) {
     searchParams.set("type", filters.transactionType);
   }
@@ -240,9 +226,6 @@ export function toValidFilterState(filters: TransactionsFilterState): Transactio
   }
   if (!CATEGORY_VIEW_VALUES.has(next.categoryView)) {
     next.categoryView = "granular";
-  }
-  if (!REVIEW_VALUES.has(next.review)) {
-    next.review = "all";
   }
   if (!TRANSACTION_TYPE_VALUES.has(next.transactionType)) {
     next.transactionType = "all";

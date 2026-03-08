@@ -18,7 +18,6 @@ test("createDefaultTransactionsFilterState returns expected defaults", () => {
     start: "",
     end: "",
     categoryView: "granular",
-    review: "all",
     transactionType: "all",
     tag: "",
     page: 1
@@ -28,7 +27,7 @@ test("createDefaultTransactionsFilterState returns expected defaults", () => {
 test("parseTransactionsFilterState reads supported query tokens", () => {
   const parsed = parseTransactionsFilterState(
     new URLSearchParams(
-      "query=Transfer&category=Dining&account=primary-checking&range=custom&start=2026-01-01&end=2026-01-31&category_view=coarse&review=needs_review&type=transfer&tag=monthly"
+      "query=Transfer&category=Dining&account=primary-checking&range=custom&start=2026-01-01&end=2026-01-31&category_view=coarse&type=transfer&tag=monthly"
     )
   );
 
@@ -40,7 +39,6 @@ test("parseTransactionsFilterState reads supported query tokens", () => {
     start: "2026-01-01",
     end: "2026-01-31",
     categoryView: "coarse",
-    review: "needs_review",
     transactionType: "transfer",
     tag: "monthly",
     page: 1
@@ -56,7 +54,7 @@ test("parseTransactionsFilterState reads and normalizes pagination page number",
 test("parseTransactionsFilterState falls back for invalid values", () => {
   const parsed = parseTransactionsFilterState(
     new URLSearchParams(
-      "range=invalid&start=01-31-2026&end=bad&category_view=wrong&review=invalid&type=invalid"
+      "range=invalid&start=01-31-2026&end=bad&category_view=wrong&type=invalid"
     )
   );
 
@@ -64,7 +62,6 @@ test("parseTransactionsFilterState falls back for invalid values", () => {
   assert.equal(parsed.start, "");
   assert.equal(parsed.end, "");
   assert.equal(parsed.categoryView, "granular");
-  assert.equal(parsed.review, "all");
   assert.equal(parsed.transactionType, "all");
   assert.equal(parsed.page, 1);
 });
@@ -78,7 +75,6 @@ test("toTransactionsListApiParams serializes custom date mode and semantic filte
     start: "2026-01-01",
     end: "2026-01-31",
     categoryView: "coarse",
-    review: "reviewed",
     transactionType: "expense",
     tag: "monthly",
     page: 3
@@ -91,7 +87,6 @@ test("toTransactionsListApiParams serializes custom date mode and semantic filte
     start: "2026-01-01",
     end: "2026-01-31",
     category_view: "coarse",
-    review_status: "reviewed",
     transaction_type: "expense",
     tag: "monthly",
     limit: 50,
@@ -136,14 +131,13 @@ test("buildTransactionsFilterSearchParams writes only non-default tokens", () =>
     range: "custom",
     start: "2026-01-01",
     end: "2026-01-31",
-    review: "needs_review",
     transactionType: "transfer",
     page: 4
   });
 
   assert.equal(
     searchParams.toString(),
-    "query=Transfer&account=primary-checking&range=custom&start=2026-01-01&end=2026-01-31&review=needs_review&type=transfer&page=4"
+    "query=Transfer&account=primary-checking&range=custom&start=2026-01-01&end=2026-01-31&type=transfer&page=4"
   );
 });
 
@@ -156,7 +150,6 @@ test("toValidFilterState trims values and clears custom dates when not in custom
     start: "2026-01-01",
     end: "2026-01-31",
     categoryView: "granular",
-    review: "all",
     transactionType: "all",
     tag: "  monthly  ",
     page: 0
@@ -170,7 +163,6 @@ test("toValidFilterState trims values and clears custom dates when not in custom
     start: "",
     end: "",
     categoryView: "granular",
-    review: "all",
     transactionType: "all",
     tag: "monthly",
     page: 1

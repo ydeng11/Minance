@@ -5,7 +5,6 @@ const TAG_PATTERN = /^[a-z0-9]+(?:[ _-][a-z0-9]+)*$/;
 const TAG_MAX_LENGTH = 40;
 const TAG_MAX_COUNT = 25;
 const TRANSACTION_TYPE_VALUES = new Set(["expense", "income", "transfer"]);
-const REVIEW_STATUS_VALUES = new Set(["reviewed", "needs_review"]);
 
 export interface TransactionFormDraft {
   id: string;
@@ -18,7 +17,6 @@ export interface TransactionFormDraft {
   account_name: string;
   memo: string;
   tags: string;
-  review_status: "reviewed" | "needs_review";
   transaction_type: "" | "expense" | "income" | "transfer";
 }
 
@@ -28,7 +26,6 @@ export interface TransactionFormErrors {
   amount?: string;
   category_final?: string;
   tags?: string;
-  review_status?: string;
   transaction_type?: string;
 }
 
@@ -42,7 +39,6 @@ export interface TransactionFormPayload {
   account_name: string;
   memo: string | null;
   tags: string[];
-  review_status: "reviewed" | "needs_review";
   transaction_type?: "expense" | "income" | "transfer";
 }
 
@@ -63,7 +59,6 @@ export function createInitialTransactionDraft(options: { category?: string; toda
     account_name: "Manual Account",
     memo: "",
     tags: "",
-    review_status: "reviewed",
     transaction_type: ""
   };
 }
@@ -84,7 +79,6 @@ export function buildDraftFromTransaction(transaction: Transaction): Transaction
     account_name: transaction.account_key || "Manual Account",
     memo: transaction.memo || "",
     tags: Array.isArray(transaction.tags) ? transaction.tags.join(", ") : "",
-    review_status: transaction.review_status === "needs_review" ? "needs_review" : "reviewed",
     transaction_type:
       transaction.transaction_type === "expense" ||
       transaction.transaction_type === "income" ||
@@ -191,11 +185,6 @@ export function validateTransactionDraft(
     errors.tags = parsedTags.error;
   }
 
-  const reviewStatus = String(draft.review_status || "").trim();
-  if (!REVIEW_STATUS_VALUES.has(reviewStatus)) {
-    errors.review_status = "Review state is invalid.";
-  }
-
   const transactionType = String(draft.transaction_type || "").trim().toLowerCase();
   if (transactionType && !TRANSACTION_TYPE_VALUES.has(transactionType)) {
     errors.transaction_type = "Transaction type is invalid.";
@@ -227,8 +216,7 @@ export function validateTransactionDraft(
     category_final: categoryMatch?.name || categoryName,
     account_name: accountName,
     memo: memo || null,
-    tags: parsedTags.tags,
-    review_status: reviewStatus as "reviewed" | "needs_review"
+    tags: parsedTags.tags
   };
 
   if (transactionType) {

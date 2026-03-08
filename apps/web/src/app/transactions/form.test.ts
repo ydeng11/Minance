@@ -66,7 +66,6 @@ test("createInitialTransactionDraft returns default create state", () => {
   assert.equal(draft.id, "");
   assert.equal(draft.transaction_date, "2026-03-02");
   assert.equal(draft.category_final, "Dining");
-  assert.equal(draft.review_status, "reviewed");
   assert.equal(draft.transaction_type, "");
 });
 
@@ -162,7 +161,6 @@ test("validateTransactionDraft builds normalized payload for valid input", () =>
       account_name: "  Main Checking  ",
       memo: "  Team sync  ",
       tags: "Food, weekday, food",
-      review_status: "needs_review",
       transaction_type: "expense"
     },
     [createCategory({ name: "Dining" })]
@@ -179,7 +177,6 @@ test("validateTransactionDraft builds normalized payload for valid input", () =>
     account_name: "Main Checking",
     memo: "Team sync",
     tags: ["food", "weekday"],
-    review_status: "needs_review",
     transaction_type: "expense"
   });
 });

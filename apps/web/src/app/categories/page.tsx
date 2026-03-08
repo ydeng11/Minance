@@ -227,10 +227,12 @@ export default function CategoriesPage() {
       if (normalized.includes("already exists")) {
         setFormErrors((previous) => ({ ...previous, name: "Category name already exists." }));
       }
-      if (normalized.includes("category group")) {
+      if (normalized.includes("invalid category group")) {
         setFormErrors((previous) => ({ ...previous, coarseKey: "Category group is invalid." }));
       }
-      if (normalized.includes("category type")) {
+      if (normalized.includes("for selected group")) {
+        setFormErrors((previous) => ({ ...previous, coarseKey: "Category type cannot be assigned to this group." }));
+      } else if (normalized.includes("invalid category type")) {
         setFormErrors((previous) => ({ ...previous, type: "Category type is invalid." }));
       }
       setMessage(nextMessage);

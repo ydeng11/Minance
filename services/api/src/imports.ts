@@ -1401,10 +1401,14 @@ export async function commitImport(userId, importId) {
     tx.category_coarse = categoryMeta.categoryCoarse;
     tx.category_emoji = categoryMeta.categoryEmoji;
 
-    tx.needs_category_review = tx.category_confidence < 0.6;
-    if (tx.needs_category_review) {
+    // Track low confidence for summary, but mark as reviewed since user
+    // has already reviewed/edited transactions in the import UI before committing
+    const isLowConfidence = tx.category_confidence < 0.6;
+    if (isLowConfidence) {
       summary.lowConfidenceRows += 1;
     }
+    tx.needs_category_review = false;
+    tx.review_status = "reviewed";
 
     if (normalized.needs_direction_review) {
       summary.lowDirectionConfidenceRows += 1;

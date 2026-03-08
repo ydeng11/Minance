@@ -294,7 +294,7 @@ test("api parity contract suite for categories/transactions/settings and missing
         coarseKey: "not-a-real-group"
       }
     });
-    assert.equal(invalidCategoryGroup.payload?.error?.message, "Invalid category group");
+    assert.equal(invalidCategoryGroup.payload?.error?.message, "Invalid category group: not-a-real-group");
 
     const ruleResponse = await apiRequest(context, "POST", "/v1/category-rules", {
       token: accessToken,
