@@ -167,11 +167,6 @@ export default function TransactionsPage() {
     }
   }, [filters.category, categoryFilterOptions]);
 
-  useEffect(() => {
-    const visibleIds = new Set(transactions.map((entry) => entry.id));
-    setSelectedTransactionIds((previous) => previous.filter((id) => visibleIds.has(id)));
-  }, [transactions]);
-
   function updateFilters(updater: TransactionsFilterState | ((previous: TransactionsFilterState) => TransactionsFilterState)) {
     setFilters((previous) => {
       const next = typeof updater === "function" ? updater(previous) : updater;
