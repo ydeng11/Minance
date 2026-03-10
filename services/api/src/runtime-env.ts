@@ -1,10 +1,12 @@
 import path from "node:path";
+import { threadId } from "node:worker_threads";
 
 const DEFAULT_DATA_FILE = "services/api/data/store.json";
 const DEFAULT_SQLITE_FILE = "services/api/data/minance.sqlite";
 const DEFAULT_SQLITE_SCHEMA_FILE = "services/api/sql/schema.sql";
-const DEFAULT_TEST_DATA_FILE = "services/api/tmp/test-store.json";
-const DEFAULT_TEST_SQLITE_FILE = "services/api/tmp/test-minance.sqlite";
+const TEST_RUNTIME_SUFFIX = `${process.pid}-${threadId}`;
+const DEFAULT_TEST_DATA_FILE = `services/api/tmp/test-store-${TEST_RUNTIME_SUFFIX}.json`;
+const DEFAULT_TEST_SQLITE_FILE = `services/api/tmp/test-minance-${TEST_RUNTIME_SUFFIX}.sqlite`;
 
 export function normalizeStoreBackend(value: string | undefined) {
   const normalized = String(value || "json").trim().toLowerCase();

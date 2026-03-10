@@ -12,6 +12,7 @@ import {
 } from "./config.ts";
 
 const SQLITE_MAX_BUFFER = 1024 * 1024 * 20;
+const SQLITE_BUSY_TIMEOUT_MS = 5_000;
 
 function toBoolean(value, fallback) {
   if (value == null) {
@@ -38,7 +39,7 @@ function sqlLiteral(value) {
 }
 
 function sqliteExec(args, options = {}) {
-  return spawnSync("sqlite3", args, {
+  return spawnSync("sqlite3", ["-cmd", `.timeout ${SQLITE_BUSY_TIMEOUT_MS}`, ...args], {
     encoding: "utf8",
     maxBuffer: SQLITE_MAX_BUFFER,
     ...(options || {})

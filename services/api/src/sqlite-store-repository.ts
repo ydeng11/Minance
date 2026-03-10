@@ -6,6 +6,7 @@ import { STORE_TABLE_SPECS, getRowsForSpec } from "../../../scripts/sqlite-cutov
 
 const SQLITE_MAX_BUFFER = 1024 * 1024 * 20;
 const SQLITE_READ_BATCH_SIZE = 1000;
+const SQLITE_BUSY_TIMEOUT_MS = 5_000;
 
 function sqlLiteral(value) {
   if (value == null) {
@@ -22,7 +23,7 @@ function sqlLiteral(value) {
 }
 
 function sqliteExec(args, options = {}) {
-  return spawnSync("sqlite3", args, {
+  return spawnSync("sqlite3", ["-cmd", `.timeout ${SQLITE_BUSY_TIMEOUT_MS}`, ...args], {
     encoding: "utf8",
     maxBuffer: SQLITE_MAX_BUFFER,
     ...(options || {})

@@ -93,7 +93,7 @@ async function startApiServer(t, options = {}) {
     ...process.env,
     PORT: String(port),
     NODE_ENV: options.nodeEnv || "test",
-    MINANCE_STORE_BACKEND: "json",
+    MINANCE_STORE_BACKEND: "sqlite",
     MINANCE_SEED_TEST_ACCOUNT: "false",
     OPENROUTER_API_KEY: "",
     MINANCE_DATA_FILE_TEST: dataFile,
@@ -826,7 +826,8 @@ test("api parity contract suite for categories/transactions/settings and missing
       token: accessToken,
       expectedStatus: 200
     });
-    assert.equal(typeof storage.payload?.storage?.backend, "string");
+    assert.equal(storage.payload?.storage?.backend, "sqlite");
+    assert.equal(storage.payload?.storage?.sqlite?.backend, "sqlite");
 
     const providers = await apiRequest(context, "GET", "/v1/ai/providers", {
       token: accessToken,

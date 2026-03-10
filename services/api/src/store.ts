@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DATA_FILE, STORE_BACKEND } from "./config.ts";
 import { nowIso, createId } from "./utils.ts";
+import { ensureSqliteFoundation } from "./sqlite-foundation.ts";
 import {
   readStoreCollectionsFromSqlite,
   writeStoreCollectionsToSqlite
@@ -32,6 +33,16 @@ const defaultStore = {
 
 let cache = null;
 let cacheFileMtimeMs = null;
+
+function ensureSqliteStoreReady() {
+  if (STORE_BACKEND !== "sqlite") {
+    return;
+  }
+
+  ensureSqliteFoundation({
+    backend: "sqlite"
+  });
+}
 
 function ensureDataFile() {
   fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
@@ -75,6 +86,7 @@ export function loadStore() {
   }
 
   if (STORE_BACKEND === "sqlite") {
+    ensureSqliteStoreReady();
     cache = normalizeStore(readStoreCollectionsFromSqlite());
     return cache;
   }
@@ -112,6 +124,7 @@ export function saveStore(nextStore = null) {
   }
 
   if (STORE_BACKEND === "sqlite") {
+    ensureSqliteStoreReady();
     writeStoreCollectionsToSqlite(cache);
     return;
   }

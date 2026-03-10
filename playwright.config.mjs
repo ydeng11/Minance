@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 const E2E_HOST = "localhost";
 const E2E_FRONTEND_PORT = 4173;
 const E2E_API_PORT = 4174;
-const E2E_DATA_FILE = "services/api/tmp/e2e-store.json";
+const E2E_SQLITE_FILE = "services/api/tmp/e2e-minance.sqlite";
 
 export default defineConfig({
   testDir: path.join(__dirname, "e2e/specs"),
@@ -42,7 +42,7 @@ export default defineConfig({
   globalSetup: path.join(__dirname, "e2e/global-setup.ts"),
   webServer: [
     {
-      command: `env NODE_ENV=test PORT=${E2E_API_PORT} MINANCE_STORE_BACKEND=json MINANCE_DATA_FILE_TEST=${E2E_DATA_FILE} MINANCE_ALLOWED_ORIGINS=http://${E2E_HOST}:${E2E_FRONTEND_PORT} MINANCE_SEED_TEST_ACCOUNT=true DEV_TEST_ACCOUNT_EMAIL=dev@minance.local DEV_TEST_ACCOUNT_PASSWORD=devpassword123 apps/web/node_modules/.bin/tsx services/api/src/server.ts`,
+      command: `env NODE_ENV=test PORT=${E2E_API_PORT} MINANCE_STORE_BACKEND=sqlite MINANCE_SQLITE_FILE_TEST=${E2E_SQLITE_FILE} MINANCE_ALLOWED_ORIGINS=http://${E2E_HOST}:${E2E_FRONTEND_PORT} MINANCE_SEED_TEST_ACCOUNT=true DEV_TEST_ACCOUNT_EMAIL=dev@minance.local DEV_TEST_ACCOUNT_PASSWORD=devpassword123 apps/web/node_modules/.bin/tsx services/api/src/server.ts`,
       url: `http://${E2E_HOST}:${E2E_API_PORT}`,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI

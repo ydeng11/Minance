@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
+import { threadId } from "node:worker_threads";
 
 import { getEnvFileName, resolveRuntimePaths, resolveStoreBackend } from "../src/runtime-env.ts";
 
@@ -18,8 +19,14 @@ test("test mode ignores live storage env vars and uses isolated defaults", () =>
   });
 
   assert.equal(getEnvFileName("test"), ".env.test");
-  assert.equal(runtime.dataFile, path.join(ROOT_DIR, "services/api/tmp/test-store.json"));
-  assert.equal(runtime.sqliteFile, path.join(ROOT_DIR, "services/api/tmp/test-minance.sqlite"));
+  assert.equal(
+    runtime.dataFile,
+    path.join(ROOT_DIR, `services/api/tmp/test-store-${process.pid}-${threadId}.json`)
+  );
+  assert.equal(
+    runtime.sqliteFile,
+    path.join(ROOT_DIR, `services/api/tmp/test-minance-${process.pid}-${threadId}.sqlite`)
+  );
   assert.equal(runtime.sqliteSchemaFile, path.join(ROOT_DIR, "services/api/sql/schema.sql"));
 });
 
