@@ -11,6 +11,8 @@ import {
   DETERMINISTIC_FINANCIAL_FIXTURE_VERSION
 } from "../services/api/test/fixtures/deterministic-financial-fixture.js";
 
+const DEFAULT_TARGET_FIXTURE = "services/api/test/fixtures/deterministic-financial-store.json";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "..");
@@ -41,7 +43,7 @@ function parseArgs(argv) {
       continue;
     }
     if (token === "-h" || token === "--help") {
-      console.log(`Usage: tsx scripts/seed-deterministic-fixture.ts [--target <path>] [--dry-run]\n\nOptions:\n  --target   Target JSON file path (default: MINANCE_DATA_FILE or services/api/data/store.json)\n  --dry-run  Print fixture summary without writing file`);
+      console.log(`Usage: tsx scripts/seed-deterministic-fixture.ts [--target <path>] [--dry-run]\n\nOptions:\n  --target   Target JSON fixture path (default: MINANCE_DATA_FILE or ${DEFAULT_TARGET_FIXTURE})\n  --dry-run  Print fixture summary without writing file`);
       process.exit(0);
     }
   }
@@ -51,7 +53,7 @@ function parseArgs(argv) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  const targetPath = resolveFromRoot(args.target || process.env.MINANCE_DATA_FILE, "services/api/data/store.json");
+  const targetPath = resolveFromRoot(args.target || process.env.MINANCE_DATA_FILE, DEFAULT_TARGET_FIXTURE);
 
   if (args.dryRun) {
     const summary = summarizeDeterministicFinancialFixture(createDeterministicFinancialFixture());

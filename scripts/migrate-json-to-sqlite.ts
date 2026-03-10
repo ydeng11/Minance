@@ -11,11 +11,13 @@ import {
 import { ensureSqliteFoundation } from "../services/api/src/sqlite-foundation.ts";
 import { writeStoreCollectionsToSqlite } from "../services/api/src/sqlite-store-repository.ts";
 
+const DEFAULT_SOURCE_FIXTURE = "services/api/test/fixtures/deterministic-financial-store.json";
+
 function printHelp() {
   console.log(`Usage: tsx scripts/migrate-json-to-sqlite.ts [--source <json>] [--db <sqlite>] [--schema <sql>]
 
 Options:
-  --source   Source JSON store path (default: MINANCE_DATA_FILE or services/api/data/store.json)
+  --source   Source JSON fixture path (default: MINANCE_DATA_FILE or ${DEFAULT_SOURCE_FIXTURE})
   --db       Target SQLite file path (default: MINANCE_SQLITE_FILE or services/api/data/minance.sqlite)
   --schema   SQLite schema SQL file (default: MINANCE_SQLITE_SCHEMA_FILE or services/api/sql/schema.sql)
   --help     Show this help message
@@ -51,7 +53,7 @@ function main() {
     return;
   }
 
-  const sourcePath = resolvePathFromRoot(args.source || process.env.MINANCE_DATA_FILE, "services/api/data/store.json");
+  const sourcePath = resolvePathFromRoot(args.source || process.env.MINANCE_DATA_FILE, DEFAULT_SOURCE_FIXTURE);
   const dbPath = resolvePathFromRoot(args.db || process.env.MINANCE_SQLITE_FILE, "services/api/data/minance.sqlite");
   const schemaPath = resolvePathFromRoot(
     args.schema || process.env.MINANCE_SQLITE_SCHEMA_FILE,

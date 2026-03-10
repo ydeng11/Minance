@@ -27,7 +27,7 @@ test("legacy loader cli rejects --user-password without --user-email", () => {
           ...process.env,
           NODE_ENV: "test",
           MINANCE_SEED_TEST_ACCOUNT: "false",
-          MINANCE_DATA_FILE_TEST: path.join(tempDir, "store.json")
+          MINANCE_SQLITE_FILE_TEST: path.join(tempDir, "test.sqlite")
         }
       }
     );

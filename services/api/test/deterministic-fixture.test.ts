@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 
 import {
   createDeterministicFinancialFixture,
@@ -16,6 +17,7 @@ import { getOverview } from "../src/analytics.ts";
 const FIXTURE_FILE_PATH = path.resolve(
   "services/api/test/fixtures/deterministic-financial-store.json"
 );
+const ROOT_DIR = path.resolve(".");
 
 test("deterministic financial fixture has stable shape and coverage", () => {
   const fixture = createDeterministicFinancialFixture();
@@ -71,4 +73,24 @@ test("writeDeterministicFinancialFixture writes a valid fixture file", () => {
   } finally {
     fs.rmSync(tmpPath, { force: true });
   }
+});
+
+test("seed:fixture dry-run defaults to the committed test fixture path", () => {
+  const result = spawnSync("pnpm", ["seed:fixture", "--", "--dry-run"], {
+    cwd: ROOT_DIR,
+    encoding: "utf8"
+  });
+
+  assert.equal(result.status, 0, result.stderr || "seed:fixture dry-run failed");
+
+  const stdout = String(result.stdout || "");
+  const jsonStart = stdout.indexOf("{");
+  assert.notEqual(jsonStart, -1, `seed:fixture output did not contain JSON:\n${stdout}`);
+
+  const payload = JSON.parse(stdout.slice(jsonStart));
+  assert.equal(
+    payload.targetPath,
+    path.resolve("services/api/test/fixtures/deterministic-financial-store.json")
+  );
+  assert.equal(payload.wrote, false);
 });

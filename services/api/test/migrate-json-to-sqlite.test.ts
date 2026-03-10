@@ -171,3 +171,37 @@ test(
     }
   }
 );
+
+test(
+  "migrate-json-to-sqlite and validate:sqlite use the default JSON fixture successfully",
+  { skip: !isSqliteCliAvailable() },
+  () => {
+    const temp = createTempPaths();
+
+    try {
+      const migrateResult = spawnSync("pnpm", ["migrate:sqlite", "--", "--db", temp.dbPath], {
+        cwd: ROOT_DIR,
+        encoding: "utf8",
+        maxBuffer: SQLITE_MAX_BUFFER
+      });
+      assert.equal(
+        migrateResult.status,
+        0,
+        `default fixture migration failed\nstdout:\n${migrateResult.stdout}\nstderr:\n${migrateResult.stderr}`
+      );
+
+      const validateResult = spawnSync("pnpm", ["validate:sqlite", "--", "--db", temp.dbPath], {
+        cwd: ROOT_DIR,
+        encoding: "utf8",
+        maxBuffer: SQLITE_MAX_BUFFER
+      });
+      assert.equal(
+        validateResult.status,
+        0,
+        `default fixture validation failed\nstdout:\n${validateResult.stdout}\nstderr:\n${validateResult.stderr}`
+      );
+    } finally {
+      fs.rmSync(temp.dir, { recursive: true, force: true });
+    }
+  }
+);
