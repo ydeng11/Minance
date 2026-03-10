@@ -2,12 +2,12 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDownRight, Filter, Search } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { RANGE_OPTIONS } from "@/lib/constants";
 import { money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
-import type { Account, Category, Transaction } from "@/lib/api/types";
+import type { Account, Category, Transaction, TransactionsResponse } from "@/lib/api/types";
 import {
   buildDraftFromTransaction,
   createInitialTransactionDraft,
@@ -24,8 +24,88 @@ import {
   toValidFilterState,
   type TransactionsFilterState
 } from "./filters";
+import {
+  buildCreateResultMessage,
+  getLedgerAmountBounds,
+  sortTransactionsForLedger
+} from "./ledger";
+import { TransactionEditorFields } from "./TransactionEditorFields";
 
 const TRANSACTION_RANGE_OPTIONS = [...RANGE_OPTIONS, { value: "custom", label: "Custom" }];
+const FILTER_CONTROL_CLASS =
+  "rounded-2xl border border-neutral-800 bg-neutral-950/80 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
+const FILTER_SELECT_CLASS =
+  "mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-500";
+const FILTER_INPUT_CLASS =
+  "w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-500";
+
+function formatTransactionTypeLabel(type: Transaction["transaction_type"]) {
+  switch (type) {
+    case "income":
+      return "Income";
+    case "transfer":
+      return "Transfer";
+    default:
+      return "Expense";
+  }
+}
+
+function calculateActiveFilterCount(filters: TransactionsFilterState) {
+  const defaults = createDefaultTransactionsFilterState();
+  return [
+    filters.query !== defaults.query,
+    filters.category !== defaults.category,
+    filters.account !== defaults.account,
+    filters.minAmount !== defaults.minAmount,
+    filters.maxAmount !== defaults.maxAmount,
+    filters.range !== defaults.range,
+    filters.start !== defaults.start,
+    filters.end !== defaults.end,
+    filters.categoryView !== defaults.categoryView,
+    filters.transactionType !== defaults.transactionType,
+    filters.tag !== defaults.tag
+  ].filter(Boolean).length;
+}
+
+function formatAmountControlValue(value: string, fallback: number) {
+  if (!value) {
+    return fallback;
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function buildFilterTrackStyle(minBound: number, maxBound: number, lower: number, upper: number) {
+  if (maxBound <= minBound) {
+    return {
+      left: "0%",
+      width: "100%"
+    };
+  }
+
+  const leftPercent = ((lower - minBound) / (maxBound - minBound)) * 100;
+  const widthPercent = ((upper - lower) / (maxBound - minBound)) * 100;
+  return {
+    left: `${Math.max(0, Math.min(100, leftPercent))}%`,
+    width: `${Math.max(0, Math.min(100, widthPercent))}%`
+  };
+}
+
+function getRequestErrorMessage(error: unknown, fallback: string) {
+  return error instanceof ApiError ? error.message : fallback;
+}
+
+function getFilterValidationMessage(filters: TransactionsFilterState) {
+  if (filters.range === "custom" && filters.start && filters.end && filters.start > filters.end) {
+    return "Custom date range is invalid: start date must be before end date.";
+  }
+
+  if (filters.minAmount && filters.maxAmount && Number(filters.minAmount) > Number(filters.maxAmount)) {
+    return "Amount range is invalid: minimum must be less than or equal to maximum.";
+  }
+
+  return null;
+}
 
 export default function TransactionsPage() {
   const api = useApi();
@@ -41,26 +121,38 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactionsMeta, setTransactionsMeta] = useState<TransactionsResponse["meta"] | null>(null);
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [filters, setFilters] = useState<TransactionsFilterState>(createDefaultTransactionsFilterState);
   const filtersRef = useRef<TransactionsFilterState>(createDefaultTransactionsFilterState());
   const lastAppliedQueryRef = useRef<string | null>(null);
   const [form, setForm] = useState<TransactionFormDraft>(() => createInitialTransactionDraft());
   const [formErrors, setFormErrors] = useState<TransactionFormErrors>({});
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+
+  const ledgerTransactions = useMemo(() => sortTransactionsForLedger(transactions), [transactions]);
+  const amountBounds = useMemo(
+    () => getLedgerAmountBounds(transactionsMeta, ledgerTransactions),
+    [ledgerTransactions, transactionsMeta]
+  );
+  const amountBoundMin = Math.floor(amountBounds.min);
+  const amountBoundMax = Math.max(amountBoundMin, Math.ceil(amountBounds.max));
+  const selectedMinAmount = formatAmountControlValue(filters.minAmount, amountBoundMin);
+  const selectedMaxAmount = formatAmountControlValue(filters.maxAmount, amountBoundMax);
+  const activeFilterCount = useMemo(() => calculateActiveFilterCount(filters), [filters]);
 
   const categoryFilterOptions = useMemo(() => {
     if (filters.categoryView === "granular") {
       return categories.map((entry) => entry.name);
     }
 
-    const fromTransactions = transactions
-      .map((entry) => entry.category_coarse || "")
-      .filter(Boolean);
-    return Array.from(new Set([...fromTransactions]));
-  }, [categories, filters.categoryView, transactions]);
+    return Array.from(
+      new Set(ledgerTransactions.map((entry) => entry.category_coarse || "").filter(Boolean))
+    );
+  }, [categories, filters.categoryView, ledgerTransactions]);
 
   const accountFilterOptions = useMemo(() => {
     const options = new Map<string, string>();
@@ -72,7 +164,7 @@ export default function TransactionsPage() {
       options.set(account.normalizedKey, account.displayName || account.normalizedKey);
     }
 
-    for (const transaction of transactions) {
+    for (const transaction of ledgerTransactions) {
       const key = String(transaction.account_key || "").trim();
       if (!key || options.has(key)) {
         continue;
@@ -83,7 +175,7 @@ export default function TransactionsPage() {
     return Array.from(options.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [accounts, transactions]);
+  }, [accounts, ledgerTransactions]);
 
   const totalPages = Math.max(1, Math.ceil(totalTransactions / TRANSACTIONS_PAGE_SIZE));
   const currentPage = Math.min(Math.max(1, filters.page), totalPages);
@@ -119,28 +211,40 @@ export default function TransactionsPage() {
     }
   }
 
-  async function loadTransactions(nextFilters: TransactionsFilterState, options: { preserveMessage?: boolean } = {}) {
+  async function loadTransactions(
+    nextFilters: TransactionsFilterState,
+    options: { preserveMessage?: boolean } = {}
+  ) {
     setLoading(true);
     if (!options.preserveMessage) {
       setMessage("");
     }
 
     try {
-      const [transactionData] = await Promise.all([
-        api.transactions.list(toTransactionsListApiParams(nextFilters))
-      ]);
-
+      const transactionData = await api.transactions.list(toTransactionsListApiParams(nextFilters));
       setTransactions(transactionData.items);
+      setTransactionsMeta(transactionData.meta);
       setTotalTransactions(transactionData.total);
+      return transactionData;
     } catch (error) {
-      if (error instanceof ApiError) {
-        setMessage(error.message);
-      } else {
-        setMessage("Failed to load transactions.");
-      }
+      setMessage(getRequestErrorMessage(error, "Failed to load transactions."));
+      return null;
     } finally {
       setLoading(false);
     }
+  }
+
+  async function refreshTransactionsView(
+    nextFilters: TransactionsFilterState,
+    options: { preserveMessage?: boolean } = { preserveMessage: true }
+  ) {
+    const [, , transactionData] = await Promise.all([
+      loadCategories(),
+      loadAccounts(),
+      loadTransactions(nextFilters, options)
+    ]);
+
+    return transactionData;
   }
 
   useEffect(() => {
@@ -167,6 +271,13 @@ export default function TransactionsPage() {
     }
   }, [filters.category, categoryFilterOptions]);
 
+  function syncFiltersToUrl(nextFilters: TransactionsFilterState) {
+    const nextSearchParams = buildTransactionsFilterSearchParams(nextFilters);
+    const queryText = nextSearchParams.toString();
+    lastAppliedQueryRef.current = queryText;
+    router.replace(queryText ? `/transactions?${queryText}` : "/transactions", { scroll: false });
+  }
+
   function updateFilters(updater: TransactionsFilterState | ((previous: TransactionsFilterState) => TransactionsFilterState)) {
     setFilters((previous) => {
       const next = typeof updater === "function" ? updater(previous) : updater;
@@ -175,27 +286,32 @@ export default function TransactionsPage() {
     });
   }
 
+  function setFormField<K extends keyof TransactionFormDraft>(field: K, value: TransactionFormDraft[K]) {
+    setForm((previous) => ({ ...previous, [field]: value }));
+  }
+
+  function commitFilters(nextFilters: TransactionsFilterState) {
+    updateFilters(nextFilters);
+    syncFiltersToUrl(nextFilters);
+  }
+
   function applyFilters() {
     const nextFilters = toValidFilterState({
       ...filtersRef.current,
       page: 1
     });
 
-    if (
-      nextFilters.range === "custom" &&
-      nextFilters.start &&
-      nextFilters.end &&
-      nextFilters.start > nextFilters.end
-    ) {
-      setMessage("Custom date range is invalid: start date must be before end date.");
+    const validationMessage = getFilterValidationMessage(nextFilters);
+    if (validationMessage) {
+      setMessage(validationMessage);
       return;
     }
 
-    updateFilters(nextFilters);
-    const nextSearchParams = buildTransactionsFilterSearchParams(nextFilters);
-    const queryText = nextSearchParams.toString();
-    lastAppliedQueryRef.current = queryText;
-    router.replace(queryText ? `/transactions?${queryText}` : "/transactions", { scroll: false });
+    commitFilters(nextFilters);
+  }
+
+  function clearFilters() {
+    commitFilters(createDefaultTransactionsFilterState());
   }
 
   function navigateToPage(nextPage: number) {
@@ -208,11 +324,7 @@ export default function TransactionsPage() {
       return;
     }
 
-    updateFilters(nextFilters);
-    const nextSearchParams = buildTransactionsFilterSearchParams(nextFilters);
-    const queryText = nextSearchParams.toString();
-    lastAppliedQueryRef.current = queryText;
-    router.replace(queryText ? `/transactions?${queryText}` : "/transactions", { scroll: false });
+    commitFilters(nextFilters);
   }
 
   function resetManualForm() {
@@ -220,7 +332,23 @@ export default function TransactionsPage() {
     setFormErrors({});
   }
 
+  function openCreateDialog() {
+    if (form.id) {
+      setMessage("Finish the inline edit before creating a new transaction.");
+      return;
+    }
+    resetManualForm();
+    setMessage("");
+    setIsCreateDialogOpen(true);
+  }
+
+  function closeCreateDialog() {
+    setIsCreateDialogOpen(false);
+    resetManualForm();
+  }
+
   function startEdit(transaction: Transaction) {
+    setIsCreateDialogOpen(false);
     setForm(buildDraftFromTransaction(transaction));
     setFormErrors({});
     setMessage("");
@@ -235,13 +363,9 @@ export default function TransactionsPage() {
     try {
       await api.transactions.remove(transactionId);
       setMessage("Transaction deleted.");
-      await loadTransactions(parsedFilters, { preserveMessage: true });
+      await loadTransactions(filtersRef.current, { preserveMessage: true });
     } catch (error) {
-      if (error instanceof ApiError) {
-        setMessage(error.message);
-      } else {
-        setMessage("Failed to delete transaction.");
-      }
+      setMessage(getRequestErrorMessage(error, "Failed to delete transaction."));
     }
   }
 
@@ -263,60 +387,313 @@ export default function TransactionsPage() {
       if (form.id) {
         await api.transactions.update(form.id, validation.payload);
         setMessage("Transaction updated.");
+        resetManualForm();
+        await refreshTransactionsView(filtersRef.current);
       } else {
-        await api.transactions.create(validation.payload);
-        setMessage("Transaction created.");
-      }
+        const created = await api.transactions.create(validation.payload);
+        const nextFilters = toValidFilterState({
+          ...filtersRef.current,
+          page: 1
+        });
 
-      resetManualForm();
-      await Promise.all([
-        loadCategories(),
-        loadAccounts(),
-        loadTransactions(parsedFilters, { preserveMessage: true })
-      ]);
-    } catch (error) {
-      if (error instanceof ApiError) {
-        setMessage(error.message);
-      } else {
-        setMessage("Failed to save transaction.");
+        closeCreateDialog();
+        commitFilters(nextFilters);
+
+        const transactionData = await refreshTransactionsView(nextFilters);
+
+        setMessage(buildCreateResultMessage(created.transaction.id, transactionData?.items || []));
       }
+    } catch (error) {
+      setMessage(getRequestErrorMessage(error, "Failed to save transaction."));
     } finally {
       setSaving(false);
     }
   }
 
+  const sliderTrackStyle = buildFilterTrackStyle(
+    amountBoundMin,
+    amountBoundMax,
+    Math.min(selectedMinAmount, selectedMaxAmount),
+    Math.max(selectedMinAmount, selectedMaxAmount)
+  );
+
   return (
     <div className="space-y-6" data-testid="transactions-page">
-      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-3xl font-semibold tracking-tight">Transactions</h2>
-          <p className="text-neutral-400">Manage, edit, and organize your transactions.</p>
+      <header className="rounded-[28px] border border-neutral-900 bg-[linear-gradient(135deg,rgba(12,16,18,0.95),rgba(8,12,14,0.75))] p-5 shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-emerald-300">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Ledger filters
+            </div>
+            <div>
+              <h2 className="text-3xl font-semibold tracking-tight text-neutral-50">Transactions</h2>
+              <p className="mt-2 max-w-2xl text-sm text-neutral-400">
+                Review the ledger, filter it like a sheet, and create new manual transactions from the top of the page.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-950/80 px-4 py-3 text-sm text-neutral-300">
+              {totalTransactions === 0
+                ? "No rows in the current view"
+                : `Showing ${pageStart}-${pageEnd} of ${totalTransactions} rows`}
+            </div>
+            <button
+              type="button"
+              onClick={openCreateDialog}
+              data-testid="txn-create-open"
+              className="rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={saving}
+            >
+              New transaction
+            </button>
+          </div>
         </div>
 
-        <div className="flex w-full items-center gap-2 md:w-auto">
-          <div className="relative flex-1 md:w-64">
-            <label htmlFor="txn-query-input" className="sr-only">
-              Search merchants
-            </label>
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+        <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(260px,1.35fr)_repeat(4,minmax(150px,0.8fr))]">
+          <div className={`${FILTER_CONTROL_CLASS} xl:col-span-2`}>
+            <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">
+              <span>Search</span>
+              <span>{activeFilterCount} active</span>
+            </div>
+            <div className="relative mt-2">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+              <input
+                id="txn-query-input"
+                value={filters.query}
+                onChange={(event) => updateFilters((previous) => ({ ...previous, query: event.target.value }))}
+                data-testid="txn-query"
+                placeholder="Search merchants, descriptions, or notes"
+                className="w-full rounded-xl border border-neutral-800 bg-neutral-900 py-2.5 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-500 outline-none transition focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          <div className={FILTER_CONTROL_CLASS}>
+            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Category</div>
+            <select
+              value={filters.category}
+              onChange={(event) => updateFilters((previous) => ({ ...previous, category: event.target.value }))}
+              data-testid="txn-category-filter"
+              className={FILTER_SELECT_CLASS}
+            >
+              <option value="">All</option>
+              {categoryFilterOptions.map((entry) => (
+                <option key={entry} value={entry}>
+                  {entry}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className={FILTER_CONTROL_CLASS}>
+            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Account</div>
+            <select
+              value={filters.account}
+              onChange={(event) => updateFilters((previous) => ({ ...previous, account: event.target.value }))}
+              data-testid="txn-account-filter"
+              className={FILTER_SELECT_CLASS}
+            >
+              <option value="">All</option>
+              {accountFilterOptions.map((entry) => (
+                <option key={entry.value} value={entry.value}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className={FILTER_CONTROL_CLASS}>
+            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Type</div>
+            <select
+              value={filters.transactionType}
+              onChange={(event) =>
+                updateFilters((previous) => ({
+                  ...previous,
+                  transactionType: event.target.value as TransactionsFilterState["transactionType"]
+                }))
+              }
+              data-testid="txn-type-filter"
+              className={FILTER_SELECT_CLASS}
+            >
+              <option value="all">All</option>
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+              <option value="transfer">Transfer</option>
+            </select>
+          </div>
+
+          <div className={FILTER_CONTROL_CLASS}>
+            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">View</div>
+            <select
+              value={filters.categoryView}
+              onChange={(event) => {
+                const nextView = event.target.value === "coarse" ? "coarse" : "granular";
+                updateFilters((previous) => ({
+                  ...previous,
+                  categoryView: nextView,
+                  category: previous.categoryView === nextView ? previous.category : ""
+                }));
+              }}
+              data-testid="txn-category-view"
+              className={FILTER_SELECT_CLASS}
+            >
+              <option value="granular">Granular</option>
+              <option value="coarse">Coarse</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-3 grid gap-3 xl:grid-cols-[repeat(3,minmax(160px,0.8fr))_minmax(280px,1.5fr)_auto]">
+          <div className={FILTER_CONTROL_CLASS}>
+            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Range</div>
+            <select
+              value={filters.range}
+              onChange={(event) => updateFilters((previous) => ({ ...previous, range: event.target.value }))}
+              data-testid="txn-range"
+              className={FILTER_SELECT_CLASS}
+            >
+              {TRANSACTION_RANGE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className={FILTER_CONTROL_CLASS}>
+            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Tag</div>
             <input
-              id="txn-query-input"
-              value={filters.query}
-              onChange={(event) => updateFilters((previous) => ({ ...previous, query: event.target.value }))}
-              data-testid="txn-query"
-              placeholder="Search merchants..."
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 py-2 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+              value={filters.tag}
+              onChange={(event) => updateFilters((previous) => ({ ...previous, tag: event.target.value }))}
+              data-testid="txn-tag-filter"
+              placeholder="monthly"
+              className={`mt-2 ${FILTER_INPUT_CLASS}`}
             />
           </div>
-          <button
-            type="button"
-            data-testid="txn-apply"
-            onClick={applyFilters}
-            aria-label="Apply search and filters"
-            className="rounded-lg border border-neutral-800 bg-neutral-900 p-2 text-neutral-300 transition hover:bg-neutral-800"
-          >
-            <Filter className="h-4 w-4" aria-hidden="true" />
-          </button>
+
+          {filters.range === "custom" ? (
+            <>
+              <div className={FILTER_CONTROL_CLASS}>
+                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Start</div>
+                <input
+                  type="date"
+                  value={filters.start}
+                  onChange={(event) => updateFilters((previous) => ({ ...previous, start: event.target.value }))}
+                  data-testid="txn-start-date"
+                  className={`mt-2 ${FILTER_INPUT_CLASS}`}
+                />
+              </div>
+              <div className={FILTER_CONTROL_CLASS}>
+                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">End</div>
+                <input
+                  type="date"
+                  value={filters.end}
+                  onChange={(event) => updateFilters((previous) => ({ ...previous, end: event.target.value }))}
+                  data-testid="txn-end-date"
+                  className={`mt-2 ${FILTER_INPUT_CLASS}`}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={`${FILTER_CONTROL_CLASS} flex items-center text-sm text-neutral-400`}>
+                Date preset applies across the ledger and drill-down links.
+              </div>
+              <div className={`${FILTER_CONTROL_CLASS} flex items-center text-sm text-neutral-400`}>
+                Use custom range to target a specific transaction window.
+              </div>
+            </>
+          )}
+
+          <div className={`${FILTER_CONTROL_CLASS} xl:col-span-2`} data-testid="txn-amount-filter">
+            <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">
+              <span>Amount bar</span>
+              <span>{money(selectedMinAmount)} to {money(selectedMaxAmount)}</span>
+            </div>
+
+            <div className="relative mt-4">
+              <div className="h-2 rounded-full bg-neutral-900" />
+              <div
+                className="pointer-events-none absolute top-0 h-2 rounded-full bg-emerald-400/70"
+                style={sliderTrackStyle}
+              />
+              <input
+                type="range"
+                min={amountBoundMin}
+                max={amountBoundMax}
+                value={Math.min(selectedMinAmount, selectedMaxAmount)}
+                onChange={(event) => {
+                  const nextValue = Number(event.target.value);
+                  updateFilters((previous) => {
+                    const nextMax = previous.maxAmount ? Number(previous.maxAmount) : amountBoundMax;
+                    return {
+                      ...previous,
+                      minAmount: String(Math.min(nextValue, nextMax))
+                    };
+                  });
+                }}
+                data-testid="txn-min-amount-range"
+                className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-emerald-400"
+              />
+              <input
+                type="range"
+                min={amountBoundMin}
+                max={amountBoundMax}
+                value={Math.max(selectedMinAmount, selectedMaxAmount)}
+                onChange={(event) => {
+                  const nextValue = Number(event.target.value);
+                  updateFilters((previous) => {
+                    const nextMin = previous.minAmount ? Number(previous.minAmount) : amountBoundMin;
+                    return {
+                      ...previous,
+                      maxAmount: String(Math.max(nextValue, nextMin))
+                    };
+                  });
+                }}
+                data-testid="txn-max-amount-range"
+                className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-emerald-200"
+              />
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <input
+                value={filters.minAmount}
+                onChange={(event) => updateFilters((previous) => ({ ...previous, minAmount: event.target.value }))}
+                inputMode="decimal"
+                placeholder={`Min (${money(amountBoundMin)})`}
+                className={FILTER_INPUT_CLASS}
+              />
+              <input
+                value={filters.maxAmount}
+                onChange={(event) => updateFilters((previous) => ({ ...previous, maxAmount: event.target.value }))}
+                inputMode="decimal"
+                placeholder={`Max (${money(amountBoundMax)})`}
+                className={FILTER_INPUT_CLASS}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 xl:items-end">
+            <button
+              type="button"
+              onClick={applyFilters}
+              data-testid="txn-apply"
+              aria-label="Apply search and filters"
+              className="w-full rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm font-medium text-neutral-100 transition hover:border-neutral-500 hover:bg-neutral-800 xl:w-40"
+            >
+              Apply filters
+            </button>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="w-full rounded-2xl border border-neutral-800 bg-transparent px-4 py-3 text-sm text-neutral-300 transition hover:border-neutral-600 hover:bg-neutral-900/70 xl:w-40"
+            >
+              Clear
+            </button>
+          </div>
         </div>
       </header>
 
@@ -326,249 +703,166 @@ export default function TransactionsPage() {
         </p>
       ) : null}
 
-      <section className="overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-950/70">
-        <table className="w-full text-left text-sm" data-testid="txn-table">
-          <caption className="sr-only">Transactions results with row actions</caption>
-          <thead className="bg-neutral-900/60 text-neutral-300">
-            <tr>
-              <th scope="col" className="px-4 py-3 font-medium">Date</th>
-              <th scope="col" className="px-4 py-3 font-medium">Merchant</th>
-              <th scope="col" className="px-4 py-3 font-medium">Category</th>
-              <th scope="col" className="px-4 py-3 font-medium text-right">Amount</th>
-              <th scope="col" className="px-4 py-3 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-900">
-            {transactions.map((txn) => {
-              const isEditing = form.id === txn.id;
-              return (
-                <Fragment key={txn.id}>
-                  <tr className="hover:bg-neutral-900/40">
-                    <td className="px-4 py-3 text-neutral-300">{txn.transaction_date}</td>
-                    <td className="px-4 py-3 font-medium text-neutral-200">
-                      <div className="flex items-center gap-3">
-                        <span className="inline-flex rounded-full bg-neutral-800 p-1.5">
-                          <ArrowDownRight className="h-3 w-3 text-neutral-400" />
-                        </span>
-                        <div>
-                          <div>{txn.merchant_raw}</div>
-                          {Array.isArray(txn.tags) && txn.tags.length ? (
-                            <div className="mt-1 text-[11px] text-neutral-400">#{txn.tags.join(" #")}</div>
-                          ) : null}
+      <section className="overflow-hidden rounded-[28px] border border-neutral-900 bg-neutral-950/80 shadow-[0_20px_80px_rgba(0,0,0,0.25)]">
+        <div className="overflow-x-auto">
+          <table className="min-w-[1120px] w-full text-left text-sm" data-testid="txn-table">
+            <caption className="sr-only">Detailed transaction ledger with inline edit and row actions</caption>
+            <thead className="bg-neutral-900/70 text-neutral-300">
+              <tr>
+                <th scope="col" className="px-4 py-3 font-medium">Dates</th>
+                <th scope="col" className="px-4 py-3 font-medium">Details</th>
+                <th scope="col" className="px-4 py-3 font-medium">Category</th>
+                <th scope="col" className="px-4 py-3 font-medium">Account</th>
+                <th scope="col" className="px-4 py-3 font-medium">Type</th>
+                <th scope="col" className="px-4 py-3 font-medium text-right">Amount</th>
+                <th scope="col" className="px-4 py-3 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-900">
+              {ledgerTransactions.map((txn) => {
+                const isEditing = form.id === txn.id;
+                return (
+                  <Fragment key={txn.id}>
+                    <tr className="align-top transition hover:bg-neutral-900/40">
+                      <td className="px-4 py-4 text-neutral-300">
+                        <div className="font-medium text-neutral-100">{txn.transaction_date}</div>
+                        <div className="mt-1 text-xs text-neutral-500">
+                          Post {txn.post_date || "n/a"}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-md bg-neutral-800 px-2 py-1 text-[11px] uppercase tracking-wide text-neutral-300">
-                        {(filters.categoryView === "coarse"
-                          ? `${txn.category_coarse_emoji || ""} ${txn.category_coarse || txn.category_final}`
-                          : `${txn.category_emoji || ""} ${txn.category_final}`).trim()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium">
-                      <span className={txn.direction === "inflow" ? "text-emerald-400" : "text-neutral-100"}>
-                        {txn.direction === "inflow" ? "+" : "-"}
-                        {money(Math.abs(txn.amount))}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="inline-flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startEdit(txn)}
-                          data-testid={`txn-edit-${txn.id}`}
-                          aria-label={`Edit transaction ${txn.merchant_raw}`}
-                          className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void removeTransaction(txn.id)}
-                          data-testid={`txn-delete-${txn.id}`}
-                          aria-label={`Delete transaction ${txn.merchant_raw}`}
-                          className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  {isEditing ? (
-                    <tr data-testid={`txn-inline-edit-row-${txn.id}`}>
-                      <td colSpan={6} className="bg-neutral-950/70 px-4 py-4">
-                        <form onSubmit={submitForm} className="grid gap-3" data-testid={`txn-inline-form-${txn.id}`}>
-                          <input type="hidden" value={form.id} readOnly />
-                          <div className="grid gap-3 md:grid-cols-4">
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Date
-                              <input
-                                type="date"
-                                name="transaction_date"
-                                value={form.transaction_date}
-                                onChange={(event) => setForm((previous) => ({ ...previous, transaction_date: event.target.value }))}
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                                required
-                              />
-                            </label>
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Description
-                              <input
-                                name="description"
-                                value={form.description}
-                                onChange={(event) => setForm((previous) => ({ ...previous, description: event.target.value }))}
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                                required
-                              />
-                            </label>
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Merchant
-                              <input
-                                name="merchant_raw"
-                                value={form.merchant_raw}
-                                onChange={(event) => setForm((previous) => ({ ...previous, merchant_raw: event.target.value }))}
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                              />
-                            </label>
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Amount
-                              <input
-                                name="amount"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={form.amount}
-                                onChange={(event) => setForm((previous) => ({ ...previous, amount: event.target.value }))}
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                                required
-                              />
-                            </label>
-                          </div>
+                        <div className="mt-2 text-[11px] uppercase tracking-[0.18em] text-neutral-600">
+                          {txn.created_at.slice(0, 10)}
+                        </div>
+                      </td>
 
-                          <div className="grid gap-3 md:grid-cols-4">
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Direction
-                              <select
-                                name="direction"
-                                value={form.direction}
-                                onChange={(event) =>
-                                  setForm((previous) => ({ ...previous, direction: event.target.value as "outflow" | "inflow" }))
-                                }
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                              >
-                                <option value="outflow">outflow</option>
-                                <option value="inflow">inflow</option>
-                              </select>
-                            </label>
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Category
-                              <select
-                                name="category_final"
-                                value={form.category_final}
-                                onChange={(event) => setForm((previous) => ({ ...previous, category_final: event.target.value }))}
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                              >
-                                <option value="">Select category</option>
-                                {categories.map((entry) => (
-                                  <option key={entry.id} value={entry.name}>
-                                    {entry.emoji ? `${entry.emoji} ` : ""}{entry.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Account
-                              <input
-                                name="account_name"
-                                value={form.account_name}
-                                onChange={(event) => setForm((previous) => ({ ...previous, account_name: event.target.value }))}
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                              />
-                            </label>
-                          </div>
-
-                          <div className="grid gap-3 md:grid-cols-3">
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Type
-                              <select
-                                name="transaction_type"
-                                value={form.transaction_type}
-                                onChange={(event) =>
-                                  setForm((previous) => ({
-                                    ...previous,
-                                    transaction_type: event.target.value as "" | "expense" | "income" | "transfer"
-                                  }))
-                                }
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                              >
-                                <option value="">Auto</option>
-                                <option value="expense">expense</option>
-                                <option value="income">income</option>
-                                <option value="transfer">transfer</option>
-                              </select>
-                            </label>
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Tags
-                              <input
-                                name="tags"
-                                value={form.tags}
-                                onChange={(event) => setForm((previous) => ({ ...previous, tags: event.target.value }))}
-                                placeholder="monthly, rent"
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                              />
-                            </label>
-                            <label className="grid gap-1 text-sm text-neutral-300">
-                              Memo
-                              <input
-                                name="memo"
-                                value={form.memo}
-                                onChange={(event) => setForm((previous) => ({ ...previous, memo: event.target.value }))}
-                                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                              />
-                            </label>
-                          </div>
-
-                          {Object.values(formErrors).length ? (
-                            <div className="grid gap-1 text-xs text-rose-300">
-                              {Object.values(formErrors).map((error) => (
-                                <span key={error}>{error}</span>
-                              ))}
+                      <td className="px-4 py-4">
+                        <div className="flex items-start gap-3">
+                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 text-base">
+                            {txn.counterparty_emoji || "💳"}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="font-medium text-neutral-100">{txn.merchant_raw}</div>
+                            <div className="mt-1 text-sm text-neutral-400">{txn.description}</div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-neutral-500">
+                              {txn.memo ? (
+                                <span className="rounded-full border border-neutral-800 px-2 py-1">
+                                  Note: {txn.memo}
+                                </span>
+                              ) : null}
+                              {Array.isArray(txn.tags) && txn.tags.length ? (
+                                <span className="rounded-full border border-neutral-800 px-2 py-1">
+                                  #{txn.tags.join(" #")}
+                                </span>
+                              ) : null}
+                              <span className="rounded-full border border-neutral-800 px-2 py-1 uppercase tracking-[0.18em]">
+                                {txn.source_type}
+                              </span>
                             </div>
-                          ) : null}
-
-                          <div className="flex flex-wrap justify-end gap-2">
-                            <button
-                              type="submit"
-                              disabled={saving}
-                              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
-                            >
-                              {saving ? "Updating..." : "Update"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={cancelEdit}
-                              data-testid={`txn-inline-cancel-${txn.id}`}
-                              className="rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
-                            >
-                              Cancel
-                            </button>
                           </div>
-                        </form>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-4">
+                        <div className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] text-neutral-200">
+                          <span>
+                            {(filters.categoryView === "coarse"
+                              ? `${txn.category_coarse_emoji || ""} ${txn.category_coarse || txn.category_final}`
+                              : `${txn.category_emoji || ""} ${txn.category_final}`).trim()}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-[11px] text-neutral-500">
+                          {txn.review_status === "needs_review" ? "Needs review" : "Reviewed"}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-4 text-neutral-300">
+                        <div className="font-medium text-neutral-100">{txn.account_key || "Manual Account"}</div>
+                        <div className="mt-1 text-xs text-neutral-500">{txn.account_id || "No linked account id"}</div>
+                      </td>
+
+                      <td className="px-4 py-4 text-neutral-300">
+                        <div className="font-medium text-neutral-100">{formatTransactionTypeLabel(txn.transaction_type)}</div>
+                        <div className="mt-1 text-xs text-neutral-500">{txn.direction}</div>
+                      </td>
+
+                      <td className="px-4 py-4 text-right font-medium">
+                        <span className={txn.direction === "inflow" ? "text-emerald-400" : "text-neutral-100"}>
+                          {txn.direction === "inflow" ? "+" : "-"}
+                          {money(Math.abs(txn.amount))}
+                        </span>
+                      </td>
+
+                      <td className="px-4 py-4 text-right">
+                        <div className="inline-flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => startEdit(txn)}
+                            data-testid={`txn-edit-${txn.id}`}
+                            aria-label={`Edit transaction ${txn.merchant_raw}`}
+                            className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void removeTransaction(txn.id)}
+                            data-testid={`txn-delete-${txn.id}`}
+                            aria-label={`Delete transaction ${txn.merchant_raw}`}
+                            className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  ) : null}
-                </Fragment>
-              );
-            })}
-            {!loading && transactions.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-neutral-400">
-                  No transactions found.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
+
+                    {isEditing ? (
+                      <tr data-testid={`txn-inline-edit-row-${txn.id}`}>
+                        <td colSpan={7} className="bg-neutral-950/70 px-4 py-4">
+                          <form onSubmit={submitForm} className="grid gap-4" data-testid={`txn-inline-form-${txn.id}`}>
+                            <input type="hidden" value={form.id} readOnly />
+                            <TransactionEditorFields
+                              categories={categories}
+                              errors={formErrors}
+                              form={form}
+                              idPrefix={`txn-inline-${txn.id}`}
+                              onFieldChange={setFormField}
+                            />
+
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <button
+                                type="submit"
+                                disabled={saving}
+                                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+                              >
+                                {saving ? "Updating..." : "Update"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelEdit}
+                                data-testid={`txn-inline-cancel-${txn.id}`}
+                                className="rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </form>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+
+              {!loading && ledgerTransactions.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-neutral-400">
+                    No transactions found.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-900 bg-neutral-900/40 px-4 py-3">
           <p className="text-xs text-neutral-400" data-testid="txn-pagination-summary">
@@ -602,334 +896,65 @@ export default function TransactionsPage() {
         </div>
       </section>
 
-      <details className="rounded-2xl border border-neutral-900 bg-neutral-950/70" data-testid="advanced-transactions" open>
-        <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-neutral-300">Advanced transaction tools</summary>
-        <div className="space-y-5 px-4 pb-4">
-          <div className="grid gap-3 md:grid-cols-5">
-            <label className="grid gap-1 text-sm text-neutral-300">
-              Category
-              <select
-                value={filters.category}
-                onChange={(event) => updateFilters((previous) => ({ ...previous, category: event.target.value }))}
-                data-testid="txn-category-filter"
-                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-              >
-                <option value="">All</option>
-                {categoryFilterOptions.map((entry) => (
-                  <option key={entry} value={entry}>
-                    {entry}
-                  </option>
-                ))}
-              </select>
-            </label>
+      {isCreateDialogOpen ? (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-neutral-950/80 px-4 py-10 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="txn-create-dialog-title"
+            data-testid="txn-create-dialog"
+            className="w-full max-w-4xl rounded-[28px] border border-neutral-800 bg-neutral-950 p-5 shadow-[0_30px_120px_rgba(0,0,0,0.45)]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-emerald-300">New transaction</div>
+                <h3 id="txn-create-dialog-title" className="mt-2 text-2xl font-semibold text-neutral-50">
+                  Add a manual transaction
+                </h3>
+                <p className="mt-2 text-sm text-neutral-400">
+                  Create a new row from the top of the ledger, with an optional person emoji for faster scanning.
+                </p>
+              </div>
 
-            <label className="grid gap-1 text-sm text-neutral-300">
-              Account
-              <select
-                value={filters.account}
-                onChange={(event) => updateFilters((previous) => ({ ...previous, account: event.target.value }))}
-                data-testid="txn-account-filter"
-                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-              >
-                <option value="">All</option>
-                {accountFilterOptions.map((entry) => (
-                  <option key={entry.value} value={entry.value}>
-                    {entry.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="grid gap-1 text-sm text-neutral-300">
-              Range
-              <select
-                value={filters.range}
-                onChange={(event) => updateFilters((previous) => ({ ...previous, range: event.target.value }))}
-                data-testid="txn-range"
-                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-              >
-                {TRANSACTION_RANGE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="grid gap-1 text-sm text-neutral-300">
-              Category View
-              <select
-                value={filters.categoryView}
-                onChange={(event) => {
-                  const nextView = event.target.value === "coarse" ? "coarse" : "granular";
-                  updateFilters((previous) => ({
-                    ...previous,
-                    categoryView: nextView,
-                    category: previous.categoryView === nextView ? previous.category : ""
-                  }));
-                }}
-                data-testid="txn-category-view"
-                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-              >
-                <option value="granular">Granular</option>
-                <option value="coarse">Coarse</option>
-              </select>
-            </label>
-
-            <label className="grid gap-1 text-sm text-neutral-300">
-              Type
-              <select
-                value={filters.transactionType}
-                onChange={(event) =>
-                  updateFilters((previous) => ({
-                    ...previous,
-                    transactionType: event.target.value as "all" | "expense" | "income" | "transfer"
-                  }))
-                }
-                data-testid="txn-type-filter"
-                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-              >
-                <option value="all">All</option>
-                <option value="expense">Expense</option>
-                <option value="income">Income</option>
-                <option value="transfer">Transfer</option>
-              </select>
-            </label>
-
-            <label className="grid gap-1 text-sm text-neutral-300">
-              Tag
-              <input
-                value={filters.tag}
-                onChange={(event) => updateFilters((previous) => ({ ...previous, tag: event.target.value }))}
-                data-testid="txn-tag-filter"
-                placeholder="monthly"
-                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-              />
-            </label>
-
-            {filters.range === "custom" ? (
-              <>
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Start
-                  <input
-                    type="date"
-                    value={filters.start}
-                    onChange={(event) => updateFilters((previous) => ({ ...previous, start: event.target.value }))}
-                    data-testid="txn-start-date"
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                  />
-                </label>
-
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  End
-                  <input
-                    type="date"
-                    value={filters.end}
-                    onChange={(event) => updateFilters((previous) => ({ ...previous, end: event.target.value }))}
-                    data-testid="txn-end-date"
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                  />
-                </label>
-              </>
-            ) : null}
-
-            <div className="flex items-end">
               <button
                 type="button"
-                onClick={applyFilters}
-                className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+                onClick={closeCreateDialog}
+                aria-label="Close new transaction dialog"
+                className="rounded-full border border-neutral-800 bg-neutral-900 p-2 text-neutral-300 transition hover:bg-neutral-800"
               >
-                Apply filters
+                <X className="h-4 w-4" />
               </button>
             </div>
-          </div>
 
-          <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-            <h3 className="text-sm font-medium text-neutral-300">Manual Transaction</h3>
-            {form.id ? (
-              <div className="mt-3 rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300">
-                Editing a transaction inline in the table. Save or cancel there before creating a new manual transaction.
-              </div>
-            ) : (
-            <form onSubmit={submitForm} className="mt-3 grid gap-3" data-testid="txn-form">
-              <input type="hidden" value={form.id} readOnly />
-
-              <div className="grid gap-3 md:grid-cols-4">
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Date
-                  <input
-                    type="date"
-                    name="transaction_date"
-                    value={form.transaction_date}
-                    onChange={(event) => setForm((previous) => ({ ...previous, transaction_date: event.target.value }))}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                    required
-                  />
-                  {formErrors.transaction_date ? <span className="text-xs text-rose-300">{formErrors.transaction_date}</span> : null}
-                </label>
-
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Description
-                  <input
-                    name="description"
-                    value={form.description}
-                    onChange={(event) => setForm((previous) => ({ ...previous, description: event.target.value }))}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                    required
-                  />
-                  {formErrors.description ? <span className="text-xs text-rose-300">{formErrors.description}</span> : null}
-                </label>
-
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Merchant
-                  <input
-                    name="merchant_raw"
-                    value={form.merchant_raw}
-                    onChange={(event) => setForm((previous) => ({ ...previous, merchant_raw: event.target.value }))}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                  />
-                </label>
-
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Amount
-                  <input
-                    name="amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={form.amount}
-                    onChange={(event) => setForm((previous) => ({ ...previous, amount: event.target.value }))}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                    required
-                  />
-                  {formErrors.amount ? <span className="text-xs text-rose-300">{formErrors.amount}</span> : null}
-                </label>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-4">
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Direction
-                  <select
-                    name="direction"
-                    value={form.direction}
-                    onChange={(event) =>
-                      setForm((previous) => ({ ...previous, direction: event.target.value as "outflow" | "inflow" }))
-                    }
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                  >
-                    <option value="outflow">outflow</option>
-                    <option value="inflow">inflow</option>
-                  </select>
-                </label>
-
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Category
-                  <select
-                    name="category_final"
-                    value={form.category_final}
-                    onChange={(event) => setForm((previous) => ({ ...previous, category_final: event.target.value }))}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                  >
-                    <option value="">Select category</option>
-                    {categories.map((entry) => (
-                      <option key={entry.id} value={entry.name}>
-                        {entry.emoji ? `${entry.emoji} ` : ""}{entry.name}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.category_final ? <span className="text-xs text-rose-300">{formErrors.category_final}</span> : null}
-                </label>
-
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Account
-                  <input
-                    name="account_name"
-                    value={form.account_name}
-                    onChange={(event) => setForm((previous) => ({ ...previous, account_name: event.target.value }))}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                  />
-                </label>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-3">
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Type
-                  <select
-                    name="transaction_type"
-                    value={form.transaction_type}
-                    onChange={(event) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        transaction_type: event.target.value as "" | "expense" | "income" | "transfer"
-                      }))
-                    }
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                  >
-                    <option value="">Auto</option>
-                    <option value="expense">expense</option>
-                    <option value="income">income</option>
-                    <option value="transfer">transfer</option>
-                  </select>
-                  {formErrors.transaction_type ? <span className="text-xs text-rose-300">{formErrors.transaction_type}</span> : null}
-                </label>
-
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Tags
-                  <input
-                    name="tags"
-                    value={form.tags}
-                    onChange={(event) => setForm((previous) => ({ ...previous, tags: event.target.value }))}
-                    placeholder="monthly, rent"
-                    data-testid="txn-tags-input"
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                  />
-                  {formErrors.tags ? <span className="text-xs text-rose-300">{formErrors.tags}</span> : null}
-                </label>
-
-                <label className="grid gap-1 text-sm text-neutral-300">
-                  Memo
-                  <input
-                    name="memo"
-                    value={form.memo}
-                    onChange={(event) => setForm((previous) => ({ ...previous, memo: event.target.value }))}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500"
-                  />
-                </label>
-              </div>
+            <form onSubmit={submitForm} className="mt-6 grid gap-4" data-testid="txn-form">
+              <TransactionEditorFields
+                categories={categories}
+                errors={formErrors}
+                form={form}
+                idPrefix="txn-create"
+                onFieldChange={setFormField}
+              />
 
               <div className="flex flex-wrap justify-end gap-2">
                 <button
+                  type="button"
+                  onClick={closeCreateDialog}
+                  className="rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+                >
+                  Cancel
+                </button>
+                <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
                 >
-                  {saving ? (form.id ? "Updating..." : "Saving...") : form.id ? "Update" : "Save"}
+                  {saving ? "Saving..." : "Save transaction"}
                 </button>
-                {form.id ? (
-                  <button
-                    type="button"
-                    onClick={cancelEdit}
-                    data-testid="txn-cancel"
-                    className="rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
-                  >
-                    Cancel
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={resetManualForm}
-                    data-testid="txn-cancel"
-                    className="rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
-                  >
-                    Clear
-                  </button>
-                )}
               </div>
             </form>
-            )}
-          </section>
+          </div>
         </div>
-      </details>
+      ) : null}
     </div>
   );
 }

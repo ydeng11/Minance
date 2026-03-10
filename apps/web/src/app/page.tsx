@@ -313,6 +313,26 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      <section className="rounded-2xl border border-neutral-900 bg-[linear-gradient(135deg,rgba(10,16,18,0.95),rgba(7,11,13,0.78))] p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-emerald-300">Transaction ledger</div>
+            <h3 className="mt-2 text-xl font-semibold text-neutral-50">Need the full table view?</h3>
+            <p className="mt-2 max-w-2xl text-sm text-neutral-400">
+              Open the Transactions page for the detailed ledger, header filters, and manual transaction entry.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => openTransactionsDrillDown()}
+            data-testid="dashboard-open-transactions"
+            className="rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300"
+          >
+            Open transactions
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

@@ -15,6 +15,7 @@ export interface TransactionFormDraft {
   direction: "outflow" | "inflow";
   category_final: string;
   account_name: string;
+  counterparty_emoji: string;
   memo: string;
   tags: string;
   transaction_type: "" | "expense" | "income" | "transfer";
@@ -37,6 +38,7 @@ export interface TransactionFormPayload {
   direction: "outflow" | "inflow";
   category_final: string;
   account_name: string;
+  counterparty_emoji: string | null;
   memo: string | null;
   tags: string[];
   transaction_type?: "expense" | "income" | "transfer";
@@ -57,6 +59,7 @@ export function createInitialTransactionDraft(options: { category?: string; toda
     direction: "outflow",
     category_final: options.category || "",
     account_name: "Manual Account",
+    counterparty_emoji: "",
     memo: "",
     tags: "",
     transaction_type: ""
@@ -77,6 +80,7 @@ export function buildDraftFromTransaction(transaction: Transaction): Transaction
     direction: transaction.direction === "inflow" ? "inflow" : "outflow",
     category_final: transaction.category_final || "",
     account_name: transaction.account_key || "Manual Account",
+    counterparty_emoji: transaction.counterparty_emoji || "",
     memo: transaction.memo || "",
     tags: Array.isArray(transaction.tags) ? transaction.tags.join(", ") : "",
     transaction_type:
@@ -158,6 +162,7 @@ export function validateTransactionDraft(
   const merchantRaw = String(draft.merchant_raw || "").trim();
   const categoryName = String(draft.category_final || "").trim();
   const accountName = String(draft.account_name || "").trim() || "Manual Account";
+  const counterpartyEmoji = String(draft.counterparty_emoji || "").trim();
   const memo = String(draft.memo || "").trim();
   const amountValue = Number(draft.amount);
 
@@ -215,6 +220,7 @@ export function validateTransactionDraft(
     direction: draft.direction,
     category_final: categoryMatch?.name || categoryName,
     account_name: accountName,
+    counterparty_emoji: counterpartyEmoji || null,
     memo: memo || null,
     tags: parsedTags.tags
   };

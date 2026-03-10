@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resetStoreForTests } from "../src/store.ts";
-import { listTransactions } from "../src/transactions.ts";
+import { createManualTransaction, listTransactions } from "../src/transactions.ts";
 import { getOverview } from "../src/analytics.ts";
 
 const BASE_STORE = {
@@ -135,4 +135,95 @@ test("overview spend remains positive even if persisted outflow rows are signed 
   assert.equal(overview.summary.totalSpend, 176.55);
   assert.equal(overview.summary.totalIncome, 2000);
   assert.equal(overview.summary.netFlow, 1823.45);
+});
+
+test("listTransactions sorts same-day transactions by newest created_at first", () => {
+  const store = structuredClone(BASE_STORE);
+  store.transactions = [
+    {
+      ...store.transactions[0],
+      id: "txn_same_day_older",
+      transaction_date: "2026-01-10",
+      created_at: "2026-01-10T09:00:00.000Z",
+      updated_at: "2026-01-10T09:00:00.000Z"
+    },
+    {
+      ...store.transactions[1],
+      id: "txn_same_day_newer",
+      transaction_date: "2026-01-10",
+      created_at: "2026-01-10T12:00:00.000Z",
+      updated_at: "2026-01-10T12:00:00.000Z"
+    },
+    ...store.transactions.slice(2)
+  ];
+
+  resetStoreForTests(store);
+
+  const listed = listTransactions("user_1", { range: "all", limit: 50, offset: 0 });
+  assert.deepEqual(listed.items.slice(0, 2).map((entry) => entry.id), [
+    "txn_same_day_newer",
+    "txn_same_day_older"
+  ]);
+});
+
+test("listTransactions preserves counterparty emoji metadata on manual records", () => {
+  const store = structuredClone(BASE_STORE);
+  store.transactions = [
+    {
+      ...store.transactions[0],
+      id: "txn_with_emoji",
+      counterparty_emoji: "🧑‍🤝‍🧑"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const listed = listTransactions("user_1", { range: "all", limit: 50, offset: 0 });
+  assert.equal(listed.items[0]?.counterparty_emoji, "🧑‍🤝‍🧑");
+});
+
+test("createManualTransaction persists counterparty emoji metadata", () => {
+  const store = structuredClone(BASE_STORE);
+  store.categories = [
+    {
+      id: "cat_groceries",
+      userId: "user_1",
+      name: "Groceries",
+      emoji: "🛒",
+      coarseKey: "essential",
+      type: "expense",
+      budget: null,
+      isSystem: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    }
+  ];
+  resetStoreForTests(store);
+
+  const created = createManualTransaction("user_1", {
+    transaction_date: "2026-01-11",
+    description: "Dinner split",
+    merchant_raw: "Friends Dinner",
+    amount: 45,
+    direction: "outflow",
+    category_final: "Groceries",
+    account_name: "checking",
+    counterparty_emoji: "🧑‍🤝‍🧑"
+  });
+
+  assert.equal(created.counterparty_emoji, "🧑‍🤝‍🧑");
+});
+
+test("listTransactions filters by minimum and maximum absolute amount", () => {
+  resetStoreForTests(structuredClone(BASE_STORE));
+
+  const listed = listTransactions("user_1", {
+    range: "all",
+    min_amount: "60",
+    max_amount: "500",
+    limit: 50,
+    offset: 0
+  });
+
+  assert.deepEqual(listed.items.map((entry) => entry.id), ["txn_imported_neg"]);
 });

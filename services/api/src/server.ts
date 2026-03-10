@@ -657,6 +657,8 @@ async function handleApiRequest(req, res, url) {
         review_status: searchParams.get("review_status"),
         transaction_type: searchParams.get("transaction_type"),
         tag: searchParams.get("tag"),
+        min_amount: searchParams.get("min_amount"),
+        max_amount: searchParams.get("max_amount"),
         recurring_rule_id: searchParams.get("recurring_rule_id"),
         limit: searchParams.get("limit"),
         offset: searchParams.get("offset")

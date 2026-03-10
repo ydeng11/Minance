@@ -14,6 +14,8 @@ test("createDefaultTransactionsFilterState returns expected defaults", () => {
     query: "",
     category: "",
     account: "",
+    minAmount: "",
+    maxAmount: "",
     range: "all",
     start: "",
     end: "",
@@ -35,6 +37,8 @@ test("parseTransactionsFilterState reads supported query tokens", () => {
     query: "Transfer",
     category: "Dining",
     account: "primary-checking",
+    minAmount: "",
+    maxAmount: "",
     range: "custom",
     start: "2026-01-01",
     end: "2026-01-31",
@@ -48,16 +52,20 @@ test("parseTransactionsFilterState reads supported query tokens", () => {
 test("parseTransactionsFilterState reads and normalizes pagination page number", () => {
   const parsed = parseTransactionsFilterState(new URLSearchParams("query=Coffee&page=3"));
   assert.equal(parsed.query, "Coffee");
+  assert.equal(parsed.minAmount, "");
+  assert.equal(parsed.maxAmount, "");
   assert.equal(parsed.page, 3);
 });
 
 test("parseTransactionsFilterState falls back for invalid values", () => {
   const parsed = parseTransactionsFilterState(
     new URLSearchParams(
-      "range=invalid&start=01-31-2026&end=bad&category_view=wrong&type=invalid"
+      "range=invalid&start=01-31-2026&end=bad&category_view=wrong&type=invalid&min_amount=nope&max_amount=-"
     )
   );
 
+  assert.equal(parsed.minAmount, "");
+  assert.equal(parsed.maxAmount, "");
   assert.equal(parsed.range, "all");
   assert.equal(parsed.start, "");
   assert.equal(parsed.end, "");
@@ -71,6 +79,8 @@ test("toTransactionsListApiParams serializes custom date mode and semantic filte
     query: "rent",
     category: "Housing",
     account: "fixture-checking",
+    minAmount: "25",
+    maxAmount: "150",
     range: "custom",
     start: "2026-01-01",
     end: "2026-01-31",
@@ -84,6 +94,8 @@ test("toTransactionsListApiParams serializes custom date mode and semantic filte
     query: "rent",
     category: "Housing",
     account: "fixture-checking",
+    min_amount: 25,
+    max_amount: 150,
     start: "2026-01-01",
     end: "2026-01-31",
     category_view: "coarse",
@@ -128,6 +140,8 @@ test("buildTransactionsFilterSearchParams writes only non-default tokens", () =>
     ...createDefaultTransactionsFilterState(),
     query: "Transfer",
     account: "primary-checking",
+    minAmount: "15",
+    maxAmount: "120",
     range: "custom",
     start: "2026-01-01",
     end: "2026-01-31",
@@ -137,7 +151,7 @@ test("buildTransactionsFilterSearchParams writes only non-default tokens", () =>
 
   assert.equal(
     searchParams.toString(),
-    "query=Transfer&account=primary-checking&range=custom&start=2026-01-01&end=2026-01-31&type=transfer&page=4"
+    "query=Transfer&account=primary-checking&min_amount=15&max_amount=120&range=custom&start=2026-01-01&end=2026-01-31&type=transfer&page=4"
   );
 });
 
@@ -146,6 +160,8 @@ test("toValidFilterState trims values and clears custom dates when not in custom
     query: "  Rent  ",
     category: "  Housing  ",
     account: " fixture-checking ",
+    minAmount: " 20.5 ",
+    maxAmount: " 140 ",
     range: "90d",
     start: "2026-01-01",
     end: "2026-01-31",
@@ -159,6 +175,8 @@ test("toValidFilterState trims values and clears custom dates when not in custom
     query: "Rent",
     category: "Housing",
     account: "fixture-checking",
+    minAmount: "20.5",
+    maxAmount: "140",
     range: "90d",
     start: "",
     end: "",

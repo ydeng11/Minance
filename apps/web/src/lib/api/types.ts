@@ -308,6 +308,7 @@ export interface Transaction {
   needs_category_review: boolean;
   review_status: "reviewed" | "needs_review";
   tags: string[];
+  counterparty_emoji?: string | null;
   recurring_rule_id: string | null;
   memo: string | null;
   dedupe_fingerprint: string;
@@ -331,6 +332,10 @@ export interface AnalyticsMeta {
   appliedRange: AppliedRangeMeta;
   dataBounds: DateBoundsMeta;
   categoryView?: "granular" | "coarse";
+  amountBounds?: {
+    min: number;
+    max: number;
+  };
 }
 
 export interface TransactionsResponse {

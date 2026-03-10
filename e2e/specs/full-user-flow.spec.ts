@@ -6,8 +6,8 @@ import {
   analyticsMerchantBars,
   assistantResponseCards,
   clearAllCredentials,
+  createManualTransaction,
   ensureAiCredential,
-  getLocalDateYmd,
   gotoView,
   loginWithSeedAccount,
   logout,
@@ -33,25 +33,20 @@ test("@core full user flow covers auth, AI settings, imports, transactions, anal
 
   await gotoView(page, "transactions");
   const manualMerchant = `PW Core ${Date.now()}`;
-  const form = page.getByTestId("txn-form");
-
-  await form.locator('input[name="transaction_date"]').fill(getLocalDateYmd());
-  await form.locator('input[name="description"]').fill(`${manualMerchant} description`);
-  await form.locator('input[name="merchant_raw"]').fill(manualMerchant);
-  await form.locator('input[name="amount"]').fill("49.75");
-  await form.locator('select[name="direction"]').selectOption("debit");
-  await form.locator('select[name="category_final"]').selectOption("Dining");
-  await form.locator('input[name="account_name"]').fill("Playwright Account");
-  await form.locator('input[name="memo"]').fill("Core flow create");
-  await form.locator('button[type="submit"]').click();
+  await createManualTransaction(page, {
+    merchant: manualMerchant,
+    amount: "49.75",
+    memo: "Core flow create"
+  });
   await searchTransactions(page, manualMerchant);
   const createdRow = page.locator('[data-testid="txn-table"] tr', { hasText: manualMerchant });
   await expect.poll(async () => await createdRow.count()).toBe(1);
 
   await createdRow.locator('button', { hasText: 'Edit' }).click();
-  await form.locator('input[name="amount"]').fill("61.25");
-  await form.locator('input[name="description"]').fill(`${manualMerchant} updated`);
-  await form.locator('button[type="submit"]').click();
+  const inlineForm = page.getByTestId(/txn-inline-form-/);
+  await inlineForm.locator('input[name="amount"]').fill("61.25");
+  await inlineForm.locator('input[name="description"]').fill(`${manualMerchant} updated`);
+  await inlineForm.locator('button[type="submit"]').click();
   await searchTransactions(page, manualMerchant);
   const updatedRow = page.locator('[data-testid="txn-table"] tr', { hasText: manualMerchant });
   await expect.poll(async () => await updatedRow.count()).toBe(1);

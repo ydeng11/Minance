@@ -42,7 +42,7 @@ export default defineConfig({
   globalSetup: path.join(__dirname, "e2e/global-setup.ts"),
   webServer: [
     {
-      command: `env NODE_ENV=test PORT=${E2E_API_PORT} MINANCE_STORE_BACKEND=json MINANCE_DATA_FILE_TEST=${E2E_DATA_FILE} MINANCE_ALLOWED_ORIGINS=http://${E2E_HOST}:${E2E_FRONTEND_PORT} MINANCE_SEED_TEST_ACCOUNT=true DEV_TEST_ACCOUNT_EMAIL=dev@minance.local DEV_TEST_ACCOUNT_PASSWORD=devpassword123 tsx services/api/src/server.ts`,
+      command: `env NODE_ENV=test PORT=${E2E_API_PORT} MINANCE_STORE_BACKEND=json MINANCE_DATA_FILE_TEST=${E2E_DATA_FILE} MINANCE_ALLOWED_ORIGINS=http://${E2E_HOST}:${E2E_FRONTEND_PORT} MINANCE_SEED_TEST_ACCOUNT=true DEV_TEST_ACCOUNT_EMAIL=dev@minance.local DEV_TEST_ACCOUNT_PASSWORD=devpassword123 apps/web/node_modules/.bin/tsx services/api/src/server.ts`,
       url: `http://${E2E_HOST}:${E2E_API_PORT}`,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI

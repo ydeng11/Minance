@@ -30,13 +30,15 @@ test("transactionsApi.list forwards coarse/granular view and review flag", async
     range: "90d",
     category: "Essential",
     category_view: "coarse",
-    needs_category_review: true
+    needs_category_review: true,
+    min_amount: 25,
+    max_amount: 250
   });
 
   assert.equal(calls.length, 1);
   assert.equal(
     calls[0].path,
-    "/v1/transactions?range=90d&category=Essential&category_view=coarse&needs_category_review=true"
+    "/v1/transactions?range=90d&category=Essential&category_view=coarse&needs_category_review=true&min_amount=25&max_amount=250"
   );
 });
 

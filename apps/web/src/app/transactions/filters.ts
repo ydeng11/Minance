@@ -7,6 +7,8 @@ export interface TransactionsFilterState {
   query: string;
   category: string;
   account: string;
+  minAmount: string;
+  maxAmount: string;
   range: string;
   start: string;
   end: string;
@@ -20,6 +22,8 @@ export interface TransactionsListApiParams {
   query?: string;
   category?: string;
   account?: string;
+  min_amount?: number;
+  max_amount?: number;
   range?: string;
   start?: string;
   end?: string;
@@ -50,6 +54,20 @@ function cleanValue(value: string | null) {
   return String(value || "").trim();
 }
 
+function cleanAmountValue(value: string | null) {
+  const normalized = cleanValue(value);
+  if (!normalized) {
+    return "";
+  }
+
+  const parsed = Number(normalized);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return "";
+  }
+
+  return normalized;
+}
+
 function cleanIsoDate(value: string | null) {
   const normalized = cleanValue(value);
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
@@ -72,6 +90,8 @@ export function createDefaultTransactionsFilterState(): TransactionsFilterState 
     query: "",
     category: "",
     account: "",
+    minAmount: "",
+    maxAmount: "",
     range: "all",
     start: "",
     end: "",
@@ -93,6 +113,8 @@ export function parseTransactionsFilterState(searchParams: SearchParamsLike): Tr
     query: cleanValue(searchParams.get("query")),
     category: cleanValue(searchParams.get("category")),
     account: cleanValue(searchParams.get("account")),
+    minAmount: cleanAmountValue(searchParams.get("min_amount")),
+    maxAmount: cleanAmountValue(searchParams.get("max_amount")),
     range: RANGE_VALUES.has(range) ? range : defaults.range,
     start: cleanIsoDate(searchParams.get("start")),
     end: cleanIsoDate(searchParams.get("end")),
@@ -123,6 +145,12 @@ export function toTransactionsListApiParams(filters: TransactionsFilterState): T
   }
   if (filters.account) {
     params.account = filters.account;
+  }
+  if (filters.minAmount) {
+    params.min_amount = Number(filters.minAmount);
+  }
+  if (filters.maxAmount) {
+    params.max_amount = Number(filters.maxAmount);
   }
   if (filters.transactionType !== "all") {
     params.transaction_type = filters.transactionType;
@@ -177,6 +205,12 @@ export function buildTransactionsFilterSearchParams(filters: TransactionsFilterS
   if (filters.account) {
     searchParams.set("account", filters.account);
   }
+  if (filters.minAmount) {
+    searchParams.set("min_amount", filters.minAmount);
+  }
+  if (filters.maxAmount) {
+    searchParams.set("max_amount", filters.maxAmount);
+  }
   if (filters.tag) {
     searchParams.set("tag", filters.tag);
   }
@@ -215,6 +249,8 @@ export function toValidFilterState(filters: TransactionsFilterState): Transactio
     query: cleanValue(filters.query),
     category: cleanValue(filters.category),
     account: cleanValue(filters.account),
+    minAmount: cleanAmountValue(filters.minAmount),
+    maxAmount: cleanAmountValue(filters.maxAmount),
     start: cleanIsoDate(filters.start),
     end: cleanIsoDate(filters.end),
     tag: cleanValue(filters.tag),
@@ -234,6 +270,10 @@ export function toValidFilterState(filters: TransactionsFilterState): Transactio
   if (next.range !== "custom") {
     next.start = "";
     next.end = "";
+  }
+
+  if (next.minAmount && next.maxAmount && Number(next.minAmount) > Number(next.maxAmount)) {
+    next.maxAmount = next.minAmount;
   }
 
   return next;

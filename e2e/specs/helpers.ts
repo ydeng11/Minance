@@ -105,12 +105,31 @@ export function analyticsAnomalyRows(page) {
   return page.locator('[data-testid="analytics-anomalies"] > div');
 }
 
+async function readAuthState(page, appShell, authMessage) {
+  if (await appShell.isVisible().catch(() => false)) {
+    return "authenticated";
+  }
+
+  return ((await authMessage.textContent().catch(() => "")) || "").trim();
+}
+
 export async function loginWithSeedAccount(page) {
   await page.goto("/");
   await page.getByTestId("auth-email").fill(SEED_ACCOUNT.email);
   await page.getByTestId("auth-password").fill(SEED_ACCOUNT.password);
   await page.getByTestId("auth-submit").click();
-  await expect(page.getByTestId("app-shell")).toBeVisible();
+
+  const appShell = page.getByTestId("app-shell");
+  const authMessage = page.getByTestId("auth-message");
+  await expect.poll(() => readAuthState(page, appShell, authMessage)).not.toBe("");
+
+  const authState = await readAuthState(page, appShell, authMessage);
+  if (authState.toLowerCase().includes("invalid credentials")) {
+    await page.getByTestId("auth-tab-signup").click();
+    await page.getByTestId("auth-submit").click();
+  }
+
+  await expect(appShell).toBeVisible();
   await expect(page.getByTestId("user-email")).toContainText(SEED_ACCOUNT.email);
 }
 
@@ -321,13 +340,98 @@ export async function uploadAndCommitFixtureCsv(page, options = {}) {
   };
 }
 
+function isTransactionsListResponse(response) {
+  return response.url().includes("/v1/transactions") && response.request().method() === "GET";
+}
+
+export async function applyTransactionsFilters(page) {
+  await Promise.all([
+    page.waitForResponse(isTransactionsListResponse),
+    page.getByTestId("txn-apply").click()
+  ]);
+}
+
+export async function openNewTransactionDialog(page) {
+  await page.goto("/transactions");
+  await expect(page.getByTestId("transactions-page")).toBeVisible();
+  await page.getByTestId("txn-create-open").click();
+  const dialog = page.getByTestId("txn-create-dialog");
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+async function ensureCategoryExists(page, categoryName) {
+  const categoriesPayload = await appApi(page, "/v1/categories");
+  const categories = Array.isArray(categoriesPayload?.categories) ? categoriesPayload.categories : [];
+
+  if (categories.some((entry) => entry?.name === categoryName)) {
+    return;
+  }
+
+  await appApi(page, "/v1/categories", {
+    method: "POST",
+    body: {
+      name: categoryName,
+      emoji: "🍽️",
+      type: "expense"
+    }
+  });
+}
+
+async function waitForCategoryOption(form, categoryName) {
+  await expect.poll(async () => {
+    return await form
+      .locator('select[name="category_final"] option')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("value") || ""));
+  }).toContain(categoryName);
+}
+
+export async function createManualTransaction(page, options = {}) {
+  const categoryName = options.category || "Dining";
+  const merchant = options.merchant || `PW Manual ${Date.now()}`;
+  const description = options.description || `${merchant} description`;
+  const transactionDate = options.transactionDate || getLocalDateYmd();
+  const amount = options.amount || "42.50";
+  const direction = options.direction || "outflow";
+  const accountName = options.accountName || "Playwright Account";
+
+  await ensureCategoryExists(page, categoryName);
+  const dialog = await openNewTransactionDialog(page);
+  const form = dialog.getByTestId("txn-form");
+
+  await form.locator('input[name="transaction_date"]').fill(transactionDate);
+  await form.locator('input[name="description"]').fill(description);
+  await form.locator('input[name="merchant_raw"]').fill(merchant);
+  await form.locator('input[name="amount"]').fill(amount);
+  await form.locator('select[name="direction"]').selectOption(direction);
+  await waitForCategoryOption(form, categoryName);
+  await form.locator('select[name="category_final"]').selectOption(categoryName);
+  await form.locator('input[name="account_name"]').fill(accountName);
+
+  if (options.memo) {
+    await form.locator('input[name="memo"]').fill(options.memo);
+  }
+
+  if (options.tags) {
+    await form.getByTestId("txn-create-tags").fill(options.tags);
+  }
+
+  if (options.counterpartyEmoji) {
+    await form.getByTestId("txn-create-counterparty-emoji").selectOption(options.counterpartyEmoji);
+  }
+
+  await form.locator('button[type="submit"]').click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("global-message")).toContainText("Transaction created.");
+
+  return {
+    merchant,
+    description
+  };
+}
+
 export async function searchTransactions(page, query) {
   await gotoView(page, "transactions");
   await page.getByTestId("txn-query").fill(query);
-  await Promise.all([
-    page.waitForResponse((response) => {
-      return response.url().includes("/v1/transactions") && response.request().method() === "GET";
-    }),
-    page.getByTestId("txn-apply").click()
-  ]);
+  await applyTransactionsFilters(page);
 }

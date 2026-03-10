@@ -197,6 +197,8 @@ export const transactionsApi = {
       query?: string;
       category?: string;
       account?: string;
+      min_amount?: number;
+      max_amount?: number;
       range?: string;
       category_view?: "granular" | "coarse";
       needs_category_review?: boolean;

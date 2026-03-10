@@ -22,6 +22,7 @@ const TAG_MAX_LENGTH = 40;
 const TAG_MAX_COUNT = 25;
 const RECURRING_RULE_ID_MAX_LENGTH = 128;
 const BULK_MUTATION_MAX_COUNT = 200;
+const COUNTERPARTY_EMOJI_MAX_LENGTH = 32;
 
 function isSoftDeleted(transaction) {
   return Boolean(transaction?.deleted_at);
@@ -323,6 +324,27 @@ function normalizeRecurringRuleId(rawValue, fallback = null) {
   return value;
 }
 
+function normalizeCounterpartyEmoji(rawValue, fallback = null) {
+  if (rawValue === undefined) {
+    const existing = String(fallback || "").trim();
+    return existing || null;
+  }
+
+  if (rawValue == null) {
+    return null;
+  }
+
+  const value = String(rawValue).trim();
+  if (!value) {
+    return null;
+  }
+  if (value.length > COUNTERPARTY_EMOJI_MAX_LENGTH) {
+    throw new Error("Invalid counterparty emoji");
+  }
+
+  return value;
+}
+
 function normalizeTransactionRecord(transaction) {
   const rawAmount = Number(transaction?.amount ?? 0);
   const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
@@ -360,6 +382,7 @@ function normalizeTransactionRecord(transaction) {
     tags: normalizeExistingTags(transaction?.tags),
     needs_category_review: reviewState.needs_category_review,
     review_status: reviewState.review_status,
+    counterparty_emoji: normalizeCounterpartyEmoji(undefined, transaction?.counterparty_emoji),
     recurring_rule_id: normalizeExistingRecurringRuleId(transaction?.recurring_rule_id)
   };
 }
@@ -464,12 +487,17 @@ function resolveManualContractFields(
     pickFirstDefined(payload, ["recurring_rule_id", "recurringRuleId"]),
     fallback?.recurring_rule_id ?? null
   );
+  const counterpartyEmoji = normalizeCounterpartyEmoji(
+    pickFirstDefined(payload, ["counterparty_emoji", "counterpartyEmoji"]),
+    fallback?.counterparty_emoji ?? null
+  );
 
   return {
     transaction_type: transactionType,
     tags,
     needs_category_review: reviewState.needs_category_review,
     review_status: reviewState.review_status,
+    counterparty_emoji: counterpartyEmoji,
     recurring_rule_id: recurringRuleId
   };
 }
@@ -529,6 +557,19 @@ function normalizeTagFilter(rawTag) {
     return null;
   }
   return normalizeTagValue(rawTag);
+}
+
+function normalizeAmountFilter(rawValue, label) {
+  if (rawValue == null || String(rawValue).trim() === "") {
+    return null;
+  }
+
+  const amount = toDecimal(rawValue);
+  if (amount === null || amount < 0) {
+    throw new Error(`Invalid ${label}`);
+  }
+
+  return Math.abs(amount);
 }
 
 function normalizeBulkTransactionIds(rawIds) {
@@ -612,7 +653,39 @@ export function listTransactions(userId, filters = {}) {
     txns = txns.filter((entry) => entry.recurring_rule_id === recurringRuleIdFilter);
   }
 
-  txns = [...txns].sort((a, b) => b.transaction_date.localeCompare(a.transaction_date));
+  const minAmountFilter = normalizeAmountFilter(effectiveFilters.min_amount, "min amount");
+  const maxAmountFilter = normalizeAmountFilter(effectiveFilters.max_amount, "max amount");
+  if (minAmountFilter != null || maxAmountFilter != null) {
+    txns = txns.filter((entry) => {
+      const amount = Math.abs(Number(entry.amount || 0));
+      if (minAmountFilter != null && amount < minAmountFilter) {
+        return false;
+      }
+      if (maxAmountFilter != null && amount > maxAmountFilter) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  txns = [...txns].sort((a, b) => {
+    const byTransactionDate = String(b.transaction_date || "").localeCompare(String(a.transaction_date || ""));
+    if (byTransactionDate !== 0) {
+      return byTransactionDate;
+    }
+
+    const byCreatedAt = String(b.created_at || "").localeCompare(String(a.created_at || ""));
+    if (byCreatedAt !== 0) {
+      return byCreatedAt;
+    }
+
+    const byUpdatedAt = String(b.updated_at || "").localeCompare(String(a.updated_at || ""));
+    if (byUpdatedAt !== 0) {
+      return byUpdatedAt;
+    }
+
+    return String(b.id || "").localeCompare(String(a.id || ""));
+  });
 
   const total = txns.length;
   const limit = Math.max(1, Math.min(500, Number(effectiveFilters.limit || 100)));
@@ -634,7 +707,11 @@ export function listTransactions(userId, filters = {}) {
     meta: {
       appliedRange: buildAppliedRange(effectiveFilters),
       dataBounds: getUserDataBounds(userId),
-      categoryView: effectiveFilters.category_view || effectiveFilters.categoryView || "granular"
+      categoryView: effectiveFilters.category_view || effectiveFilters.categoryView || "granular",
+      amountBounds: {
+        min: txns.length ? Math.min(...txns.map((entry) => Math.abs(Number(entry.amount || 0)))) : 0,
+        max: txns.length ? Math.max(...txns.map((entry) => Math.abs(Number(entry.amount || 0)))) : 0
+      }
     }
   };
 }
@@ -674,6 +751,7 @@ export function createManualTransaction(userId, payload) {
     tags: contractFields.tags,
     needs_category_review: contractFields.needs_category_review,
     review_status: contractFields.review_status,
+    counterparty_emoji: contractFields.counterparty_emoji,
     recurring_rule_id: contractFields.recurring_rule_id,
     dedupe_fingerprint: dedupeFingerprint(
       userId,
@@ -759,6 +837,7 @@ export function updateTransaction(userId, transactionId, payload) {
   tx.tags = contractFields.tags;
   tx.needs_category_review = contractFields.needs_category_review;
   tx.review_status = contractFields.review_status;
+  tx.counterparty_emoji = contractFields.counterparty_emoji;
   tx.recurring_rule_id = contractFields.recurring_rule_id;
   tx.updated_at = nowIso();
 
