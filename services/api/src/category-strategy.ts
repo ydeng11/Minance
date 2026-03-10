@@ -346,6 +346,14 @@ export function normalizeCategoryView(value) {
 
 export function ensureCategoryStrategyForUser(userId) {
   const store = loadStore();
+  const existingStrategy = store.categoryStrategies.find((entry) => entry.userId === userId);
+  if (!existingStrategy) {
+    const userCategories = store.categories
+      .filter((entry) => entry.userId === userId)
+      .map((entry) => entry.name);
+    return buildDefaultStrategy(userId, userCategories);
+  }
+
   const { strategy, changed } = findOrCreateStrategyEntry(store, userId);
   if (changed) {
     saveStore(store);

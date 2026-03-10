@@ -10,7 +10,7 @@ Defaults to non-destructive staging mode unless --apply is set.
 Environment overrides:
   MINANCE_RUNTIME_DATA_DIR Default: ./services/api/data
   MINANCE_SQLITE_FILE      Default: <MINANCE_RUNTIME_DATA_DIR>/minance.sqlite
-  MINANCE_DATA_FILE        Default: <MINANCE_RUNTIME_DATA_DIR>/store.json
+  MINANCE_DATA_FILE        Default: <MINANCE_RUNTIME_DATA_DIR>/store.json (optional JSON fixture/input file)
   MINANCE_UPLOAD_DIR       Default: <MINANCE_RUNTIME_DATA_DIR>/uploads
   MINANCE_RESTORE_STAGING  Default: ./services/api/tmp/restore-staging
 USAGE
@@ -102,7 +102,7 @@ if [[ "$APPLY" == "true" ]]; then
   echo "Restore applied from $BACKUP_DIR"
   echo "Targets:"
   echo "  SQLITE: $SQLITE_FILE"
-  echo "  JSON:   $JSON_FILE"
+  echo "  JSON:   $JSON_FILE (optional)"
   echo "  Upload: $UPLOAD_DIR"
 else
   echo "Restore staged at $TARGET_ROOT"

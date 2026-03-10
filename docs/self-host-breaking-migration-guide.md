@@ -42,16 +42,16 @@ scripts/selfhost-backup.sh
 Verify backup output contains:
 - `manifest.txt`
 - `checksums.txt`
-- `store.json` (if JSON store is present)
+- `store.json` (only if a JSON fixture/input file was present)
 - `minance.sqlite` (if SQLite file is present)
 
 ## 5. Data Migration (JSON -> SQLite)
 
-If your current runtime still uses JSON storage, migrate before upgrading app containers:
+If you need to load a JSON fixture into SQLite before upgrading app containers, run:
 
 ```bash
-MINANCE_STORE_BACKEND=json pnpm migrate:sqlite
-MINANCE_STORE_BACKEND=json pnpm validate:sqlite
+pnpm migrate:sqlite
+pnpm validate:sqlite
 ```
 
 Validation must complete without mismatched totals/counts before cutover.
@@ -61,7 +61,6 @@ Validation must complete without mismatched totals/counts before cutover.
 For the stock `docker-compose.selfhost.yml` stack, the API container already sets:
 
 - `MINANCE_STORE_BACKEND=sqlite`
-- `MINANCE_DATA_FILE=/var/lib/minance/store.json`
 - `MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite`
 - `MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql`
 - `MINANCE_SQLITE_AUTO_INIT=true`
@@ -72,7 +71,7 @@ In `.env.selfhost`, normally set or confirm:
 - `MINANCE_WEB_PORT=<host-port>`
 - `MINANCE_API_PORT=<host-port>`
 
-Add `MINANCE_DATA_FILE`, `MINANCE_SQLITE_FILE`, `MINANCE_SQLITE_SCHEMA_FILE`, or `MINANCE_SQLITE_AUTO_INIT` to `.env.selfhost` only if you customize the compose file or run the API outside the stock stack.
+Add `MINANCE_SQLITE_FILE`, `MINANCE_SQLITE_SCHEMA_FILE`, or `MINANCE_SQLITE_AUTO_INIT` to `.env.selfhost` only if you customize the compose file or run the API outside the stock stack. Use `MINANCE_DATA_FILE` only for explicit JSON fixture-import workflows.
 
 Keep secrets out of git and lock file permissions:
 

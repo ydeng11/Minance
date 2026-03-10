@@ -1,16 +1,17 @@
 # JSON-to-SQLite Migration and Rollback Runbook
 
-This runbook defines a deterministic, idempotent migration path from the current JSON store (`services/api/data/store.json`) to SQLite for self-hosted deployments.
+This runbook defines a deterministic, idempotent path for loading a JSON fixture into SQLite when operators or tests need fixture-driven setup. Runtime storage itself is already SQLite-first.
 
 ## Objective
 
 - Move persistence from JSON arrays to SQLite tables without data loss.
 - Keep migration repeatable and safe to re-run.
-- Provide explicit pre-checks, validation gates, and rollback procedures.
+- Provide explicit fixture checks, validation gates, and rollback procedures when importing JSON snapshots.
 
 ## Current Baseline
 
-- Active store: `services/api/data/store.json` (or `MINANCE_DATA_FILE` override).
+- Runtime store: `services/api/data/minance.sqlite` (or `MINANCE_SQLITE_FILE` override).
+- Default JSON fixture input: `services/api/test/fixtures/deterministic-financial-store.json` (or `MINANCE_DATA_FILE` override).
 - SQLite foundation bootstrap exists in API startup (`MINANCE_SQLITE_FILE`, `MINANCE_SQLITE_SCHEMA_FILE`, `MINANCE_SQLITE_AUTO_INIT`) and status is observable via `GET /v1/system/storage`.
 - Active write paths: auth, imports, transactions, categories/rules, AI settings, assistant queries, saved views, migration runs, audit events.
 - Legacy Minance SQLite import endpoint already exists (`/v1/migrations/minance/sqlite`) and is separate from this JSON-to-SQLite cutover.
@@ -51,16 +52,15 @@ Recommended constraints/indexes:
 
 ### 1) Preparation
 
-1. Enable a maintenance window (read-only at minimum; full write stop preferred).
-2. Resolve source JSON path:
-   - default: `services/api/data/store.json`
+1. Resolve source JSON fixture path:
+   - default: `services/api/test/fixtures/deterministic-financial-store.json`
    - override: `MINANCE_DATA_FILE`
 3. Create immutable backup and checksum.
 
 Example:
 
 ```bash
-SOURCE_JSON="${MINANCE_DATA_FILE:-services/api/data/store.json}"
+SOURCE_JSON="${MINANCE_DATA_FILE:-services/api/test/fixtures/deterministic-financial-store.json}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_DIR="services/api/data/backups"
 mkdir -p "$BACKUP_DIR"
@@ -116,42 +116,36 @@ Run all checks:
 
 If any check fails, do not cut over.
 
-### 5) Cutover
+### 5) Load/Refresh SQLite Fixture Data
 
-1. Set storage backend to SQLite (recommended env switch: `MINANCE_STORE_BACKEND=sqlite`).
-2. Point API to SQLite file path (recommended env: `MINANCE_SQLITE_FILE=services/api/data/minance.sqlite`).
-3. Restart API service.
-4. Run post-cutover smoke checks and verify no write errors.
+1. Point the loader at the target SQLite file (recommended env: `MINANCE_SQLITE_FILE=services/api/data/minance.sqlite`).
+2. Run the migration script against the JSON fixture.
+3. Run validation before using the resulting SQLite file in tests or staging flows.
 
 ### 6) Rollback Procedure
 
 Rollback triggers:
 
-- Validation gate failure before cutover.
-- Runtime errors or data mismatches after cutover.
-- Latency/availability regression outside agreed threshold.
+- Validation gate failure before fixture load completes.
+- SQLite data mismatches after fixture import.
 
 Rollback steps:
 
-1. Stop writes (maintenance mode).
-2. Switch backend env to JSON:
-   - `MINANCE_STORE_BACKEND=json`
-3. Restore backup JSON if needed:
+1. Restore backup JSON fixture if needed:
 
 ```bash
 cp "services/api/data/backups/store-$STAMP.json" "$SOURCE_JSON"
 ```
 
-4. Restart API and rerun smoke checks on JSON backend.
-5. Record incident details in `audit_events` / ops log and create follow-up issue before retry.
+2. Remove or replace the target SQLite artifact.
+3. Record incident details in `audit_events` / ops log and create follow-up issue before retry.
 
-Important: do not delete SQLite artifact on rollback; keep it for diff analysis.
+Important: keep the failed SQLite artifact for diff analysis when practical.
 
 ## Operator Checklist
 
 Pre-flight:
 
-- [ ] Maintenance window approved.
 - [ ] JSON backup + checksum created.
 - [ ] SQLite schema migration script available and reviewed.
 - [ ] Validation script available and reviewed.
@@ -160,8 +154,8 @@ Execution:
 
 - [ ] Backfill completed with conflict counters captured.
 - [ ] Validation gates passed.
-- [ ] Backend switched to SQLite.
-- [ ] Post-cutover smoke checks passed.
+- [ ] SQLite fixture load completed.
+- [ ] Post-load smoke checks passed if the fixture will be exercised by a running app.
 
 If failure:
 
@@ -183,5 +177,5 @@ Add these scripts before cutover:
 ## Non-Goals for This Runbook
 
 - Live dual-write operation.
-- Zero-downtime migration without maintenance window.
-- Cross-version schema evolution after SQLite cutover (handled by future schema migration docs).
+- JSON as an ongoing runtime backend.
+- Cross-version schema evolution after SQLite fixture import (handled by future schema migration docs).

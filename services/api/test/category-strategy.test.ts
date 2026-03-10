@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 
-import { resetStoreForTests } from "../src/store.ts";
+import { loadStore, resetStoreForTests } from "../src/store.ts";
 import {
   checkStrategyCoverageAgainstBackupDb,
   createCategoryResolver,
@@ -54,6 +54,16 @@ test("resolver maps Honda/Jeep merchants to Auto", () => {
   assert.equal(resolved.categoryCoarse, "Essential");
 });
 
+test("ensureCategoryStrategyForUser does not persist a default strategy on read-only access", () => {
+  resetStoreForTests(structuredClone(EMPTY_STORE));
+
+  const strategy = ensureCategoryStrategyForUser("user_1");
+  assert.ok(strategy.granularCategories.some((entry) => entry.name === "Auto"));
+
+  const store = loadStore();
+  assert.equal(store.categoryStrategies.length, 0);
+});
+
 test("strategy update persists emoji and coarse mapping changes", () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
   const strategy = ensureCategoryStrategyForUser("user_1");
@@ -84,4 +94,3 @@ test("default strategy covers categories found in backup training db", (t) => {
   assert.deepEqual(coverage.missingCanonicalCategories, []);
   assert.deepEqual(coverage.missingTransactionCategories, []);
 });
-

@@ -37,8 +37,8 @@ docker compose -f docker-compose.selfhost.yml logs --tail=100 api web
 - `MINANCE_API_PORT` (recommended): host port for API (debug/admin use).
 
 ### Compose defaults and advanced overrides
-- The stock `docker-compose.selfhost.yml` stack already sets `MINANCE_STORE_BACKEND=sqlite`, `MINANCE_DATA_FILE=/var/lib/minance/store.json`, `MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite`, `MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql`, and `MINANCE_SQLITE_AUTO_INIT=true` inside the API container.
-- Only add `MINANCE_DATA_FILE`, `MINANCE_SQLITE_FILE`, or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize the compose file or run the API outside the stock stack.
+- The stock `docker-compose.selfhost.yml` stack already sets `MINANCE_STORE_BACKEND=sqlite`, `MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite`, `MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql`, and `MINANCE_SQLITE_AUTO_INIT=true` inside the API container.
+- Only add `MINANCE_SQLITE_FILE` or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize the compose file or run the API outside the stock stack. Use `MINANCE_DATA_FILE` only when you intentionally run a JSON fixture-import flow.
 - The env template also includes commented optional runtime flags supported by the current codebase, including `AI_LLM_CATEGORIZATION_ENABLED`, `AI_LLM_ASSISTANT_SYNTHESIS_ENABLED`, `IMPORT_PROCESSED_EDITOR_ENABLED`, `IMPORT_PROCESSING_LOGS_ENABLED`, `IMPORT_DIRECTION_INFERENCE_ENABLED`, `IMPORT_DIRECTION_LLM_ENABLED`, `AI_CREW_ANALYSIS_ENABLED`, `CREWAI_PYTHON_BIN`, `AI_CREW_ANALYSIS_TIMEOUT_MS`, `AI_LLM_TIMEOUT_MS`, and `MINANCE_TRAINING_DB_PATH`.
 
 ### Upgrade-safe practices
@@ -51,7 +51,7 @@ docker compose -f docker-compose.selfhost.yml logs --tail=100 api web
 ## 2. Backup and Restore Strategy
 
 ### Backups
-The backup script captures SQLite, JSON fallback store, and uploads archive with checksums.
+The backup script captures the runtime SQLite database, optional JSON fixture/input file if present, and the uploads archive with checksums.
 
 ```bash
 scripts/selfhost-backup.sh
@@ -65,7 +65,7 @@ scripts/selfhost-backup.sh --stamp 20260302T000000Z
 
 Artifacts are written to `${MINANCE_BACKUP_ROOT:-./backups}/<stamp>/`:
 - `minance.sqlite` (if present)
-- `store.json` (if present)
+- `store.json` (only if a JSON fixture/input file was present)
 - `uploads.tar.gz` (if present)
 - `checksums.txt`
 - `manifest.txt`

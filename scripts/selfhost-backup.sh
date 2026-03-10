@@ -9,7 +9,7 @@ Environment overrides:
   MINANCE_BACKUP_ROOT      Default: ./backups
   MINANCE_RUNTIME_DATA_DIR Default: ./services/api/data
   MINANCE_SQLITE_FILE      Default: <MINANCE_RUNTIME_DATA_DIR>/minance.sqlite
-  MINANCE_DATA_FILE        Default: <MINANCE_RUNTIME_DATA_DIR>/store.json
+  MINANCE_DATA_FILE        Default: <MINANCE_RUNTIME_DATA_DIR>/store.json (optional JSON fixture/input file)
   MINANCE_UPLOAD_DIR       Default: <MINANCE_RUNTIME_DATA_DIR>/uploads
 USAGE
 }
@@ -87,6 +87,7 @@ stamp=${STAMP}
 runtime_data_dir=${RUNTIME_DATA_DIR}
 sqlite_file=${SQLITE_FILE}
 json_file=${JSON_FILE}
+json_file_optional=true
 upload_dir=${UPLOAD_DIR}
 MANIFEST
 
