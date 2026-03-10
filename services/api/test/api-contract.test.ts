@@ -83,19 +83,24 @@ async function waitForHealth(baseUrl, serverProcess, getLogs, timeoutMs = 15_000
   );
 }
 
-async function startApiServer(t) {
+async function startApiServer(t, options = {}) {
   const port = await findAvailablePort();
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "minance-api-contract-"));
   const dataFile = path.join(tempDir, "store.json");
+  const sqliteFile = path.join(tempDir, "runtime.sqlite");
 
   const env = {
     ...process.env,
     PORT: String(port),
-    NODE_ENV: "test",
+    NODE_ENV: options.nodeEnv || "test",
     MINANCE_STORE_BACKEND: "json",
-    MINANCE_DATA_FILE_TEST: dataFile,
     MINANCE_SEED_TEST_ACCOUNT: "false",
-    OPENROUTER_API_KEY: ""
+    OPENROUTER_API_KEY: "",
+    MINANCE_DATA_FILE_TEST: dataFile,
+    MINANCE_SQLITE_FILE_TEST: sqliteFile,
+    MINANCE_DATA_FILE: dataFile,
+    MINANCE_SQLITE_FILE: sqliteFile,
+    ...(options.env || {})
   };
 
   const serverProcess = spawn(process.execPath, ["--import", "tsx/esm", "services/api/src/server.ts"], {
@@ -178,6 +183,35 @@ async function ensureCategoryExists(context, token, name, coarseKey = "neutral",
   });
   return created.payload?.category || null;
 }
+
+test("system storage reports sqlite for non-test runtime even when JSON backend is requested", async (t) => {
+  const context = await startApiServer(t, {
+    nodeEnv: "development",
+    env: {
+      MINANCE_STORE_BACKEND: "json",
+      MINANCE_SEED_TEST_ACCOUNT: "false",
+      OPENROUTER_API_KEY: ""
+    }
+  });
+
+  const signupResponse = await apiRequest(context, "POST", "/v1/auth/signup", {
+    expectedStatus: 201,
+    body: {
+      email: "storage-contract@example.com",
+      password: "contractpass123"
+    }
+  });
+  const accessToken = signupResponse.payload?.tokens?.accessToken;
+  assert.equal(typeof accessToken, "string");
+
+  const storage = await apiRequest(context, "GET", "/v1/system/storage", {
+    token: accessToken,
+    expectedStatus: 200
+  });
+
+  assert.equal(storage.payload?.storage?.backend, "sqlite");
+  assert.equal(storage.payload?.storage?.sqlite?.backend, "sqlite");
+});
 
 test("api parity contract suite for categories/transactions/settings and missing domains", async (t) => {
   const context = await startApiServer(t);

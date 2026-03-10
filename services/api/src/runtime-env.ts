@@ -6,6 +6,11 @@ const DEFAULT_SQLITE_SCHEMA_FILE = "services/api/sql/schema.sql";
 const DEFAULT_TEST_DATA_FILE = "services/api/tmp/test-store.json";
 const DEFAULT_TEST_SQLITE_FILE = "services/api/tmp/test-minance.sqlite";
 
+export function normalizeStoreBackend(value: string | undefined) {
+  const normalized = String(value || "json").trim().toLowerCase();
+  return normalized === "sqlite" ? "sqlite" : "json";
+}
+
 function resolvePathFromRoot(rootDir: string, configuredPath: string | undefined, fallbackPath: string) {
   const raw = configuredPath || fallbackPath;
   if (!raw) {
@@ -20,6 +25,20 @@ export function isTestEnvironment(nodeEnv: string | undefined) {
 
 export function getEnvFileName(nodeEnv: string | undefined) {
   return isTestEnvironment(nodeEnv) ? ".env.test" : ".env.local";
+}
+
+export function resolveStoreBackend({
+  env = process.env,
+  nodeEnv = env.NODE_ENV
+}: {
+  env?: NodeJS.ProcessEnv;
+  nodeEnv?: string | undefined;
+} = {}) {
+  if (!isTestEnvironment(nodeEnv)) {
+    return "sqlite";
+  }
+
+  return normalizeStoreBackend(env.MINANCE_STORE_BACKEND || "json");
 }
 
 export function resolveRuntimePaths({

@@ -1,7 +1,7 @@
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { getEnvFileName, resolveRuntimePaths } from "./runtime-env.ts";
+import { getEnvFileName, resolveRuntimePaths, resolveStoreBackend } from "./runtime-env.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,11 +81,6 @@ function parseOriginList(value, fallback) {
     .filter(Boolean);
 }
 
-function normalizeStoreBackend(value) {
-  const normalized = String(value || "json").trim().toLowerCase();
-  return normalized === "sqlite" ? "sqlite" : "json";
-}
-
 const runtimePaths = resolveRuntimePaths({
   rootDir: ROOT_DIR,
   env: process.env,
@@ -95,7 +90,10 @@ const runtimePaths = resolveRuntimePaths({
 export const DATA_FILE = runtimePaths.dataFile;
 export const SQLITE_FILE = runtimePaths.sqliteFile;
 export const SQLITE_SCHEMA_FILE = runtimePaths.sqliteSchemaFile;
-export const STORE_BACKEND = normalizeStoreBackend(process.env.MINANCE_STORE_BACKEND || "json");
+export const STORE_BACKEND = resolveStoreBackend({
+  env: process.env,
+  nodeEnv: process.env.NODE_ENV
+});
 export const SQLITE_AUTO_INIT = parseBoolean(process.env.MINANCE_SQLITE_AUTO_INIT, true);
 export const TMP_DIR = path.join(__dirname, "../tmp");
 export const WEB_DIR = path.join(ROOT_DIR, "apps/web");

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 
-import { getEnvFileName, resolveRuntimePaths } from "../src/runtime-env.ts";
+import { getEnvFileName, resolveRuntimePaths, resolveStoreBackend } from "../src/runtime-env.ts";
 
 const ROOT_DIR = "/tmp/minance-root";
 
@@ -39,6 +39,18 @@ test("test mode honors test-specific storage overrides", () => {
   assert.equal(runtime.sqliteSchemaFile, path.join(ROOT_DIR, "tmp/custom-schema.sql"));
 });
 
+test("test mode still honors explicit JSON backend selection", () => {
+  assert.equal(
+    resolveStoreBackend({
+      nodeEnv: "test",
+      env: {
+        MINANCE_STORE_BACKEND: "json"
+      }
+    }),
+    "json"
+  );
+});
+
 test("non-test mode uses regular env vars and env.local", () => {
   const runtime = resolveRuntimePaths({
     rootDir: ROOT_DIR,
@@ -56,4 +68,16 @@ test("non-test mode uses regular env vars and env.local", () => {
   assert.equal(runtime.dataFile, path.join(ROOT_DIR, "services/api/data/live-store.json"));
   assert.equal(runtime.sqliteFile, path.join(ROOT_DIR, "services/api/data/live.sqlite"));
   assert.equal(runtime.sqliteSchemaFile, path.join(ROOT_DIR, "services/api/sql/live-schema.sql"));
+});
+
+test("non-test mode forces sqlite backend even when JSON is requested", () => {
+  assert.equal(
+    resolveStoreBackend({
+      nodeEnv: "development",
+      env: {
+        MINANCE_STORE_BACKEND: "json"
+      }
+    }),
+    "sqlite"
+  );
 });
