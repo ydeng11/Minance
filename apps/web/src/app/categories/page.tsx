@@ -230,9 +230,6 @@ export default function CategoriesPage() {
       }
       if (normalized.includes("invalid category group")) {
         setFormErrors((previous) => ({ ...previous, coarseKey: "Category group is invalid." }));
-      }
-      if (normalized.includes("for selected group")) {
-        setFormErrors((previous) => ({ ...previous, coarseKey: "Category type cannot be assigned to this group." }));
       } else if (normalized.includes("invalid category type")) {
         setFormErrors((previous) => ({ ...previous, type: "Category type is invalid." }));
       }

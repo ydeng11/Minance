@@ -108,46 +108,46 @@ test("createCategory throws error for invalid category type", () => {
   );
 });
 
-test("createCategory throws error for income type in essential group", () => {
+test("createCategory allows income type in essential group", () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
   ensureCategoryStrategyForUser("user_1");
 
-  assert.throws(
-    () => createCategory("user_1", {
-      name: "Salary",
-      coarseKey: "essential",
-      type: "income"
-    }),
-    /Invalid category type "income" for selected group "essential"/
-  );
+  const category = createCategory("user_1", {
+    name: "Salary",
+    coarseKey: "essential",
+    type: "income"
+  });
+
+  assert.equal(category.coarseKey, "essential");
+  assert.equal(category.type, "income");
 });
 
-test("createCategory throws error for income type in extra group", () => {
+test("createCategory allows income type in extra group", () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
   ensureCategoryStrategyForUser("user_1");
 
-  assert.throws(
-    () => createCategory("user_1", {
-      name: "Bonus",
-      coarseKey: "extra",
-      type: "income"
-    }),
-    /Invalid category type "income" for selected group "extra"/
-  );
+  const category = createCategory("user_1", {
+    name: "Bonus",
+    coarseKey: "extra",
+    type: "income"
+  });
+
+  assert.equal(category.coarseKey, "extra");
+  assert.equal(category.type, "income");
 });
 
-test("createCategory throws error for transfer type in essential group", () => {
+test("createCategory allows transfer type in essential group", () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
   ensureCategoryStrategyForUser("user_1");
 
-  assert.throws(
-    () => createCategory("user_1", {
-      name: "Transfer",
-      coarseKey: "essential",
-      type: "transfer"
-    }),
-    /Invalid category type "transfer" for selected group "essential"/
-  );
+  const category = createCategory("user_1", {
+    name: "Transfer",
+    coarseKey: "essential",
+    type: "transfer"
+  });
+
+  assert.equal(category.coarseKey, "essential");
+  assert.equal(category.type, "transfer");
 });
 
 test("createCategory succeeds for income type in neutral group", () => {
@@ -232,7 +232,7 @@ test("updateCategory throws error for duplicate name", () => {
   );
 });
 
-test("updateCategory throws error when moving income category to essential group", () => {
+test("updateCategory allows moving income category to essential group", () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
   ensureCategoryStrategyForUser("user_1");
 
@@ -242,13 +242,13 @@ test("updateCategory throws error when moving income category to essential group
     type: "income"
   });
 
-  assert.throws(
-    () => updateCategory("user_1", category.id, { coarseKey: "essential" }),
-    /Invalid category type "income" for selected group "essential"/
-  );
+  const updated = updateCategory("user_1", category.id, { coarseKey: "essential" });
+
+  assert.equal(updated.coarseKey, "essential");
+  assert.equal(updated.type, "income");
 });
 
-test("updateCategory throws error when moving income category to extra group", () => {
+test("updateCategory allows moving income category to extra group", () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
   ensureCategoryStrategyForUser("user_1");
 
@@ -258,10 +258,10 @@ test("updateCategory throws error when moving income category to extra group", (
     type: "income"
   });
 
-  assert.throws(
-    () => updateCategory("user_1", category.id, { coarseKey: "extra" }),
-    /Invalid category type "income" for selected group "extra"/
-  );
+  const updated = updateCategory("user_1", category.id, { coarseKey: "extra" });
+
+  assert.equal(updated.coarseKey, "extra");
+  assert.equal(updated.type, "income");
 });
 
 test("updateCategory allows moving income category from essential to neutral", () => {

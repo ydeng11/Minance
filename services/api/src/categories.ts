@@ -211,16 +211,6 @@ function resolveCategoryCoarseKey(rawValue, coarseKeySet, categoryType, fallback
   return firstKey || "neutral";
 }
 
-function validateCategoryGroupTypeCompatibility(coarseKey, categoryType) {
-  if (!categoryType) {
-    return;
-  }
-
-  if ((categoryType === "income" || categoryType === "transfer") && (coarseKey === "essential" || coarseKey === "extra")) {
-    throw new Error(`Invalid category type "${categoryType}" for selected group "${coarseKey}". Income and transfer categories cannot be assigned to essential or extra groups.`);
-  }
-}
-
 function findStrategyCategory(strategy, categoryName) {
   const normalized = normalizeText(categoryName);
   if (!normalized) {
@@ -367,7 +357,6 @@ export function createCategory(userId, payload = {}) {
     type
   );
   const budget = normalizeCategoryBudget(payload);
-  validateCategoryGroupTypeCompatibility(coarseKey, type);
 
   const store = loadStore();
   ensureUniqueCategoryName(store, userId, name);
@@ -421,7 +410,6 @@ export function updateCategory(userId, categoryId, payload = {}) {
     nextType,
     category.coarseKey || strategyMatch?.coarseKey || null
   );
-  validateCategoryGroupTypeCompatibility(nextCoarseKey, nextType);
   const nextBudget = normalizeCategoryBudget(payload, category.budget || null);
 
   ensureUniqueCategoryName(store, userId, nextName, category.id);
