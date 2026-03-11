@@ -32,6 +32,7 @@ test("@core assistant and analytics visualizations render with imported data", a
   await expect(analyticsCategoryBars(page).first()).toBeVisible();
   await expect(analyticsMerchantBars(page).first()).toBeVisible();
 
+  await gotoView(page, "analytics");
   const heatCells = analyticsHeatmapCells(page);
   if ((await heatCells.count()) > 0) {
     await expect(heatCells.first()).toBeVisible();

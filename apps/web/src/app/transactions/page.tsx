@@ -37,7 +37,7 @@ const FILTER_CONTROL_CLASS =
 const FILTER_SELECT_CLASS =
   "mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-500";
 const FILTER_INPUT_CLASS =
-  "w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-500";
+  "w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500";
 
 function formatTransactionTypeLabel(type: Transaction["transaction_type"]) {
   switch (type) {
@@ -465,8 +465,9 @@ export default function TransactionsPage() {
                 value={filters.query}
                 onChange={(event) => updateFilters((previous) => ({ ...previous, query: event.target.value }))}
                 data-testid="txn-query"
+                aria-label="Search transactions"
                 placeholder="Search merchants, descriptions, or notes"
-                className="w-full rounded-xl border border-neutral-800 bg-neutral-900 py-2.5 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-500 outline-none transition focus:border-emerald-500"
+                className="w-full rounded-xl border border-neutral-800 bg-neutral-900 py-2.5 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500"
               />
             </div>
           </div>
@@ -477,6 +478,7 @@ export default function TransactionsPage() {
               value={filters.category}
               onChange={(event) => updateFilters((previous) => ({ ...previous, category: event.target.value }))}
               data-testid="txn-category-filter"
+              aria-label="Filter transactions by category"
               className={FILTER_SELECT_CLASS}
             >
               <option value="">All</option>
@@ -494,6 +496,7 @@ export default function TransactionsPage() {
               value={filters.account}
               onChange={(event) => updateFilters((previous) => ({ ...previous, account: event.target.value }))}
               data-testid="txn-account-filter"
+              aria-label="Filter transactions by account"
               className={FILTER_SELECT_CLASS}
             >
               <option value="">All</option>
@@ -516,6 +519,7 @@ export default function TransactionsPage() {
                 }))
               }
               data-testid="txn-type-filter"
+              aria-label="Filter transactions by type"
               className={FILTER_SELECT_CLASS}
             >
               <option value="all">All</option>
@@ -538,6 +542,7 @@ export default function TransactionsPage() {
                 }));
               }}
               data-testid="txn-category-view"
+              aria-label="Choose transaction category view"
               className={FILTER_SELECT_CLASS}
             >
               <option value="granular">Granular</option>
@@ -553,6 +558,7 @@ export default function TransactionsPage() {
               value={filters.range}
               onChange={(event) => updateFilters((previous) => ({ ...previous, range: event.target.value }))}
               data-testid="txn-range"
+              aria-label="Filter transactions by date range"
               className={FILTER_SELECT_CLASS}
             >
               {TRANSACTION_RANGE_OPTIONS.map((option) => (
@@ -569,6 +575,7 @@ export default function TransactionsPage() {
               value={filters.tag}
               onChange={(event) => updateFilters((previous) => ({ ...previous, tag: event.target.value }))}
               data-testid="txn-tag-filter"
+              aria-label="Filter transactions by tag"
               placeholder="monthly"
               className={`mt-2 ${FILTER_INPUT_CLASS}`}
             />
@@ -583,6 +590,7 @@ export default function TransactionsPage() {
                   value={filters.start}
                   onChange={(event) => updateFilters((previous) => ({ ...previous, start: event.target.value }))}
                   data-testid="txn-start-date"
+                  aria-label="Custom start date"
                   className={`mt-2 ${FILTER_INPUT_CLASS}`}
                 />
               </div>
@@ -593,6 +601,7 @@ export default function TransactionsPage() {
                   value={filters.end}
                   onChange={(event) => updateFilters((previous) => ({ ...previous, end: event.target.value }))}
                   data-testid="txn-end-date"
+                  aria-label="Custom end date"
                   className={`mt-2 ${FILTER_INPUT_CLASS}`}
                 />
               </div>
@@ -636,6 +645,7 @@ export default function TransactionsPage() {
                   });
                 }}
                 data-testid="txn-min-amount-range"
+                aria-label="Minimum amount range"
                 className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-emerald-400"
               />
               <input
@@ -654,6 +664,7 @@ export default function TransactionsPage() {
                   });
                 }}
                 data-testid="txn-max-amount-range"
+                aria-label="Maximum amount range"
                 className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-emerald-200"
               />
             </div>
@@ -663,6 +674,7 @@ export default function TransactionsPage() {
                 value={filters.minAmount}
                 onChange={(event) => updateFilters((previous) => ({ ...previous, minAmount: event.target.value }))}
                 inputMode="decimal"
+                aria-label="Minimum amount"
                 placeholder={`Min (${money(amountBoundMin)})`}
                 className={FILTER_INPUT_CLASS}
               />
@@ -670,6 +682,7 @@ export default function TransactionsPage() {
                 value={filters.maxAmount}
                 onChange={(event) => updateFilters((previous) => ({ ...previous, maxAmount: event.target.value }))}
                 inputMode="decimal"
+                aria-label="Maximum amount"
                 placeholder={`Max (${money(amountBoundMax)})`}
                 className={FILTER_INPUT_CLASS}
               />

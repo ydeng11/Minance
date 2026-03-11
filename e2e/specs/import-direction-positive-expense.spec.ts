@@ -6,7 +6,7 @@ import {
   loginWithSeedAccount
 } from "./helpers.ts";
 
-test("@core imports infer positive_is_debit for positive expense files", async ({ page }) => {
+test("@core imports infer positive_is_outflow for positive expense files", async ({ page }) => {
   await loginWithSeedAccount(page);
   await gotoView(page, "imports");
 
@@ -20,7 +20,6 @@ test("@core imports infer positive_is_debit for positive expense files", async (
 
   const importDetails = await appApi(page, `/v1/imports/${latestImport.id}`);
   expect(importDetails?.importJob?.directionInference?.amountMode).toBe("single_amount");
-  expect(importDetails?.importJob?.directionInference?.signConvention).toBe("positive_is_debit");
+  expect(importDetails?.importJob?.directionInference?.signConvention).toBe("positive_is_outflow");
   expect(Number(importDetails?.importJob?.directionInference?.confidence || 0)).toBeGreaterThan(0.55);
 });
-

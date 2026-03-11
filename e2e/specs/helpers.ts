@@ -154,9 +154,15 @@ export async function gotoView(page, viewName) {
     await expect(assistantSidebar).toHaveCount(0);
   }
 
-  if (viewName === "analytics" || viewName === "dashboard") {
+  if (viewName === "dashboard") {
     await page.getByTestId("nav-dashboard").click();
     await expect(page.getByTestId("dashboard-page")).toBeVisible();
+    return;
+  }
+
+  if (viewName === "analytics" || viewName === "explorer") {
+    await page.getByTestId("nav-explorer").click();
+    await expect(page.getByTestId("explorer-page")).toBeVisible();
     return;
   }
 
