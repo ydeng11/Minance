@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Save, Search, Tags, Trash2 }
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import type { Category, CategoryStrategyCoarse, CategoryStrategyGranular } from "@/lib/api/types";
+import { EmojiPicker } from "@/components/EmojiPicker";
 import {
   buildCategoryDraftFromCategory,
   createDefaultCategoryDraft,
@@ -100,8 +101,8 @@ export default function CategoriesPage() {
     });
   }, [categories, coarseLabelByKey, groupFilter, query]);
   const groupedBuckets = useMemo(
-    () => groupCategoriesByCoarse(filteredCategories, coarseGroups),
-    [coarseGroups, filteredCategories]
+    () => groupCategoriesByCoarse(categories, coarseGroups),
+    [categories, coarseGroups]
   );
 
   const loadPageData = useCallback(async () => {
@@ -549,12 +550,12 @@ export default function CategoriesPage() {
                     </div>
                   </td>
                   <td className="px-3 py-2">
-                    <input
+                    <EmojiPicker
                       value={entry.emoji}
-                      onChange={(event) => updateCoarseGroup(entry.key, { emoji: event.target.value })}
-                      aria-label={`Emoji for ${entry.name}`}
-                      data-testid={`taxonomy-emoji-${entry.key}`}
-                      className="w-20 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100 outline-none transition focus:border-emerald-400"
+                      onChange={(emoji) => updateCoarseGroup(entry.key, { emoji })}
+                      ariaLabel={`Emoji for ${entry.name}`}
+                      triggerTestId={`taxonomy-emoji-trigger-${entry.key}`}
+                      triggerClassName="w-28 px-2 py-1"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -646,12 +647,13 @@ export default function CategoriesPage() {
             </label>
             <label className="mt-3 grid gap-1 text-xs text-neutral-400">
               Emoji
-              <input
+              <EmojiPicker
                 value={newGroupEmoji}
-                onChange={(event) => setNewGroupEmoji(event.target.value)}
-                data-testid="taxonomy-new-group-emoji"
+                onChange={setNewGroupEmoji}
+                ariaLabel="Emoji for new group"
+                triggerTestId="taxonomy-new-group-emoji-trigger"
                 placeholder="Optional"
-                className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400"
+                triggerClassName="w-full"
               />
             </label>
             <button
@@ -710,16 +712,16 @@ export default function CategoriesPage() {
               </div>
 
               <div>
-                <label htmlFor="category-form-emoji" className="block text-xs uppercase tracking-wide text-neutral-400">
+                <label className="block text-xs uppercase tracking-wide text-neutral-400">
                   Emoji
                 </label>
-                <input
-                  id="category-form-emoji"
+                <EmojiPicker
                   value={draft.emoji}
-                  onChange={(event) => updateDraft("emoji", event.target.value)}
+                  onChange={(emoji) => updateDraft("emoji", emoji)}
+                  ariaLabel="Category emoji"
                   placeholder="Optional (e.g. 🍽️)"
-                  data-testid="category-form-emoji"
-                  className="mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+                  triggerTestId="category-form-emoji-trigger"
+                  triggerClassName="mt-1 w-full"
                 />
               </div>
 

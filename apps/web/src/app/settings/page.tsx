@@ -15,6 +15,7 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import { useSession } from "@/lib/session";
+import { EmojiPicker } from "@/components/EmojiPicker";
 import type {
   Category,
   CategoryStrategyCoarse,
@@ -24,6 +25,16 @@ import type {
 } from "@/lib/api/types";
 import { getHelpResources } from "@/components/help/helpResources";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
+
+function emojiFieldTestKey(value: string) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return normalized || "item";
+}
 
 export default function SettingsPage() {
   const api = useApi();
@@ -369,11 +380,12 @@ export default function SettingsPage() {
 
           <label className="grid gap-1 text-sm text-neutral-300">
             Emoji
-            <input
+            <EmojiPicker
               value={newCategoryEmoji}
-              onChange={(event) => setNewCategoryEmoji(event.target.value)}
-              data-testid="new-category-emoji"
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-200"
+              onChange={setNewCategoryEmoji}
+              ariaLabel="Emoji for new category"
+              triggerTestId="settings-new-category-emoji-trigger"
+              triggerClassName="w-full"
             />
           </label>
 
@@ -455,20 +467,22 @@ export default function SettingsPage() {
 
         <div className="mt-3 grid gap-2 md:grid-cols-2">
           {coarseDraft.map((entry, index) => (
-            <div key={entry.key} className="grid grid-cols-[110px_1fr] gap-2 rounded-lg border border-neutral-900 bg-neutral-950 p-2">
+            <div key={entry.key} className="grid grid-cols-[150px_1fr] gap-2 rounded-lg border border-neutral-900 bg-neutral-950 p-2">
               <label className="grid gap-1 text-xs text-neutral-400">
                 Emoji
-                <input
+                <EmojiPicker
                   value={entry.emoji}
-                  onChange={(event) => {
+                  onChange={(emoji) => {
                     const next = [...coarseDraft];
                     next[index] = {
                       ...entry,
-                      emoji: event.target.value
+                      emoji
                     };
                     setCoarseDraft(next);
                   }}
-                  className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100"
+                  ariaLabel={`Emoji for ${entry.name}`}
+                  triggerTestId={`settings-strategy-coarse-emoji-trigger-${entry.key}`}
+                  triggerClassName="w-full"
                 />
               </label>
               <label className="grid gap-1 text-xs text-neutral-400">
@@ -505,18 +519,19 @@ export default function SettingsPage() {
                 <tr key={`${entry.name}-${index}`}>
                   <td className="px-3 py-2 text-neutral-200">{entry.name}</td>
                   <td className="px-3 py-2">
-                    <input
+                    <EmojiPicker
                       value={entry.emoji}
-                      aria-label={`Emoji for ${entry.name}`}
-                      onChange={(event) => {
+                      ariaLabel={`Emoji for ${entry.name}`}
+                      triggerTestId={`settings-strategy-granular-emoji-trigger-${emojiFieldTestKey(entry.name)}`}
+                      onChange={(emoji) => {
                         const next = [...granularDraft];
                         next[index] = {
                           ...entry,
-                          emoji: event.target.value
+                          emoji
                         };
                         setGranularDraft(next);
                       }}
-                      className="w-20 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100"
+                      triggerClassName="w-28 px-2 py-1"
                     />
                   </td>
                   <td className="px-3 py-2">
