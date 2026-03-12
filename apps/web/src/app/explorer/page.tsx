@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Download, LineChart, SlidersHorizontal } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
-import type { Account, Category, OverviewResponse, HeatmapItem, AnomalyItem, SavedView } from "@/lib/api/types";
+import type { Account, Category, ExplorerAnalyticsResponse, OverviewResponse, SavedView } from "@/lib/api/types";
 import {
   buildExplorerFilterSearchParams,
   parseExplorerFilterState,
@@ -14,6 +14,8 @@ import {
   toExplorerAnalyticsApiParams
 } from "./filters";
 import { FilterSidebar } from "./components/FilterSidebar";
+import { ExplorerPerspectiveTabs } from "./components/ExplorerPerspectiveTabs";
+import { ExplorerSummaryBand } from "./components/ExplorerSummaryBand";
 import { SavedViews } from "./components/SavedViews";
 import { VisualizationGrid } from "./components/VisualizationGrid";
 
@@ -33,9 +35,7 @@ export default function ExplorerPage() {
   const [filters, setFilters] = useState(parsedFilters);
   const [categories, setCategories] = useState<Category[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
-  const [overview, setOverview] = useState<OverviewResponse | null>(null);
-  const [heatmap, setHeatmap] = useState<HeatmapItem[]>([]);
-  const [anomalies, setAnomalies] = useState<AnomalyItem[]>([]);
+  const [explorer, setExplorer] = useState<ExplorerAnalyticsResponse | null>(null);
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -87,15 +87,11 @@ export default function ExplorerPage() {
 
       try {
         const analyticsParams = toExplorerAnalyticsApiParams(filters);
-        const [overviewData, heatmapData, anomaliesData, viewsData] = await Promise.all([
-          api.analytics.overview(analyticsParams),
-          api.analytics.heatmap(analyticsParams),
-          api.analytics.anomalies(analyticsParams),
+        const [explorerData, viewsData] = await Promise.all([
+          api.analytics.explorer(analyticsParams),
           api.savedViews.list()
         ]);
-        setOverview(overviewData);
-        setHeatmap(heatmapData.items);
-        setAnomalies(anomaliesData.items);
+        setExplorer(explorerData);
         setSavedViews(viewsData.items);
       } catch (error) {
         if (error instanceof ApiError) {
@@ -209,34 +205,53 @@ export default function ExplorerPage() {
     return rangeLabels[filters.range] || filters.range;
   }, [filters.range, filters.start, filters.end]);
 
+  const overview = useMemo<OverviewResponse | null>(() => {
+    if (!explorer) {
+      return null;
+    }
+
+    return {
+      summary: explorer.summary.current,
+      trend: explorer.trend.items,
+      topCategories: explorer.categories.items.slice(0, 5),
+      topMerchants: explorer.merchants.items.slice(0, 5),
+      meta: explorer.meta
+    };
+  }, [explorer]);
+
   return (
-    <div className="space-y-6" data-testid="explorer-page">
+    <div className="space-y-8" data-testid="explorer-page">
       {/* Header */}
-      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10">
-            <LineChart className="h-5 w-5 text-emerald-400" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-emerald-500/30 bg-emerald-500/10">
+            <LineChart className="h-6 w-6 text-emerald-300" />
           </div>
           <div>
-            <h2 className="text-3xl font-semibold tracking-tight">Explorer</h2>
-            <p className="text-neutral-400">
-              Deep dive analytics and insights. {dateRangeDisplay}
+            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-emerald-300/80">
+              Analytics workspace
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-neutral-50 sm:text-4xl">
+              Explorer
+            </h2>
+            <p className="mt-2 max-w-2xl text-neutral-400">
+              Rich account and category analysis across {dateRangeDisplay.toLowerCase()}.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Mobile filter toggle */}
           <button
             type="button"
             onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-neutral-800 bg-neutral-900 px-3 text-sm font-medium text-neutral-200 transition hover:bg-neutral-800 lg:hidden"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-4 text-sm font-medium text-neutral-200 transition hover:bg-neutral-800 xl:hidden"
           >
             <SlidersHorizontal className="h-4 w-4" />
             Filters
           </button>
           <button
             type="button"
-            className="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-neutral-800 bg-neutral-900 px-3 text-sm font-medium text-neutral-200 transition hover:bg-neutral-800"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-4 text-sm font-medium text-neutral-200 transition hover:bg-neutral-800"
           >
             <Download className="h-4 w-4" />
             Export
@@ -254,9 +269,12 @@ export default function ExplorerPage() {
       )}
 
       {/* Main Content */}
-      <div className="flex gap-6">
+      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)] xl:items-start">
         {/* Filter Sidebar - Desktop always visible, Mobile toggleable */}
-        <div className={showMobileFilters ? "block" : "hidden lg:block"}>
+        <aside
+          className={showMobileFilters ? "block xl:sticky xl:top-6" : "hidden xl:sticky xl:top-6 xl:block"}
+          data-testid="explorer-filter-rail"
+        >
           <FilterSidebar
             filters={filters}
             onChange={updateFilters}
@@ -264,15 +282,26 @@ export default function ExplorerPage() {
             accounts={accounts}
             availableTags={[]}
           />
-        </div>
+        </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 space-y-6">
+        <main className="min-w-0 space-y-6">
+          <ExplorerSummaryBand
+            summary={explorer?.summary || null}
+            comparison={explorer?.comparison || null}
+            loading={loading}
+          />
+
+          <ExplorerPerspectiveTabs
+            perspective={filters.perspective}
+            onChange={(perspective) => updateFilters({ perspective })}
+          />
+
           {/* Visualizations */}
           <VisualizationGrid
             overview={overview}
-            heatmap={heatmap}
-            anomalies={anomalies}
+            heatmap={explorer?.heatmap.items || []}
+            anomalies={explorer?.anomalies.items || []}
             onMonthClick={handleMonthClick}
             onCategoryClick={handleCategoryClick}
             onAccountClick={handleAccountClick}
