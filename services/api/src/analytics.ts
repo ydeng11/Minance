@@ -1,5 +1,6 @@
 import { loadStore } from "./store.ts";
 import { computeDateRange, inDateRange, monthKey } from "./utils.ts";
+import { applySharedTransactionFilters } from "./transactionFilters.ts";
 import {
   CATEGORY_VIEW_COARSE,
   createCategoryResolver,
@@ -79,7 +80,7 @@ export function filterUserTransactions(userId, filters = {}) {
     filtered.push(normalizedTxn);
   }
 
-  return filtered;
+  return applySharedTransactionFilters(filtered, filters);
 }
 
 export function getUserDataBounds(userId) {

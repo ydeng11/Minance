@@ -539,39 +539,6 @@ function maybeCreateRuleFromCorrection(store, userId, transaction, previousCateg
   });
 }
 
-function normalizeTransactionTypeFilter(rawType) {
-  if (rawType == null || String(rawType).trim() === "") {
-    return null;
-  }
-
-  const normalized = normalizeText(rawType).replace(/\s+/g, "_");
-  const transactionType = TRANSACTION_TYPE_ALIASES.get(normalized);
-  if (!transactionType) {
-    throw new Error("Invalid transaction type");
-  }
-  return transactionType;
-}
-
-function normalizeTagFilter(rawTag) {
-  if (rawTag == null || String(rawTag).trim() === "") {
-    return null;
-  }
-  return normalizeTagValue(rawTag);
-}
-
-function normalizeAmountFilter(rawValue, label) {
-  if (rawValue == null || String(rawValue).trim() === "") {
-    return null;
-  }
-
-  const amount = toDecimal(rawValue);
-  if (amount === null || amount < 0) {
-    throw new Error(`Invalid ${label}`);
-  }
-
-  return Math.abs(amount);
-}
-
 function normalizeBulkTransactionIds(rawIds) {
   if (!Array.isArray(rawIds) || rawIds.length === 0 || rawIds.length > BULK_MUTATION_MAX_COUNT) {
     throw new Error("transaction_ids must include 1-200 items");
@@ -608,64 +575,11 @@ export function listTransactions(userId, filters = {}) {
     txns = txns.filter((entry) => entry.source_type === effectiveFilters.source_type);
   }
 
-  if (effectiveFilters.query) {
-    const query = normalizeText(effectiveFilters.query);
-    txns = txns.filter((entry) =>
-      normalizeText(`${entry.merchant_raw} ${entry.description} ${entry.memo || ""}`).includes(query)
-    );
-  }
-
-  if (effectiveFilters.account) {
-    const accountFilter = normalizeText(effectiveFilters.account);
-    txns = txns.filter((entry) => {
-      const accountKey = normalizeText(entry.account_key || "");
-      const accountId = normalizeText(entry.account_id || "");
-      return accountKey === accountFilter || accountId === accountFilter;
-    });
-  }
-
   txns = txns.map((entry) => normalizeTransactionRecord(entry));
-
-  if (effectiveFilters.needs_category_review === "true") {
-    txns = txns.filter((entry) => entry.needs_category_review);
-  }
-
-  const reviewStatusFilter = String(effectiveFilters.review_status || "").trim().toLowerCase();
-  if (reviewStatusFilter) {
-    if (!REVIEW_STATUS_VALUES.has(reviewStatusFilter)) {
-      throw new Error("Invalid review status");
-    }
-    txns = txns.filter((entry) => entry.review_status === reviewStatusFilter);
-  }
-
-  const transactionTypeFilter = normalizeTransactionTypeFilter(effectiveFilters.transaction_type);
-  if (transactionTypeFilter) {
-    txns = txns.filter((entry) => entry.transaction_type === transactionTypeFilter);
-  }
-
-  const tagFilter = normalizeTagFilter(effectiveFilters.tag);
-  if (tagFilter) {
-    txns = txns.filter((entry) => entry.tags.includes(tagFilter));
-  }
 
   if (effectiveFilters.recurring_rule_id) {
     const recurringRuleIdFilter = normalizeRecurringRuleId(effectiveFilters.recurring_rule_id, null);
     txns = txns.filter((entry) => entry.recurring_rule_id === recurringRuleIdFilter);
-  }
-
-  const minAmountFilter = normalizeAmountFilter(effectiveFilters.min_amount, "min amount");
-  const maxAmountFilter = normalizeAmountFilter(effectiveFilters.max_amount, "max amount");
-  if (minAmountFilter != null || maxAmountFilter != null) {
-    txns = txns.filter((entry) => {
-      const amount = Math.abs(Number(entry.amount || 0));
-      if (minAmountFilter != null && amount < minAmountFilter) {
-        return false;
-      }
-      if (maxAmountFilter != null && amount > maxAmountFilter) {
-        return false;
-      }
-      return true;
-    });
   }
 
   txns = [...txns].sort((a, b) => {

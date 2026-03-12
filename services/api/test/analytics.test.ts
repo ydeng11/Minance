@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resetStoreForTests } from "../src/store.ts";
-import { getOverview, getCategoryRollup, getAnomalies } from "../src/analytics.ts";
+import { filterUserTransactions, getOverview, getCategoryRollup, getAnomalies } from "../src/analytics.ts";
 
 const baseStore = {
   users: [{ id: "user_1", email: "user@example.com", createdAt: "2026-01-01", updatedAt: "2026-01-01" }],
@@ -109,4 +109,65 @@ test("anomaly detector surfaces high outlier", () => {
   const anomalies = getAnomalies("user_1", { start: "2025-12-01", end: "2026-01-31" });
 
   assert.ok(anomalies.some((entry) => entry.merchant === "flight"));
+});
+
+test("analytics transaction filtering honors account, query, tag, review, type, and amount filters", () => {
+  const store = structuredClone(baseStore);
+  store.transactions = [
+    {
+      id: "txn_match",
+      user_id: "user_1",
+      transaction_date: "2026-01-10",
+      account_id: "acct_card",
+      account_key: "credit card",
+      merchant_normalized: "gas station",
+      merchant_raw: "Gas Station",
+      description: "Fuel stop",
+      memo: "car commute",
+      amount: 40,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Transport",
+      tags: ["car"],
+      review_status: "reviewed",
+      needs_category_review: false,
+      dedupe_fingerprint: "match"
+    },
+    {
+      id: "txn_other",
+      user_id: "user_1",
+      transaction_date: "2026-01-11",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "coffee",
+      merchant_raw: "Coffee",
+      description: "Morning coffee",
+      memo: "latte run",
+      amount: 10,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Dining",
+      tags: ["coffee"],
+      review_status: "needs_review",
+      needs_category_review: true,
+      dedupe_fingerprint: "other"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const transactions = filterUserTransactions("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    account: "acct_card",
+    query: "fuel",
+    tag: "car",
+    review_status: "reviewed",
+    transaction_type: "expense",
+    min_amount: 20,
+    max_amount: 60
+  });
+
+  assert.equal(transactions.length, 1);
+  assert.equal(transactions[0]?.id, "txn_match");
 });
