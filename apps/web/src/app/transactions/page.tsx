@@ -33,11 +33,11 @@ import { TransactionEditorFields } from "./TransactionEditorFields";
 
 const TRANSACTION_RANGE_OPTIONS = [...RANGE_OPTIONS, { value: "custom", label: "Custom" }];
 const FILTER_CONTROL_CLASS =
-  "rounded-2xl border border-neutral-800 bg-neutral-950/80 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
+  "rounded-[24px] border border-neutral-800/80 bg-neutral-950/70 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 const FILTER_SELECT_CLASS =
-  "mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-500";
+  "mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-900/90 px-3 py-2.5 text-sm text-neutral-100 outline-none transition focus:border-emerald-500";
 const FILTER_INPUT_CLASS =
-  "w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500";
+  "w-full rounded-xl border border-neutral-800 bg-neutral-900/90 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500";
 
 function formatTransactionTypeLabel(type: Transaction["transaction_type"]) {
   switch (type) {
@@ -419,23 +419,31 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-6" data-testid="transactions-page">
-      <header className="rounded-[28px] border border-neutral-900 bg-[linear-gradient(135deg,rgba(12,16,18,0.95),rgba(8,12,14,0.75))] p-5 shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+      <header
+        data-testid="txn-workspace-header"
+        className="rounded-[28px] border border-neutral-900 bg-[linear-gradient(135deg,rgba(12,16,18,0.95),rgba(7,11,13,0.82))] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.35)]"
+      >
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-emerald-300">
               <SlidersHorizontal className="h-3.5 w-3.5" />
               Ledger filters
             </div>
-            <div>
-              <h2 className="text-3xl font-semibold tracking-tight text-neutral-50">Transactions</h2>
-              <p className="mt-2 max-w-2xl text-sm text-neutral-400">
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-3xl font-semibold tracking-tight text-neutral-50">Transactions</h2>
+                <span className="inline-flex items-center rounded-full border border-neutral-800 bg-neutral-950/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-400">
+                  {activeFilterCount} active
+                </span>
+              </div>
+              <p className="max-w-3xl text-sm leading-6 text-neutral-400">
                 Review the ledger, filter it like a sheet, and create new manual transactions from the top of the page.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-950/80 px-4 py-3 text-sm text-neutral-300">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <div className="rounded-[24px] border border-neutral-800 bg-neutral-950/80 px-4 py-3 text-sm text-neutral-300">
               {totalTransactions === 0
                 ? "No rows in the current view"
                 : `Showing ${pageStart}-${pageEnd} of ${totalTransactions} rows`}
@@ -451,13 +459,27 @@ export default function TransactionsPage() {
             </button>
           </div>
         </div>
+      </header>
 
-        <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(260px,1.35fr)_repeat(4,minmax(150px,0.8fr))]">
-          <div className={`${FILTER_CONTROL_CLASS} xl:col-span-2`}>
-            <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">
-              <span>Search</span>
-              <span>{activeFilterCount} active</span>
-            </div>
+      <section
+        data-testid="txn-filter-surface"
+        className="rounded-[28px] border border-neutral-900 bg-neutral-950/75 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.25)] md:p-5"
+      >
+        <div className="flex flex-col gap-2 border-b border-neutral-900/80 pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-neutral-400">
+            Date presets carry into ledger drill-down views. Switch to custom range when you want a tighter window.
+          </p>
+          <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">
+            {activeFilterCount} active filters
+          </div>
+        </div>
+
+        <div
+          data-testid="txn-filter-primary-row"
+          className="mt-4 grid gap-3 xl:grid-cols-[minmax(320px,1.5fr)_repeat(4,minmax(150px,0.8fr))]"
+        >
+          <div className={FILTER_CONTROL_CLASS}>
+            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Search</div>
             <div className="relative mt-2">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
               <input
@@ -467,7 +489,7 @@ export default function TransactionsPage() {
                 data-testid="txn-query"
                 aria-label="Search transactions"
                 placeholder="Search merchants, descriptions, or notes"
-                className="w-full rounded-xl border border-neutral-800 bg-neutral-900 py-2.5 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500"
+                className="w-full rounded-xl border border-neutral-800 bg-neutral-900/90 py-2.5 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500"
               />
             </div>
           </div>
@@ -551,7 +573,10 @@ export default function TransactionsPage() {
           </div>
         </div>
 
-        <div className="mt-3 grid gap-3 xl:grid-cols-[repeat(3,minmax(160px,0.8fr))_minmax(280px,1.5fr)_auto]">
+        <div
+          data-testid="txn-filter-secondary-row"
+          className="mt-3 grid gap-3 xl:grid-cols-[minmax(170px,0.8fr)_minmax(180px,0.9fr)_minmax(360px,1.8fr)_auto]"
+        >
           <div className={FILTER_CONTROL_CLASS}>
             <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Range</div>
             <select
@@ -581,43 +606,7 @@ export default function TransactionsPage() {
             />
           </div>
 
-          {filters.range === "custom" ? (
-            <>
-              <div className={FILTER_CONTROL_CLASS}>
-                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Start</div>
-                <input
-                  type="date"
-                  value={filters.start}
-                  onChange={(event) => updateFilters((previous) => ({ ...previous, start: event.target.value }))}
-                  data-testid="txn-start-date"
-                  aria-label="Custom start date"
-                  className={`mt-2 ${FILTER_INPUT_CLASS}`}
-                />
-              </div>
-              <div className={FILTER_CONTROL_CLASS}>
-                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">End</div>
-                <input
-                  type="date"
-                  value={filters.end}
-                  onChange={(event) => updateFilters((previous) => ({ ...previous, end: event.target.value }))}
-                  data-testid="txn-end-date"
-                  aria-label="Custom end date"
-                  className={`mt-2 ${FILTER_INPUT_CLASS}`}
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className={`${FILTER_CONTROL_CLASS} flex items-center text-sm text-neutral-400`}>
-                Date preset applies across the ledger and drill-down links.
-              </div>
-              <div className={`${FILTER_CONTROL_CLASS} flex items-center text-sm text-neutral-400`}>
-                Use custom range to target a specific transaction window.
-              </div>
-            </>
-          )}
-
-          <div className={`${FILTER_CONTROL_CLASS} xl:col-span-2`} data-testid="txn-amount-filter">
+          <div className={FILTER_CONTROL_CLASS} data-testid="txn-amount-filter">
             <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">
               <span>Amount bar</span>
               <span>{money(selectedMinAmount)} to {money(selectedMaxAmount)}</span>
@@ -689,7 +678,7 @@ export default function TransactionsPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 xl:items-end">
+          <div className="flex flex-col gap-2 xl:items-end xl:justify-center">
             <button
               type="button"
               onClick={applyFilters}
@@ -708,7 +697,35 @@ export default function TransactionsPage() {
             </button>
           </div>
         </div>
-      </header>
+
+        {filters.range === "custom" ? (
+          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(180px,0.9fr)_minmax(180px,0.9fr)_1fr]">
+            <div className={FILTER_CONTROL_CLASS}>
+              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Start</div>
+              <input
+                type="date"
+                value={filters.start}
+                onChange={(event) => updateFilters((previous) => ({ ...previous, start: event.target.value }))}
+                data-testid="txn-start-date"
+                aria-label="Custom start date"
+                className={`mt-2 ${FILTER_INPUT_CLASS}`}
+              />
+            </div>
+            <div className={FILTER_CONTROL_CLASS}>
+              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">End</div>
+              <input
+                type="date"
+                value={filters.end}
+                onChange={(event) => updateFilters((previous) => ({ ...previous, end: event.target.value }))}
+                data-testid="txn-end-date"
+                aria-label="Custom end date"
+                className={`mt-2 ${FILTER_INPUT_CLASS}`}
+              />
+            </div>
+            <div className="hidden xl:block" />
+          </div>
+        ) : null}
+      </section>
 
       {message ? (
         <p className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300" data-testid="global-message">
