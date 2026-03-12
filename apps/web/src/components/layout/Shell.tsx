@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AssistantConversation } from "@/components/assistant/AssistantConversation";
 import { HelpMenu } from "@/components/layout/HelpMenu";
+import { getShellContentWidthClass } from "@/components/layout/shellWidth";
 import { useSession } from "@/lib/session";
 
 const ASSISTANT_FOCUSABLE_SELECTOR = [
@@ -24,6 +25,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useSession();
   const appEnv = process.env.NEXT_PUBLIC_APP_ENV || "local";
+  const shellContentWidthClass = getShellContentWidthClass(pathname);
 
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantFocusToken, setAssistantFocusToken] = useState(0);
@@ -170,7 +172,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <main id="app-main" tabIndex={-1} className="flex-1 overflow-y-auto pb-20 outline-none md:pb-0" data-testid="app-shell">
         <p className="sr-only" aria-live="polite" aria-atomic="true">{`Page: ${routeLabel}`}</p>
-        <div className="mx-auto w-full max-w-6xl p-4 md:p-8">
+        <div className={`mx-auto w-full p-4 md:p-8 ${shellContentWidthClass}`}>
           <header className="mb-6 flex flex-col gap-3 rounded-2xl border border-neutral-900 bg-neutral-950/50 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-xl font-semibold tracking-tight text-neutral-100">Minance</h1>
