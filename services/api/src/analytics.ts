@@ -276,6 +276,95 @@ export function getMerchantRollup(userId, filters = {}) {
   return items.map((entry, idx) => ({ ...entry, rank: idx + 1, concentrationIndex: round4(concentration) }));
 }
 
+export function getAccountRollup(userId, filters = {}) {
+  const store = loadStore();
+  const txns = filterUserTransactions(userId, filters);
+  const accountById = new Map(
+    store.accounts
+      .filter((entry) => entry.userId === userId)
+      .map((entry) => [entry.id, entry])
+  );
+  const grouped = {};
+  let totalOutflow = 0;
+
+  for (const txn of txns) {
+    const account = txn.account_id ? (accountById.get(txn.account_id) || null) : null;
+    const accountName = account?.displayName || String(txn.account_key || "").trim() || "Unassigned";
+    const accountKey = account?.normalizedKey || String(txn.account_key || "").trim().toLowerCase() || "unassigned";
+    const groupKey = String(txn.account_id || accountKey);
+
+    if (!grouped[groupKey]) {
+      grouped[groupKey] = {
+        accountId: txn.account_id || account?.id || null,
+        accountKey,
+        accountName,
+        sourceInstitution: account?.sourceInstitution || null,
+        outflow: 0,
+        inflow: 0,
+        net: 0,
+        transactionCount: 0,
+        trendMap: {}
+      };
+    }
+
+    const bucket = grouped[groupKey];
+    const month = monthKey(txn.transaction_date) || "unknown";
+    if (!bucket.trendMap[month]) {
+      bucket.trendMap[month] = {
+        month,
+        outflow: 0,
+        inflow: 0,
+        net: 0
+      };
+    }
+
+    const amount = toAmount(txn);
+    if (txn.direction === "outflow") {
+      bucket.outflow += amount;
+      bucket.trendMap[month].outflow += amount;
+      totalOutflow += amount;
+    } else {
+      bucket.inflow += amount;
+      bucket.trendMap[month].inflow += amount;
+    }
+
+    bucket.net = bucket.inflow - bucket.outflow;
+    bucket.trendMap[month].net = bucket.trendMap[month].inflow - bucket.trendMap[month].outflow;
+    bucket.transactionCount += 1;
+  }
+
+  const safeTotalOutflow = totalOutflow || 1;
+  const items = Object.values(grouped)
+    .map((entry) => ({
+      accountId: entry.accountId,
+      accountKey: entry.accountKey,
+      accountName: entry.accountName,
+      sourceInstitution: entry.sourceInstitution,
+      outflow: round2(entry.outflow),
+      inflow: round2(entry.inflow),
+      net: round2(entry.net),
+      transactionCount: entry.transactionCount,
+      share: round2((entry.outflow / safeTotalOutflow) * 100),
+      trend: Object.values(entry.trendMap)
+        .sort((a, b) => a.month.localeCompare(b.month))
+        .map((bucket) => ({
+          month: bucket.month,
+          outflow: round2(bucket.outflow),
+          inflow: round2(bucket.inflow),
+          net: round2(bucket.net)
+        }))
+    }))
+    .sort((a, b) => (b.outflow === a.outflow ? a.accountName.localeCompare(b.accountName) : b.outflow - a.outflow));
+
+  return {
+    items,
+    totals: {
+      accounts: items.length,
+      outflow: round2(totalOutflow)
+    }
+  };
+}
+
 export function getHeatmap(userId, filters = {}) {
   const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "outflow");
   const buckets = new Map();
@@ -376,6 +465,63 @@ export function getAnomalies(userId, filters = {}) {
     });
 }
 
+export function getExplorerAnalytics(userId, filters = {}) {
+  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const currentOverview = getOverview(userId, {
+    ...filters,
+    category_view: categoryView
+  });
+  const previousFilters = filters.compare === "previous"
+    ? derivePreviousComparisonFilters(filters)
+    : null;
+  const previousOverview = previousFilters
+    ? getOverview(userId, {
+        ...previousFilters,
+        category_view: categoryView
+      })
+    : null;
+
+  return {
+    summary: {
+      current: currentOverview.summary,
+      previous: previousOverview?.summary || null,
+      delta: previousOverview ? buildSummaryDelta(currentOverview.summary, previousOverview.summary) : null
+    },
+    comparison: {
+      enabled: Boolean(previousOverview),
+      current: currentOverview.summary,
+      previous: previousOverview?.summary || null,
+      delta: previousOverview ? buildSummaryDelta(currentOverview.summary, previousOverview.summary) : null
+    },
+    trend: {
+      items: currentOverview.trend
+    },
+    categories: {
+      items: getCategoryRollup(userId, {
+        ...filters,
+        category_view: categoryView
+      })
+    },
+    accounts: getAccountRollup(userId, filters),
+    merchants: {
+      items: getMerchantRollup(userId, filters)
+    },
+    heatmap: {
+      items: getHeatmap(userId, filters)
+    },
+    anomalies: {
+      items: getAnomalies(userId, {
+        ...filters,
+        category_view: categoryView
+      })
+    },
+    meta: buildAnalyticsMeta(userId, {
+      ...filters,
+      category_view: categoryView
+    })
+  };
+}
+
 function getWeekOfYear(date) {
   const start = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
   const dayOfYear = Math.floor((date - start) / (24 * 60 * 60 * 1000));
@@ -391,6 +537,57 @@ function shiftMonth(monthText, delta) {
   const date = new Date(Date.UTC(year, month - 1 + delta, 1));
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+function derivePreviousComparisonFilters(filters = {}) {
+  const currentRange = computeDateRange(filters.range, filters.start, filters.end);
+  if (!currentRange.start || !currentRange.end) {
+    return null;
+  }
+
+  const currentStart = new Date(`${currentRange.start}T12:00:00Z`);
+  const currentEnd = new Date(`${currentRange.end}T12:00:00Z`);
+  if (Number.isNaN(currentStart.getTime()) || Number.isNaN(currentEnd.getTime()) || currentEnd < currentStart) {
+    return null;
+  }
+
+  const days = Math.round((currentEnd.getTime() - currentStart.getTime()) / DAY_IN_MS) + 1;
+  const previousEnd = new Date(currentStart);
+  previousEnd.setUTCDate(previousEnd.getUTCDate() - 1);
+  const previousStart = new Date(previousEnd);
+  previousStart.setUTCDate(previousStart.getUTCDate() - (days - 1));
+
+  return {
+    ...filters,
+    start: formatDateYmd(previousStart),
+    end: formatDateYmd(previousEnd),
+    range: "custom"
+  };
+}
+
+function buildSummaryDelta(currentSummary, previousSummary) {
+  return {
+    totalSpend: buildDeltaValue(currentSummary.totalSpend, previousSummary.totalSpend),
+    totalIncome: buildDeltaValue(currentSummary.totalIncome, previousSummary.totalIncome),
+    netFlow: buildDeltaValue(currentSummary.netFlow, previousSummary.netFlow),
+    recurringSpend: buildDeltaValue(currentSummary.recurringSpend, previousSummary.recurringSpend),
+    transactionCount: buildDeltaValue(currentSummary.transactionCount, previousSummary.transactionCount)
+  };
+}
+
+function buildDeltaValue(currentValue, previousValue) {
+  const delta = round2(currentValue - previousValue);
+  const safePrevious = previousValue === 0 ? null : previousValue;
+  return {
+    delta,
+    percent: safePrevious == null ? null : round2((delta / safePrevious) * 100)
+  };
+}
+
+function formatDateYmd(date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 function round2(value) {
   return Math.round(value * 100) / 100;
