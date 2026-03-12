@@ -8,8 +8,8 @@ import { useApi } from "@/hooks/useApi";
 import type { Account, Category, OverviewResponse, HeatmapItem, AnomalyItem, SavedView } from "@/lib/api/types";
 import {
   buildExplorerFilterSearchParams,
-  createDefaultExplorerFilterState,
   parseExplorerFilterState,
+  savedExplorerFiltersToState,
   toValidExplorerFilterState,
   toExplorerAnalyticsApiParams
 } from "./filters";
@@ -40,6 +40,16 @@ export default function ExplorerPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  const syncFilters = useCallback(
+    (nextFilters: typeof filters) => {
+      const next = toValidExplorerFilterState(nextFilters);
+      setFilters(next);
+      const nextSearchParams = buildExplorerFilterSearchParams(next);
+      router.push(`/explorer?${nextSearchParams.toString()}`);
+    },
+    [router]
+  );
 
   // Sync filters with URL changes
   useEffect(() => {
@@ -104,12 +114,9 @@ export default function ExplorerPage() {
   // Update filters and sync to URL
   const updateFilters = useCallback(
     (updates: Partial<typeof filters>) => {
-      const next = { ...filters, ...updates };
-      setFilters(next);
-      const searchParams = buildExplorerFilterSearchParams(next);
-      router.push(`/explorer?${searchParams.toString()}`);
+      syncFilters({ ...filters, ...updates });
     },
-    [filters, router]
+    [filters, syncFilters]
   );
 
   // Handle month click in trend chart - filter to that month
@@ -154,7 +161,7 @@ export default function ExplorerPage() {
   // Saved views handlers
   async function handleSaveView(name: string) {
     try {
-      await api.savedViews.create(name, { range: filters.range, categoryView: "granular" });
+      await api.savedViews.create(name, { ...filters });
       setMessage("Saved view created.");
       const viewsData = await api.savedViews.list();
       setSavedViews(viewsData.items);
@@ -168,10 +175,8 @@ export default function ExplorerPage() {
   }
 
   function handleApplyView(view: SavedView) {
-    const savedRange = typeof view.filters?.range === "string" ? view.filters.range : null;
-    if (savedRange) {
-      updateFilters({ range: savedRange });
-    }
+    const nextFilters = savedExplorerFiltersToState(view.filters);
+    syncFilters(nextFilters);
     setMessage(`Applied view: ${view.name}`);
   }
 
