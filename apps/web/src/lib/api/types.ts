@@ -503,6 +503,83 @@ export interface OverviewResponse {
   meta: AnalyticsMeta;
 }
 
+export interface ExplorerSummaryDeltaValue {
+  delta: number;
+  percent: number | null;
+}
+
+export interface ExplorerTrendItem {
+  month: string;
+  spend: number;
+  income: number;
+  net: number;
+}
+
+export interface ExplorerAccountTrendItem {
+  month: string;
+  outflow: number;
+  inflow: number;
+  net: number;
+}
+
+export interface ExplorerAccountItem {
+  accountId: string | null;
+  accountKey: string;
+  accountName: string;
+  sourceInstitution: string | null;
+  outflow: number;
+  inflow: number;
+  net: number;
+  transactionCount: number;
+  share: number;
+  trend: ExplorerAccountTrendItem[];
+}
+
+export interface ExplorerSummaryDelta {
+  totalSpend: ExplorerSummaryDeltaValue;
+  totalIncome: ExplorerSummaryDeltaValue;
+  netFlow: ExplorerSummaryDeltaValue;
+  recurringSpend: ExplorerSummaryDeltaValue;
+  transactionCount: ExplorerSummaryDeltaValue;
+}
+
+export interface ExplorerAnalyticsResponse {
+  summary: {
+    current: OverviewResponse["summary"];
+    previous: OverviewResponse["summary"] | null;
+    delta: ExplorerSummaryDelta | null;
+  };
+  comparison: {
+    enabled: boolean;
+    current: OverviewResponse["summary"];
+    previous: OverviewResponse["summary"] | null;
+    delta: ExplorerSummaryDelta | null;
+  };
+  trend: {
+    items: ExplorerTrendItem[];
+  };
+  categories: {
+    items: OverviewResponse["topCategories"];
+  };
+  accounts: {
+    items: ExplorerAccountItem[];
+    totals: {
+      accounts: number;
+      outflow: number;
+    };
+  };
+  merchants: {
+    items: OverviewResponse["topMerchants"];
+  };
+  heatmap: {
+    items: HeatmapItem[];
+  };
+  anomalies: {
+    items: AnomalyItem[];
+  };
+  meta: AnalyticsMeta;
+}
+
 export interface HeatmapItem {
   week: number;
   weekday: number;

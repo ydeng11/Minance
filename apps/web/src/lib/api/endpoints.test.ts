@@ -65,6 +65,23 @@ test("analyticsApi.overview includes category_view query param", async () => {
   assert.equal(calls[0].path, "/v1/analytics/overview?range=all&category_view=granular");
 });
 
+test("analyticsApi.explorer includes perspective and compare query params", async () => {
+  const { calls, request } = createRecorder();
+  await analyticsApi.explorer(request, {
+    range: "90d",
+    category_view: "granular",
+    perspective: "account",
+    compare: "previous",
+    account: "acct_card"
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls[0].path,
+    "/v1/analytics/explorer?range=90d&category_view=granular&perspective=account&compare=previous&account=acct_card"
+  );
+});
+
 test("categoriesApi strategy endpoints use expected routes and methods", async () => {
   const { calls, request } = createRecorder();
 

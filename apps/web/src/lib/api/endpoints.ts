@@ -11,6 +11,7 @@ import type {
   CommitImportResponse,
   Credential,
   AiTrainingStatus,
+  ExplorerAnalyticsResponse,
   HeatmapItem,
   ImportDetailsResponse,
   ImportJob,
@@ -345,6 +346,27 @@ export const recurringsApi = {
 export const analyticsApi = {
   overview: (request: ApiRequest, params: { range?: string; start?: string; end?: string; category_view?: "granular" | "coarse" }) =>
     request<OverviewResponse>(`/v1/analytics/overview${buildQuery(params)}`),
+  explorer: (
+    request: ApiRequest,
+    params: {
+      range?: string;
+      start?: string;
+      end?: string;
+      category_view?: "granular" | "coarse";
+      perspective?: "overview" | "category" | "account";
+      compare?: "previous";
+      account?: string;
+      category?: string;
+      merchant?: string;
+      query?: string;
+      direction?: "outflow" | "inflow";
+      transaction_type?: "expense" | "income" | "transfer";
+      tag?: string;
+      review_status?: "reviewed" | "needs_review";
+      min_amount?: number;
+      max_amount?: number;
+    }
+  ) => request<ExplorerAnalyticsResponse>(`/v1/analytics/explorer${buildQuery(params)}`),
   categories: (request: ApiRequest, params: { range?: string; start?: string; end?: string; category_view?: "granular" | "coarse" }) =>
     request<{ items: Array<{ category: string; amount: number }> }>(`/v1/analytics/categories${buildQuery(params)}`),
   merchants: (request: ApiRequest, params: { range?: string; start?: string; end?: string; category_view?: "granular" | "coarse" }) =>
