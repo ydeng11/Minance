@@ -369,28 +369,28 @@ export default function CategoriesPage() {
         </div>
 
         <div className="mt-3 grid gap-3 md:grid-cols-[1fr_220px]">
-          <label htmlFor="categories-query" className="sr-only">
-            Search categories
+          <label htmlFor="categories-query" className="grid gap-1 text-neutral-400">
+            <span className="text-xs uppercase tracking-wide">Search</span>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+              <input
+                id="categories-query"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search category, group, or type"
+                data-testid="categories-query"
+                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 py-2 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+              />
+            </div>
           </label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-            <input
-              id="categories-query"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search category, group, or type"
-              data-testid="categories-query"
-              className="w-full rounded-lg border border-neutral-700 bg-neutral-900 py-2 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
-            />
-          </div>
-          <label htmlFor="categories-group-filter" className="grid gap-1 text-xs uppercase tracking-wide text-neutral-400">
-            Group filter
+          <label htmlFor="categories-group-filter" className="grid gap-1 text-neutral-400">
+            <span className="text-xs uppercase tracking-wide">Group filter</span>
             <select
               id="categories-group-filter"
               value={groupFilter}
               onChange={(event) => setGroupFilter(event.target.value)}
               data-testid="categories-group-filter"
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm font-normal tracking-normal text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
             >
               <option value="all">All groups</option>
               {coarseGroups.map((entry) => (

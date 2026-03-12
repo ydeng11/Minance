@@ -60,6 +60,16 @@ test("@core grouped taxonomy lists reflow immediately after moving a filtered ca
   await expect(page.locator('[data-testid^="taxonomy-group-essential"]', { hasText: categoryName })).toBeVisible();
 });
 
+test("@core categories search and group filter controls align to the same top edge", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await gotoView(page, "categories");
+
+  const searchTop = await page.getByTestId("categories-query").evaluate((element) => element.getBoundingClientRect().top);
+  const groupFilterTop = await page.getByTestId("categories-group-filter").evaluate((element) => element.getBoundingClientRect().top);
+
+  expect(Math.abs(searchTop - groupFilterTop)).toBeLessThanOrEqual(1);
+});
+
 test("@core settings taxonomy emoji fields use searchable picker", async ({ page }) => {
   const categoryName = `Settings Emoji ${Date.now()}`;
 
