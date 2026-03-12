@@ -28,7 +28,8 @@
   "devDependencies": {
     "@playwright/test": "^1.56.1",
     "axe-core": "^4.11.0",
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "tsx": "^4.20.6"
   },
   "dependencies": {
     "csv-parse": "^5.6.0"
