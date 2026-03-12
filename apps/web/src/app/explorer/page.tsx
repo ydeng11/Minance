@@ -7,6 +7,11 @@ import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import type { Account, Category, ExplorerAnalyticsResponse, OverviewResponse, SavedView } from "@/lib/api/types";
 import {
+  buildTransactionsFilterSearchParams,
+  createDefaultTransactionsFilterState,
+  toValidFilterState as toValidTransactionsFilterState
+} from "../transactions/filters";
+import {
   buildExplorerFilterSearchParams,
   parseExplorerFilterState,
   savedExplorerFiltersToState,
@@ -14,8 +19,11 @@ import {
   toExplorerAnalyticsApiParams
 } from "./filters";
 import { FilterSidebar } from "./components/FilterSidebar";
+import { AccountPerspective } from "./components/AccountPerspective";
+import { CategoryPerspective } from "./components/CategoryPerspective";
 import { ExplorerPerspectiveTabs } from "./components/ExplorerPerspectiveTabs";
 import { ExplorerSummaryBand } from "./components/ExplorerSummaryBand";
+import { OverviewPerspective } from "./components/OverviewPerspective";
 import { SavedViews } from "./components/SavedViews";
 import { VisualizationGrid } from "./components/VisualizationGrid";
 
@@ -152,6 +160,29 @@ export default function ExplorerPage() {
       updateFilters({ merchant });
     },
     [updateFilters]
+  );
+
+  const openTransactionsDrillDown = useCallback(
+    (overrides: Partial<{ query: string; category: string; account: string; transactionType: typeof filters.transactionType; tag: string }>) => {
+      const transactionFilters = toValidTransactionsFilterState({
+        ...createDefaultTransactionsFilterState(),
+        query: overrides.query ?? filters.query,
+        category: overrides.category ?? filters.category,
+        account: overrides.account ?? filters.account,
+        minAmount: filters.minAmount,
+        maxAmount: filters.maxAmount,
+        range: filters.range,
+        start: filters.start,
+        end: filters.end,
+        categoryView: filters.categoryView,
+        transactionType: overrides.transactionType ?? filters.transactionType,
+        tag: overrides.tag ?? filters.tag,
+        page: 1
+      });
+      const nextSearchParams = buildTransactionsFilterSearchParams(transactionFilters);
+      router.push(`/transactions?${nextSearchParams.toString()}`);
+    },
+    [filters, router]
   );
 
   // Saved views handlers
@@ -297,17 +328,49 @@ export default function ExplorerPage() {
             onChange={(perspective) => updateFilters({ perspective })}
           />
 
-          {/* Visualizations */}
-          <VisualizationGrid
-            overview={overview}
-            heatmap={explorer?.heatmap.items || []}
-            anomalies={explorer?.anomalies.items || []}
-            onMonthClick={handleMonthClick}
-            onCategoryClick={handleCategoryClick}
-            onAccountClick={handleAccountClick}
-            onMerchantClick={handleMerchantClick}
-            loading={loading}
-          />
+          {filters.perspective === "overview" ? (
+            <OverviewPerspective
+              overview={overview}
+              comparison={explorer?.comparison || null}
+              heatmap={explorer?.heatmap.items || []}
+              anomalies={explorer?.anomalies.items || []}
+              onMonthClick={handleMonthClick}
+              onCategoryClick={handleCategoryClick}
+              onMerchantClick={handleMerchantClick}
+              loading={loading}
+            />
+          ) : filters.perspective === "category" ? (
+            <CategoryPerspective
+              overview={overview}
+              selectedCategory={filters.category}
+              onCategoryClick={handleCategoryClick}
+              onMonthClick={handleMonthClick}
+              onMerchantClick={handleMerchantClick}
+              loading={loading}
+            />
+          ) : filters.perspective === "account" ? (
+            <AccountPerspective
+              overview={overview}
+              accounts={explorer?.accounts.items || []}
+              selectedAccount={filters.account}
+              onAccountClick={(account) => openTransactionsDrillDown({ account })}
+              onMonthClick={handleMonthClick}
+              onCategoryClick={handleCategoryClick}
+              onMerchantClick={handleMerchantClick}
+              loading={loading}
+            />
+          ) : (
+            <VisualizationGrid
+              overview={overview}
+              heatmap={explorer?.heatmap.items || []}
+              anomalies={explorer?.anomalies.items || []}
+              onMonthClick={handleMonthClick}
+              onCategoryClick={handleCategoryClick}
+              onAccountClick={handleAccountClick}
+              onMerchantClick={handleMerchantClick}
+              loading={loading}
+            />
+          )}
 
           {/* Saved Views */}
           <SavedViews

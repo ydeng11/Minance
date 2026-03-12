@@ -37,7 +37,7 @@ export function MerchantAnalysis({ overview, onMerchantClick, loading }: Merchan
   return (
     <div className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-6">
       <h3 className="text-sm font-medium text-neutral-300">Top Merchants</h3>
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 space-y-2" data-testid="analytics-merchant-bars">
         {merchants.slice(0, 8).map((entry) => (
           <button
             type="button"
