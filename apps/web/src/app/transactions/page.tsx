@@ -476,7 +476,7 @@ export default function TransactionsPage() {
 
         <div
           data-testid="txn-filter-primary-row"
-          className="mt-4 grid gap-3 xl:grid-cols-[minmax(320px,1.5fr)_repeat(4,minmax(150px,0.8fr))]"
+          className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(320px,1.5fr)_repeat(4,minmax(150px,0.8fr))]"
         >
           <div className={FILTER_CONTROL_CLASS}>
             <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Search</div>
@@ -575,7 +575,7 @@ export default function TransactionsPage() {
 
         <div
           data-testid="txn-filter-secondary-row"
-          className="mt-3 grid gap-3 xl:grid-cols-[minmax(170px,0.8fr)_minmax(180px,0.9fr)_minmax(360px,1.8fr)_auto]"
+          className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(170px,0.8fr)_minmax(180px,0.9fr)_minmax(360px,1.8fr)_auto]"
         >
           <div className={FILTER_CONTROL_CLASS}>
             <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Range</div>
@@ -699,7 +699,10 @@ export default function TransactionsPage() {
         </div>
 
         {filters.range === "custom" ? (
-          <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(180px,0.9fr)_minmax(180px,0.9fr)_1fr]">
+          <div
+            data-testid="txn-custom-date-row"
+            className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(180px,0.9fr)_minmax(180px,0.9fr)_1fr]"
+          >
             <div className={FILTER_CONTROL_CLASS}>
               <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Start</div>
               <input
