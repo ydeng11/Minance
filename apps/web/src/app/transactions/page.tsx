@@ -733,28 +733,40 @@ export default function TransactionsPage() {
         </p>
       ) : null}
 
-      <section className="overflow-hidden rounded-[28px] border border-neutral-900 bg-neutral-950/80 shadow-[0_20px_80px_rgba(0,0,0,0.25)]">
-        <div className="overflow-x-auto">
-          <table className="min-w-[1120px] w-full text-left text-sm" data-testid="txn-table">
+      <section
+        data-testid="txn-ledger-shell"
+        className="overflow-hidden rounded-[30px] border border-neutral-900 bg-neutral-950/80 shadow-[0_20px_80px_rgba(0,0,0,0.25)]"
+      >
+        <div data-testid="txn-table-scroll" className="overflow-x-auto">
+          <table className="min-w-[1100px] w-full text-left text-sm text-neutral-200" data-testid="txn-table">
             <caption className="sr-only">Detailed transaction ledger with inline edit and row actions</caption>
-            <thead className="bg-neutral-900/70 text-neutral-300">
+            <colgroup>
+              <col className="w-[132px]" />
+              <col />
+              <col className="w-[190px]" />
+              <col className="w-[220px]" />
+              <col className="w-[120px]" />
+              <col className="w-[130px]" />
+              <col className="w-[144px]" />
+            </colgroup>
+            <thead className="bg-neutral-900/60 text-neutral-300">
               <tr>
-                <th scope="col" className="px-4 py-3 font-medium">Dates</th>
-                <th scope="col" className="px-4 py-3 font-medium">Details</th>
-                <th scope="col" className="px-4 py-3 font-medium">Category</th>
-                <th scope="col" className="px-4 py-3 font-medium">Account</th>
-                <th scope="col" className="px-4 py-3 font-medium">Type</th>
-                <th scope="col" className="px-4 py-3 font-medium text-right">Amount</th>
-                <th scope="col" className="px-4 py-3 font-medium text-right">Actions</th>
+                <th scope="col" className="px-5 py-3.5 font-medium">Dates</th>
+                <th scope="col" className="px-5 py-3.5 font-medium">Details</th>
+                <th scope="col" className="px-5 py-3.5 font-medium">Category</th>
+                <th scope="col" className="px-5 py-3.5 font-medium">Account</th>
+                <th scope="col" className="px-5 py-3.5 font-medium">Type</th>
+                <th scope="col" className="px-5 py-3.5 font-medium text-right">Amount</th>
+                <th scope="col" className="px-5 py-3.5 font-medium text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-900">
+            <tbody className="divide-y divide-neutral-900/80">
               {ledgerTransactions.map((txn) => {
                 const isEditing = form.id === txn.id;
                 return (
                   <Fragment key={txn.id}>
-                    <tr className="align-top transition hover:bg-neutral-900/40">
-                      <td className="px-4 py-4 text-neutral-300">
+                    <tr className="align-top transition hover:bg-neutral-900/30">
+                      <td className="px-5 py-5 text-neutral-300">
                         <div className="font-medium text-neutral-100">{txn.transaction_date}</div>
                         <div className="mt-1 text-xs text-neutral-500">
                           Post {txn.post_date || "n/a"}
@@ -764,9 +776,9 @@ export default function TransactionsPage() {
                         </div>
                       </td>
 
-                      <td className="px-4 py-4">
+                      <td className="px-5 py-5">
                         <div className="flex items-start gap-3">
-                          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 text-base">
+                          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900/90 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                             {txn.counterparty_emoji || "💳"}
                           </span>
                           <div className="min-w-0">
@@ -791,8 +803,8 @@ export default function TransactionsPage() {
                         </div>
                       </td>
 
-                      <td className="px-4 py-4">
-                        <div className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] text-neutral-200">
+                      <td className="px-5 py-5">
+                        <div className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/90 px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] text-neutral-200">
                           <span>
                             {(filters.categoryView === "coarse"
                               ? `${txn.category_coarse_emoji || ""} ${txn.category_coarse || txn.category_final}`
@@ -804,25 +816,25 @@ export default function TransactionsPage() {
                         </div>
                       </td>
 
-                      <td className="px-4 py-4 text-neutral-300">
+                      <td className="px-5 py-5 text-neutral-300">
                         <div className="font-medium text-neutral-100">{txn.account_key || "Manual Account"}</div>
                         <div className="mt-1 text-xs text-neutral-500">{txn.account_id || "No linked account id"}</div>
                       </td>
 
-                      <td className="px-4 py-4 text-neutral-300">
+                      <td className="px-5 py-5 text-neutral-300">
                         <div className="font-medium text-neutral-100">{formatTransactionTypeLabel(txn.transaction_type)}</div>
                         <div className="mt-1 text-xs text-neutral-500">{txn.direction}</div>
                       </td>
 
-                      <td className="px-4 py-4 text-right font-medium">
+                      <td className="px-5 py-5 text-right font-medium">
                         <span className={txn.direction === "inflow" ? "text-emerald-400" : "text-neutral-100"}>
                           {txn.direction === "inflow" ? "+" : "-"}
                           {money(Math.abs(txn.amount))}
                         </span>
                       </td>
 
-                      <td className="px-4 py-4 text-right">
-                        <div className="inline-flex gap-2">
+                      <td className="px-5 py-5 text-right">
+                        <div className="inline-flex flex-wrap justify-end gap-2">
                           <button
                             type="button"
                             onClick={() => startEdit(txn)}
@@ -847,7 +859,7 @@ export default function TransactionsPage() {
 
                     {isEditing ? (
                       <tr data-testid={`txn-inline-edit-row-${txn.id}`}>
-                        <td colSpan={7} className="bg-neutral-950/70 px-4 py-4">
+                        <td colSpan={7} className="bg-neutral-950/70 px-5 py-5">
                           <form onSubmit={submitForm} className="grid gap-4" data-testid={`txn-inline-form-${txn.id}`}>
                             <input type="hidden" value={form.id} readOnly />
                             <TransactionEditorFields
@@ -885,7 +897,7 @@ export default function TransactionsPage() {
 
               {!loading && ledgerTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-neutral-400">
+                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-neutral-400">
                     No transactions found.
                   </td>
                 </tr>
@@ -894,7 +906,7 @@ export default function TransactionsPage() {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-900 bg-neutral-900/40 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-900 bg-neutral-900/40 px-5 py-3.5">
           <p className="text-xs text-neutral-400" data-testid="txn-pagination-summary">
             {totalTransactions === 0
               ? "Showing 0 of 0 transactions"

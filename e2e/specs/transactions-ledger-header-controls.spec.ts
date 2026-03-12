@@ -33,6 +33,8 @@ test("@core transactions header controls route into the ledger, create from the 
   const firstLedgerRow = page.locator('[data-testid="txn-table"] tbody > tr').first();
   await expect(firstLedgerRow).toContainText(newerMerchant);
   await expect(firstLedgerRow).toContainText("🤝");
+  await expect(page.getByTestId("txn-ledger-shell")).toBeVisible();
+  await expect(page.getByTestId("txn-table-scroll")).toBeVisible();
 
   await expect(page.getByTestId("txn-amount-filter")).toBeVisible();
   await page.getByPlaceholder(/Min \(\$/).fill("70");
@@ -42,5 +44,13 @@ test("@core transactions header controls route into the ledger, create from the 
   const newerRow = page.locator('[data-testid="txn-table"] tr', { hasText: newerMerchant });
   const olderRow = page.locator('[data-testid="txn-table"] tr', { hasText: olderMerchant });
   await expect(newerRow).toBeVisible();
+  await expect(newerRow).toContainText("Dining");
+  await expect(newerRow).toContainText("-$77.25");
+  await expect(newerRow.getByRole("button", { name: "Edit" })).toBeVisible();
+  await expect(newerRow.getByRole("button", { name: "Delete" })).toBeVisible();
+  await newerRow.getByRole("button", { name: "Edit" }).click();
+  await expect(page.locator('[data-testid^="txn-inline-form-"]')).toBeVisible();
+  await page.locator('[data-testid^="txn-inline-cancel-"]').click();
+  await expect(page.locator('[data-testid^="txn-inline-form-"]')).toHaveCount(0);
   await expect(olderRow).toHaveCount(0);
 });
