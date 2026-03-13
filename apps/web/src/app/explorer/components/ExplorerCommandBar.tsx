@@ -58,7 +58,7 @@ export function ExplorerCommandBar({
           >
             <option value="">All accounts</option>
             {accounts.map((account) => (
-              <option key={account.id} value={account.displayName}>
+              <option key={account.id} value={account.id}>
                 {account.displayName}
               </option>
             ))}

@@ -257,11 +257,17 @@ export default function ExplorerPage() {
       label: string;
       clear: () => void;
     }> = [];
+    const activeAccount = accounts.find(
+      (account) =>
+        filters.account === account.id ||
+        filters.account === account.normalizedKey ||
+        filters.account === account.displayName
+    );
 
     if (filters.account) {
       items.push({
         key: "account",
-        label: filters.account,
+        label: activeAccount?.displayName || filters.account,
         clear: () => updateFilters({ account: "" })
       });
     }
@@ -316,7 +322,7 @@ export default function ExplorerPage() {
     }
 
     return items;
-  }, [filters, updateFilters]);
+  }, [accounts, filters, updateFilters]);
 
   return (
     <div className="space-y-8" data-testid="explorer-page">
@@ -426,7 +432,8 @@ export default function ExplorerPage() {
             overview={overview}
             accounts={explorer?.accounts.items || []}
             selectedAccount={filters.account}
-            onAccountClick={(account) => openTransactionsDrillDown({ account })}
+            onAccountClick={(account) => updateFilters({ perspective: "account", account })}
+            onOpenTransactions={() => openTransactionsDrillDown({ account: filters.account || undefined })}
             onMonthClick={handleMonthClick}
             onCategoryClick={handleCategoryClick}
             onMerchantClick={handleMerchantClick}

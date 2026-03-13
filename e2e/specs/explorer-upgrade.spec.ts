@@ -91,14 +91,21 @@ test("account perspective renders account analytics and saved views restore it",
   await expect(page.getByTestId("explorer-account-view")).toBeVisible();
 });
 
-test("explorer drill-down opens Transactions with preserved filters", async ({ page }) => {
+test("category and account drill-down expand the explorer workspace in place", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);
   await gotoView(page, "explorer");
 
+  await page.getByTestId("analytics-category-bars").getByRole("button").first().click();
+  await expect(page).toHaveURL(/\/explorer/);
+  await expect(page.getByTestId("explorer-active-filters")).toContainText(/groceries|dining|transport/i);
+
   await page.getByTestId("explorer-perspective-account").click();
   await page.getByTestId("explorer-account-rankings").getByRole("button").first().click();
+  await expect(page).toHaveURL(/\/explorer/);
+  await expect(page.getByTestId("explorer-account-view")).toContainText(/focused on/i);
 
+  await page.getByTestId("explorer-open-transactions").click();
   await expect(page).toHaveURL(/\/transactions\?/);
   await expect(page.getByTestId("transactions-page")).toBeVisible();
 });

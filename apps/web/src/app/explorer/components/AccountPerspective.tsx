@@ -1,6 +1,6 @@
 "use client";
 
-import { Landmark } from "lucide-react";
+import { ArrowRight, Landmark } from "lucide-react";
 import { cn, money } from "@/lib/utils";
 import type { ExplorerAnalyticsResponse, OverviewResponse } from "@/lib/api/types";
 import { CategoryBreakdown } from "./CategoryBreakdown";
@@ -13,6 +13,7 @@ interface AccountPerspectiveProps {
   accounts: ExplorerAnalyticsResponse["accounts"]["items"];
   selectedAccount: string;
   onAccountClick: (account: string) => void;
+  onOpenTransactions: () => void;
   onMonthClick: (month: string) => void;
   onCategoryClick: (category: string) => void;
   onMerchantClick: (merchant: string) => void;
@@ -24,18 +25,37 @@ export function AccountPerspective({
   accounts,
   selectedAccount,
   onAccountClick,
+  onOpenTransactions,
   onMonthClick,
   onCategoryClick,
   onMerchantClick,
   loading
 }: AccountPerspectiveProps) {
+  const activeAccount = accounts.find(
+    (entry) =>
+      selectedAccount === entry.accountId ||
+      selectedAccount === entry.accountKey ||
+      selectedAccount === entry.accountName
+  ) || null;
+
   return (
     <div className="space-y-6" data-testid="explorer-account-view">
       <ExplorerCard
         title="Account Lens"
-        subtitle={selectedAccount
-          ? `Focused on ${selectedAccount}. Pick another account to compare how spending shifts.`
+        subtitle={activeAccount
+          ? `Focused on ${activeAccount.accountName}. Pick another account to compare how spending shifts.`
           : "Follow the accounts driving outflow, then drill into categories and merchants from there."}
+        headerAction={activeAccount ? (
+          <button
+            type="button"
+            onClick={onOpenTransactions}
+            data-testid="explorer-open-transactions"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-sm font-medium text-neutral-200 transition hover:bg-neutral-900"
+          >
+            Transactions
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        ) : null}
         testId="explorer-account-rankings"
       >
         {loading ? (
@@ -50,10 +70,12 @@ export function AccountPerspective({
               <button
                 key={entry.accountId || entry.accountKey}
                 type="button"
-                onClick={() => onAccountClick(entry.accountId || entry.accountKey)}
+                onClick={() => onAccountClick(entry.accountId || entry.accountKey || entry.accountName)}
                 className={cn(
                   "flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left transition",
-                  selectedAccount === entry.accountId || selectedAccount === entry.accountKey
+                  selectedAccount === entry.accountId ||
+                    selectedAccount === entry.accountKey ||
+                    selectedAccount === entry.accountName
                     ? "border-emerald-400/30 bg-emerald-400/10"
                     : "border-neutral-900 bg-neutral-950/70 hover:border-neutral-800 hover:bg-neutral-900/80"
                 )}
