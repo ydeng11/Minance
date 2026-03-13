@@ -98,7 +98,7 @@ export function buildSummarySecondaryState(
   if (!input.comparisonEnabled && input.sparkline.length > 1) {
     return {
       mode: "sparkline",
-      label: "Recent 7-day trend"
+      label: "Last 7 days"
     };
   }
 
@@ -106,4 +106,16 @@ export function buildSummarySecondaryState(
     mode: "delta",
     label: input.deltaLabel
   };
+}
+
+export function getSummaryValueClassName(value: string) {
+  if (value.length >= 14) {
+    return "text-2xl";
+  }
+
+  if (value.length >= 10) {
+    return "text-3xl";
+  }
+
+  return "text-4xl";
 }
