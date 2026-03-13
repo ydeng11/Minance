@@ -871,16 +871,17 @@ export function bulkUpdateTransactions(userId, payload = {}) {
   const hasReviewUpdate =
     hasOwnField(rawUpdatePayload, "review_status") ||
     hasOwnField(rawUpdatePayload, "needs_category_review");
+  const hasBulkUpdateChanges = hasCategoryUpdate || hasTagsUpdate || hasReviewUpdate;
 
   if (operation !== "update" && operation !== "delete") {
     throw new Error("Invalid bulk operation");
   }
 
-  if (operation === "delete" && (hasCategoryUpdate || hasTagsUpdate || hasReviewUpdate)) {
+  if (operation === "delete" && hasBulkUpdateChanges) {
     throw new Error("Invalid bulk delete: cannot be combined with updates");
   }
 
-  if (operation === "update" && !hasCategoryUpdate && !hasTagsUpdate && !hasReviewUpdate) {
+  if (operation === "update" && !hasBulkUpdateChanges) {
     throw new Error("Bulk update requires category_final, tags, or review state");
   }
 

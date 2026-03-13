@@ -16,6 +16,12 @@ async function findTransactionIdByMerchant(page, merchant) {
   return match.id;
 }
 
+async function selectTransactions(page, transactionIds) {
+  for (const transactionId of transactionIds) {
+    await page.getByTestId(`txn-select-row-${transactionId}`).check();
+  }
+}
+
 test("@core transactions bulk delete removes selected visible rows", async ({ page }) => {
   await loginWithSeedAccount(page);
   await gotoView(page, "transactions");
@@ -31,9 +37,9 @@ test("@core transactions bulk delete removes selected visible rows", async ({ pa
 
   const firstId = await findTransactionIdByMerchant(page, first.merchant);
   const secondId = await findTransactionIdByMerchant(page, second.merchant);
+  const selectedIds = [firstId, secondId];
 
-  await page.getByTestId(`txn-select-row-${firstId}`).check();
-  await page.getByTestId(`txn-select-row-${secondId}`).check();
+  await selectTransactions(page, selectedIds);
   await expect(page.getByTestId("txn-bulk-bar")).toContainText("2 selected");
 
   await page.getByTestId("txn-bulk-clear").click();
@@ -49,8 +55,7 @@ test("@core transactions bulk delete removes selected visible rows", async ({ pa
   await page.getByTestId(`txn-select-row-${firstId}`).check();
   await page.getByTestId("txn-query").fill("");
   await applyTransactionsFilters(page);
-  await page.getByTestId(`txn-select-row-${firstId}`).check();
-  await page.getByTestId(`txn-select-row-${secondId}`).check();
+  await selectTransactions(page, selectedIds);
   await expect(page.getByTestId("txn-bulk-bar")).toContainText("2 selected");
 
   await page.getByTestId("txn-bulk-delete-open").click();

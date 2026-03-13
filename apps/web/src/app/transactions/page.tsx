@@ -55,6 +55,10 @@ function formatTransactionTypeLabel(type: Transaction["transaction_type"]) {
   }
 }
 
+function formatTransactionCountLabel(count: number) {
+  return `${count} transaction${count === 1 ? "" : "s"}`;
+}
+
 function calculateActiveFilterCount(filters: TransactionsFilterState) {
   const defaults = createDefaultTransactionsFilterState();
   return [
@@ -193,7 +197,11 @@ export default function TransactionsPage() {
     : Math.min(currentPage * TRANSACTIONS_PAGE_SIZE, totalTransactions);
   const visibleTransactionIds = useMemo(() => ledgerTransactions.map((entry) => entry.id), [ledgerTransactions]);
   const selectedVisibleCount = selectedTransactionIds.size;
+  const hasVisibleSelection = selectedVisibleCount > 0;
+  const hasVisibleTransactions = visibleTransactionIds.length > 0;
   const allVisibleSelected = visibleTransactionIds.length > 0 && selectedVisibleCount === visibleTransactionIds.length;
+  const selectionInputDisabled = loading || saving || bulkDeleting;
+  const selectedTransactionLabel = formatTransactionCountLabel(selectedVisibleCount);
 
   async function loadCategories() {
     try {
@@ -306,7 +314,7 @@ export default function TransactionsPage() {
   }
 
   function openBulkDeleteDialog() {
-    if (selectedTransactionIds.size === 0) {
+    if (!hasVisibleSelection) {
       return;
     }
     setIsBulkDeleteDialogOpen(true);
@@ -340,6 +348,11 @@ export default function TransactionsPage() {
     syncFiltersToUrl(nextFilters);
   }
 
+  function commitFiltersWithSelectionReset(nextFilters: TransactionsFilterState) {
+    clearSelectedTransactions();
+    commitFilters(nextFilters);
+  }
+
   function applyFilters() {
     const nextFilters = toValidFilterState({
       ...filtersRef.current,
@@ -352,13 +365,11 @@ export default function TransactionsPage() {
       return;
     }
 
-    clearSelectedTransactions();
-    commitFilters(nextFilters);
+    commitFiltersWithSelectionReset(nextFilters);
   }
 
   function clearFilters() {
-    clearSelectedTransactions();
-    commitFilters(createDefaultTransactionsFilterState());
+    commitFiltersWithSelectionReset(createDefaultTransactionsFilterState());
   }
 
   function navigateToPage(nextPage: number) {
@@ -371,8 +382,7 @@ export default function TransactionsPage() {
       return;
     }
 
-    clearSelectedTransactions();
-    commitFilters(nextFilters);
+    commitFiltersWithSelectionReset(nextFilters);
   }
 
   function resetManualForm() {
@@ -422,7 +432,9 @@ export default function TransactionsPage() {
 
   async function removeSelectedTransactions() {
     const selectedIds = Array.from(selectedTransactionIds);
-    if (!selectedIds.length) {
+    const deletedCount = selectedIds.length;
+
+    if (!deletedCount) {
       return;
     }
 
@@ -436,7 +448,7 @@ export default function TransactionsPage() {
       });
       clearSelectedTransactions();
       await refreshTransactionsView(filtersRef.current, { preserveMessage: true });
-      setMessage(`${selectedIds.length} transaction${selectedIds.length === 1 ? "" : "s"} deleted.`);
+      setMessage(`${formatTransactionCountLabel(deletedCount)} deleted.`);
     } catch (error) {
       setMessage(getRequestErrorMessage(error, "Failed to delete selected transactions."));
     } finally {
@@ -817,7 +829,7 @@ export default function TransactionsPage() {
         data-testid="txn-ledger-shell"
         className="overflow-hidden rounded-[30px] border border-neutral-900 bg-neutral-950/80 shadow-[0_20px_80px_rgba(0,0,0,0.25)]"
       >
-        {selectedVisibleCount > 0 ? (
+        {hasVisibleSelection ? (
           <div
             data-testid="txn-bulk-bar"
             className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-900 bg-neutral-900/60 px-5 py-3.5"
@@ -868,7 +880,7 @@ export default function TransactionsPage() {
                     onChange={(event) => toggleVisibleSelection(event.target.checked)}
                     data-testid="txn-select-all-visible"
                     aria-label="Select all visible transactions"
-                    disabled={loading || saving || bulkDeleting || visibleTransactionIds.length === 0}
+                    disabled={selectionInputDisabled || !hasVisibleTransactions}
                     className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-400 focus:ring-emerald-400"
                   />
                 </th>
@@ -895,7 +907,7 @@ export default function TransactionsPage() {
                           onChange={() => toggleRowSelection(txn.id)}
                           data-testid={`txn-select-row-${txn.id}`}
                           aria-label={`Select transaction ${txn.merchant_raw}`}
-                          disabled={loading || saving || bulkDeleting || isEditing}
+                          disabled={selectionInputDisabled || isEditing}
                           className="mt-1 h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-400 focus:ring-emerald-400"
                         />
                       </td>
@@ -1144,7 +1156,7 @@ export default function TransactionsPage() {
               <div>
                 <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-rose-300">Bulk delete</div>
                 <h3 id="txn-bulk-delete-dialog-title" className="mt-2 text-2xl font-semibold text-neutral-50">
-                  Delete {selectedVisibleCount} transaction{selectedVisibleCount === 1 ? "" : "s"}
+                  Delete {selectedTransactionLabel}
                 </h3>
                 <p className="mt-2 text-sm text-neutral-400">
                   This removes only the transactions currently selected on this visible page. Selection clears after delete.
