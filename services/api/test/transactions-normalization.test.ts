@@ -227,3 +227,63 @@ test("listTransactions filters by minimum and maximum absolute amount", () => {
 
   assert.deepEqual(listed.items.map((entry) => entry.id), ["txn_imported_neg"]);
 });
+
+test("listTransactions keeps custom transfer categories when filtering by transfer type", () => {
+  const store = structuredClone(BASE_STORE);
+  store.categories = [
+    {
+      id: "cat_transfer_custom",
+      userId: "user_1",
+      name: "Brokerage Sweep",
+      emoji: "🔁",
+      coarseKey: "neutral",
+      type: "transfer",
+      budget: null,
+      isSystem: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    }
+  ];
+  store.transactions = [
+    {
+      id: "txn_transfer_custom",
+      user_id: "user_1",
+      account_id: "acct_1",
+      account_key: "checking",
+      source_type: "imported",
+      source_file_id: "imp_transfer",
+      transaction_date: "2026-01-08",
+      post_date: null,
+      merchant_raw: "Brokerage",
+      merchant_normalized: "brokerage",
+      description: "Sweep to brokerage",
+      amount: 250,
+      currency: "USD",
+      direction: "outflow",
+      category_raw: "Brokerage Sweep",
+      category_final: "Brokerage Sweep",
+      category_confidence: 1,
+      category_strategy: "import_override",
+      needs_category_review: false,
+      review_status: "reviewed",
+      tags: [],
+      recurring_rule_id: null,
+      memo: null,
+      dedupe_fingerprint: "fp_transfer_custom",
+      created_at: "2026-01-08T00:00:00.000Z",
+      updated_at: "2026-01-08T00:00:00.000Z"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const listed = listTransactions("user_1", {
+    range: "all",
+    transaction_type: "transfer",
+    limit: 50,
+    offset: 0
+  });
+
+  assert.deepEqual(listed.items.map((entry) => entry.id), ["txn_transfer_custom"]);
+  assert.equal(listed.items[0]?.transaction_type, "transfer");
+});

@@ -481,6 +481,14 @@ export function getExplorerAnalytics(userId, filters = {}) {
         category_view: categoryView
       })
     : null;
+  const categorySelectorFilters = {
+    ...filters,
+    category: null
+  };
+  const accountSelectorFilters = {
+    ...filters,
+    account: null
+  };
 
   return {
     summary: {
@@ -500,11 +508,11 @@ export function getExplorerAnalytics(userId, filters = {}) {
     },
     categories: {
       items: getCategoryRollup(userId, {
-        ...filters,
+        ...categorySelectorFilters,
         category_view: categoryView
       })
     },
-    accounts: getAccountRollup(userId, filters),
+    accounts: getAccountRollup(userId, accountSelectorFilters),
     merchants: {
       items: getMerchantRollup(userId, filters)
     },

@@ -375,3 +375,139 @@ test("getExplorerAnalytics returns a seven-point summary sparkline", () => {
   assert.equal(analytics.summary.sparkline[3]?.spend, 20);
   assert.equal(analytics.summary.sparkline[6]?.income, 500);
 });
+
+test("analytics transfer filters honor custom category transfer types", () => {
+  const store = structuredClone(baseStore);
+  store.categories = [
+    {
+      id: "cat_transfer_custom",
+      userId: "user_1",
+      name: "Brokerage Sweep",
+      emoji: "🔁",
+      coarseKey: "neutral",
+      type: "transfer",
+      budget: null,
+      isSystem: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    }
+  ];
+  store.transactions = [
+    {
+      id: "txn_transfer_custom",
+      user_id: "user_1",
+      transaction_date: "2026-01-09",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "brokerage",
+      merchant_raw: "Brokerage",
+      description: "Sweep to brokerage",
+      amount: 250,
+      direction: "debit",
+      category_final: "Brokerage Sweep",
+      dedupe_fingerprint: "transfer_custom"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const transactions = filterUserTransactions("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    transaction_type: "transfer"
+  });
+
+  assert.deepEqual(transactions.map((entry) => entry.id), ["txn_transfer_custom"]);
+});
+
+test("explorer selector rollups stay populated while category or account is focused", () => {
+  const store = structuredClone(baseStore);
+  store.accounts = [
+    {
+      id: "acct_checking",
+      userId: "user_1",
+      displayName: "Checking",
+      sourceInstitution: "Local Bank",
+      accountType: "checking",
+      currency: "USD",
+      initialBalance: 0,
+      version: 1,
+      status: "active",
+      includeInCharts: true,
+      hidden: false,
+      closed: false,
+      closedAt: null,
+      normalizedKey: "checking",
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01"
+    },
+    {
+      id: "acct_card",
+      userId: "user_1",
+      displayName: "Credit Card",
+      sourceInstitution: "Local Bank",
+      accountType: "credit",
+      currency: "USD",
+      initialBalance: 0,
+      version: 1,
+      status: "active",
+      includeInCharts: true,
+      hidden: false,
+      closed: false,
+      closedAt: null,
+      normalizedKey: "credit card",
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01"
+    }
+  ];
+  store.transactions = [
+    {
+      id: "txn_card_transport",
+      user_id: "user_1",
+      transaction_date: "2026-01-10",
+      account_id: "acct_card",
+      account_key: "credit card",
+      merchant_normalized: "gas station",
+      merchant_raw: "Gas Station",
+      description: "Fuel stop",
+      amount: 40,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Transport",
+      dedupe_fingerprint: "selector_card_transport"
+    },
+    {
+      id: "txn_checking_groceries",
+      user_id: "user_1",
+      transaction_date: "2026-01-12",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "super market",
+      merchant_raw: "Super Market",
+      description: "Groceries",
+      amount: 60,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Groceries",
+      dedupe_fingerprint: "selector_checking_groceries"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const categoryFocused = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "granular",
+    category: "Groceries"
+  });
+  assert.ok(categoryFocused.categories.items.some((entry) => entry.category === "Transport"));
+
+  const accountFocused = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "granular",
+    account: "acct_card"
+  });
+  assert.ok(accountFocused.accounts.items.some((entry) => entry.accountId === "acct_checking"));
+});

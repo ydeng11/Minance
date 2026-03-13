@@ -1,3 +1,4 @@
+import { loadStore } from "./store.ts";
 import { normalizeText, toDecimal } from "./utils.ts";
 
 const TAG_MAX_LENGTH = 40;
@@ -116,10 +117,25 @@ function normalizeDirection(entry) {
   return rawAmount > 0 ? "inflow" : "outflow";
 }
 
-function normalizeTransactionType(entry) {
+function resolveCategoryType(entry, categoryTypeLookup) {
+  const userId = String(entry?.user_id || entry?.userId || "").trim();
+  const categoryName = normalizeText(entry?.category_final || "");
+  if (!userId || !categoryName) {
+    return null;
+  }
+
+  return categoryTypeLookup.get(`${userId}::${categoryName}`) || null;
+}
+
+function normalizeTransactionType(entry, categoryTypeLookup) {
   const explicit = normalizeTransactionTypeFilter(entry?.transaction_type);
   if (explicit) {
     return explicit;
+  }
+
+  const categoryType = resolveCategoryType(entry, categoryTypeLookup);
+  if (categoryType) {
+    return categoryType;
   }
 
   const categoryFinal = normalizeText(entry?.category_final || "");
@@ -138,6 +154,11 @@ function matchesAccount(entry, rawAccount) {
 
 export function applySharedTransactionFilters(transactions, filters = {}) {
   let txns = [...transactions];
+  const categoryTypeLookup = new Map(
+    loadStore().categories
+      .filter((entry) => entry.userId && entry.name && entry.type)
+      .map((entry) => [`${entry.userId}::${normalizeText(entry.name)}`, entry.type])
+  );
 
   if (filters.query) {
     const query = normalizeText(filters.query);
@@ -165,7 +186,7 @@ export function applySharedTransactionFilters(transactions, filters = {}) {
 
   const transactionTypeFilter = normalizeTransactionTypeFilter(filters.transaction_type);
   if (transactionTypeFilter) {
-    txns = txns.filter((entry) => normalizeTransactionType(entry) === transactionTypeFilter);
+    txns = txns.filter((entry) => normalizeTransactionType(entry, categoryTypeLookup) === transactionTypeFilter);
   }
 
   const tagFilter = normalizeTagFilter(filters.tag);

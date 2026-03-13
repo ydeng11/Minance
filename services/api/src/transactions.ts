@@ -345,7 +345,7 @@ function normalizeCounterpartyEmoji(rawValue, fallback = null) {
   return value;
 }
 
-function normalizeTransactionRecord(transaction) {
+function normalizeTransactionRecord(transaction, store = null) {
   const rawAmount = Number(transaction?.amount ?? 0);
   const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
   const rawDirection = String(transaction?.direction || "").trim().toLowerCase();
@@ -363,10 +363,20 @@ function normalizeTransactionRecord(transaction) {
   const categoryFinal = String(
     transaction?.category_final || (direction === "inflow" ? "Income" : "Uncategorized")
   ).trim() || (direction === "inflow" ? "Income" : "Uncategorized");
+  const category = findUserCategoryByName(
+    store || loadStore(),
+    transaction?.user_id || transaction?.userId || null,
+    categoryFinal
+  );
 
   let transactionType;
   try {
-    transactionType = normalizeTransactionType(transaction?.transaction_type, direction, categoryFinal, null);
+    transactionType = normalizeTransactionType(
+      transaction?.transaction_type,
+      direction,
+      categoryFinal,
+      category?.type || null
+    );
   } catch {
     transactionType = inferTransactionType(direction, categoryFinal);
   }
@@ -466,7 +476,7 @@ function resolveManualContractFields(
   options = {}
 ) {
   const enforceCategoryConstraint = options.enforceCategoryConstraint === true;
-  const fallback = fallbackTransaction ? normalizeTransactionRecord(fallbackTransaction) : null;
+  const fallback = fallbackTransaction ? normalizeTransactionRecord(fallbackTransaction, store) : null;
 
   const category = findUserCategoryByName(store, userId, normalizedInput.category_final);
   if (enforceCategoryConstraint && !category) {
@@ -567,6 +577,7 @@ export function listTransactions(userId, filters = {}) {
     effectiveFilters.range = "all";
   }
 
+  const store = loadStore();
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
   let txns = filterUserTransactions(userId, effectiveFilters);
@@ -575,7 +586,7 @@ export function listTransactions(userId, filters = {}) {
     txns = txns.filter((entry) => entry.source_type === effectiveFilters.source_type);
   }
 
-  txns = txns.map((entry) => normalizeTransactionRecord(entry));
+  txns = txns.map((entry) => normalizeTransactionRecord(entry, store));
 
   if (effectiveFilters.recurring_rule_id) {
     const recurringRuleIdFilter = normalizeRecurringRuleId(effectiveFilters.recurring_rule_id, null);
@@ -686,7 +697,7 @@ export function createManualTransaction(userId, payload) {
   saveStore(store);
   addAuditEvent(userId, "transaction.manual.create", { transactionId: tx.id });
 
-  return normalizeTransactionRecord(tx);
+  return normalizeTransactionRecord(tx, store);
 }
 
 export function updateTransaction(userId, transactionId, payload) {
@@ -698,7 +709,7 @@ export function updateTransaction(userId, transactionId, payload) {
     throw new Error("Transaction not found");
   }
 
-  const normalizedExisting = normalizeTransactionRecord(tx);
+  const normalizedExisting = normalizeTransactionRecord(tx, store);
   const previousCategory = normalizedExisting.category_final;
   const categoryFieldTouched = hasOwnField(payload, "category_final");
 
@@ -769,7 +780,7 @@ export function updateTransaction(userId, transactionId, payload) {
   saveStore(store);
   addAuditEvent(userId, "transaction.update", { transactionId });
 
-  return normalizeTransactionRecord(tx);
+  return normalizeTransactionRecord(tx, store);
 }
 
 export function bulkUpdateTransactions(userId, payload = {}) {
@@ -830,7 +841,7 @@ export function bulkUpdateTransactions(userId, payload = {}) {
   const normalizedTransactions = [];
 
   for (const entry of updates) {
-    const previous = normalizeTransactionRecord(entry);
+    const previous = normalizeTransactionRecord(entry, store);
     const nextShape = {
       ...previous,
       category_final: hasCategoryUpdate ? nextCategory : previous.category_final
@@ -874,7 +885,7 @@ export function bulkUpdateTransactions(userId, payload = {}) {
     entry.review_status = nextShape.review_status;
     entry.updated_at = updatedAt;
 
-    normalizedTransactions.push(normalizeTransactionRecord(entry));
+    normalizedTransactions.push(normalizeTransactionRecord(entry, store));
   }
 
   saveStore(store);
@@ -935,5 +946,5 @@ export function restoreTransaction(userId, transactionId) {
   saveStore(store);
   addAuditEvent(userId, "transaction.restore", { transactionId });
 
-  return normalizeTransactionRecord(tx);
+  return normalizeTransactionRecord(tx, store);
 }
