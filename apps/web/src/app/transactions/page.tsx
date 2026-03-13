@@ -29,6 +29,7 @@ import {
   getLedgerAmountBounds,
   sortTransactionsForLedger
 } from "./ledger";
+import { pruneSelectionToVisible } from "./selection";
 import { TransactionEditorFields } from "./TransactionEditorFields";
 
 const TRANSACTION_RANGE_OPTIONS = [...RANGE_OPTIONS, { value: "custom", label: "Custom" }];
@@ -128,6 +129,7 @@ export default function TransactionsPage() {
   const lastAppliedQueryRef = useRef<string | null>(null);
   const [form, setForm] = useState<TransactionFormDraft>(() => createInitialTransactionDraft());
   const [formErrors, setFormErrors] = useState<TransactionFormErrors>({});
+  const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<string>>(() => new Set());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -183,6 +185,7 @@ export default function TransactionsPage() {
   const pageEnd = totalTransactions === 0
     ? 0
     : Math.min(currentPage * TRANSACTIONS_PAGE_SIZE, totalTransactions);
+  const visibleTransactionIds = useMemo(() => ledgerTransactions.map((entry) => entry.id), [ledgerTransactions]);
 
   async function loadCategories() {
     try {
@@ -271,6 +274,14 @@ export default function TransactionsPage() {
     }
   }, [filters.category, categoryFilterOptions]);
 
+  useEffect(() => {
+    setSelectedTransactionIds((previous) => pruneSelectionToVisible(previous, visibleTransactionIds));
+  }, [visibleTransactionIds]);
+
+  function clearSelectedTransactions() {
+    setSelectedTransactionIds(new Set());
+  }
+
   function syncFiltersToUrl(nextFilters: TransactionsFilterState) {
     const nextSearchParams = buildTransactionsFilterSearchParams(nextFilters);
     const queryText = nextSearchParams.toString();
@@ -307,10 +318,12 @@ export default function TransactionsPage() {
       return;
     }
 
+    clearSelectedTransactions();
     commitFilters(nextFilters);
   }
 
   function clearFilters() {
+    clearSelectedTransactions();
     commitFilters(createDefaultTransactionsFilterState());
   }
 
@@ -324,6 +337,7 @@ export default function TransactionsPage() {
       return;
     }
 
+    clearSelectedTransactions();
     commitFilters(nextFilters);
   }
 
@@ -337,6 +351,7 @@ export default function TransactionsPage() {
       setMessage("Finish the inline edit before creating a new transaction.");
       return;
     }
+    clearSelectedTransactions();
     resetManualForm();
     setMessage("");
     setIsCreateDialogOpen(true);
@@ -348,6 +363,7 @@ export default function TransactionsPage() {
   }
 
   function startEdit(transaction: Transaction) {
+    clearSelectedTransactions();
     setIsCreateDialogOpen(false);
     setForm(buildDraftFromTransaction(transaction));
     setFormErrors({});
@@ -361,6 +377,7 @@ export default function TransactionsPage() {
 
   async function removeTransaction(transactionId: string) {
     try {
+      clearSelectedTransactions();
       await api.transactions.remove(transactionId);
       setMessage("Transaction deleted.");
       await loadTransactions(filtersRef.current, { preserveMessage: true });
