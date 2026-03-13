@@ -864,6 +864,7 @@ export function bulkUpdateTransactions(userId, payload = {}) {
       ? payload.updates
       : payload;
   const transactionIds = normalizeBulkTransactionIds(payload.transaction_ids ?? payload.ids);
+  const operation = String(payload.operation || "update").trim().toLowerCase();
 
   const hasCategoryUpdate = hasOwnField(rawUpdatePayload, "category_final");
   const hasTagsUpdate = hasOwnField(rawUpdatePayload, "tags");
@@ -871,7 +872,15 @@ export function bulkUpdateTransactions(userId, payload = {}) {
     hasOwnField(rawUpdatePayload, "review_status") ||
     hasOwnField(rawUpdatePayload, "needs_category_review");
 
-  if (!hasCategoryUpdate && !hasTagsUpdate && !hasReviewUpdate) {
+  if (operation !== "update" && operation !== "delete") {
+    throw new Error("Invalid bulk operation");
+  }
+
+  if (operation === "delete" && (hasCategoryUpdate || hasTagsUpdate || hasReviewUpdate)) {
+    throw new Error("Invalid bulk delete: cannot be combined with updates");
+  }
+
+  if (operation === "update" && !hasCategoryUpdate && !hasTagsUpdate && !hasReviewUpdate) {
     throw new Error("Bulk update requires category_final, tags, or review state");
   }
 
@@ -892,6 +901,32 @@ export function bulkUpdateTransactions(userId, payload = {}) {
     }
     return entry;
   });
+
+  if (operation === "delete") {
+    const deletedAt = nowIso();
+    const deletedTransactions = [];
+
+    for (const entry of updates) {
+      entry.deleted_at = deletedAt;
+      entry.deleted_reason = "user_bulk_delete";
+      entry.deleted_by = userId;
+      entry.updated_at = deletedAt;
+      deletedTransactions.push(normalizeTransactionRecord(entry));
+    }
+
+    saveStore(store);
+    addAuditEvent(userId, "transaction.bulk_delete", {
+      transactionCount: transactionIds.length
+    });
+
+    return {
+      updated: deletedTransactions.length,
+      transactions: deletedTransactions,
+      meta: {
+        transaction_ids: transactionIds
+      }
+    };
+  }
 
   let nextCategory = null;
   let categoryType = null;

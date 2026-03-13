@@ -648,6 +648,48 @@ test("api parity contract suite for categories/transactions/settings and missing
       "Invalid idempotency key reuse with a different payload"
     );
 
+    const invalidBulkDeleteMixedOperation = await apiRequest(context, "POST", "/v1/transactions/bulk", {
+      token: accessToken,
+      expectedStatus: 400,
+      body: {
+        transaction_ids: [transactionId],
+        operation: "delete",
+        review_status: "reviewed"
+      }
+    });
+    assert.equal(
+      invalidBulkDeleteMixedOperation.payload?.error?.message,
+      "Invalid bulk delete: cannot be combined with updates"
+    );
+
+    const bulkDelete = await apiRequest(context, "POST", "/v1/transactions/bulk", {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        transaction_ids: bulkTransactionIds,
+        operation: "delete"
+      }
+    });
+    assert.equal(bulkDelete.payload?.result?.updated, 2);
+    assert.equal(
+      bulkDelete.payload?.result?.transactions?.every((entry) => Boolean(entry.deleted_at)),
+      true
+    );
+
+    const deletedRowsMissingFromList = await apiRequest(
+      context,
+      "GET",
+      "/v1/transactions?range=all",
+      {
+        token: accessToken,
+        expectedStatus: 200
+      }
+    );
+    assert.equal(
+      bulkTransactionIds.every((id) => deletedRowsMissingFromList.payload?.items?.every((entry) => entry.id !== id)),
+      true
+    );
+
     const updated = await apiRequest(context, "PUT", `/v1/transactions/${transactionId}`, {
       token: accessToken,
       expectedStatus: 200,

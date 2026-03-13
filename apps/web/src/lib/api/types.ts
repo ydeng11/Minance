@@ -467,6 +467,7 @@ export interface RecurringEvaluation {
 
 export interface TransactionsBulkUpdateRequest {
   transaction_ids: string[];
+  operation?: "update" | "delete";
   category_final?: string;
   tags?: string[] | null;
   review_status?: "reviewed" | "needs_review";

@@ -46,12 +46,16 @@ test("transactionsApi.bulkUpdate targets bulk mutation contract", async () => {
   const { calls, request } = createRecorder();
   await transactionsApi.bulkUpdate(request, {
     transaction_ids: ["txn_1", "txn_2"],
-    review_status: "reviewed"
+    operation: "delete"
   });
 
   assert.equal(calls.length, 1);
   assert.equal(calls[0].path, "/v1/transactions/bulk");
   assert.equal(calls[0].options?.method, "POST");
+  assert.deepEqual(calls[0].options?.body, {
+    transaction_ids: ["txn_1", "txn_2"],
+    operation: "delete"
+  });
 });
 
 test("analyticsApi.overview includes category_view query param", async () => {
