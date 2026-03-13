@@ -278,13 +278,6 @@ export default function ExplorerPage() {
         clear: () => updateFilters({ category: "" })
       });
     }
-    if (filters.review !== "all") {
-      items.push({
-        key: "review",
-        label: filters.review === "reviewed" ? "Reviewed" : "Needs Review",
-        clear: () => updateFilters({ review: "all" })
-      });
-    }
     if (filters.transactionType !== "all") {
       items.push({
         key: "type",

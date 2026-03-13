@@ -5,7 +5,7 @@ import {
   uploadAndCommitFixtureCsv
 } from "./helpers.ts";
 
-test("explorer uses a command bar and advanced filter popover on desktop", async ({ page }) => {
+test("explorer advanced filters omit review status controls", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);
   await gotoView(page, "explorer");
@@ -17,11 +17,10 @@ test("explorer uses a command bar and advanced filter popover on desktop", async
 
   await page.getByTestId("explorer-open-advanced-filters").click();
   await expect(page.getByTestId("explorer-advanced-filters")).toBeVisible();
-
-  await page.getByTestId("explorer-advanced-filter-review").selectOption("reviewed");
-  await page.getByTestId("explorer-advanced-filters-apply").click();
-
-  await expect(page.getByTestId("explorer-active-filters")).toContainText("Reviewed");
+  await expect(page.getByText("Review status")).toHaveCount(0);
+  await expect(page.getByTestId("explorer-advanced-filter-review")).toHaveCount(0);
+  await expect(page.getByTestId("explorer-active-filters")).not.toContainText("Reviewed");
+  await expect(page.getByTestId("explorer-active-filters")).not.toContainText("Needs Review");
 });
 
 test("overview perspective renders trend, comparison, categories, merchants, heatmap, and anomalies", async ({ page }) => {

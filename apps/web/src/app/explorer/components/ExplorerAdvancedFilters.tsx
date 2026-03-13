@@ -17,7 +17,7 @@ interface ExplorerAdvancedFiltersProps {
 
 type AdvancedFilterDraft = Pick<
   ExplorerFilterState,
-  "merchant" | "category" | "transactionType" | "direction" | "tag" | "minAmount" | "maxAmount" | "review" | "categoryView"
+  "merchant" | "category" | "transactionType" | "direction" | "tag" | "minAmount" | "maxAmount" | "categoryView"
 >;
 
 function createDraft(filters: ExplorerFilterState): AdvancedFilterDraft {
@@ -29,7 +29,6 @@ function createDraft(filters: ExplorerFilterState): AdvancedFilterDraft {
     tag: filters.tag,
     minAmount: filters.minAmount,
     maxAmount: filters.maxAmount,
-    review: filters.review,
     categoryView: filters.categoryView
   };
 }
@@ -60,7 +59,6 @@ export function ExplorerAdvancedFilters({
       tag: defaults.tag,
       minAmount: defaults.minAmount,
       maxAmount: defaults.maxAmount,
-      review: defaults.review,
       categoryView: defaults.categoryView
     });
   }
@@ -117,22 +115,6 @@ export function ExplorerAdvancedFilters({
                     {category.name}
                   </option>
                 ))}
-              </select>
-            </label>
-
-            <label className="grid gap-1 text-sm text-neutral-300">
-              Review status
-              <select
-                value={draft.review}
-                onChange={(event) =>
-                  updateDraft({ review: event.target.value as ExplorerFilterState["review"] })
-                }
-                data-testid="explorer-advanced-filter-review"
-                className="h-11 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-neutral-100 outline-none transition focus:border-emerald-500"
-              >
-                <option value="all">All statuses</option>
-                <option value="reviewed">Reviewed</option>
-                <option value="needs_review">Needs Review</option>
               </select>
             </label>
 
