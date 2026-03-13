@@ -5,6 +5,40 @@ import { resetStoreForTests } from "../src/store.ts";
 import { createManualTransaction, listTransactions } from "../src/transactions.ts";
 import { getOverview } from "../src/analytics.ts";
 
+const EXPECTED_TRANSACTION_KEYS = [
+  "account_id",
+  "account_key",
+  "amount",
+  "category_coarse",
+  "category_coarse_emoji",
+  "category_coarse_key",
+  "category_confidence",
+  "category_emoji",
+  "category_final",
+  "category_raw",
+  "category_strategy",
+  "created_at",
+  "currency",
+  "dedupe_fingerprint",
+  "description",
+  "direction",
+  "id",
+  "memo",
+  "merchant_normalized",
+  "merchant_raw",
+  "needs_category_review",
+  "post_date",
+  "recurring_rule_id",
+  "review_status",
+  "source_file_id",
+  "source_type",
+  "tags",
+  "transaction_date",
+  "transaction_type",
+  "updated_at",
+  "user_id"
+];
+
 const BASE_STORE = {
   users: [{ id: "user_1", email: "user@example.com", createdAt: "2026-01-01", updatedAt: "2026-01-01" }],
   sessions: [],
@@ -166,23 +200,23 @@ test("listTransactions sorts same-day transactions by newest created_at first", 
   ]);
 });
 
-test("listTransactions preserves counterparty emoji metadata on manual records", () => {
+test("listTransactions omits unsupported extra metadata from manual records", () => {
   const store = structuredClone(BASE_STORE);
   store.transactions = [
     {
       ...store.transactions[0],
       id: "txn_with_emoji",
-      counterparty_emoji: "🧑‍🤝‍🧑"
+      legacy_unused_field: "stale"
     }
   ];
 
   resetStoreForTests(store);
 
   const listed = listTransactions("user_1", { range: "all", limit: 50, offset: 0 });
-  assert.equal(listed.items[0]?.counterparty_emoji, "🧑‍🤝‍🧑");
+  assert.deepEqual(Object.keys(listed.items[0] || {}).sort(), EXPECTED_TRANSACTION_KEYS);
 });
 
-test("createManualTransaction persists counterparty emoji metadata", () => {
+test("createManualTransaction returns the normalized transaction contract", () => {
   const store = structuredClone(BASE_STORE);
   store.categories = [
     {
@@ -207,11 +241,10 @@ test("createManualTransaction persists counterparty emoji metadata", () => {
     amount: 45,
     direction: "outflow",
     category_final: "Groceries",
-    account_name: "checking",
-    counterparty_emoji: "🧑‍🤝‍🧑"
+    account_name: "checking"
   });
 
-  assert.equal(created.counterparty_emoji, "🧑‍🤝‍🧑");
+  assert.deepEqual(Object.keys(created).sort(), EXPECTED_TRANSACTION_KEYS);
 });
 
 test("listTransactions filters by minimum and maximum absolute amount", () => {

@@ -35,7 +35,6 @@ function createTransaction(overrides: Partial<Transaction> = {}): Transaction {
     needs_category_review: false,
     review_status: "reviewed",
     tags: [],
-    counterparty_emoji: null,
     recurring_rule_id: null,
     memo: null,
     dedupe_fingerprint: "fp_001",

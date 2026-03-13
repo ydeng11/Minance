@@ -8,6 +8,33 @@ import {
   validateTransactionDraft
 } from "./form";
 
+const EXPECTED_DRAFT_KEYS = [
+  "account_name",
+  "amount",
+  "category_final",
+  "description",
+  "direction",
+  "id",
+  "memo",
+  "merchant_raw",
+  "tags",
+  "transaction_date",
+  "transaction_type"
+];
+
+const EXPECTED_PAYLOAD_KEYS = [
+  "account_name",
+  "amount",
+  "category_final",
+  "description",
+  "direction",
+  "memo",
+  "merchant_raw",
+  "tags",
+  "transaction_date",
+  "transaction_type"
+];
+
 function createCategory(overrides: Partial<Category> = {}): Category {
   return {
     id: "cat_001",
@@ -52,7 +79,6 @@ function createTransaction(overrides: Partial<Transaction> = {}): Transaction {
     needs_category_review: false,
     review_status: "reviewed",
     tags: ["lunch", "weekday"],
-    counterparty_emoji: "🧑",
     recurring_rule_id: null,
     memo: "business meeting",
     dedupe_fingerprint: "fp_001",
@@ -67,7 +93,7 @@ test("createInitialTransactionDraft returns default create state", () => {
   assert.equal(draft.id, "");
   assert.equal(draft.transaction_date, "2026-03-02");
   assert.equal(draft.category_final, "Dining");
-  assert.equal("counterparty_emoji" in draft, false);
+  assert.deepEqual(Object.keys(draft).sort(), EXPECTED_DRAFT_KEYS);
   assert.equal(draft.transaction_type, "");
 });
 
@@ -77,7 +103,7 @@ test("buildDraftFromTransaction maps existing transaction into editable draft", 
   assert.equal(draft.transaction_date, "2026-03-01");
   assert.equal(draft.tags, "lunch, weekday");
   assert.equal(draft.account_name, "primary-checking");
-  assert.equal("counterparty_emoji" in draft, false);
+  assert.deepEqual(Object.keys(draft).sort(), EXPECTED_DRAFT_KEYS);
   assert.equal(draft.transaction_type, "expense");
 });
 
@@ -182,5 +208,5 @@ test("validateTransactionDraft builds normalized payload for valid input", () =>
     tags: ["food", "weekday"],
     transaction_type: "expense"
   });
-  assert.equal(result.payload ? "counterparty_emoji" in result.payload : true, false);
+  assert.deepEqual(result.payload ? Object.keys(result.payload).sort() : [], EXPECTED_PAYLOAD_KEYS);
 });

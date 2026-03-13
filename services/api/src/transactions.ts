@@ -22,7 +22,6 @@ const TAG_MAX_LENGTH = 40;
 const TAG_MAX_COUNT = 25;
 const RECURRING_RULE_ID_MAX_LENGTH = 128;
 const BULK_MUTATION_MAX_COUNT = 200;
-const COUNTERPARTY_EMOJI_MAX_LENGTH = 32;
 
 function isSoftDeleted(transaction) {
   return Boolean(transaction?.deleted_at);
@@ -324,27 +323,6 @@ function normalizeRecurringRuleId(rawValue, fallback = null) {
   return value;
 }
 
-function normalizeCounterpartyEmoji(rawValue, fallback = null) {
-  if (rawValue === undefined) {
-    const existing = String(fallback || "").trim();
-    return existing || null;
-  }
-
-  if (rawValue == null) {
-    return null;
-  }
-
-  const value = String(rawValue).trim();
-  if (!value) {
-    return null;
-  }
-  if (value.length > COUNTERPARTY_EMOJI_MAX_LENGTH) {
-    throw new Error("Invalid counterparty emoji");
-  }
-
-  return value;
-}
-
 function normalizeTransactionRecord(transaction) {
   const rawAmount = Number(transaction?.amount ?? 0);
   const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
@@ -374,16 +352,37 @@ function normalizeTransactionRecord(transaction) {
   const reviewState = normalizeExistingReviewState(transaction);
 
   return {
-    ...transaction,
+    id: transaction?.id ?? "",
+    user_id: transaction?.user_id ?? "",
+    account_id: transaction?.account_id ?? null,
+    account_key: transaction?.account_key ?? "",
+    source_type: transaction?.source_type ?? "",
+    source_file_id: transaction?.source_file_id ?? null,
+    transaction_date: transaction?.transaction_date ?? "",
+    post_date: transaction?.post_date ?? null,
+    merchant_raw: transaction?.merchant_raw ?? "",
+    merchant_normalized: transaction?.merchant_normalized ?? "",
+    description: transaction?.description ?? "",
     direction,
     amount,
+    currency: transaction?.currency ?? "USD",
+    category_raw: transaction?.category_raw ?? null,
     category_final: categoryFinal,
+    category_coarse: transaction?.category_coarse ?? null,
+    category_coarse_key: transaction?.category_coarse_key ?? null,
+    category_emoji: transaction?.category_emoji,
+    category_coarse_emoji: transaction?.category_coarse_emoji,
+    category_confidence: transaction?.category_confidence ?? 1,
+    category_strategy: transaction?.category_strategy ?? null,
     transaction_type: transactionType,
     tags: normalizeExistingTags(transaction?.tags),
     needs_category_review: reviewState.needs_category_review,
     review_status: reviewState.review_status,
-    counterparty_emoji: normalizeCounterpartyEmoji(undefined, transaction?.counterparty_emoji),
-    recurring_rule_id: normalizeExistingRecurringRuleId(transaction?.recurring_rule_id)
+    recurring_rule_id: normalizeExistingRecurringRuleId(transaction?.recurring_rule_id),
+    memo: transaction?.memo ?? null,
+    dedupe_fingerprint: transaction?.dedupe_fingerprint ?? "",
+    created_at: transaction?.created_at ?? "",
+    updated_at: transaction?.updated_at ?? ""
   };
 }
 
@@ -487,17 +486,12 @@ function resolveManualContractFields(
     pickFirstDefined(payload, ["recurring_rule_id", "recurringRuleId"]),
     fallback?.recurring_rule_id ?? null
   );
-  const counterpartyEmoji = normalizeCounterpartyEmoji(
-    pickFirstDefined(payload, ["counterparty_emoji", "counterpartyEmoji"]),
-    fallback?.counterparty_emoji ?? null
-  );
 
   return {
     transaction_type: transactionType,
     tags,
     needs_category_review: reviewState.needs_category_review,
     review_status: reviewState.review_status,
-    counterparty_emoji: counterpartyEmoji,
     recurring_rule_id: recurringRuleId
   };
 }
@@ -751,7 +745,6 @@ export function createManualTransaction(userId, payload) {
     tags: contractFields.tags,
     needs_category_review: contractFields.needs_category_review,
     review_status: contractFields.review_status,
-    counterparty_emoji: contractFields.counterparty_emoji,
     recurring_rule_id: contractFields.recurring_rule_id,
     dedupe_fingerprint: dedupeFingerprint(
       userId,
@@ -837,7 +830,6 @@ export function updateTransaction(userId, transactionId, payload) {
   tx.tags = contractFields.tags;
   tx.needs_category_review = contractFields.needs_category_review;
   tx.review_status = contractFields.review_status;
-  tx.counterparty_emoji = contractFields.counterparty_emoji;
   tx.recurring_rule_id = contractFields.recurring_rule_id;
   tx.updated_at = nowIso();
 
