@@ -5,7 +5,7 @@ import { resetStoreForTests } from "../src/store.ts";
 import { createManualTransaction, listTransactions } from "../src/transactions.ts";
 import { getOverview } from "../src/analytics.ts";
 
-const EXPECTED_TRANSACTION_KEYS = [
+const NORMALIZED_TRANSACTION_KEYS = [
   "account_id",
   "account_key",
   "amount",
@@ -38,6 +38,10 @@ const EXPECTED_TRANSACTION_KEYS = [
   "updated_at",
   "user_id"
 ];
+
+function sortedKeys(value: object | null | undefined) {
+  return Object.keys(value || {}).sort();
+}
 
 const BASE_STORE = {
   users: [{ id: "user_1", email: "user@example.com", createdAt: "2026-01-01", updatedAt: "2026-01-01" }],
@@ -213,7 +217,7 @@ test("listTransactions omits unsupported extra metadata from manual records", ()
   resetStoreForTests(store);
 
   const listed = listTransactions("user_1", { range: "all", limit: 50, offset: 0 });
-  assert.deepEqual(Object.keys(listed.items[0] || {}).sort(), EXPECTED_TRANSACTION_KEYS);
+  assert.deepEqual(sortedKeys(listed.items[0]), NORMALIZED_TRANSACTION_KEYS);
 });
 
 test("createManualTransaction returns the normalized transaction contract", () => {
@@ -244,7 +248,7 @@ test("createManualTransaction returns the normalized transaction contract", () =
     account_name: "checking"
   });
 
-  assert.deepEqual(Object.keys(created).sort(), EXPECTED_TRANSACTION_KEYS);
+  assert.deepEqual(sortedKeys(created), NORMALIZED_TRANSACTION_KEYS);
 });
 
 test("listTransactions filters by minimum and maximum absolute amount", () => {

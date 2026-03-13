@@ -8,13 +8,12 @@ import {
   validateTransactionDraft
 } from "./form";
 
-const EXPECTED_DRAFT_KEYS = [
+const TRANSACTION_FORM_KEYS = [
   "account_name",
   "amount",
   "category_final",
   "description",
   "direction",
-  "id",
   "memo",
   "merchant_raw",
   "tags",
@@ -22,18 +21,12 @@ const EXPECTED_DRAFT_KEYS = [
   "transaction_type"
 ];
 
-const EXPECTED_PAYLOAD_KEYS = [
-  "account_name",
-  "amount",
-  "category_final",
-  "description",
-  "direction",
-  "memo",
-  "merchant_raw",
-  "tags",
-  "transaction_date",
-  "transaction_type"
-];
+const EXPECTED_DRAFT_KEYS = ["id", ...TRANSACTION_FORM_KEYS].sort();
+const EXPECTED_PAYLOAD_KEYS = [...TRANSACTION_FORM_KEYS].sort();
+
+function sortedKeys(value: object | null | undefined) {
+  return Object.keys(value || {}).sort();
+}
 
 function createCategory(overrides: Partial<Category> = {}): Category {
   return {
@@ -93,7 +86,7 @@ test("createInitialTransactionDraft returns default create state", () => {
   assert.equal(draft.id, "");
   assert.equal(draft.transaction_date, "2026-03-02");
   assert.equal(draft.category_final, "Dining");
-  assert.deepEqual(Object.keys(draft).sort(), EXPECTED_DRAFT_KEYS);
+  assert.deepEqual(sortedKeys(draft), EXPECTED_DRAFT_KEYS);
   assert.equal(draft.transaction_type, "");
 });
 
@@ -103,7 +96,7 @@ test("buildDraftFromTransaction maps existing transaction into editable draft", 
   assert.equal(draft.transaction_date, "2026-03-01");
   assert.equal(draft.tags, "lunch, weekday");
   assert.equal(draft.account_name, "primary-checking");
-  assert.deepEqual(Object.keys(draft).sort(), EXPECTED_DRAFT_KEYS);
+  assert.deepEqual(sortedKeys(draft), EXPECTED_DRAFT_KEYS);
   assert.equal(draft.transaction_type, "expense");
 });
 
@@ -208,5 +201,5 @@ test("validateTransactionDraft builds normalized payload for valid input", () =>
     tags: ["food", "weekday"],
     transaction_type: "expense"
   });
-  assert.deepEqual(result.payload ? Object.keys(result.payload).sort() : [], EXPECTED_PAYLOAD_KEYS);
+  assert.deepEqual(sortedKeys(result.payload), EXPECTED_PAYLOAD_KEYS);
 });

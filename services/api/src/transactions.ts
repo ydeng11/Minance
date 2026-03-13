@@ -324,9 +324,10 @@ function normalizeRecurringRuleId(rawValue, fallback = null) {
 }
 
 function normalizeTransactionRecord(transaction) {
-  const rawAmount = Number(transaction?.amount ?? 0);
+  const tx = transaction || {};
+  const rawAmount = Number(tx.amount ?? 0);
   const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
-  const rawDirection = String(transaction?.direction || "").trim().toLowerCase();
+  const rawDirection = String(tx.direction || "").trim().toLowerCase();
   let direction = "outflow";
   if (rawDirection === "inflow" || rawDirection === "outflow") {
     direction = rawDirection;
@@ -338,51 +339,52 @@ function normalizeTransactionRecord(transaction) {
     direction = "inflow";
   }
 
-  const categoryFinal = String(
-    transaction?.category_final || (direction === "inflow" ? "Income" : "Uncategorized")
-  ).trim() || (direction === "inflow" ? "Income" : "Uncategorized");
+  const fallbackCategoryFinal = direction === "inflow" ? "Income" : "Uncategorized";
+  const categoryFinal = String(tx.category_final || fallbackCategoryFinal).trim() || fallbackCategoryFinal;
 
   let transactionType;
   try {
-    transactionType = normalizeTransactionType(transaction?.transaction_type, direction, categoryFinal, null);
+    transactionType = normalizeTransactionType(tx.transaction_type, direction, categoryFinal, null);
   } catch {
     transactionType = inferTransactionType(direction, categoryFinal);
   }
 
-  const reviewState = normalizeExistingReviewState(transaction);
+  const reviewState = normalizeExistingReviewState(tx);
+  const tags = normalizeExistingTags(tx.tags);
+  const recurringRuleId = normalizeExistingRecurringRuleId(tx.recurring_rule_id);
 
   return {
-    id: transaction?.id ?? "",
-    user_id: transaction?.user_id ?? "",
-    account_id: transaction?.account_id ?? null,
-    account_key: transaction?.account_key ?? "",
-    source_type: transaction?.source_type ?? "",
-    source_file_id: transaction?.source_file_id ?? null,
-    transaction_date: transaction?.transaction_date ?? "",
-    post_date: transaction?.post_date ?? null,
-    merchant_raw: transaction?.merchant_raw ?? "",
-    merchant_normalized: transaction?.merchant_normalized ?? "",
-    description: transaction?.description ?? "",
+    id: tx.id ?? "",
+    user_id: tx.user_id ?? "",
+    account_id: tx.account_id ?? null,
+    account_key: tx.account_key ?? "",
+    source_type: tx.source_type ?? "",
+    source_file_id: tx.source_file_id ?? null,
+    transaction_date: tx.transaction_date ?? "",
+    post_date: tx.post_date ?? null,
+    merchant_raw: tx.merchant_raw ?? "",
+    merchant_normalized: tx.merchant_normalized ?? "",
+    description: tx.description ?? "",
     direction,
     amount,
-    currency: transaction?.currency ?? "USD",
-    category_raw: transaction?.category_raw ?? null,
+    currency: tx.currency ?? "USD",
+    category_raw: tx.category_raw ?? null,
     category_final: categoryFinal,
-    category_coarse: transaction?.category_coarse ?? null,
-    category_coarse_key: transaction?.category_coarse_key ?? null,
-    category_emoji: transaction?.category_emoji,
-    category_coarse_emoji: transaction?.category_coarse_emoji,
-    category_confidence: transaction?.category_confidence ?? 1,
-    category_strategy: transaction?.category_strategy ?? null,
+    category_coarse: tx.category_coarse ?? null,
+    category_coarse_key: tx.category_coarse_key ?? null,
+    category_emoji: tx.category_emoji,
+    category_coarse_emoji: tx.category_coarse_emoji,
+    category_confidence: tx.category_confidence ?? 1,
+    category_strategy: tx.category_strategy ?? null,
     transaction_type: transactionType,
-    tags: normalizeExistingTags(transaction?.tags),
+    tags,
     needs_category_review: reviewState.needs_category_review,
     review_status: reviewState.review_status,
-    recurring_rule_id: normalizeExistingRecurringRuleId(transaction?.recurring_rule_id),
-    memo: transaction?.memo ?? null,
-    dedupe_fingerprint: transaction?.dedupe_fingerprint ?? "",
-    created_at: transaction?.created_at ?? "",
-    updated_at: transaction?.updated_at ?? ""
+    recurring_rule_id: recurringRuleId,
+    memo: tx.memo ?? null,
+    dedupe_fingerprint: tx.dedupe_fingerprint ?? "",
+    created_at: tx.created_at ?? "",
+    updated_at: tx.updated_at ?? ""
   };
 }
 
