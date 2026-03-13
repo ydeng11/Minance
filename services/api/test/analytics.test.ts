@@ -315,3 +315,63 @@ test("getExplorerAnalytics returns comparison data and account rollups", () => {
   assert.ok(Array.isArray(analytics.heatmap.items));
   assert.ok(Array.isArray(analytics.anomalies.items));
 });
+
+test("getExplorerAnalytics returns a seven-point summary sparkline", () => {
+  const store = structuredClone(baseStore);
+  store.transactions = [
+    {
+      id: "txn_card_1",
+      user_id: "user_1",
+      transaction_date: "2026-01-10",
+      merchant_normalized: "grocer",
+      merchant_raw: "Grocer",
+      description: "Groceries",
+      amount: 45,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Groceries",
+      dedupe_fingerprint: "spark_1"
+    },
+    {
+      id: "txn_card_2",
+      user_id: "user_1",
+      transaction_date: "2026-01-12",
+      merchant_normalized: "gas",
+      merchant_raw: "Gas",
+      description: "Gas",
+      amount: 20,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Transport",
+      dedupe_fingerprint: "spark_2"
+    },
+    {
+      id: "txn_income",
+      user_id: "user_1",
+      transaction_date: "2026-01-15",
+      merchant_normalized: "payroll",
+      merchant_raw: "Payroll",
+      description: "Payroll",
+      amount: 500,
+      direction: "credit",
+      transaction_type: "income",
+      category_final: "Income",
+      dedupe_fingerprint: "spark_3"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const analytics = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-15",
+    category_view: "granular"
+  });
+
+  assert.equal(analytics.summary.sparkline.length, 7);
+  assert.equal(analytics.summary.sparkline[0]?.date, "2026-01-09");
+  assert.equal(analytics.summary.sparkline[6]?.date, "2026-01-15");
+  assert.equal(analytics.summary.sparkline[1]?.spend, 45);
+  assert.equal(analytics.summary.sparkline[3]?.spend, 20);
+  assert.equal(analytics.summary.sparkline[6]?.income, 500);
+});

@@ -467,6 +467,7 @@ export function getAnomalies(userId, filters = {}) {
 
 export function getExplorerAnalytics(userId, filters = {}) {
   const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const currentTransactions = filterUserTransactions(userId, filters);
   const currentOverview = getOverview(userId, {
     ...filters,
     category_view: categoryView
@@ -485,7 +486,8 @@ export function getExplorerAnalytics(userId, filters = {}) {
     summary: {
       current: currentOverview.summary,
       previous: previousOverview?.summary || null,
-      delta: previousOverview ? buildSummaryDelta(currentOverview.summary, previousOverview.summary) : null
+      delta: previousOverview ? buildSummaryDelta(currentOverview.summary, previousOverview.summary) : null,
+      sparkline: buildSummarySparkline(currentTransactions, filters)
     },
     comparison: {
       enabled: Boolean(previousOverview),
@@ -572,6 +574,53 @@ function buildSummaryDelta(currentSummary, previousSummary) {
     recurringSpend: buildDeltaValue(currentSummary.recurringSpend, previousSummary.recurringSpend),
     transactionCount: buildDeltaValue(currentSummary.transactionCount, previousSummary.transactionCount)
   };
+}
+
+function buildSummarySparkline(transactions, filters = {}) {
+  const appliedRange = buildAppliedRange(filters);
+  if (!appliedRange.end) {
+    return [];
+  }
+
+  const endDate = new Date(`${appliedRange.end}T12:00:00Z`);
+  if (Number.isNaN(endDate.getTime())) {
+    return [];
+  }
+
+  const points = [];
+  const pointMap = new Map();
+
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const pointDate = new Date(endDate.getTime() - offset * DAY_IN_MS);
+    const date = formatDateYmd(pointDate);
+    const point = {
+      date,
+      spend: 0,
+      income: 0,
+      net: 0
+    };
+    points.push(point);
+    pointMap.set(date, point);
+  }
+
+  for (const transaction of transactions) {
+    const point = pointMap.get(transaction.transaction_date);
+    if (!point) {
+      continue;
+    }
+
+    const amount = toAmount(transaction);
+    if (transaction.direction === "inflow") {
+      point.income = round2(point.income + amount);
+      point.net = round2(point.net + amount);
+      continue;
+    }
+
+    point.spend = round2(point.spend + amount);
+    point.net = round2(point.net - amount);
+  }
+
+  return points;
 }
 
 function buildDeltaValue(currentValue, previousValue) {

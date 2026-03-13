@@ -543,11 +543,19 @@ export interface ExplorerSummaryDelta {
   transactionCount: ExplorerSummaryDeltaValue;
 }
 
+export interface ExplorerSummarySparklinePoint {
+  date: string;
+  spend: number;
+  income: number;
+  net: number;
+}
+
 export interface ExplorerAnalyticsResponse {
   summary: {
     current: OverviewResponse["summary"];
     previous: OverviewResponse["summary"] | null;
     delta: ExplorerSummaryDelta | null;
+    sparkline: ExplorerSummarySparklinePoint[];
   };
   comparison: {
     enabled: boolean;
