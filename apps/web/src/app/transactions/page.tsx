@@ -922,28 +922,23 @@ export default function TransactionsPage() {
                       </td>
 
                       <td className="px-5 py-5">
-                        <div className="flex items-start gap-3">
-                          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900/90 text-base shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                            {txn.counterparty_emoji || "💳"}
-                          </span>
-                          <div className="min-w-0">
-                            <div className="font-medium text-neutral-100">{txn.merchant_raw}</div>
-                            <div className="mt-1 text-sm text-neutral-400">{txn.description}</div>
-                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-neutral-500">
-                              {txn.memo ? (
-                                <span className="rounded-full border border-neutral-800 px-2 py-1">
-                                  Note: {txn.memo}
-                                </span>
-                              ) : null}
-                              {Array.isArray(txn.tags) && txn.tags.length ? (
-                                <span className="rounded-full border border-neutral-800 px-2 py-1">
-                                  #{txn.tags.join(" #")}
-                                </span>
-                              ) : null}
-                              <span className="rounded-full border border-neutral-800 px-2 py-1 uppercase tracking-[0.18em]">
-                                {txn.source_type}
+                        <div className="min-w-0">
+                          <div className="font-medium text-neutral-100">{txn.merchant_raw}</div>
+                          <div className="mt-1 text-sm text-neutral-400">{txn.description}</div>
+                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-neutral-500">
+                            {txn.memo ? (
+                              <span className="rounded-full border border-neutral-800 px-2 py-1">
+                                Note: {txn.memo}
                               </span>
-                            </div>
+                            ) : null}
+                            {Array.isArray(txn.tags) && txn.tags.length ? (
+                              <span className="rounded-full border border-neutral-800 px-2 py-1">
+                                #{txn.tags.join(" #")}
+                              </span>
+                            ) : null}
+                            <span className="rounded-full border border-neutral-800 px-2 py-1 uppercase tracking-[0.18em]">
+                              {txn.source_type}
+                            </span>
                           </div>
                         </div>
                       </td>

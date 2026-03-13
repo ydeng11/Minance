@@ -17,13 +17,12 @@ test("@core upload CSV then create/edit/delete a manual transaction", async ({ p
   await createManualTransaction(page, {
     merchant: manualMerchant,
     memo: "Created by E2E",
-    tags: "coffee, monthly, coffee",
-    counterpartyEmoji: "🤝"
+    tags: "coffee, monthly, coffee"
   });
 
   const firstLedgerRow = page.locator('[data-testid="txn-table"] tbody > tr').first();
   await expect(firstLedgerRow).toContainText(manualMerchant);
-  await expect(firstLedgerRow).toContainText("🤝");
+  await expect(firstLedgerRow).not.toContainText("💳");
 
   await searchTransactions(page, manualMerchant);
   const manualRow = page.locator('[data-testid="txn-table"] tr', { hasText: manualMerchant });

@@ -422,10 +422,6 @@ export async function createManualTransaction(page, options = {}) {
     await form.getByTestId("txn-create-tags").fill(options.tags);
   }
 
-  if (options.counterpartyEmoji) {
-    await form.getByTestId("txn-create-counterparty-emoji").selectOption(options.counterpartyEmoji);
-  }
-
   await form.locator('button[type="submit"]').click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByTestId("global-message")).toContainText("Transaction created.");

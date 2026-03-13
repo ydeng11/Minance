@@ -26,13 +26,12 @@ test("@core transactions header controls route into the ledger, create from the 
   await createManualTransaction(page, {
     merchant: newerMerchant,
     amount: "77.25",
-    memo: "Newer range row",
-    counterpartyEmoji: "🤝"
+    memo: "Newer range row"
   });
 
   const firstLedgerRow = page.locator('[data-testid="txn-table"] tbody > tr').first();
   await expect(firstLedgerRow).toContainText(newerMerchant);
-  await expect(firstLedgerRow).toContainText("🤝");
+  await expect(firstLedgerRow).not.toContainText("💳");
   await expect(page.getByTestId("txn-ledger-shell")).toBeVisible();
   await expect(page.getByTestId("txn-table-scroll")).toBeVisible();
   await expect(page.getByTestId("txn-select-all-visible")).toBeVisible();

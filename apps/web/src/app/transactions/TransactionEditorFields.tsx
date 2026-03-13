@@ -1,19 +1,6 @@
 import type { Category } from "@/lib/api/types";
 import type { TransactionFormDraft, TransactionFormErrors } from "./form";
 
-const COUNTERPARTY_EMOJI_OPTIONS = [
-  { value: "", label: "None" },
-  { value: "🧑", label: "🧑 Person" },
-  { value: "👩", label: "👩 Woman" },
-  { value: "👨", label: "👨 Man" },
-  { value: "🧒", label: "🧒 Kid" },
-  { value: "👪", label: "👪 Family" },
-  { value: "🤝", label: "🤝 Shared" },
-  { value: "❤️", label: "❤️ Partner" },
-  { value: "🏠", label: "🏠 Household" },
-  { value: "💼", label: "💼 Work" }
-];
-
 interface TransactionEditorFieldsProps {
   categories: Category[];
   errors: TransactionFormErrors;
@@ -155,25 +142,7 @@ export function TransactionEditorFields({
         </label>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <label className="grid gap-1 text-sm text-neutral-300" htmlFor={`${idPrefix}-counterparty-emoji`}>
-          Person emoji
-          <select
-            id={`${idPrefix}-counterparty-emoji`}
-            name="counterparty_emoji"
-            value={form.counterparty_emoji}
-            onChange={(event) => onFieldChange("counterparty_emoji", event.target.value)}
-            data-testid={`${idPrefix}-counterparty-emoji`}
-            className={controlClassName}
-          >
-            {COUNTERPARTY_EMOJI_OPTIONS.map((entry) => (
-              <option key={entry.label} value={entry.value}>
-                {entry.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
+      <div className="grid gap-3 md:grid-cols-3">
         <label className="grid gap-1 text-sm text-neutral-300 md:col-span-2" htmlFor={`${idPrefix}-tags`}>
           Tags
           <input
