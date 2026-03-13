@@ -35,6 +35,7 @@ test("@core transactions header controls route into the ledger, create from the 
   await expect(firstLedgerRow).toContainText("🤝");
   await expect(page.getByTestId("txn-ledger-shell")).toBeVisible();
   await expect(page.getByTestId("txn-table-scroll")).toBeVisible();
+  await expect(page.getByTestId("txn-select-all-visible")).toBeVisible();
 
   await expect(page.getByTestId("txn-amount-filter")).toBeVisible();
   await page.getByPlaceholder(/Min \(\$/).fill("70");

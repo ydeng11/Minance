@@ -10,6 +10,7 @@ test("@core transactions remains usable on narrow screens", async ({ page }) => 
   await expect(page.getByTestId("txn-create-open")).toBeVisible();
   await expect(page.getByTestId("txn-filter-primary-row")).toBeVisible();
   await expect(page.getByTestId("txn-filter-secondary-row")).toBeVisible();
+  await expect(page.getByTestId("txn-select-all-visible")).toBeVisible();
 
   await page.getByTestId("txn-range").selectOption("custom");
   await expect(page.getByTestId("txn-custom-date-row")).toBeVisible();

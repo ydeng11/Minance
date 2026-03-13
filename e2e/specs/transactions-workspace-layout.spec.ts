@@ -11,5 +11,7 @@ test("@core transactions workspace header keeps filters visible", async ({ page 
   await expect(page.getByTestId("txn-filter-secondary-row")).toBeVisible();
   await expect(page.getByTestId("txn-create-open")).toBeVisible();
   await expect(page.getByTestId("txn-amount-filter")).toBeVisible();
+  await expect(page.getByTestId("txn-select-all-visible")).toBeVisible();
+  await expect(page.getByTestId("txn-bulk-bar")).toHaveCount(0);
   await expect(page.getByText("Date preset applies across the ledger and drill-down links.")).toHaveCount(0);
 });
