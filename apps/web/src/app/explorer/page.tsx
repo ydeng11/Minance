@@ -402,10 +402,9 @@ export default function ExplorerPage() {
         {filters.perspective === "overview" ? (
           <OverviewPerspective
             overview={overview}
-            summary={explorer?.summary || null}
-            comparison={explorer?.comparison || null}
             heatmap={explorer?.heatmap.items || []}
             anomalies={explorer?.anomalies.items || []}
+            trendRangeLabel={dateRangeDisplay}
             onMonthClick={handleMonthClick}
             onCategoryClick={handleCategoryClick}
             onMerchantClick={handleMerchantClick}

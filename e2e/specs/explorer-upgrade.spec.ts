@@ -23,13 +23,15 @@ test("explorer advanced filters omit review status controls", async ({ page }) =
   await expect(page.getByTestId("explorer-active-filters")).not.toContainText("Needs Review");
 });
 
-test("overview perspective renders trend, comparison, categories, merchants, heatmap, and anomalies", async ({ page }) => {
+test("overview perspective uses a full-width trend chart with the active range label", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);
-  await gotoView(page, "explorer");
+  await page.goto("/explorer?range=365d");
 
   await expect(page.getByTestId("explorer-overview-trend")).toBeVisible();
-  await expect(page.getByTestId("explorer-comparison-panel")).toBeVisible();
+  await expect(page.getByTestId("explorer-comparison-panel")).toHaveCount(0);
+  await expect(page.getByTestId("explorer-overview-trend")).toContainText("Last 12 months");
+  await expect(page.getByTestId("explorer-overview-trend")).not.toContainText("Last 6 months");
   await expect(page.getByTestId("analytics-category-bars")).toBeVisible();
   await expect(page.getByTestId("analytics-merchant-bars")).toBeVisible();
   await expect(page.getByTestId("analytics-heatmap")).toBeVisible();

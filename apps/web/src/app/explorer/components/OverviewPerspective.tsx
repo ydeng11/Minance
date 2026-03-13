@@ -3,17 +3,15 @@
 import type { ExplorerAnalyticsResponse, OverviewResponse } from "@/lib/api/types";
 import { Anomalies } from "./Anomalies";
 import { CategoryBreakdown } from "./CategoryBreakdown";
-import { ExplorerComparisonPanel } from "./ExplorerComparisonPanel";
 import { MerchantAnalysis } from "./MerchantAnalysis";
 import { SpendingHeatmap } from "./SpendingHeatmap";
 import { TrendChart } from "./TrendChart";
 
 interface OverviewPerspectiveProps {
   overview: OverviewResponse | null;
-  summary: ExplorerAnalyticsResponse["summary"] | null;
-  comparison: ExplorerAnalyticsResponse["comparison"] | null;
   heatmap: ExplorerAnalyticsResponse["heatmap"]["items"];
   anomalies: ExplorerAnalyticsResponse["anomalies"]["items"];
+  trendRangeLabel: string;
   onMonthClick: (month: string) => void;
   onCategoryClick: (category: string) => void;
   onMerchantClick: (merchant: string) => void;
@@ -22,10 +20,9 @@ interface OverviewPerspectiveProps {
 
 export function OverviewPerspective({
   overview,
-  summary,
-  comparison,
   heatmap,
   anomalies,
+  trendRangeLabel,
   onMonthClick,
   onCategoryClick,
   onMerchantClick,
@@ -33,13 +30,13 @@ export function OverviewPerspective({
 }: OverviewPerspectiveProps) {
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-12">
-        <div className="xl:col-span-8" data-testid="explorer-overview-trend">
-          <TrendChart overview={overview} onMonthClick={onMonthClick} loading={loading} />
-        </div>
-        <div className="xl:col-span-4">
-          <ExplorerComparisonPanel summary={summary} comparison={comparison} loading={loading} />
-        </div>
+      <div data-testid="explorer-overview-trend">
+        <TrendChart
+          overview={overview}
+          rangeLabel={trendRangeLabel}
+          onMonthClick={onMonthClick}
+          loading={loading}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-12">
