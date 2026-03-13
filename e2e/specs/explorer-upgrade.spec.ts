@@ -36,14 +36,16 @@ test("overview perspective renders trend, comparison, categories, merchants, hea
   await expect(page.getByTestId("analytics-anomalies")).toBeVisible();
 });
 
-test("comparison-off hero cards show trend context instead of no-comparison copy", async ({ page }) => {
+test("summary cards separate selected-range totals from recent seven-day context", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);
   await page.goto("/explorer?range=365d");
 
-  await expect(page.getByTestId("explorer-summary-band")).toBeVisible();
-  await expect(page.getByTestId("explorer-summary-band")).not.toContainText("No comparison");
-  await expect(page.getByTestId("explorer-comparison-panel")).not.toContainText("No delta");
+  const summary = page.getByTestId("explorer-summary-band");
+  await expect(summary).toBeVisible();
+  await expect(summary).toContainText("Last 7 days");
+  await expect(summary).toContainText("within current filters");
+  await expect(summary).not.toContainText("Recent 7-day trend");
   await expect(page.getByTestId("explorer-summary-sparkline-net")).toBeVisible();
 });
 

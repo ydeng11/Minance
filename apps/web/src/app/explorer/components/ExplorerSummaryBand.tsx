@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowDownRight, CreditCard, Repeat, Wallet } from "lucide-react";
-import { buildSummarySecondaryState } from "../presentation";
+import { buildSummarySecondaryState, getSummaryValueClassName } from "../presentation";
 import { money } from "@/lib/utils";
 import type { ExplorerAnalyticsResponse } from "@/lib/api/types";
 import { ExplorerCard } from "./ExplorerCard";
@@ -71,7 +71,7 @@ export function ExplorerSummaryBand({ summary, comparison, loading }: ExplorerSu
         <ExplorerCard
           key={item.key}
           className="min-h-[196px]"
-          contentClassName="flex h-full flex-col justify-between gap-7"
+          contentClassName="flex h-full flex-col gap-4"
         >
           {loading ? (
             <div className="space-y-4">
@@ -82,29 +82,22 @@ export function ExplorerSummaryBand({ summary, comparison, loading }: ExplorerSu
           ) : (
             <>
               <div className="flex items-start justify-between gap-4">
-                <div>
+                <div className="min-w-0">
                   <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">
                     {item.label}
                   </p>
                   <p
                     className={
                       item.key === "net" && (summary?.current.netFlow || 0) < 0
-                        ? "mt-4 text-4xl font-semibold tracking-tight text-amber-300"
-                        : "mt-4 text-4xl font-semibold tracking-tight text-neutral-50"
+                        ? `mt-4 font-semibold tracking-tight text-amber-300 ${getSummaryValueClassName(item.value)}`
+                        : `mt-4 font-semibold tracking-tight text-neutral-50 ${getSummaryValueClassName(item.value)}`
                     }
                   >
                     {item.value}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
-                    <item.icon className="h-5 w-5" />
-                  </div>
-                  {comparison?.enabled && formatDelta(item.delta) ? (
-                    <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-200">
-                      {formatDelta(item.delta)}
-                    </div>
-                  ) : null}
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
+                  <item.icon className="h-5 w-5" />
                 </div>
               </div>
               {(() => {
@@ -113,16 +106,17 @@ export function ExplorerSummaryBand({ summary, comparison, loading }: ExplorerSu
                   : [];
                 const secondaryState = buildSummarySecondaryState({
                   comparisonEnabled: comparison?.enabled ?? false,
-                  deltaLabel: "Current range snapshot",
+                  deltaLabel: "Compared with previous period",
                   sparkline: sparklineData
                 });
+                const deltaText = formatDelta(item.delta);
 
                 if (secondaryState.mode === "sparkline") {
                   return (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs font-medium uppercase tracking-[0.18em] text-neutral-600">
+                    <div className="mt-auto rounded-[22px] border border-neutral-900 bg-neutral-950/80 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
                         <span>{secondaryState.label}</span>
-                        <span className="text-neutral-500">7D</span>
+                        <span>within current filters</span>
                       </div>
                       <ExplorerMiniSparkline
                         data={sparklineData}
@@ -134,11 +128,15 @@ export function ExplorerSummaryBand({ summary, comparison, loading }: ExplorerSu
                 }
 
                 return (
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-neutral-600">
-                      {comparison?.enabled ? "vs previous period" : "Current range"}
+                  <div className="mt-auto rounded-[22px] border border-neutral-900 bg-neutral-950/80 px-4 py-3">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500">
+                      {comparison?.enabled ? secondaryState.label : "Selected range"}
                     </p>
-                    <p className="text-sm text-neutral-400">{secondaryState.label}</p>
+                    <p className="mt-1 text-sm text-neutral-300">
+                      {comparison?.enabled
+                        ? (deltaText || "No prior-period delta available.")
+                        : "Within current filters."}
+                    </p>
                   </div>
                 );
               })()}
