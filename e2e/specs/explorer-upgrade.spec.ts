@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
+  analyticsHeatmapCells,
   gotoView,
   loginWithSeedAccount,
   uploadAndCommitFixtureCsv
@@ -49,6 +50,18 @@ test("summary cards separate selected-range totals from recent seven-day context
   await expect(summary).toContainText("within current filters");
   await expect(summary).not.toContainText("Recent 7-day trend");
   await expect(page.getByTestId("explorer-summary-sparkline-net")).toBeVisible();
+});
+
+test("spending heatmap uses weekday headers and a legend instead of weekday indexes", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+  await gotoView(page, "explorer");
+
+  await expect(page.getByTestId("analytics-heatmap-weekdays")).toContainText("Sun");
+  await expect(page.getByTestId("analytics-heatmap-weekdays")).toContainText("Sat");
+  await expect(page.getByTestId("analytics-heatmap-legend")).toContainText("Low");
+  await expect(page.getByTestId("analytics-heatmap-legend")).toContainText("High");
+  await expect(analyticsHeatmapCells(page).first()).toHaveText("");
 });
 
 test("merchant and anomaly cards use polished presentation", async ({ page }) => {
