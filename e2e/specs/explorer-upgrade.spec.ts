@@ -37,6 +37,17 @@ test("overview perspective renders trend, comparison, categories, merchants, hea
   await expect(page.getByTestId("analytics-anomalies")).toBeVisible();
 });
 
+test("comparison-off hero cards show trend context instead of no-comparison copy", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+  await page.goto("/explorer?range=365d");
+
+  await expect(page.getByTestId("explorer-summary-band")).toBeVisible();
+  await expect(page.getByTestId("explorer-summary-band")).not.toContainText("No comparison");
+  await expect(page.getByTestId("explorer-comparison-panel")).not.toContainText("No delta");
+  await expect(page.getByTestId("explorer-summary-sparkline-net")).toBeVisible();
+});
+
 test("category perspective keeps filters and renders scoped category insights", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);

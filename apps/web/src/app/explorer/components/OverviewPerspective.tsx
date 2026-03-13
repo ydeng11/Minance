@@ -10,6 +10,7 @@ import { TrendChart } from "./TrendChart";
 
 interface OverviewPerspectiveProps {
   overview: OverviewResponse | null;
+  summary: ExplorerAnalyticsResponse["summary"] | null;
   comparison: ExplorerAnalyticsResponse["comparison"] | null;
   heatmap: ExplorerAnalyticsResponse["heatmap"]["items"];
   anomalies: ExplorerAnalyticsResponse["anomalies"]["items"];
@@ -21,6 +22,7 @@ interface OverviewPerspectiveProps {
 
 export function OverviewPerspective({
   overview,
+  summary,
   comparison,
   heatmap,
   anomalies,
@@ -31,21 +33,29 @@ export function OverviewPerspective({
 }: OverviewPerspectiveProps) {
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.85fr)]">
-        <div data-testid="explorer-overview-trend">
+      <div className="grid gap-6 xl:grid-cols-12">
+        <div className="xl:col-span-8" data-testid="explorer-overview-trend">
           <TrendChart overview={overview} onMonthClick={onMonthClick} loading={loading} />
         </div>
-        <ExplorerComparisonPanel comparison={comparison} loading={loading} />
+        <div className="xl:col-span-4">
+          <ExplorerComparisonPanel summary={summary} comparison={comparison} loading={loading} />
+        </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-12">
+        <div className="space-y-6 xl:col-span-7">
           <CategoryBreakdown overview={overview} onCategoryClick={onCategoryClick} loading={loading} />
+        </div>
+        <div className="space-y-6 xl:col-span-5">
+          <SpendingHeatmap heatmap={heatmap} loading={loading} />
+        </div>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div>
           <MerchantAnalysis overview={overview} onMerchantClick={onMerchantClick} loading={loading} />
         </div>
-
-        <div className="space-y-6">
-          <SpendingHeatmap heatmap={heatmap} loading={loading} />
+        <div>
           <Anomalies anomalies={anomalies} loading={loading} />
         </div>
       </div>

@@ -25,7 +25,7 @@ export function ExplorerCard({
   return (
     <section
       className={cn(
-        "rounded-[28px] border border-neutral-900 bg-[linear-gradient(180deg,rgba(15,18,20,0.98),rgba(8,10,12,0.92))] shadow-[0_18px_48px_rgba(0,0,0,0.28)]",
+        "rounded-[28px] border border-neutral-800 bg-[linear-gradient(180deg,rgba(19,22,25,0.98),rgba(10,12,14,0.94))] shadow-[0_18px_48px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.02]",
         className
       )}
       data-testid={testId}
