@@ -67,7 +67,7 @@ test("createInitialTransactionDraft returns default create state", () => {
   assert.equal(draft.id, "");
   assert.equal(draft.transaction_date, "2026-03-02");
   assert.equal(draft.category_final, "Dining");
-  assert.equal(draft.counterparty_emoji, "");
+  assert.equal("counterparty_emoji" in draft, false);
   assert.equal(draft.transaction_type, "");
 });
 
@@ -77,7 +77,7 @@ test("buildDraftFromTransaction maps existing transaction into editable draft", 
   assert.equal(draft.transaction_date, "2026-03-01");
   assert.equal(draft.tags, "lunch, weekday");
   assert.equal(draft.account_name, "primary-checking");
-  assert.equal(draft.counterparty_emoji, "🧑");
+  assert.equal("counterparty_emoji" in draft, false);
   assert.equal(draft.transaction_type, "expense");
 });
 
@@ -162,7 +162,6 @@ test("validateTransactionDraft builds normalized payload for valid input", () =>
       amount: "18.40",
       direction: "outflow",
       account_name: "  Main Checking  ",
-      counterparty_emoji: "🧑‍🤝‍🧑",
       memo: "  Team sync  ",
       tags: "Food, weekday, food",
       transaction_type: "expense"
@@ -179,9 +178,9 @@ test("validateTransactionDraft builds normalized payload for valid input", () =>
     direction: "outflow",
     category_final: "Dining",
     account_name: "Main Checking",
-    counterparty_emoji: "🧑‍🤝‍🧑",
     memo: "Team sync",
     tags: ["food", "weekday"],
     transaction_type: "expense"
   });
+  assert.equal(result.payload ? "counterparty_emoji" in result.payload : true, false);
 });
