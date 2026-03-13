@@ -29,7 +29,11 @@ import {
   getLedgerAmountBounds,
   sortTransactionsForLedger
 } from "./ledger";
-import { pruneSelectionToVisible } from "./selection";
+import {
+  pruneSelectionToVisible,
+  toggleSelectAllVisible,
+  toggleTransactionSelection
+} from "./selection";
 import { TransactionEditorFields } from "./TransactionEditorFields";
 
 const TRANSACTION_RANGE_OPTIONS = [...RANGE_OPTIONS, { value: "custom", label: "Custom" }];
@@ -131,8 +135,10 @@ export default function TransactionsPage() {
   const [formErrors, setFormErrors] = useState<TransactionFormErrors>({});
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<string>>(() => new Set());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [message, setMessage] = useState("");
 
   const ledgerTransactions = useMemo(() => sortTransactionsForLedger(transactions), [transactions]);
@@ -186,6 +192,8 @@ export default function TransactionsPage() {
     ? 0
     : Math.min(currentPage * TRANSACTIONS_PAGE_SIZE, totalTransactions);
   const visibleTransactionIds = useMemo(() => ledgerTransactions.map((entry) => entry.id), [ledgerTransactions]);
+  const selectedVisibleCount = selectedTransactionIds.size;
+  const allVisibleSelected = visibleTransactionIds.length > 0 && selectedVisibleCount === visibleTransactionIds.length;
 
   async function loadCategories() {
     try {
@@ -278,8 +286,34 @@ export default function TransactionsPage() {
     setSelectedTransactionIds((previous) => pruneSelectionToVisible(previous, visibleTransactionIds));
   }, [visibleTransactionIds]);
 
+  useEffect(() => {
+    if (selectedTransactionIds.size === 0) {
+      setIsBulkDeleteDialogOpen(false);
+    }
+  }, [selectedTransactionIds]);
+
   function clearSelectedTransactions() {
     setSelectedTransactionIds(new Set());
+    setIsBulkDeleteDialogOpen(false);
+  }
+
+  function toggleRowSelection(transactionId: string) {
+    setSelectedTransactionIds((previous) => toggleTransactionSelection(previous, transactionId));
+  }
+
+  function toggleVisibleSelection(checked: boolean) {
+    setSelectedTransactionIds((previous) => toggleSelectAllVisible(previous, visibleTransactionIds, checked));
+  }
+
+  function openBulkDeleteDialog() {
+    if (selectedTransactionIds.size === 0) {
+      return;
+    }
+    setIsBulkDeleteDialogOpen(true);
+  }
+
+  function closeBulkDeleteDialog() {
+    setIsBulkDeleteDialogOpen(false);
   }
 
   function syncFiltersToUrl(nextFilters: TransactionsFilterState) {
@@ -386,6 +420,30 @@ export default function TransactionsPage() {
     }
   }
 
+  async function removeSelectedTransactions() {
+    const selectedIds = Array.from(selectedTransactionIds);
+    if (!selectedIds.length) {
+      return;
+    }
+
+    setBulkDeleting(true);
+    setMessage("");
+
+    try {
+      await api.transactions.bulkUpdate({
+        transaction_ids: selectedIds,
+        operation: "delete"
+      });
+      clearSelectedTransactions();
+      await refreshTransactionsView(filtersRef.current, { preserveMessage: true });
+      setMessage(`${selectedIds.length} transaction${selectedIds.length === 1 ? "" : "s"} deleted.`);
+    } catch (error) {
+      setMessage(getRequestErrorMessage(error, "Failed to delete selected transactions."));
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   async function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -402,11 +460,13 @@ export default function TransactionsPage() {
 
     try {
       if (form.id) {
+        clearSelectedTransactions();
         await api.transactions.update(form.id, validation.payload);
         setMessage("Transaction updated.");
         resetManualForm();
         await refreshTransactionsView(filtersRef.current);
       } else {
+        clearSelectedTransactions();
         const created = await api.transactions.create(validation.payload);
         const nextFilters = toValidFilterState({
           ...filtersRef.current,
@@ -757,10 +817,40 @@ export default function TransactionsPage() {
         data-testid="txn-ledger-shell"
         className="overflow-hidden rounded-[30px] border border-neutral-900 bg-neutral-950/80 shadow-[0_20px_80px_rgba(0,0,0,0.25)]"
       >
+        {selectedVisibleCount > 0 ? (
+          <div
+            data-testid="txn-bulk-bar"
+            className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-900 bg-neutral-900/60 px-5 py-3.5"
+          >
+            <div className="text-sm text-neutral-200">
+              <span className="font-semibold text-neutral-50">{selectedVisibleCount}</span> selected on this page
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={clearSelectedTransactions}
+                data-testid="txn-bulk-clear"
+                className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+              >
+                Clear selection
+              </button>
+              <button
+                type="button"
+                onClick={openBulkDeleteDialog}
+                data-testid="txn-bulk-delete-open"
+                className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20"
+              >
+                Delete selected
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div data-testid="txn-table-scroll" className="overflow-x-auto">
-          <table className="min-w-[1100px] w-full text-left text-sm text-neutral-200" data-testid="txn-table">
+          <table className="min-w-[1160px] w-full text-left text-sm text-neutral-200" data-testid="txn-table">
             <caption className="sr-only">Detailed transaction ledger with inline edit and row actions</caption>
             <colgroup>
+              <col className="w-[56px]" />
               <col className="w-[132px]" />
               <col />
               <col className="w-[190px]" />
@@ -771,6 +861,17 @@ export default function TransactionsPage() {
             </colgroup>
             <thead className="bg-neutral-900/60 text-neutral-300">
               <tr>
+                <th scope="col" className="px-5 py-3.5 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={(event) => toggleVisibleSelection(event.target.checked)}
+                    data-testid="txn-select-all-visible"
+                    aria-label="Select all visible transactions"
+                    disabled={loading || saving || bulkDeleting || visibleTransactionIds.length === 0}
+                    className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-400 focus:ring-emerald-400"
+                  />
+                </th>
                 <th scope="col" className="px-5 py-3.5 font-medium">Dates</th>
                 <th scope="col" className="px-5 py-3.5 font-medium">Details</th>
                 <th scope="col" className="px-5 py-3.5 font-medium">Category</th>
@@ -783,9 +884,21 @@ export default function TransactionsPage() {
             <tbody className="divide-y divide-neutral-900/80">
               {ledgerTransactions.map((txn) => {
                 const isEditing = form.id === txn.id;
+                const isSelected = selectedTransactionIds.has(txn.id);
                 return (
                   <Fragment key={txn.id}>
                     <tr className="align-top transition hover:bg-neutral-900/30">
+                      <td className="px-5 py-5 align-top">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleRowSelection(txn.id)}
+                          data-testid={`txn-select-row-${txn.id}`}
+                          aria-label={`Select transaction ${txn.merchant_raw}`}
+                          disabled={loading || saving || bulkDeleting || isEditing}
+                          className="mt-1 h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-400 focus:ring-emerald-400"
+                        />
+                      </td>
                       <td className="px-5 py-5 text-neutral-300">
                         <div className="font-medium text-neutral-100">{txn.transaction_date}</div>
                         <div className="mt-1 text-xs text-neutral-500">
@@ -879,7 +992,7 @@ export default function TransactionsPage() {
 
                     {isEditing ? (
                       <tr data-testid={`txn-inline-edit-row-${txn.id}`}>
-                        <td colSpan={7} className="bg-neutral-950/70 px-5 py-5">
+                        <td colSpan={8} className="bg-neutral-950/70 px-5 py-5">
                           <form onSubmit={submitForm} className="grid gap-4" data-testid={`txn-inline-form-${txn.id}`}>
                             <input type="hidden" value={form.id} readOnly />
                             <TransactionEditorFields
@@ -917,7 +1030,7 @@ export default function TransactionsPage() {
 
               {!loading && ledgerTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-neutral-400">
+                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-neutral-400">
                     No transactions found.
                   </td>
                 </tr>
@@ -1014,6 +1127,59 @@ export default function TransactionsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {isBulkDeleteDialogOpen ? (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-neutral-950/80 px-4 py-10 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="txn-bulk-delete-dialog-title"
+            data-testid="txn-bulk-delete-dialog"
+            className="w-full max-w-lg rounded-[28px] border border-neutral-800 bg-neutral-950 p-5 shadow-[0_30px_120px_rgba(0,0,0,0.45)]"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-rose-300">Bulk delete</div>
+                <h3 id="txn-bulk-delete-dialog-title" className="mt-2 text-2xl font-semibold text-neutral-50">
+                  Delete {selectedVisibleCount} transaction{selectedVisibleCount === 1 ? "" : "s"}
+                </h3>
+                <p className="mt-2 text-sm text-neutral-400">
+                  This removes only the transactions currently selected on this visible page. Selection clears after delete.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeBulkDeleteDialog}
+                aria-label="Close bulk delete dialog"
+                className="rounded-full border border-neutral-800 bg-neutral-900 p-2 text-neutral-300 transition hover:bg-neutral-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeBulkDeleteDialog}
+                data-testid="txn-bulk-delete-cancel"
+                className="rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void removeSelectedTransactions()}
+                data-testid="txn-bulk-delete-confirm"
+                disabled={bulkDeleting}
+                className="rounded-xl border border-rose-500/40 bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {bulkDeleting ? "Deleting..." : "Delete selected"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
