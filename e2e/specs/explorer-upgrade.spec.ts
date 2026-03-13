@@ -48,6 +48,21 @@ test("comparison-off hero cards show trend context instead of no-comparison copy
   await expect(page.getByTestId("explorer-summary-sparkline-net")).toBeVisible();
 });
 
+test("merchant and anomaly cards use polished presentation", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+  await gotoView(page, "explorer");
+
+  const merchants = page.getByTestId("analytics-merchant-bars");
+  await expect(merchants).toBeVisible();
+  await expect(merchants).toContainText("Coffee Shop");
+  await expect(page.getByTestId("analytics-merchant-caption").first()).toBeVisible();
+
+  const anomalies = page.getByTestId("analytics-anomalies");
+  await expect(anomalies).toBeVisible();
+  await expect(anomalies).toContainText("Spending looks stable");
+});
+
 test("category perspective keeps filters and renders scoped category insights", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);
