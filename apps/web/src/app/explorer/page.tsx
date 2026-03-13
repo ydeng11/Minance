@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Download, LineChart, SlidersHorizontal } from "lucide-react";
+import { LineChart, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import type { Account, Category, ExplorerAnalyticsResponse, OverviewResponse, SavedView } from "@/lib/api/types";
@@ -18,8 +18,9 @@ import {
   toValidExplorerFilterState,
   toExplorerAnalyticsApiParams
 } from "./filters";
-import { FilterSidebar } from "./components/FilterSidebar";
 import { AccountPerspective } from "./components/AccountPerspective";
+import { ExplorerAdvancedFilters } from "./components/ExplorerAdvancedFilters";
+import { ExplorerCommandBar } from "./components/ExplorerCommandBar";
 import { CategoryPerspective } from "./components/CategoryPerspective";
 import { ExplorerPerspectiveTabs } from "./components/ExplorerPerspectiveTabs";
 import { ExplorerSummaryBand } from "./components/ExplorerSummaryBand";
@@ -47,7 +48,7 @@ export default function ExplorerPage() {
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const syncFilters = useCallback(
     (nextFilters: typeof filters) => {
@@ -250,6 +251,73 @@ export default function ExplorerPage() {
     };
   }, [explorer]);
 
+  const activeFilters = useMemo(() => {
+    const items: Array<{
+      key: string;
+      label: string;
+      clear: () => void;
+    }> = [];
+
+    if (filters.account) {
+      items.push({
+        key: "account",
+        label: filters.account,
+        clear: () => updateFilters({ account: "" })
+      });
+    }
+    if (filters.category) {
+      items.push({
+        key: "category",
+        label: filters.category,
+        clear: () => updateFilters({ category: "" })
+      });
+    }
+    if (filters.review !== "all") {
+      items.push({
+        key: "review",
+        label: filters.review === "reviewed" ? "Reviewed" : "Needs Review",
+        clear: () => updateFilters({ review: "all" })
+      });
+    }
+    if (filters.transactionType !== "all") {
+      items.push({
+        key: "type",
+        label: filters.transactionType.charAt(0).toUpperCase() + filters.transactionType.slice(1),
+        clear: () => updateFilters({ transactionType: "all" })
+      });
+    }
+    if (filters.direction !== "all") {
+      items.push({
+        key: "direction",
+        label: filters.direction === "outflow" ? "Outflow" : "Inflow",
+        clear: () => updateFilters({ direction: "all" })
+      });
+    }
+    if (filters.tag) {
+      items.push({
+        key: "tag",
+        label: `Tag: ${filters.tag}`,
+        clear: () => updateFilters({ tag: "" })
+      });
+    }
+    if (filters.merchant) {
+      items.push({
+        key: "merchant",
+        label: `Merchant: ${filters.merchant}`,
+        clear: () => updateFilters({ merchant: "" })
+      });
+    }
+    if (filters.compare === "previous") {
+      items.push({
+        key: "compare",
+        label: "Compare: Previous Period",
+        clear: () => updateFilters({ compare: "none" })
+      });
+    }
+
+    return items;
+  }, [filters, updateFilters]);
+
   return (
     <div className="space-y-8" data-testid="explorer-page">
       {/* Header */}
@@ -270,24 +338,6 @@ export default function ExplorerPage() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Mobile filter toggle */}
-          <button
-            type="button"
-            onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-4 text-sm font-medium text-neutral-200 transition hover:bg-neutral-800 xl:hidden"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Filters
-          </button>
-          <button
-            type="button"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 px-4 text-sm font-medium text-neutral-200 transition hover:bg-neutral-800"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </button>
-        </div>
       </header>
 
       {message && (
@@ -299,88 +349,108 @@ export default function ExplorerPage() {
         </p>
       )}
 
-      {/* Main Content */}
-      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)] xl:items-start">
-        {/* Filter Sidebar - Desktop always visible, Mobile toggleable */}
-        <aside
-          className={showMobileFilters ? "block xl:sticky xl:top-6" : "hidden xl:sticky xl:top-6 xl:block"}
-          data-testid="explorer-filter-rail"
-        >
-          <FilterSidebar
-            filters={filters}
-            onChange={updateFilters}
-            categories={categories}
-            accounts={accounts}
-            availableTags={[]}
-          />
-        </aside>
+      {showAdvancedFilters ? (
+        <ExplorerAdvancedFilters
+          filters={filters}
+          categories={categories}
+          onApply={(updates) => {
+            updateFilters(updates);
+            setShowAdvancedFilters(false);
+          }}
+          onClose={() => setShowAdvancedFilters(false)}
+        />
+      ) : null}
 
-        {/* Main Content Area */}
-        <main className="min-w-0 space-y-6">
-          <ExplorerSummaryBand
-            summary={explorer?.summary || null}
+      <main className="min-w-0 space-y-6">
+        <ExplorerCommandBar
+          filters={filters}
+          accounts={accounts}
+          onChange={updateFilters}
+          onOpenAdvancedFilters={() => setShowAdvancedFilters(true)}
+        />
+
+        <div className="flex flex-wrap items-center gap-2" data-testid="explorer-active-filters">
+          {activeFilters.length ? (
+            activeFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                onClick={filter.clear}
+                className="inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-sm text-neutral-200 transition hover:bg-neutral-900"
+              >
+                {filter.label}
+                <X className="h-3.5 w-3.5 text-neutral-500" />
+              </button>
+            ))
+          ) : (
+            <div className="rounded-full border border-neutral-900 bg-neutral-950/80 px-3 py-1.5 text-sm text-neutral-500">
+              All transactions in view
+            </div>
+          )}
+        </div>
+
+        <ExplorerSummaryBand
+          summary={explorer?.summary || null}
+          comparison={explorer?.comparison || null}
+          loading={loading}
+        />
+
+        <ExplorerPerspectiveTabs
+          perspective={filters.perspective}
+          onChange={(perspective) => updateFilters({ perspective })}
+        />
+
+        {filters.perspective === "overview" ? (
+          <OverviewPerspective
+            overview={overview}
             comparison={explorer?.comparison || null}
+            heatmap={explorer?.heatmap.items || []}
+            anomalies={explorer?.anomalies.items || []}
+            onMonthClick={handleMonthClick}
+            onCategoryClick={handleCategoryClick}
+            onMerchantClick={handleMerchantClick}
             loading={loading}
           />
-
-          <ExplorerPerspectiveTabs
-            perspective={filters.perspective}
-            onChange={(perspective) => updateFilters({ perspective })}
+        ) : filters.perspective === "category" ? (
+          <CategoryPerspective
+            overview={overview}
+            selectedCategory={filters.category}
+            onCategoryClick={handleCategoryClick}
+            onMonthClick={handleMonthClick}
+            onMerchantClick={handleMerchantClick}
+            loading={loading}
           />
-
-          {filters.perspective === "overview" ? (
-            <OverviewPerspective
-              overview={overview}
-              comparison={explorer?.comparison || null}
-              heatmap={explorer?.heatmap.items || []}
-              anomalies={explorer?.anomalies.items || []}
-              onMonthClick={handleMonthClick}
-              onCategoryClick={handleCategoryClick}
-              onMerchantClick={handleMerchantClick}
-              loading={loading}
-            />
-          ) : filters.perspective === "category" ? (
-            <CategoryPerspective
-              overview={overview}
-              selectedCategory={filters.category}
-              onCategoryClick={handleCategoryClick}
-              onMonthClick={handleMonthClick}
-              onMerchantClick={handleMerchantClick}
-              loading={loading}
-            />
-          ) : filters.perspective === "account" ? (
-            <AccountPerspective
-              overview={overview}
-              accounts={explorer?.accounts.items || []}
-              selectedAccount={filters.account}
-              onAccountClick={(account) => openTransactionsDrillDown({ account })}
-              onMonthClick={handleMonthClick}
-              onCategoryClick={handleCategoryClick}
-              onMerchantClick={handleMerchantClick}
-              loading={loading}
-            />
-          ) : (
-            <VisualizationGrid
-              overview={overview}
-              heatmap={explorer?.heatmap.items || []}
-              anomalies={explorer?.anomalies.items || []}
-              onMonthClick={handleMonthClick}
-              onCategoryClick={handleCategoryClick}
-              onAccountClick={handleAccountClick}
-              onMerchantClick={handleMerchantClick}
-              loading={loading}
-            />
-          )}
-
-          {/* Saved Views */}
-          <SavedViews
-            savedViews={savedViews}
-            onSave={handleSaveView}
-            onApply={handleApplyView}
-            onDelete={handleDeleteView}
+        ) : filters.perspective === "account" ? (
+          <AccountPerspective
+            overview={overview}
+            accounts={explorer?.accounts.items || []}
+            selectedAccount={filters.account}
+            onAccountClick={(account) => openTransactionsDrillDown({ account })}
+            onMonthClick={handleMonthClick}
+            onCategoryClick={handleCategoryClick}
+            onMerchantClick={handleMerchantClick}
+            loading={loading}
           />
-        </main>
-      </div>
+        ) : (
+          <VisualizationGrid
+            overview={overview}
+            heatmap={explorer?.heatmap.items || []}
+            anomalies={explorer?.anomalies.items || []}
+            onMonthClick={handleMonthClick}
+            onCategoryClick={handleCategoryClick}
+            onAccountClick={handleAccountClick}
+            onMerchantClick={handleMerchantClick}
+            loading={loading}
+          />
+        )}
+
+        <SavedViews
+          savedViews={savedViews}
+          onSave={handleSaveView}
+          onApply={handleApplyView}
+          onDelete={handleDeleteView}
+        />
+      </main>
     </div>
   );
 }

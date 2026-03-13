@@ -5,14 +5,23 @@ import {
   uploadAndCommitFixtureCsv
 } from "./helpers.ts";
 
-test("explorer shows summary metrics, perspective tabs, and a desktop filter rail", async ({ page }) => {
+test("explorer uses a command bar and advanced filter popover on desktop", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);
   await gotoView(page, "explorer");
 
+  await expect(page.getByTestId("explorer-command-bar")).toBeVisible();
   await expect(page.getByTestId("explorer-summary-band")).toBeVisible();
   await expect(page.getByTestId("explorer-perspective-tabs")).toBeVisible();
-  await expect(page.getByTestId("explorer-filter-rail")).toBeVisible();
+  await expect(page.getByTestId("explorer-filter-rail")).toHaveCount(0);
+
+  await page.getByTestId("explorer-open-advanced-filters").click();
+  await expect(page.getByTestId("explorer-advanced-filters")).toBeVisible();
+
+  await page.getByTestId("explorer-advanced-filter-review").selectOption("reviewed");
+  await page.getByTestId("explorer-advanced-filters-apply").click();
+
+  await expect(page.getByTestId("explorer-active-filters")).toContainText("Reviewed");
 });
 
 test("overview perspective renders trend, comparison, categories, merchants, heatmap, and anomalies", async ({ page }) => {
