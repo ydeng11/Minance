@@ -376,6 +376,104 @@ test("getExplorerAnalytics returns a seven-point summary sparkline", () => {
   assert.equal(analytics.summary.sparkline[6]?.income, 500);
 });
 
+test("getExplorerAnalytics includes category balance metrics and monthly composition", () => {
+  const store = structuredClone(baseStore);
+  store.transactions = [
+    {
+      id: "txn_groceries_feb",
+      user_id: "user_1",
+      transaction_date: "2026-02-03",
+      merchant_normalized: "super market",
+      merchant_raw: "Super Market",
+      description: "Groceries",
+      amount: 60,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Groceries",
+      dedupe_fingerprint: "groceries_feb"
+    },
+    {
+      id: "txn_dining_feb",
+      user_id: "user_1",
+      transaction_date: "2026-02-09",
+      merchant_normalized: "noodles",
+      merchant_raw: "Noodles",
+      description: "Dinner",
+      amount: 40,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Dining",
+      dedupe_fingerprint: "dining_feb"
+    },
+    {
+      id: "txn_salary_feb",
+      user_id: "user_1",
+      transaction_date: "2026-02-15",
+      merchant_normalized: "payroll",
+      merchant_raw: "Payroll",
+      description: "Salary",
+      amount: 1000,
+      direction: "credit",
+      transaction_type: "income",
+      category_final: "Salary",
+      dedupe_fingerprint: "salary_feb"
+    },
+    {
+      id: "txn_refund_feb",
+      user_id: "user_1",
+      transaction_date: "2026-02-18",
+      merchant_normalized: "insurance",
+      merchant_raw: "Insurance",
+      description: "Refund",
+      amount: 200,
+      direction: "credit",
+      transaction_type: "income",
+      category_final: "Refunds",
+      dedupe_fingerprint: "refund_feb"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const analytics = getExplorerAnalytics("user_1", {
+    start: "2026-02-01",
+    end: "2026-02-28",
+    category_view: "granular"
+  });
+
+  const groceries = analytics.categories.items.find((entry) => entry.category === "Groceries");
+  assert.equal(groceries?.spend, 60);
+  assert.equal(groceries?.income, 0);
+  assert.equal(groceries?.net, -60);
+  assert.equal(groceries?.transactionCount, 1);
+  assert.equal(groceries?.spendShare, 60);
+  assert.equal(groceries?.incomeShare, 0);
+
+  const salary = analytics.categories.items.find((entry) => entry.category === "Salary");
+  assert.equal(salary?.spend, 0);
+  assert.equal(salary?.income, 1000);
+  assert.equal(salary?.net, 1000);
+  assert.equal(salary?.transactionCount, 1);
+  assert.equal(salary?.spendShare, 0);
+  assert.equal(salary?.incomeShare, 83.33);
+
+  const february = analytics.trend.items.find((entry) => entry.month === "2026-02");
+  assert.deepEqual(
+    february?.spendComposition.map((entry) => [entry.category, entry.amount]),
+    [
+      ["Groceries", 60],
+      ["Dining", 40]
+    ]
+  );
+  assert.deepEqual(
+    february?.incomeComposition.map((entry) => [entry.category, entry.amount]),
+    [
+      ["Salary", 1000],
+      ["Refunds", 200]
+    ]
+  );
+});
+
 test("analytics transfer filters honor custom category transfer types", () => {
   const store = structuredClone(baseStore);
   store.categories = [

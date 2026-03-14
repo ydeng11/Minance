@@ -508,11 +508,20 @@ export interface ExplorerSummaryDeltaValue {
   percent: number | null;
 }
 
+export interface ExplorerCategoryCompositionItem {
+  category: string;
+  amount: number;
+  share: number;
+  emoji?: string;
+}
+
 export interface ExplorerTrendItem {
   month: string;
   spend: number;
   income: number;
   net: number;
+  spendComposition: ExplorerCategoryCompositionItem[];
+  incomeComposition: ExplorerCategoryCompositionItem[];
 }
 
 export interface ExplorerAccountTrendItem {
@@ -533,6 +542,22 @@ export interface ExplorerAccountItem {
   transactionCount: number;
   share: number;
   trend: ExplorerAccountTrendItem[];
+}
+
+export interface ExplorerCategoryItem {
+  category: string;
+  amount: number;
+  count?: number;
+  share?: number;
+  emoji?: string;
+  coarseKey?: string;
+  excluded?: boolean;
+  spend: number;
+  income: number;
+  net: number;
+  transactionCount: number;
+  spendShare: number;
+  incomeShare: number;
 }
 
 export interface ExplorerSummaryDelta {
@@ -567,7 +592,7 @@ export interface ExplorerAnalyticsResponse {
     items: ExplorerTrendItem[];
   };
   categories: {
-    items: OverviewResponse["topCategories"];
+    items: ExplorerCategoryItem[];
   };
   accounts: {
     items: ExplorerAccountItem[];
