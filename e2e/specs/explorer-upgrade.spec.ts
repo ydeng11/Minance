@@ -39,6 +39,24 @@ test("overview perspective uses a full-width trend chart with the active range l
   await expect(page.getByTestId("analytics-anomalies")).toBeVisible();
 });
 
+test("spending trend inspects a month before filtering explorer", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+  await page.goto("/explorer?range=365d");
+
+  const trend = page.getByTestId("explorer-overview-trend");
+  await expect(trend).toBeVisible();
+  await expect(page.getByTestId("explorer-trend-detail")).toContainText("Spend composition");
+  await expect(page.getByTestId("explorer-trend-detail")).toContainText("Income composition");
+
+  await page.getByTestId("explorer-trend-month-2026-02").click();
+  await expect(page).toHaveURL(/\/explorer\?range=365d$/);
+
+  await page.getByTestId("explorer-trend-apply-month").click();
+  await expect(page).toHaveURL(/start=2026-02-01/);
+  await expect(page).toHaveURL(/end=2026-02-28/);
+});
+
 test("summary cards separate selected-range totals from recent seven-day context", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);
@@ -89,6 +107,25 @@ test("category perspective keeps filters and renders scoped category insights", 
   await expect(page.getByTestId("explorer-category-view")).toBeVisible();
   await expect(page.getByTestId("explorer-category-trend")).toBeVisible();
   await expect(page.getByTestId("explorer-category-merchants")).toBeVisible();
+});
+
+test("category lens shows richer inspection details", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+  await gotoView(page, "explorer");
+
+  await page.getByTestId("explorer-perspective-category").click();
+
+  const lens = page.getByTestId("explorer-category-lens");
+  await expect(lens).toBeVisible();
+  await expect(lens).toContainText("Spend");
+  await expect(lens).toContainText("Income");
+
+  await lens.getByRole("button").first().click();
+
+  await expect(page.getByTestId("explorer-category-lens-detail")).toContainText("Net");
+  await expect(page.getByTestId("explorer-category-lens-detail")).toContainText("Transactions");
+  await expect(page.getByTestId("analytics-category-bars")).toBeVisible();
 });
 
 test("account perspective renders account analytics and saved views restore it", async ({ page }) => {

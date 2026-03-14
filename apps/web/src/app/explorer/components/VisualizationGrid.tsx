@@ -12,7 +12,7 @@ interface VisualizationGridProps {
   overview: OverviewResponse | null;
   heatmap: HeatmapItem[];
   anomalies: AnomalyItem[];
-  onMonthClick: (month: string) => void;
+  onApplyMonthFilter: (month: string) => void;
   onCategoryClick: (category: string) => void;
   onAccountClick: (account: string) => void;
   onMerchantClick: (merchant: string) => void;
@@ -23,7 +23,7 @@ export function VisualizationGrid({
   overview,
   heatmap,
   anomalies,
-  onMonthClick,
+  onApplyMonthFilter,
   onCategoryClick,
   onAccountClick,
   onMerchantClick,
@@ -32,7 +32,7 @@ export function VisualizationGrid({
   return (
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-2">
-        <TrendChart overview={overview} onMonthClick={onMonthClick} loading={loading} />
+        <TrendChart overview={overview} onApplyMonthFilter={onApplyMonthFilter} loading={loading} />
         <CategoryBreakdown overview={overview} onCategoryClick={onCategoryClick} loading={loading} />
         <AccountBreakdown overview={overview} onAccountClick={onAccountClick} loading={loading} />
         <MerchantAnalysis overview={overview} onMerchantClick={onMerchantClick} loading={loading} />

@@ -124,8 +124,8 @@ export default function ExplorerPage() {
     [filters, syncFilters]
   );
 
-  // Handle month click in trend chart - filter to that month
-  const handleMonthClick = useCallback(
+  // Apply the selected trend month to Explorer filters.
+  const handleApplyMonthFilter = useCallback(
     (month: string) => {
       const [year, monthNum] = month.split("-");
       const startDate = `${year}-${monthNum}-01`;
@@ -245,7 +245,7 @@ export default function ExplorerPage() {
     return {
       summary: explorer.summary.current,
       trend: explorer.trend.items,
-      topCategories: explorer.categories.items.slice(0, 5),
+      topCategories: explorer.categories.items.filter((entry) => entry.amount > 0).slice(0, 5),
       topMerchants: explorer.merchants.items.slice(0, 5),
       meta: explorer.meta
     };
@@ -402,10 +402,11 @@ export default function ExplorerPage() {
         {filters.perspective === "overview" ? (
           <OverviewPerspective
             overview={overview}
+            trend={explorer?.trend.items || []}
             heatmap={explorer?.heatmap.items || []}
             anomalies={explorer?.anomalies.items || []}
             trendRangeLabel={dateRangeDisplay}
-            onMonthClick={handleMonthClick}
+            onApplyMonthFilter={handleApplyMonthFilter}
             onCategoryClick={handleCategoryClick}
             onMerchantClick={handleMerchantClick}
             loading={loading}
@@ -413,20 +414,23 @@ export default function ExplorerPage() {
         ) : filters.perspective === "category" ? (
           <CategoryPerspective
             overview={overview}
+            categories={explorer?.categories.items || []}
             selectedCategory={filters.category}
             onCategoryClick={handleCategoryClick}
-            onMonthClick={handleMonthClick}
+            trend={explorer?.trend.items || []}
+            onApplyMonthFilter={handleApplyMonthFilter}
             onMerchantClick={handleMerchantClick}
             loading={loading}
           />
         ) : filters.perspective === "account" ? (
           <AccountPerspective
             overview={overview}
+            trend={explorer?.trend.items || []}
             accounts={explorer?.accounts.items || []}
             selectedAccount={filters.account}
             onAccountClick={(account) => updateFilters({ perspective: "account", account })}
             onOpenTransactions={() => openTransactionsDrillDown({ account: filters.account || undefined })}
-            onMonthClick={handleMonthClick}
+            onApplyMonthFilter={handleApplyMonthFilter}
             onCategoryClick={handleCategoryClick}
             onMerchantClick={handleMerchantClick}
             loading={loading}
@@ -436,7 +440,7 @@ export default function ExplorerPage() {
             overview={overview}
             heatmap={explorer?.heatmap.items || []}
             anomalies={explorer?.anomalies.items || []}
-            onMonthClick={handleMonthClick}
+            onApplyMonthFilter={handleApplyMonthFilter}
             onCategoryClick={handleCategoryClick}
             onAccountClick={handleAccountClick}
             onMerchantClick={handleMerchantClick}

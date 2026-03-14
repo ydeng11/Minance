@@ -10,11 +10,12 @@ import { TrendChart } from "./TrendChart";
 
 interface AccountPerspectiveProps {
   overview: OverviewResponse | null;
+  trend: ExplorerAnalyticsResponse["trend"]["items"];
   accounts: ExplorerAnalyticsResponse["accounts"]["items"];
   selectedAccount: string;
   onAccountClick: (account: string) => void;
   onOpenTransactions: () => void;
-  onMonthClick: (month: string) => void;
+  onApplyMonthFilter: (month: string) => void;
   onCategoryClick: (category: string) => void;
   onMerchantClick: (merchant: string) => void;
   loading?: boolean;
@@ -22,11 +23,12 @@ interface AccountPerspectiveProps {
 
 export function AccountPerspective({
   overview,
+  trend,
   accounts,
   selectedAccount,
   onAccountClick,
   onOpenTransactions,
-  onMonthClick,
+  onApplyMonthFilter,
   onCategoryClick,
   onMerchantClick,
   loading
@@ -103,7 +105,12 @@ export function AccountPerspective({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <div>
-          <TrendChart overview={overview} onMonthClick={onMonthClick} loading={loading} />
+          <TrendChart
+            overview={overview}
+            trend={trend}
+            onApplyMonthFilter={onApplyMonthFilter}
+            loading={loading}
+          />
         </div>
         <CategoryBreakdown overview={overview} onCategoryClick={onCategoryClick} loading={loading} />
       </div>

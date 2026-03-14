@@ -9,10 +9,11 @@ import { TrendChart } from "./TrendChart";
 
 interface OverviewPerspectiveProps {
   overview: OverviewResponse | null;
+  trend: ExplorerAnalyticsResponse["trend"]["items"];
   heatmap: ExplorerAnalyticsResponse["heatmap"]["items"];
   anomalies: ExplorerAnalyticsResponse["anomalies"]["items"];
   trendRangeLabel: string;
-  onMonthClick: (month: string) => void;
+  onApplyMonthFilter: (month: string) => void;
   onCategoryClick: (category: string) => void;
   onMerchantClick: (merchant: string) => void;
   loading?: boolean;
@@ -20,10 +21,11 @@ interface OverviewPerspectiveProps {
 
 export function OverviewPerspective({
   overview,
+  trend,
   heatmap,
   anomalies,
   trendRangeLabel,
-  onMonthClick,
+  onApplyMonthFilter,
   onCategoryClick,
   onMerchantClick,
   loading
@@ -33,8 +35,9 @@ export function OverviewPerspective({
       <div data-testid="explorer-overview-trend">
         <TrendChart
           overview={overview}
+          trend={trend}
           rangeLabel={trendRangeLabel}
-          onMonthClick={onMonthClick}
+          onApplyMonthFilter={onApplyMonthFilter}
           loading={loading}
         />
       </div>
