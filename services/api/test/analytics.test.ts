@@ -474,6 +474,173 @@ test("getExplorerAnalytics includes category balance metrics and monthly composi
   );
 });
 
+test("getExplorerAnalytics returns weekday summary buckets and top category weekday rows", () => {
+  const store = structuredClone(baseStore);
+  store.transactions = [
+    {
+      id: "txn_groceries_sun",
+      user_id: "user_1",
+      transaction_date: "2026-01-04",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "super market",
+      merchant_raw: "Super Market",
+      description: "Groceries",
+      amount: 80,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Groceries",
+      dedupe_fingerprint: "weekday_groceries_sun"
+    },
+    {
+      id: "txn_dining_tue",
+      user_id: "user_1",
+      transaction_date: "2026-01-06",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "noodles",
+      merchant_raw: "Noodles",
+      description: "Dinner",
+      amount: 70,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Dining",
+      dedupe_fingerprint: "weekday_dining_tue"
+    },
+    {
+      id: "txn_transport_wed",
+      user_id: "user_1",
+      transaction_date: "2026-01-07",
+      account_id: "acct_card",
+      account_key: "credit card",
+      merchant_normalized: "gas station",
+      merchant_raw: "Gas Station",
+      description: "Fuel",
+      amount: 60,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Transport",
+      dedupe_fingerprint: "weekday_transport_wed"
+    },
+    {
+      id: "txn_rent_thu",
+      user_id: "user_1",
+      transaction_date: "2026-01-08",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "landlord",
+      merchant_raw: "Landlord",
+      description: "Rent",
+      amount: 50,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Rent",
+      dedupe_fingerprint: "weekday_rent_thu"
+    },
+    {
+      id: "txn_entertainment_fri",
+      user_id: "user_1",
+      transaction_date: "2026-01-09",
+      account_id: "acct_card",
+      account_key: "credit card",
+      merchant_normalized: "cinema",
+      merchant_raw: "Cinema",
+      description: "Movie",
+      amount: 40,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Entertainment",
+      dedupe_fingerprint: "weekday_entertainment_fri"
+    },
+    {
+      id: "txn_health_sat",
+      user_id: "user_1",
+      transaction_date: "2026-01-10",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "pharmacy",
+      merchant_raw: "Pharmacy",
+      description: "Pharmacy",
+      amount: 30,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Health",
+      dedupe_fingerprint: "weekday_health_sat"
+    },
+    {
+      id: "txn_utilities_mon",
+      user_id: "user_1",
+      transaction_date: "2026-01-05",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "utility co",
+      merchant_raw: "Utility Co",
+      description: "Utilities",
+      amount: 20,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Utilities",
+      dedupe_fingerprint: "weekday_utilities_mon"
+    },
+    {
+      id: "txn_misc_tue",
+      user_id: "user_1",
+      transaction_date: "2026-01-06",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "corner shop",
+      merchant_raw: "Corner Shop",
+      description: "Misc",
+      amount: 10,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Misc",
+      dedupe_fingerprint: "weekday_misc_tue"
+    },
+    {
+      id: "txn_income_ignored",
+      user_id: "user_1",
+      transaction_date: "2026-01-06",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "payroll",
+      merchant_raw: "Payroll",
+      description: "Salary",
+      amount: 1000,
+      direction: "credit",
+      transaction_type: "income",
+      category_final: "Salary",
+      dedupe_fingerprint: "weekday_income_ignored"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const analytics = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "granular"
+  });
+
+  assert.deepEqual(
+    analytics.weekdaySummary.items.map((entry) => entry.weekday),
+    [0, 1, 2, 3, 4, 5, 6]
+  );
+  assert.equal(analytics.weekdaySummary.items[0]?.amount, 80);
+  assert.equal(analytics.weekdaySummary.items[1]?.amount, 20);
+  assert.equal(analytics.weekdaySummary.items[2]?.amount, 80);
+  assert.equal(analytics.weekdaySummary.items[6]?.amount, 30);
+
+  assert.equal(analytics.categoryWeekdayHeatmap.items.length, 7);
+  assert.equal(analytics.categoryWeekdayHeatmap.items[0]?.category, "Groceries");
+  assert.equal(analytics.categoryWeekdayHeatmap.items[0]?.totalSpend, 80);
+  assert.equal(analytics.categoryWeekdayHeatmap.items[0]?.cells.length, 7);
+  assert.equal(
+    analytics.categoryWeekdayHeatmap.items.some((entry) => entry.category === "Misc"),
+    false
+  );
+});
+
 test("analytics transfer filters honor custom category transfer types", () => {
   const store = structuredClone(baseStore);
   store.categories = [
@@ -608,4 +775,117 @@ test("explorer selector rollups stay populated while category or account is focu
     account: "acct_card"
   });
   assert.ok(accountFocused.accounts.items.some((entry) => entry.accountId === "acct_checking"));
+});
+
+test("category weekday matrix honors account and merchant filters", () => {
+  const store = structuredClone(baseStore);
+  store.accounts = [
+    {
+      id: "acct_checking",
+      userId: "user_1",
+      displayName: "Checking",
+      sourceInstitution: "Local Bank",
+      accountType: "checking",
+      currency: "USD",
+      initialBalance: 0,
+      version: 1,
+      status: "active",
+      includeInCharts: true,
+      hidden: false,
+      closed: false,
+      closedAt: null,
+      normalizedKey: "checking",
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01"
+    },
+    {
+      id: "acct_card",
+      userId: "user_1",
+      displayName: "Credit Card",
+      sourceInstitution: "Local Bank",
+      accountType: "credit",
+      currency: "USD",
+      initialBalance: 0,
+      version: 1,
+      status: "active",
+      includeInCharts: true,
+      hidden: false,
+      closed: false,
+      closedAt: null,
+      normalizedKey: "credit card",
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01"
+    }
+  ];
+  store.transactions = [
+    {
+      id: "txn_checking_groceries",
+      user_id: "user_1",
+      transaction_date: "2026-01-12",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "super market",
+      merchant_raw: "Super Market",
+      description: "Groceries",
+      amount: 60,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Groceries",
+      dedupe_fingerprint: "matrix_checking_groceries"
+    },
+    {
+      id: "txn_checking_dining",
+      user_id: "user_1",
+      transaction_date: "2026-01-13",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "coffee",
+      merchant_raw: "Coffee",
+      description: "Coffee",
+      amount: 20,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Dining",
+      dedupe_fingerprint: "matrix_checking_dining"
+    },
+    {
+      id: "txn_card_transport",
+      user_id: "user_1",
+      transaction_date: "2026-01-14",
+      account_id: "acct_card",
+      account_key: "credit card",
+      merchant_normalized: "gas station",
+      merchant_raw: "Gas Station",
+      description: "Fuel stop",
+      amount: 40,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Transport",
+      dedupe_fingerprint: "matrix_card_transport"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const accountScoped = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "granular",
+    account: "acct_checking"
+  });
+  assert.deepEqual(
+    accountScoped.categoryWeekdayHeatmap.items.map((entry) => entry.category),
+    ["Groceries", "Dining"]
+  );
+
+  const merchantScoped = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "granular",
+    merchant: "coffee"
+  });
+  assert.deepEqual(
+    merchantScoped.categoryWeekdayHeatmap.items.map((entry) => entry.category),
+    ["Dining"]
+  );
 });
