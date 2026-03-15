@@ -27,6 +27,7 @@ Defined in `scripts/run-guardrails.ts`:
 
 Source: `config/guardrails/js-extension-allowlist.txt`
 
+- `scripts/check-root-script-binaries.test.mjs`
 - `services/api/test/fixtures/deterministic-financial-fixture.js`
 
 ## Baseline Inventory Snapshot
@@ -34,13 +35,13 @@ Source: `config/guardrails/js-extension-allowlist.txt`
 Captured on 2026-03-04 with repository-local guardrail scope commands:
 
 1. JS-family files in managed scopes (`apps/web`, `services/api`, `e2e`, `scripts`, `packages/domain`): `0`
-2. Active `npm`/`npx` usage in maintained docs/automation paths (`README.md`, `TESTING.md`, `docs/`, `.github/workflows/`, `deploy/docker/`, `src/main/webui/README.md`): `0`
+2. Active `npm`/`npx` usage in maintained docs/automation paths (`README.md`, `TESTING.md`, `docs/`, `.github/workflows/`, `deploy/docker/`): `0`
 3. Tracked `package-lock.json` files: `0`
 
 ## Verification Commands
 
 ```bash
 rg --files apps/web services/api e2e scripts packages/domain | rg '\\.(js|jsx|mjs|cjs)$'
-rg -n "\\b(?:npm|npx)\\b" README.md TESTING.md docs .github/workflows deploy/docker src/main/webui/README.md
+rg -n "\\b(?:npm|npx)\\b" README.md TESTING.md docs .github/workflows deploy/docker
 git ls-files | rg '(^|/)package-lock\\.json$'
 ```

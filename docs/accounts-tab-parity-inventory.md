@@ -24,7 +24,7 @@ Observed network calls for Accounts navigation are limited to app-shell/dashboar
 
 ## Expected parity behavior from legacy account implementation
 
-Reference implementation source: `src/main/webui/src/components/settings/*` and `src/main/webui/src/services/apis/accountApis.tsx`.
+Reference implementation source: legacy account-management UI captured before the Quarkus/React stack was removed from this repo.
 
 ### Account list and actions
 

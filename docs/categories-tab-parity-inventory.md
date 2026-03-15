@@ -23,7 +23,7 @@ Captured on **March 1, 2026 (America/New_York)** using Playwright CLI against lo
 
 ## Expected interaction inventory for parity (from legacy Categories implementation)
 
-Reference implementation source: `src/main/webui/src/components/dndComponent/*` and related API/query hooks.
+Reference implementation source: legacy categories drag-and-drop UI captured before the Quarkus/React stack was removed from this repo.
 
 ### Primary layout and controls
 

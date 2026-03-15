@@ -28,7 +28,7 @@ const MANAGED_SCOPE_EXCLUDE_SEGMENTS = [
   "/output/"
 ];
 
-const NPM_SCAN_PATHS = ["README.md", "TESTING.md", "docs", ".github/workflows", "deploy/docker", "src/main/webui/README.md"];
+const NPM_SCAN_PATHS = ["README.md", "TESTING.md", "docs", ".github/workflows", "deploy/docker"];
 const NPM_TOKEN_RE = /\b(?:npm|npx)\b/;
 const NPM_LOCKFILE_NAME = "package-lock.json";
 

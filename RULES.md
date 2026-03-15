@@ -1,21 +1,19 @@
 # Repo Folder Guide
 
-This repo contains a current pnpm workspace app stack and an older legacy stack kept for migration/reference.
+This repo contains the current pnpm workspace for Minance Next.
 
 ## Frontend library choices
 
-- For table and data-grid work in the current app (`apps/web`), use `@tanstack/react-table`.
-- Keep table presentation in `.tsx` with Tailwind classes; do not introduce new AG Grid usage in `apps/web`.
-- Treat `src/main/webui/` AG Grid implementations as legacy/reference code unless a task explicitly targets that legacy frontend.
+- For table and data-grid work in `apps/web`, use `@tanstack/react-table`.
+- Keep frontend implementation in `.tsx` with Tailwind classes only.
 
 ## Main folders
 
-- `.github/`: CI/CD workflows.
-- `.mvn/`: Maven wrapper files for the legacy Java build.
+- `.github/`: CI workflows.
 - `apps/`: current application entrypoints.
 - `apps/web/`: current Next.js frontend.
 - `config/`: repo-level configuration.
-- `config/guardrails/`: guardrail inputs used by validation scripts.
+- `config/guardrails/`: inputs used by validation scripts.
 - `deploy/`: deployment assets.
 - `deploy/docker/`: Dockerfiles for the current web and API services.
 - `docs/`: runbooks, parity notes, and architecture docs.
@@ -26,12 +24,11 @@ This repo contains a current pnpm workspace app stack and an older legacy stack 
 - `openspec/`: spec-driven change tracking.
 - `openspec/changes/`: proposals, designs, tasks, and spec updates.
 - `packages/`: shared workspace packages.
-- `packages/domain/`: shared domain constants/primitives.
-- `scripts/`: seed, migration, validation, backup, restore, and release scripts.
+- `packages/domain/`: shared domain constants and primitives.
+- `scripts/`: seed, migration, validation, backup, and restore scripts.
 - `services/`: backend services and integrations.
 - `services/api/`: current TypeScript API.
 - `services/agents/`: optional Python AI agent integration.
-- `src/`: legacy Quarkus application and old frontend.
 
 ## Important subtrees
 
@@ -44,14 +41,7 @@ This repo contains a current pnpm workspace app stack and an older legacy stack 
 - `services/api/data/`: local JSON/SQLite data files and backups.
 - `services/api/test/`: backend tests and fixtures.
 
-## Legacy tree
-
-- `src/main/java/`: legacy Java backend.
-- `src/main/resources/`: legacy config and Flyway migrations.
-- `src/main/webui/`: old Vite/React frontend bundled with the Quarkus app.
-- `src/test/`: legacy Java and UI tests.
-
 ## Usually not hand-edited
 
-- `node_modules/`, `target/`, `output/`, `playwright-report/`, `apps/web/.next/`: dependency, build, or test-output folders.
+- `node_modules/`, `output/`, `playwright-report/`, `apps/web/.next/`: dependency, build, or test-output folders.
 - `.playwright-cli/`: local Playwright debugging artifacts.
