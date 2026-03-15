@@ -2,45 +2,22 @@
 
 import { money } from "@/lib/utils";
 import type { ExplorerAnalyticsResponse } from "@/lib/api/types";
+import { getWeekdayHeatToneClassName, WEEKDAY_LABELS } from "./weekdayHeatmapPresentation";
 
 interface WeekdaySpendSummaryProps {
   items: ExplorerAnalyticsResponse["weekdaySummary"]["items"];
   loading?: boolean;
 }
 
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-const TONE_CLASS_NAMES = [
-  "bg-neutral-900 ring-1 ring-inset ring-neutral-800",
-  "bg-emerald-950 ring-1 ring-inset ring-emerald-900/80",
-  "bg-emerald-800 ring-1 ring-inset ring-emerald-700/80",
-  "bg-emerald-500 ring-1 ring-inset ring-emerald-400/80"
-] as const;
-
-function getToneClassName(amount: number, maxAmount: number) {
-  if (amount <= 0 || maxAmount <= 0) {
-    return TONE_CLASS_NAMES[0];
-  }
-
-  const ratio = amount / maxAmount;
-  if (ratio < 0.34) {
-    return TONE_CLASS_NAMES[1];
-  }
-
-  if (ratio < 0.67) {
-    return TONE_CLASS_NAMES[2];
-  }
-
-  return TONE_CLASS_NAMES[3];
-}
-
 export function WeekdaySpendSummary({ items, loading }: WeekdaySpendSummaryProps) {
-  const buckets = WEEKDAY_LABELS.map((_, weekday) => {
-    return items.find((entry) => entry.weekday === weekday) || {
+  const bucketsByWeekday = new Map(items.map((entry) => [entry.weekday, entry]));
+  const buckets = WEEKDAY_LABELS.map((_, weekday) => (
+    bucketsByWeekday.get(weekday) || {
       weekday,
       amount: 0,
       count: 0
-    };
-  });
+    }
+  ));
   const maxAmount = Math.max(0, ...buckets.map((entry) => entry.amount));
   const hasSpend = buckets.some((entry) => entry.count > 0);
 
@@ -82,7 +59,7 @@ export function WeekdaySpendSummary({ items, loading }: WeekdaySpendSummaryProps
           {buckets.map((entry) => (
             <div
               key={entry.weekday}
-              className={`rounded-3xl px-4 py-4 ${getToneClassName(entry.amount, maxAmount)}`}
+              className={`rounded-3xl px-4 py-4 ${getWeekdayHeatToneClassName(entry.amount, maxAmount)}`}
               data-testid="explorer-weekday-summary-cell"
               title={`${WEEKDAY_LABELS[entry.weekday]} • ${money(entry.amount)} • ${entry.count} transactions`}
               aria-label={`${WEEKDAY_LABELS[entry.weekday]} ${money(entry.amount)} ${entry.count} transactions`}

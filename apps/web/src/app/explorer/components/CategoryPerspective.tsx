@@ -33,8 +33,9 @@ export function CategoryPerspective({
   onMerchantClick,
   loading
 }: CategoryPerspectiveProps) {
+  const defaultInspectedCategory = categoryWeekdayHeatmap[0]?.category || categories[0]?.category || "";
   const [inspectedCategory, setInspectedCategory] = useState(
-    selectedCategory || categoryWeekdayHeatmap[0]?.category || categories[0]?.category || ""
+    selectedCategory || defaultInspectedCategory
   );
 
   useEffect(() => {
@@ -58,9 +59,9 @@ export function CategoryPerspective({
         return current;
       }
 
-      return categoryWeekdayHeatmap[0]?.category || categories[0]?.category || "";
+      return defaultInspectedCategory;
     });
-  }, [selectedCategory, categoryWeekdayHeatmap, categories]);
+  }, [selectedCategory, defaultInspectedCategory, categoryWeekdayHeatmap, categories]);
 
   const activeCategory = categories.find((entry) => entry.category === inspectedCategory) || null;
 

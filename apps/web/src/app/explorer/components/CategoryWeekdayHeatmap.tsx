@@ -3,37 +3,13 @@
 import { cn, money } from "@/lib/utils";
 import type { ExplorerAnalyticsResponse } from "@/lib/api/types";
 import { ExplorerCard } from "./ExplorerCard";
+import { getWeekdayHeatToneClassName, WEEKDAY_LABELS } from "./weekdayHeatmapPresentation";
 
 interface CategoryWeekdayHeatmapProps {
   rows: ExplorerAnalyticsResponse["categoryWeekdayHeatmap"]["items"];
   selectedCategory: string;
   onCategorySelect: (category: string) => void;
   loading?: boolean;
-}
-
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-const TONE_CLASS_NAMES = [
-  "bg-neutral-900 ring-1 ring-inset ring-neutral-800",
-  "bg-emerald-950 ring-1 ring-inset ring-emerald-900/80",
-  "bg-emerald-800 ring-1 ring-inset ring-emerald-700/80",
-  "bg-emerald-500 ring-1 ring-inset ring-emerald-400/80"
-] as const;
-
-function getToneClassName(amount: number, maxAmount: number) {
-  if (amount <= 0 || maxAmount <= 0) {
-    return TONE_CLASS_NAMES[0];
-  }
-
-  const ratio = amount / maxAmount;
-  if (ratio < 0.34) {
-    return TONE_CLASS_NAMES[1];
-  }
-
-  if (ratio < 0.67) {
-    return TONE_CLASS_NAMES[2];
-  }
-
-  return TONE_CLASS_NAMES[3];
 }
 
 export function CategoryWeekdayHeatmap({
@@ -123,7 +99,7 @@ export function CategoryWeekdayHeatmap({
                       key={cell.weekday}
                       className={cn(
                         "flex min-h-[56px] items-center justify-center rounded-2xl px-2",
-                        getToneClassName(cell.amount, maxAmount)
+                        getWeekdayHeatToneClassName(cell.amount, maxAmount)
                       )}
                       title={`${row.category} • ${WEEKDAY_LABELS[cell.weekday]} • ${money(cell.amount)} • ${cell.count} transactions`}
                       aria-label={`${row.category} ${WEEKDAY_LABELS[cell.weekday]} ${money(cell.amount)} ${cell.count} transactions`}
