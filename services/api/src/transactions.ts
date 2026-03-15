@@ -822,7 +822,12 @@ export function bulkUpdateTransactions(userId, payload = {}) {
       entry.deleted_reason = "user_bulk_delete";
       entry.deleted_by = userId;
       entry.updated_at = deletedAt;
-      deletedTransactions.push(normalizeTransactionRecord(entry));
+      deletedTransactions.push({
+        ...normalizeTransactionRecord(entry),
+        deleted_at: entry.deleted_at,
+        deleted_reason: entry.deleted_reason,
+        deleted_by: entry.deleted_by
+      });
     }
 
     saveStore(store);
