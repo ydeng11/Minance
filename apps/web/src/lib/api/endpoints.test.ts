@@ -86,6 +86,21 @@ test("analyticsApi.explorer includes perspective and compare query params", asyn
   );
 });
 
+test("analyticsApi.explorer appends repeated category and type params", async () => {
+  const { calls, request } = createRecorder();
+  await analyticsApi.explorer(request, {
+    category_view: "granular",
+    category: ["Food", "Travel"],
+    transaction_type: ["expense", "transfer"]
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls[0].path,
+    "/v1/analytics/explorer?category_view=granular&category=Food&category=Travel&transaction_type=expense&transaction_type=transfer"
+  );
+});
+
 test("categoriesApi strategy endpoints use expected routes and methods", async () => {
   const { calls, request } = createRecorder();
 

@@ -213,6 +213,91 @@ test("system storage reports sqlite for non-test runtime even when JSON backend 
   assert.equal(storage.payload?.storage?.sqlite?.backend, "sqlite");
 });
 
+test("explorer analytics applies OR within filters and AND across filter groups", async (t) => {
+  const context = await startApiServer(t);
+
+  const signupResponse = await apiRequest(context, "POST", "/v1/auth/signup", {
+    expectedStatus: 201,
+    body: {
+      email: "explorer-filters-contract@example.com",
+      password: "contractpass123"
+    }
+  });
+  const accessToken = signupResponse.payload?.tokens?.accessToken;
+  assert.equal(typeof accessToken, "string");
+
+  await ensureCategoryExists(context, accessToken, "Food", "essential", "expense");
+  await ensureCategoryExists(context, accessToken, "Travel", "extra", "expense");
+  await ensureCategoryExists(context, accessToken, "Income", "neutral", "income");
+  await ensureCategoryExists(context, accessToken, "Transfer", "neutral", "transfer");
+  const transactions = [
+    {
+      transaction_date: "2026-02-01",
+      description: "Weekly groceries",
+      merchant_raw: "Corner Market",
+      amount: -25,
+      account_name: "Primary Checking",
+      category_final: "Food",
+      tags: ["weekly"]
+    },
+    {
+      transaction_date: "2026-02-02",
+      description: "Flight booking",
+      merchant_raw: "Airline",
+      amount: -220,
+      account_name: "Primary Checking",
+      category_final: "Travel",
+      tags: ["trip"]
+    },
+    {
+      transaction_date: "2026-02-03",
+      description: "Move to savings",
+      merchant_raw: "Bank Transfer",
+      amount: -150,
+      account_name: "Primary Checking",
+      category_final: "Transfer"
+    },
+    {
+      transaction_date: "2026-02-04",
+      description: "Payday",
+      merchant_raw: "Payroll",
+      amount: 1800,
+      account_name: "Primary Checking",
+      category_final: "Income"
+    }
+  ];
+
+  for (const body of transactions) {
+    const created = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 201,
+      body
+    });
+    assert.equal(typeof created.payload?.transaction?.id, "string");
+  }
+
+  const explorer = await apiRequest(
+    context,
+    "GET",
+    "/v1/analytics/explorer?range=all&category=Food&category=Travel&transaction_type=expense&transaction_type=transfer",
+    {
+      token: accessToken,
+      expectedStatus: 200
+    }
+  );
+
+  assert.equal(explorer.payload?.summary?.current?.transactionCount, 2);
+  assert.equal(typeof explorer.payload?.meta?.amountBounds?.min, "number");
+  assert.equal(typeof explorer.payload?.meta?.amountBounds?.max, "number");
+  assert.deepEqual(explorer.payload?.meta?.availableTags, ["trip", "weekly"]);
+  assert.deepEqual(
+    (explorer.payload?.merchants?.items || [])
+      .map((entry) => entry.merchant)
+      .sort((left, right) => left.localeCompare(right)),
+    ["airline", "corner market"]
+  );
+});
+
 test("api parity contract suite for categories/transactions/settings and missing domains", async (t) => {
   const context = await startApiServer(t);
 

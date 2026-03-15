@@ -142,7 +142,7 @@ export default function ExplorerPage() {
   // Handle category click - filter to that category
   const handleCategoryClick = useCallback(
     (category: string) => {
-      updateFilters({ category });
+      updateFilters({ categories: [category] });
     },
     [updateFilters]
   );
@@ -164,11 +164,13 @@ export default function ExplorerPage() {
   );
 
   const openTransactionsDrillDown = useCallback(
-    (overrides: Partial<{ query: string; category: string; account: string; transactionType: typeof filters.transactionType; tag: string }>) => {
+    (overrides: Partial<{ query: string; category: string; account: string; transactionType: "expense" | "income" | "transfer"; tag: string }>) => {
+      const singleCategory = filters.categories.length === 1 ? filters.categories[0] : "";
+      const singleTransactionType = filters.transactionTypes.length === 1 ? filters.transactionTypes[0] : "all";
       const transactionFilters = toValidTransactionsFilterState({
         ...createDefaultTransactionsFilterState(),
         query: overrides.query ?? filters.query,
-        category: overrides.category ?? filters.category,
+        category: overrides.category ?? singleCategory,
         account: overrides.account ?? filters.account,
         minAmount: filters.minAmount,
         maxAmount: filters.maxAmount,
@@ -176,7 +178,7 @@ export default function ExplorerPage() {
         start: filters.start,
         end: filters.end,
         categoryView: filters.categoryView,
-        transactionType: overrides.transactionType ?? filters.transactionType,
+        transactionType: overrides.transactionType ?? singleTransactionType,
         tag: overrides.tag ?? filters.tag,
         page: 1
       });
@@ -271,18 +273,20 @@ export default function ExplorerPage() {
         clear: () => updateFilters({ account: "" })
       });
     }
-    if (filters.category) {
+    if (filters.categories.length) {
       items.push({
         key: "category",
-        label: filters.category,
-        clear: () => updateFilters({ category: "" })
+        label: `Categories: ${filters.categories.join(", ")}`,
+        clear: () => updateFilters({ categories: [] })
       });
     }
-    if (filters.transactionType !== "all") {
+    if (filters.transactionTypes.length) {
       items.push({
         key: "type",
-        label: filters.transactionType.charAt(0).toUpperCase() + filters.transactionType.slice(1),
-        clear: () => updateFilters({ transactionType: "all" })
+        label: `Types: ${filters.transactionTypes
+          .map((transactionType) => transactionType.charAt(0).toUpperCase() + transactionType.slice(1))
+          .join(", ")}`,
+        clear: () => updateFilters({ transactionTypes: [] })
       });
     }
     if (filters.direction !== "all") {
@@ -352,6 +356,8 @@ export default function ExplorerPage() {
         <ExplorerAdvancedFilters
           filters={filters}
           categories={categories}
+          availableTags={explorer?.meta?.availableTags || []}
+          amountBounds={explorer?.meta?.amountBounds || null}
           onApply={(updates) => {
             updateFilters(updates);
             setShowAdvancedFilters(false);
@@ -416,7 +422,7 @@ export default function ExplorerPage() {
             overview={overview}
             categories={explorer?.categories.items || []}
             categoryWeekdayHeatmap={explorer?.categoryWeekdayHeatmap.items || []}
-            selectedCategory={filters.category}
+            selectedCategories={filters.categories}
             onCategoryClick={handleCategoryClick}
             trend={explorer?.trend.items || []}
             onApplyMonthFilter={handleApplyMonthFilter}

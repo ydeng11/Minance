@@ -28,10 +28,10 @@ export function FilterSidebar({
     let count = 0;
     if (filters.query) count++;
     if (filters.merchant) count++;
-    if (filters.category) count++;
+    if (filters.categories.length) count++;
     if (filters.account) count++;
     if (filters.tag) count++;
-    if (filters.transactionType !== "all") count++;
+    if (filters.transactionTypes.length) count++;
     if (filters.direction !== "all") count++;
     if (filters.minAmount) count++;
     if (filters.maxAmount) count++;
@@ -43,10 +43,10 @@ export function FilterSidebar({
     onChange({
       query: "",
       merchant: "",
-      category: "",
+      categories: [],
       account: "",
       tag: "",
-      transactionType: "all",
+      transactionTypes: [],
       direction: "all",
       minAmount: "",
       maxAmount: "",
@@ -170,8 +170,8 @@ export function FilterSidebar({
       <section className="space-y-2">
         <h4 className="text-xs font-medium uppercase tracking-wide text-neutral-500">Category</h4>
         <select
-          value={filters.category}
-          onChange={(e) => onChange({ category: e.target.value })}
+          value={filters.categories[0] || ""}
+          onChange={(e) => onChange({ categories: e.target.value ? [e.target.value] : [] })}
           className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
         >
           <option value="">All categories</option>
@@ -229,11 +229,11 @@ export function FilterSidebar({
       <section className="space-y-2">
         <h4 className="text-xs font-medium uppercase tracking-wide text-neutral-500">Type</h4>
         <select
-          value={filters.transactionType}
-          onChange={(e) => onChange({ transactionType: e.target.value as ExplorerFilterState["transactionType"] })}
+          value={filters.transactionTypes[0] || ""}
+          onChange={(e) => onChange({ transactionTypes: e.target.value ? [e.target.value as "expense" | "income" | "transfer"] : [] })}
           className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
         >
-          <option value="all">All types</option>
+          <option value="">All types</option>
           <option value="expense">Expense</option>
           <option value="income">Income</option>
           <option value="transfer">Transfer</option>

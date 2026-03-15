@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api/client";
 import { RANGE_OPTIONS } from "@/lib/constants";
 import { money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
+import { AmountRangeControl } from "@/components/filters/AmountRangeControl";
 import type { Account, Category, Transaction, TransactionsResponse } from "@/lib/api/types";
 import {
   buildDraftFromTransaction,
@@ -76,30 +77,6 @@ function calculateActiveFilterCount(filters: TransactionsFilterState) {
   ].filter(Boolean).length;
 }
 
-function formatAmountControlValue(value: string, fallback: number) {
-  if (!value) {
-    return fallback;
-  }
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : fallback;
-}
-
-function buildFilterTrackStyle(minBound: number, maxBound: number, lower: number, upper: number) {
-  if (maxBound <= minBound) {
-    return {
-      left: "0%",
-      width: "100%"
-    };
-  }
-
-  const leftPercent = ((lower - minBound) / (maxBound - minBound)) * 100;
-  const widthPercent = ((upper - lower) / (maxBound - minBound)) * 100;
-  return {
-    left: `${Math.max(0, Math.min(100, leftPercent))}%`,
-    width: `${Math.max(0, Math.min(100, widthPercent))}%`
-  };
-}
-
 function getRequestErrorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback;
 }
@@ -152,8 +129,6 @@ export default function TransactionsPage() {
   );
   const amountBoundMin = Math.floor(amountBounds.min);
   const amountBoundMax = Math.max(amountBoundMin, Math.ceil(amountBounds.max));
-  const selectedMinAmount = formatAmountControlValue(filters.minAmount, amountBoundMin);
-  const selectedMaxAmount = formatAmountControlValue(filters.maxAmount, amountBoundMax);
   const activeFilterCount = useMemo(() => calculateActiveFilterCount(filters), [filters]);
 
   const categoryFilterOptions = useMemo(() => {
@@ -499,13 +474,6 @@ export default function TransactionsPage() {
     }
   }
 
-  const sliderTrackStyle = buildFilterTrackStyle(
-    amountBoundMin,
-    amountBoundMax,
-    Math.min(selectedMinAmount, selectedMaxAmount),
-    Math.max(selectedMinAmount, selectedMaxAmount)
-  );
-
   return (
     <div className="space-y-6" data-testid="transactions-page">
       <header
@@ -696,75 +664,17 @@ export default function TransactionsPage() {
           </div>
 
           <div className={FILTER_CONTROL_CLASS} data-testid="txn-amount-filter">
-            <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">
-              <span>Amount bar</span>
-              <span>{money(selectedMinAmount)} to {money(selectedMaxAmount)}</span>
-            </div>
-
-            <div className="relative mt-4">
-              <div className="h-2 rounded-full bg-neutral-900" />
-              <div
-                className="pointer-events-none absolute top-0 h-2 rounded-full bg-emerald-400/70"
-                style={sliderTrackStyle}
-              />
-              <input
-                type="range"
-                min={amountBoundMin}
-                max={amountBoundMax}
-                value={Math.min(selectedMinAmount, selectedMaxAmount)}
-                onChange={(event) => {
-                  const nextValue = Number(event.target.value);
-                  updateFilters((previous) => {
-                    const nextMax = previous.maxAmount ? Number(previous.maxAmount) : amountBoundMax;
-                    return {
-                      ...previous,
-                      minAmount: String(Math.min(nextValue, nextMax))
-                    };
-                  });
-                }}
-                data-testid="txn-min-amount-range"
-                aria-label="Minimum amount range"
-                className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-emerald-400"
-              />
-              <input
-                type="range"
-                min={amountBoundMin}
-                max={amountBoundMax}
-                value={Math.max(selectedMinAmount, selectedMaxAmount)}
-                onChange={(event) => {
-                  const nextValue = Number(event.target.value);
-                  updateFilters((previous) => {
-                    const nextMin = previous.minAmount ? Number(previous.minAmount) : amountBoundMin;
-                    return {
-                      ...previous,
-                      maxAmount: String(Math.max(nextValue, nextMin))
-                    };
-                  });
-                }}
-                data-testid="txn-max-amount-range"
-                aria-label="Maximum amount range"
-                className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-emerald-200"
-              />
-            </div>
-
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              <input
-                value={filters.minAmount}
-                onChange={(event) => updateFilters((previous) => ({ ...previous, minAmount: event.target.value }))}
-                inputMode="decimal"
-                aria-label="Minimum amount"
-                placeholder={`Min (${money(amountBoundMin)})`}
-                className={FILTER_INPUT_CLASS}
-              />
-              <input
-                value={filters.maxAmount}
-                onChange={(event) => updateFilters((previous) => ({ ...previous, maxAmount: event.target.value }))}
-                inputMode="decimal"
-                aria-label="Maximum amount"
-                placeholder={`Max (${money(amountBoundMax)})`}
-                className={FILTER_INPUT_CLASS}
-              />
-            </div>
+            <AmountRangeControl
+              minBound={amountBoundMin}
+              maxBound={amountBoundMax}
+              minValue={filters.minAmount}
+              maxValue={filters.maxAmount}
+              onChange={({ minAmount, maxAmount }) =>
+                updateFilters((previous) => ({ ...previous, minAmount, maxAmount }))
+              }
+              testIdPrefix="txn"
+              inputClassName={FILTER_INPUT_CLASS}
+            />
           </div>
 
           <div className="flex flex-col gap-2 xl:items-end xl:justify-center">

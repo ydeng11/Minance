@@ -8,6 +8,8 @@ import {
   normalizeCategoryView
 } from "./category-strategy.ts";
 
+const TAG_PATTERN = /^[a-z0-9]+(?:[ _-][a-z0-9]+)*$/;
+
 function resolveTxnCategory(resolveCategory, txn) {
   return resolveCategory({
     categoryFinal: txn.category_final,
@@ -42,12 +44,30 @@ function normalizeTransactionForAnalytics(txn) {
   };
 }
 
+function normalizeFilterList(rawValue) {
+  const values = Array.isArray(rawValue) ? rawValue : rawValue == null ? [] : [rawValue];
+  const cleaned = [];
+  const seen = new Set();
+
+  for (const value of values) {
+    const normalized = String(value || "").trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    cleaned.push(normalized);
+  }
+
+  return cleaned;
+}
+
 export function filterUserTransactions(userId, filters = {}) {
   const store = loadStore();
   const { start, end } = computeDateRange(filters.range, filters.start, filters.end);
   const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
+  const categoryFilters = normalizeFilterList(filters.category);
 
   const filtered = [];
   for (const txn of store.transactions) {
@@ -62,12 +82,12 @@ export function filterUserTransactions(userId, filters = {}) {
     }
 
     const normalizedTxn = normalizeTransactionForAnalytics(txn);
-    if (filters.category) {
+    if (categoryFilters.length) {
       const resolved = resolveTxnCategory(resolveCategory, normalizedTxn);
       const categoryToMatch = categoryView === CATEGORY_VIEW_COARSE
         ? resolved.categoryCoarse
         : resolved.categoryGranular;
-      if (categoryToMatch !== filters.category) {
+      if (!categoryFilters.includes(categoryToMatch)) {
         continue;
       }
     }
@@ -116,12 +136,80 @@ export function buildAppliedRange(filters = {}) {
   };
 }
 
-export function buildAnalyticsMeta(userId, filters = {}) {
+function normalizeExistingTags(rawTags) {
+  if (!Array.isArray(rawTags)) {
+    return [];
+  }
+
+  const tags = [];
+  const seen = new Set();
+
+  for (const rawTag of rawTags) {
+    if (typeof rawTag !== "string") {
+      continue;
+    }
+
+    const normalized = rawTag.trim().toLowerCase();
+    if (!normalized || !TAG_PATTERN.test(normalized) || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    tags.push(normalized);
+  }
+
+  return tags;
+}
+
+function buildAmountBounds(transactions = []) {
+  if (!transactions.length) {
+    return { min: 0, max: 0 };
+  }
+
+  const amounts = transactions
+    .map((entry) => toAmount(entry))
+    .filter((value) => Number.isFinite(value));
+
+  if (!amounts.length) {
+    return { min: 0, max: 0 };
+  }
+
   return {
+    min: Math.min(...amounts),
+    max: Math.max(...amounts)
+  };
+}
+
+function buildAvailableTags(transactions = []) {
+  const tags = [];
+  const seen = new Set();
+
+  for (const transaction of transactions) {
+    for (const tag of normalizeExistingTags(transaction?.tags)) {
+      if (seen.has(tag)) {
+        continue;
+      }
+      seen.add(tag);
+      tags.push(tag);
+    }
+  }
+
+  return tags.sort((left, right) => left.localeCompare(right));
+}
+
+export function buildAnalyticsMeta(userId, filters = {}, transactions = null) {
+  const meta = {
     appliedRange: buildAppliedRange(filters),
     dataBounds: getUserDataBounds(userId),
     categoryView: normalizeCategoryView(filters.category_view || filters.categoryView)
   };
+
+  if (Array.isArray(transactions)) {
+    meta.amountBounds = buildAmountBounds(transactions);
+    meta.availableTags = buildAvailableTags(transactions);
+  }
+
+  return meta;
 }
 
 function toAmount(txn) {
@@ -763,7 +851,7 @@ export function getExplorerAnalytics(userId, filters = {}) {
     meta: buildAnalyticsMeta(userId, {
       ...filters,
       category_view: categoryView
-    })
+    }, currentTransactions)
   };
 }
 
