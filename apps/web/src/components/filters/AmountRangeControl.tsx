@@ -10,13 +10,17 @@ interface AmountRangeControlProps {
   inputClassName: string;
 }
 
-function formatAmountControlValue(value: string, fallback: number) {
+function toNumericAmount(value: string, fallback: number) {
   if (!value) {
     return fallback;
   }
 
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, value));
 }
 
 function buildFilterTrackStyle(minBound: number, maxBound: number, lower: number, upper: number) {
@@ -30,8 +34,8 @@ function buildFilterTrackStyle(minBound: number, maxBound: number, lower: number
   const leftPercent = ((lower - minBound) / (maxBound - minBound)) * 100;
   const widthPercent = ((upper - lower) / (maxBound - minBound)) * 100;
   return {
-    left: `${Math.max(0, Math.min(100, leftPercent))}%`,
-    width: `${Math.max(0, Math.min(100, widthPercent))}%`
+    left: `${clampPercent(leftPercent)}%`,
+    width: `${clampPercent(widthPercent)}%`
   };
 }
 
@@ -44,13 +48,15 @@ export function AmountRangeControl({
   testIdPrefix,
   inputClassName
 }: AmountRangeControlProps) {
-  const selectedMinAmount = formatAmountControlValue(minValue, minBound);
-  const selectedMaxAmount = formatAmountControlValue(maxValue, maxBound);
+  const selectedMinAmount = toNumericAmount(minValue, minBound);
+  const selectedMaxAmount = toNumericAmount(maxValue, maxBound);
+  const lowerSelectedAmount = Math.min(selectedMinAmount, selectedMaxAmount);
+  const upperSelectedAmount = Math.max(selectedMinAmount, selectedMaxAmount);
   const sliderTrackStyle = buildFilterTrackStyle(
     minBound,
     maxBound,
-    Math.min(selectedMinAmount, selectedMaxAmount),
-    Math.max(selectedMinAmount, selectedMaxAmount)
+    lowerSelectedAmount,
+    upperSelectedAmount
   );
 
   return (
@@ -70,7 +76,7 @@ export function AmountRangeControl({
           type="range"
           min={minBound}
           max={maxBound}
-          value={Math.min(selectedMinAmount, selectedMaxAmount)}
+          value={lowerSelectedAmount}
           onChange={(event) => {
             const nextValue = Number(event.target.value);
             const nextMax = maxValue ? Number(maxValue) : maxBound;
@@ -87,7 +93,7 @@ export function AmountRangeControl({
           type="range"
           min={minBound}
           max={maxBound}
-          value={Math.max(selectedMinAmount, selectedMaxAmount)}
+          value={upperSelectedAmount}
           onChange={(event) => {
             const nextValue = Number(event.target.value);
             const nextMin = minValue ? Number(minValue) : minBound;

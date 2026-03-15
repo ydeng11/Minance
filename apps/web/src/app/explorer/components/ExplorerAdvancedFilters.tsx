@@ -26,10 +26,23 @@ type AdvancedFilterDraft = Pick<
   ExplorerFilterState,
   "merchant" | "categories" | "transactionTypes" | "direction" | "tag" | "minAmount" | "maxAmount" | "categoryView"
 >;
+type OpenMultiSelectField = "category" | "transactionType";
 
 interface MultiSelectOption {
   value: string;
   label: string;
+}
+
+interface MultiSelectFieldProps {
+  label: string;
+  selectedValues: string[];
+  options: MultiSelectOption[];
+  onChange: (nextValues: string[]) => void;
+  emptyLabel: string;
+  testId: string;
+  isOpen: boolean;
+  onOpenChange: (nextOpen: boolean) => void;
+  searchable?: boolean;
 }
 
 const TRANSACTION_TYPE_OPTIONS: Array<{ value: ExplorerTransactionType; label: string }> = [
@@ -49,6 +62,10 @@ function createDraft(filters: ExplorerFilterState): AdvancedFilterDraft {
     maxAmount: filters.maxAmount,
     categoryView: filters.categoryView
   };
+}
+
+function createDefaultDraft() {
+  return createDraft(createDefaultExplorerFilterState());
 }
 
 function buildSelectionSummary(selectedValues: string[], options: MultiSelectOption[], emptyLabel: string) {
@@ -81,17 +98,7 @@ function MultiSelectField({
   isOpen,
   onOpenChange,
   searchable = false
-}: {
-  label: string;
-  selectedValues: string[];
-  options: MultiSelectOption[];
-  onChange: (nextValues: string[]) => void;
-  emptyLabel: string;
-  testId: string;
-  isOpen: boolean;
-  onOpenChange: (nextOpen: boolean) => void;
-  searchable?: boolean;
-}) {
+}: MultiSelectFieldProps) {
   const [query, setQuery] = useState("");
   const selectedSet = useMemo(() => new Set(selectedValues), [selectedValues]);
   const filteredOptions = useMemo(() => {
@@ -104,10 +111,10 @@ function MultiSelectField({
   }, [options, query]);
 
   useEffect(() => {
-    if (!isOpen && query) {
+    if (!isOpen) {
       setQuery("");
     }
-  }, [isOpen, query]);
+  }, [isOpen]);
 
   return (
     <label className="grid gap-1 text-sm text-neutral-300 sm:col-span-2">
@@ -185,7 +192,7 @@ export function ExplorerAdvancedFilters({
   onClose
 }: ExplorerAdvancedFiltersProps) {
   const [draft, setDraft] = useState<AdvancedFilterDraft>(() => createDraft(filters));
-  const [openMultiSelect, setOpenMultiSelect] = useState<"category" | "transactionType" | null>(null);
+  const [openMultiSelect, setOpenMultiSelect] = useState<OpenMultiSelectField | null>(null);
 
   useEffect(() => {
     setDraft(createDraft(filters));
@@ -203,7 +210,7 @@ export function ExplorerAdvancedFilters({
   const filteredTagSuggestions = useMemo(() => {
     const normalizedTag = draft.tag.trim().toLowerCase();
     return availableTags
-      .filter((tag) => !normalizedTag || tag.includes(normalizedTag))
+      .filter((tag) => tag.includes(normalizedTag))
       .slice(0, 8);
   }, [availableTags, draft.tag]);
   const amountBoundMin = Math.floor(amountBounds?.min ?? 0);
@@ -214,18 +221,8 @@ export function ExplorerAdvancedFilters({
   }
 
   function resetDraft() {
-    const defaults = createDefaultExplorerFilterState();
     setOpenMultiSelect(null);
-    setDraft({
-      merchant: defaults.merchant,
-      categories: defaults.categories,
-      transactionTypes: defaults.transactionTypes,
-      direction: defaults.direction,
-      tag: defaults.tag,
-      minAmount: defaults.minAmount,
-      maxAmount: defaults.maxAmount,
-      categoryView: defaults.categoryView
-    });
+    setDraft(createDefaultDraft());
   }
 
   return (

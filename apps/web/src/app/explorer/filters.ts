@@ -49,11 +49,11 @@ export interface ExplorerAnalyticsApiParams {
 }
 
 const RANGE_VALUES = new Set([...RANGE_OPTIONS.map((option) => option.value), "custom"]);
-const CATEGORY_VIEW_VALUES = new Set(["granular", "coarse"]);
+const CATEGORY_VIEW_VALUES = new Set<ExplorerCategoryView>(["granular", "coarse"]);
 const TRANSACTION_TYPE_VALUES = new Set<ExplorerTransactionType>(["expense", "income", "transfer"]);
-const DIRECTION_VALUES = new Set(["all", "outflow", "inflow"]);
-const PERSPECTIVE_VALUES = new Set(["overview", "category", "account"]);
-const COMPARE_VALUES = new Set(["none", "previous"]);
+const DIRECTION_VALUES = new Set<ExplorerDirectionFilter>(["all", "outflow", "inflow"]);
+const PERSPECTIVE_VALUES = new Set<ExplorerPerspective>(["overview", "category", "account"]);
+const COMPARE_VALUES = new Set<ExplorerCompareMode>(["none", "previous"]);
 
 interface SearchParamsLike {
   get(key: string): string | null;
@@ -69,12 +69,12 @@ function cleanIsoDate(value: string | null) {
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
 }
 
-function cleanStringList(values: string[]) {
+function cleanUniqueList<T extends string>(values: string[], normalizeValue: (value: string) => T | "") {
   const seen = new Set<string>();
-  const cleaned: string[] = [];
+  const cleaned: T[] = [];
 
   for (const value of values) {
-    const normalized = cleanValue(value);
+    const normalized = normalizeValue(value);
     if (!normalized || seen.has(normalized)) {
       continue;
     }
@@ -85,26 +85,25 @@ function cleanStringList(values: string[]) {
   return cleaned;
 }
 
+function cleanStringList(values: string[]) {
+  return cleanUniqueList(values, cleanValue);
+}
+
 function cleanTransactionTypeList(values: string[]) {
-  const seen = new Set<ExplorerTransactionType>();
-  const cleaned: ExplorerTransactionType[] = [];
-
-  for (const value of values) {
+  return cleanUniqueList(values, (value) => {
     const normalized = cleanValue(value).toLowerCase();
-    if (!TRANSACTION_TYPE_VALUES.has(normalized as ExplorerTransactionType)) {
-      continue;
-    }
+    return TRANSACTION_TYPE_VALUES.has(normalized as ExplorerTransactionType)
+      ? (normalized as ExplorerTransactionType)
+      : "";
+  });
+}
 
-    const transactionType = normalized as ExplorerTransactionType;
-    if (seen.has(transactionType)) {
-      continue;
-    }
+function readEnumValue<T extends string>(value: string, allowedValues: Set<T>, fallback: T) {
+  return allowedValues.has(value as T) ? (value as T) : fallback;
+}
 
-    seen.add(transactionType);
-    cleaned.push(transactionType);
-  }
-
-  return cleaned;
+function readStringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
 }
 
 export function createDefaultExplorerFilterState(): ExplorerFilterState {
@@ -137,12 +136,8 @@ export function parseExplorerFilterState(searchParams: SearchParamsLike): Explor
   const compare = cleanValue(searchParams.get("compare"));
 
   return {
-    perspective: PERSPECTIVE_VALUES.has(perspective)
-      ? (perspective as ExplorerPerspective)
-      : defaults.perspective,
-    compare: COMPARE_VALUES.has(compare)
-      ? (compare as ExplorerCompareMode)
-      : defaults.compare,
+    perspective: readEnumValue(perspective, PERSPECTIVE_VALUES, defaults.perspective),
+    compare: readEnumValue(compare, COMPARE_VALUES, defaults.compare),
     query: cleanValue(searchParams.get("query")),
     merchant: cleanValue(searchParams.get("merchant")),
     categories: cleanStringList(searchParams.getAll("category")),
@@ -150,13 +145,9 @@ export function parseExplorerFilterState(searchParams: SearchParamsLike): Explor
     range: RANGE_VALUES.has(range) ? range : defaults.range,
     start: cleanIsoDate(searchParams.get("start")),
     end: cleanIsoDate(searchParams.get("end")),
-    categoryView: CATEGORY_VIEW_VALUES.has(categoryView)
-      ? (categoryView as ExplorerCategoryView)
-      : defaults.categoryView,
+    categoryView: readEnumValue(categoryView, CATEGORY_VIEW_VALUES, defaults.categoryView),
     transactionTypes: cleanTransactionTypeList(searchParams.getAll("type")),
-    direction: DIRECTION_VALUES.has(direction)
-      ? (direction as ExplorerDirectionFilter)
-      : defaults.direction,
+    direction: readEnumValue(direction, DIRECTION_VALUES, defaults.direction),
     tag: cleanValue(searchParams.get("tag")),
     minAmount: cleanValue(searchParams.get("min_amount")),
     maxAmount: cleanValue(searchParams.get("max_amount"))
@@ -282,21 +273,13 @@ export function toValidExplorerFilterState(filters: ExplorerFilterState): Explor
     maxAmount: cleanValue(filters.maxAmount)
   };
 
-  if (!PERSPECTIVE_VALUES.has(next.perspective)) {
-    next.perspective = "overview";
-  }
-  if (!COMPARE_VALUES.has(next.compare)) {
-    next.compare = "none";
-  }
+  next.perspective = readEnumValue(next.perspective, PERSPECTIVE_VALUES, "overview");
+  next.compare = readEnumValue(next.compare, COMPARE_VALUES, "none");
   if (!RANGE_VALUES.has(next.range)) {
     next.range = "90d";
   }
-  if (!CATEGORY_VIEW_VALUES.has(next.categoryView)) {
-    next.categoryView = "granular";
-  }
-  if (!DIRECTION_VALUES.has(next.direction)) {
-    next.direction = "all";
-  }
+  next.categoryView = readEnumValue(next.categoryView, CATEGORY_VIEW_VALUES, "granular");
+  next.direction = readEnumValue(next.direction, DIRECTION_VALUES, "all");
 
   if (next.range !== "custom") {
     next.start = "";
@@ -316,13 +299,11 @@ export function savedExplorerFiltersToState(
 
   const source = rawFilters as Record<string, unknown>;
   return toValidExplorerFilterState({
-    perspective: typeof source.perspective === "string" ? (source.perspective as ExplorerPerspective) : defaults.perspective,
-    compare: typeof source.compare === "string" ? (source.compare as ExplorerCompareMode) : defaults.compare,
+    perspective: typeof source.perspective === "string" ? source.perspective as ExplorerPerspective : defaults.perspective,
+    compare: typeof source.compare === "string" ? source.compare as ExplorerCompareMode : defaults.compare,
     query: typeof source.query === "string" ? source.query : defaults.query,
     merchant: typeof source.merchant === "string" ? source.merchant : defaults.merchant,
-    categories: Array.isArray(source.categories)
-      ? source.categories.filter((entry): entry is string => typeof entry === "string")
-      : defaults.categories,
+    categories: readStringArray(source.categories),
     account: typeof source.account === "string" ? source.account : defaults.account,
     categoryView: typeof source.categoryView === "string"
       ? (source.categoryView as ExplorerCategoryView)
@@ -330,9 +311,7 @@ export function savedExplorerFiltersToState(
     range: typeof source.range === "string" ? source.range : defaults.range,
     start: typeof source.start === "string" ? source.start : defaults.start,
     end: typeof source.end === "string" ? source.end : defaults.end,
-    transactionTypes: Array.isArray(source.transactionTypes)
-      ? source.transactionTypes.filter((entry): entry is ExplorerTransactionType => typeof entry === "string")
-      : defaults.transactionTypes,
+    transactionTypes: readStringArray(source.transactionTypes) as ExplorerTransactionType[],
     direction: typeof source.direction === "string"
       ? (source.direction as ExplorerDirectionFilter)
       : defaults.direction,
