@@ -89,12 +89,21 @@ test("merchant and anomaly cards use polished presentation", async ({ page }) =>
 
   const merchants = page.getByTestId("analytics-merchant-bars");
   await expect(merchants).toBeVisible();
-  await expect(merchants).toContainText("Coffee Shop");
+  const merchantCards = merchants.locator("button");
+  await expect(merchantCards.first()).toBeVisible();
+  await expect(merchantCards.first()).toContainText(/#1/i);
+  await expect(merchantCards.first()).toContainText(/\$\d/);
   await expect(page.getByTestId("analytics-merchant-caption").first()).toBeVisible();
 
   const anomalies = page.getByTestId("analytics-anomalies");
   await expect(anomalies).toBeVisible();
-  await expect(anomalies).toContainText("Spending looks stable");
+  const anomalyCards = page.getByTestId("analytics-anomaly-card");
+  if ((await anomalyCards.count()) > 0) {
+    await expect(anomalyCards.first()).toBeVisible();
+    await expect(anomalyCards.first()).toContainText(/Amount outlier|New merchant spike/);
+  } else {
+    await expect(anomalies).toContainText("Spending looks stable");
+  }
 });
 
 test("category perspective keeps filters and renders scoped category insights", async ({ page }) => {

@@ -68,6 +68,9 @@ test("@core full user flow covers auth, AI settings, imports, transactions, anal
   await expect(analyticsMerchantBars(page).first()).toBeVisible();
 
   await gotoView(page, "analytics");
+  await expect(page.getByTestId("analytics-heatmap")).toBeVisible();
+  await expect(page.getByTestId("analytics-anomalies")).toBeVisible();
+
   const heatCells = analyticsHeatmapCells(page);
   if ((await heatCells.count()) > 0) {
     await expect(heatCells.first()).toBeVisible();

@@ -858,7 +858,13 @@ export default function TransactionsPage() {
           </div>
         ) : null}
 
-        <div data-testid="txn-table-scroll" className="overflow-x-auto">
+        <div
+          data-testid="txn-table-scroll"
+          role="region"
+          aria-label="Transactions ledger"
+          tabIndex={0}
+          className="overflow-x-auto focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:ring-offset-2 focus:ring-offset-neutral-950"
+        >
           <table className="min-w-[1160px] w-full text-left text-sm text-neutral-200" data-testid="txn-table">
             <caption className="sr-only">Detailed transaction ledger with inline edit and row actions</caption>
             <colgroup>
