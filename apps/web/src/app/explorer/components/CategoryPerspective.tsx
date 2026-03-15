@@ -1,16 +1,19 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { BadgeDollarSign, Layers3 } from "lucide-react";
 import { cn, money } from "@/lib/utils";
 import type { ExplorerAnalyticsResponse, OverviewResponse } from "@/lib/api/types";
 import { CategoryBreakdown } from "./CategoryBreakdown";
 import { ExplorerCard } from "./ExplorerCard";
+import { CategoryWeekdayHeatmap } from "./CategoryWeekdayHeatmap";
 import { MerchantAnalysis } from "./MerchantAnalysis";
 import { TrendChart } from "./TrendChart";
 
 interface CategoryPerspectiveProps {
   overview: OverviewResponse | null;
   categories: ExplorerAnalyticsResponse["categories"]["items"];
+  categoryWeekdayHeatmap: ExplorerAnalyticsResponse["categoryWeekdayHeatmap"]["items"];
   selectedCategory: string;
   onCategoryClick: (category: string) => void;
   trend: ExplorerAnalyticsResponse["trend"]["items"];
@@ -22,6 +25,7 @@ interface CategoryPerspectiveProps {
 export function CategoryPerspective({
   overview,
   categories,
+  categoryWeekdayHeatmap,
   selectedCategory,
   onCategoryClick,
   trend,
@@ -29,15 +33,44 @@ export function CategoryPerspective({
   onMerchantClick,
   loading
 }: CategoryPerspectiveProps) {
-  const activeCategory = categories.find((entry) => entry.category === selectedCategory) || null;
+  const [inspectedCategory, setInspectedCategory] = useState(
+    selectedCategory || categoryWeekdayHeatmap[0]?.category || categories[0]?.category || ""
+  );
+
+  useEffect(() => {
+    if (selectedCategory) {
+      setInspectedCategory(selectedCategory);
+      return;
+    }
+
+    const availableCategories = new Set([
+      ...categoryWeekdayHeatmap.map((entry) => entry.category),
+      ...categories.map((entry) => entry.category)
+    ]);
+
+    if (availableCategories.size === 0) {
+      setInspectedCategory("");
+      return;
+    }
+
+    setInspectedCategory((current) => {
+      if (current && availableCategories.has(current)) {
+        return current;
+      }
+
+      return categoryWeekdayHeatmap[0]?.category || categories[0]?.category || "";
+    });
+  }, [selectedCategory, categoryWeekdayHeatmap, categories]);
+
+  const activeCategory = categories.find((entry) => entry.category === inspectedCategory) || null;
 
   return (
     <div className="space-y-6" data-testid="explorer-category-view">
       <ExplorerCard
         testId="explorer-category-lens"
         title="Category Lens"
-        subtitle={selectedCategory
-          ? `Focused on ${selectedCategory}. Click another category to pivot the workspace.`
+        subtitle={inspectedCategory
+          ? `Inspecting ${inspectedCategory}. Apply the filter when you want to narrow Explorer to that category.`
           : "Choose a category to compare spend and income side by side, then inspect its net impact."}
       >
         {loading ? (
@@ -52,10 +85,10 @@ export function CategoryPerspective({
               <button
                 key={entry.category}
                 type="button"
-                onClick={() => onCategoryClick(entry.category)}
+                onClick={() => setInspectedCategory(entry.category)}
                 className={cn(
                   "rounded-2xl border px-4 py-4 text-left transition",
-                  selectedCategory === entry.category
+                  inspectedCategory === entry.category
                     ? "border-emerald-400/30 bg-emerald-400/10"
                     : "border-neutral-900 bg-neutral-950/70 hover:border-neutral-800 hover:bg-neutral-900/80"
                 )}
@@ -134,6 +167,19 @@ export function CategoryPerspective({
                 <div className="mt-1 text-sm text-emerald-50/75">Activity in the selected range</div>
               </div>
             </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => onCategoryClick(inspectedCategory)}
+                className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-400/15"
+                data-testid="explorer-category-apply-filter"
+              >
+                {selectedCategory === inspectedCategory
+                  ? `Filtered to ${inspectedCategory}`
+                  : `Filter Explorer to ${inspectedCategory}`}
+              </button>
+            </div>
           </div>
         ) : !loading && categories.length > 0 ? (
           <div className="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/70 px-4 py-3 text-sm text-neutral-400">
@@ -141,6 +187,13 @@ export function CategoryPerspective({
           </div>
         ) : null}
       </ExplorerCard>
+
+      <CategoryWeekdayHeatmap
+        rows={categoryWeekdayHeatmap}
+        selectedCategory={inspectedCategory}
+        onCategorySelect={setInspectedCategory}
+        loading={loading}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         <div data-testid="explorer-category-trend">
@@ -151,7 +204,7 @@ export function CategoryPerspective({
             loading={loading}
           />
         </div>
-        <CategoryBreakdown overview={overview} onCategoryClick={onCategoryClick} loading={loading} />
+        <CategoryBreakdown overview={overview} onCategoryClick={setInspectedCategory} loading={loading} />
       </div>
 
       <div data-testid="explorer-category-merchants">

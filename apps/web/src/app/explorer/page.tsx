@@ -415,6 +415,7 @@ export default function ExplorerPage() {
           <CategoryPerspective
             overview={overview}
             categories={explorer?.categories.items || []}
+            categoryWeekdayHeatmap={explorer?.categoryWeekdayHeatmap.items || []}
             selectedCategory={filters.category}
             onCategoryClick={handleCategoryClick}
             trend={explorer?.trend.items || []}

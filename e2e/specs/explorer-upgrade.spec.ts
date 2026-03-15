@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
-  analyticsHeatmapCells,
+  explorerCategoryHeatmapRows,
   explorerWeekdaySummaryCells,
   gotoView,
   loginWithSeedAccount,
@@ -84,16 +84,26 @@ test("overview uses a fixed weekday spend summary across date ranges", async ({ 
   await expect(page.getByTestId("analytics-heatmap")).toHaveCount(0);
 });
 
-test("spending heatmap uses weekday headers and a legend instead of weekday indexes", async ({ page }) => {
+test("category perspective compares filtered top categories by weekday before applying a filter", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);
-  await gotoView(page, "explorer");
+  await page.goto("/explorer?perspective=category&range=365d");
 
-  await expect(page.getByTestId("analytics-heatmap-weekdays")).toContainText("Sun");
-  await expect(page.getByTestId("analytics-heatmap-weekdays")).toContainText("Sat");
-  await expect(page.getByTestId("analytics-heatmap-legend")).toContainText("Low");
-  await expect(page.getByTestId("analytics-heatmap-legend")).toContainText("High");
-  await expect(analyticsHeatmapCells(page).first()).toHaveText("");
+  await expect(page.getByTestId("explorer-category-weekday-heatmap")).toBeVisible();
+  await expect(page.getByTestId("explorer-category-weekday-heatmap")).toContainText("Sun");
+  await expect(page.getByTestId("explorer-category-weekday-heatmap")).toContainText("Sat");
+
+  const rows = explorerCategoryHeatmapRows(page);
+  const rowCount = await rows.count();
+  expect(rowCount).toBeGreaterThan(0);
+  expect(rowCount).toBeLessThanOrEqual(7);
+
+  await page.getByTestId("explorer-category-lens").getByRole("button").first().click();
+  await expect(page).toHaveURL(/perspective=category/);
+  await expect(page).not.toHaveURL(/category=/);
+
+  await page.getByTestId("explorer-category-apply-filter").click();
+  await expect(page).toHaveURL(/category=/);
 });
 
 test("merchant and anomaly cards use polished presentation", async ({ page }) => {
