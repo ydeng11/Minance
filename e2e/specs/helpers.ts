@@ -102,7 +102,7 @@ export function analyticsHeatmapCells(page) {
 }
 
 export function analyticsAnomalyRows(page) {
-  return page.locator('[data-testid="analytics-anomalies"] > div');
+  return page.getByTestId("analytics-anomaly-card");
 }
 
 async function readAuthState(page, appShell, authMessage) {

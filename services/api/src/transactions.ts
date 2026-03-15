@@ -384,6 +384,9 @@ function normalizeTransactionRecord(transaction, store = null) {
     recurring_rule_id: recurringRuleId,
     memo: tx.memo ?? null,
     dedupe_fingerprint: tx.dedupe_fingerprint ?? "",
+    deleted_at: tx.deleted_at ?? null,
+    deleted_reason: tx.deleted_reason ?? null,
+    deleted_by: tx.deleted_by ?? null,
     created_at: tx.created_at ?? "",
     updated_at: tx.updated_at ?? ""
   };
