@@ -20,7 +20,7 @@ Refresh the `/transactions` page so the ledger behaves more like Google Sheets w
 - Rebuild the entire transaction data model.
 - Replace the existing create/edit validation rules.
 - Add bulk edit, column drag-reorder, or spreadsheet cell editing.
-- Move the feature into the legacy `src/main/webui` stack.
+- Move the feature into the removed legacy Quarkus/React stack.
 
 ## Decisions
 

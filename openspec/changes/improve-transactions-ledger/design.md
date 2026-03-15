@@ -2,7 +2,7 @@
 
 The active transaction-management experience lives in `apps/web/src/app/transactions/page.tsx`. The page already supports search, range filters, pagination, inline row editing, and a bottom-of-page manual transaction form, but it does not yet provide the requested top-mounted popup create flow, richer ledger presentation, or header filter treatment that feels like a spreadsheet filter row.
 
-This change spans multiple frontend modules and touches the Node/SQLite API contract used by the Next.js app. The active stack is Next.js with Tailwind in `apps/web` and a TypeScript API service in `services/api`, so the design needs to preserve that stack and avoid redirecting implementation into the legacy `src/main/webui` codepath.
+This change spans multiple frontend modules and touches the Node/SQLite API contract used by the Next.js app. The active stack is Next.js with Tailwind in `apps/web` and a TypeScript API service in `services/api`, so the design needs to preserve that stack and avoid redirecting implementation into the removed legacy Quarkus/React codepath.
 
 ## Goals / Non-Goals
 
@@ -31,7 +31,7 @@ Rationale:
 - Page-specific header actions are the cleanest place to host the requested filters and top-level `New transaction` button.
 
 Alternatives considered:
-- Rebuild the feature in `src/main/webui`: rejected because that is not the active app targeted by the root scripts and tests.
+- Rebuild the feature in the removed legacy Quarkus/React stack: rejected because that is not the active app targeted by the root scripts and tests.
 - Leave the current page structure intact and only restyle the table: rejected because it would not satisfy the top-mounted popup workflow or header filter request.
 
 ### 2. Keep the existing table stack, but drive it from explicit header filter state

@@ -1,97 +1,66 @@
 # Local Testing & E2E Strategy
 
-## 1. Unit & Integration Testing (Frontend)
+## Quick Commands
 
-We use **Vitest** + **React Testing Library** for frontend logic and component tests.
-Network calls inside Vitest are mocked via **MSW** (`src/main/webui/src/test/setup.ts`), so hooks and services can run without a live backend.
-
-### Running Tests
 ```bash
-cd src/main/webui
 pnpm test
+pnpm e2e
 ```
 
-### Writing Tests
-- **Hooks**: Test custom hooks (like `useMerchantAnalytics`) using `@testing-library/react-hooks`. This isolates logic from UI.
-- **Components**: Test components using `@testing-library/react`. Mock complex children or contexts if necessary.
+Useful targeted runs:
 
-## 2. End-to-End (E2E) Testing (Full Stack)
-
-We use **Playwright (Java)** to test the application running as a whole (Quarkus backend + React frontend).
-
-### Running E2E Tests
 ```bash
-# Run all Java E2E tests
-./mvnw test -Dtest="*E2ETest"
-
-# Run specific test class
-./mvnw test -Dtest="OverviewE2ETest"
+pnpm --filter @minance/web test
+env NODE_ENV=test tsx --test services/api/test/**/*.test.ts
+env NODE_ENV=test playwright test e2e/specs/<spec>.spec.ts
 ```
 
-The Java E2E tests are organized by feature and use the Page Object pattern:
-- **Test Classes**: Located in `src/test/java/today/ihelio/minance/webui/`
-  - `OverviewE2ETest` - Tests overview page tiles, API data loading, and transaction table
-  - `VisualizationE2ETest` - Tests expense analysis, merchant analytics, and date range selection
-  - `CategoriesE2ETest` - Tests category linking and grouping management
-  - `AccountsE2ETest` - Tests account viewing and management
-  - `ImportE2ETest` - Tests CSV import workflow end-to-end
-- **Page Objects**: Located in `src/test/java/today/ihelio/minance/webui/pages/`
-  - `BasePage` - Common navigation and utility methods
-  - `OverviewPage`, `VisualizationPage`, `CategoriesPage`, `AccountsPage` - Page-specific selectors
-- **Base Test**: `BaseE2ETest` provides shared infrastructure (database seeding, Playwright context, utility methods)
+## Current Test Stack
 
-These tests run inside `@QuarkusTest` with `QuinoaTestProfiles.Enable` so the backend and Vite build run together in the same JVM. They use Playwright (Java) and provide comprehensive coverage of:
-- Data fetching and API calls
-- UI element visibility and data validation
-- User interactions (clicks, form fills, file uploads)
-- Date range selection and chart refresh
-- Transaction import and persistence
+### Frontend
 
-### E2E Strategy
-- **Data State**: Tests use `TestDataResource.java` endpoints to seed and reset the database before each test.
-- **Seed Data**: `TestDataResource.java` provides endpoints like `/api/test/seed` and `/api/test/seed/extensive` to populate the database. Each test method hits these endpoints before running so UI assertions always start from a deterministic dataset.
+- Route and component tests live under `apps/web/src/**/*.test.ts`.
+- The frontend package runs them with `tsx --test`.
+- Lint for the web app runs with `pnpm --filter @minance/web lint`.
 
-### Test Categories
+### Backend
 
-#### Functional Tests
-- **Transactions**: CRUD operations, filtering, sorting.
-- **Accounts**: Creation, editing, deletion.
-- **Categories**: Management and mapping.
-- **CSV Import**: Uploading and parsing bank CSVs.
-- **Visualization**: Chart rendering and data verification.
+- API tests live under `services/api/test/**/*.test.ts`.
+- They run with the root `pnpm test` command under `NODE_ENV=test`.
+- These tests cover storage, auth, imports, analytics, and API-layer behavior for the TypeScript service in `services/api/src`.
 
-### CI/CD Integration
-Tests run automatically on GitHub Actions (`.github/workflows/tests.yml`) on push and PR:
-- **frontend**: installs `src/main/webui` and runs lint and Vitest (`--run`).
-- **backend**: executes `./mvnw test` which includes unit tests, service layer tests, and Java-based Playwright E2E tests.
+### End-to-End
 
-## 3. Backend Tests
+- Playwright specs live under `e2e/specs/**/*.spec.ts`.
+- E2E runs exercise the current Next.js frontend (`apps/web`) and TypeScript API (`services/api`).
+- The main commands are:
 
-- **Service layer**: `src/test/java/today/ihelio/minance/service` (e.g., `AccountServiceTest`, `TransactionServiceTest`) cover core business logic, database writes, and CSV ingestion.
-- **REST contracts**: `src/test/java/today/ihelio/minance/rest` uses **RestAssured** inside `@QuarkusTest` to verify resource endpoints. The shared `RestTestBase` resets/seeds the DB before each test by calling `TestDataResource`.
-- **E2E Web UI**: `src/test/java/today/ihelio/minance/webui` contains Playwright-based E2E tests organized by feature, testing full user workflows across the integrated stack.
-- Run everything with:
 ```bash
-./mvnw test
+pnpm e2e
+pnpm e2e:headed
+pnpm e2e:ci
 ```
-or target suites via `-Dtest=...`.
 
-## 4. Test Coverage Summary
+## What `pnpm test` Includes
 
-### Frontend (TypeScript)
-- **Unit Tests**: Vitest + React Testing Library (in `src/main/webui/src/components/__tests__/`)
+The root test command runs:
 
-### Backend (Java)
-- **Unit Tests**: JUnit 5 for service layer
-- **Integration Tests**: RestAssured for REST endpoints
-- **E2E Tests**: Playwright (Java-based) for full-stack workflows
+- root guardrail checks from `scripts/check-root-script-binaries.test.mjs`
+- the frontend test-first guard from `scripts/check-frontend-test-first.ts`
+- backend tests in `services/api/test/**/*.test.ts`
+- frontend tests in `apps/web/src/**/*.test.ts`
 
-### Test Organization
-E2E tests follow the Page Object pattern for maintainability:
-- **Java**: `src/test/java/today/ihelio/minance/webui/pages/` (VisualizationPage.java, CategoriesPage.java, etc.)
+## CI
 
-## 5. Structure Improvements
+GitHub Actions runs the current workspace stack from [`.github/workflows/ci.yml`](/Users/ihelio/code/minance2/.github/workflows/ci.yml):
 
-- **Custom Hooks**: Logic extracted to `src/main/webui/src/hooks/` (e.g., `useMerchantAnalytics.ts`) to be unit-testable.
-- **Service Layer**: API calls centralized in `src/main/webui/src/services/`.
-- **E2E Tests**: Comprehensive Playwright tests in `src/test/java/today/ihelio/minance/webui/` testing full-stack workflows.
+- install workspace dependencies with pnpm
+- run `pnpm test`
+- install Playwright Chromium
+- run `pnpm e2e:ci`
+
+## Local Runtime Notes
+
+- `pnpm dev` starts the web app on `http://localhost:3000` and the API on `http://localhost:3001`.
+- E2E runs use isolated storage via `MINANCE_SQLITE_FILE_TEST=services/api/tmp/e2e-minance.sqlite`.
+- Backend tests default to test-mode storage under `services/api/tmp/` unless a suite overrides the path.
