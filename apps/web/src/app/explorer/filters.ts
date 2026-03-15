@@ -1,11 +1,15 @@
 import { RANGE_OPTIONS } from "@/lib/constants";
 
 export type ExplorerCategoryView = "granular" | "coarse";
-export type ExplorerReviewFilter = "all" | "reviewed" | "needs_review";
 export type ExplorerTypeFilter = "all" | "expense" | "income" | "transfer";
 export type ExplorerDirectionFilter = "all" | "outflow" | "inflow";
+export type ExplorerPerspective = "overview" | "category" | "account";
+export type ExplorerCompareMode = "none" | "previous";
 
 export interface ExplorerFilterState {
+  perspective: ExplorerPerspective;
+  compare: ExplorerCompareMode;
+
   // Search & Text
   query: string;
   merchant: string;
@@ -28,9 +32,6 @@ export interface ExplorerFilterState {
   // Amount Range
   minAmount: string;
   maxAmount: string;
-
-  // Review Status
-  review: ExplorerReviewFilter;
 }
 
 export interface ExplorerAnalyticsApiParams {
@@ -38,6 +39,8 @@ export interface ExplorerAnalyticsApiParams {
   start?: string;
   end?: string;
   category_view: ExplorerCategoryView;
+  perspective?: ExplorerPerspective;
+  compare?: "previous";
   category?: string;
   account?: string;
   transaction_type?: "expense" | "income" | "transfer";
@@ -47,9 +50,10 @@ export interface ExplorerAnalyticsApiParams {
 
 const RANGE_VALUES = new Set([...RANGE_OPTIONS.map((option) => option.value), "custom"]);
 const CATEGORY_VIEW_VALUES = new Set(["granular", "coarse"]);
-const REVIEW_VALUES = new Set(["all", "reviewed", "needs_review"]);
 const TRANSACTION_TYPE_VALUES = new Set(["all", "expense", "income", "transfer"]);
 const DIRECTION_VALUES = new Set(["all", "outflow", "inflow"]);
+const PERSPECTIVE_VALUES = new Set(["overview", "category", "account"]);
+const COMPARE_VALUES = new Set(["none", "previous"]);
 
 interface SearchParamsLike {
   get(key: string): string | null;
@@ -66,6 +70,8 @@ function cleanIsoDate(value: string | null) {
 
 export function createDefaultExplorerFilterState(): ExplorerFilterState {
   return {
+    perspective: "overview",
+    compare: "none",
     query: "",
     merchant: "",
     category: "",
@@ -78,8 +84,7 @@ export function createDefaultExplorerFilterState(): ExplorerFilterState {
     direction: "all",
     tag: "",
     minAmount: "",
-    maxAmount: "",
-    review: "all"
+    maxAmount: ""
   };
 }
 
@@ -88,11 +93,18 @@ export function parseExplorerFilterState(searchParams: SearchParamsLike): Explor
 
   const range = cleanValue(searchParams.get("range"));
   const categoryView = cleanValue(searchParams.get("category_view"));
-  const review = cleanValue(searchParams.get("review"));
   const transactionType = cleanValue(searchParams.get("type"));
   const direction = cleanValue(searchParams.get("direction"));
+  const perspective = cleanValue(searchParams.get("perspective"));
+  const compare = cleanValue(searchParams.get("compare"));
 
   return {
+    perspective: PERSPECTIVE_VALUES.has(perspective)
+      ? (perspective as ExplorerPerspective)
+      : defaults.perspective,
+    compare: COMPARE_VALUES.has(compare)
+      ? (compare as ExplorerCompareMode)
+      : defaults.compare,
     query: cleanValue(searchParams.get("query")),
     merchant: cleanValue(searchParams.get("merchant")),
     category: cleanValue(searchParams.get("category")),
@@ -111,8 +123,7 @@ export function parseExplorerFilterState(searchParams: SearchParamsLike): Explor
       : defaults.direction,
     tag: cleanValue(searchParams.get("tag")),
     minAmount: cleanValue(searchParams.get("min_amount")),
-    maxAmount: cleanValue(searchParams.get("max_amount")),
-    review: REVIEW_VALUES.has(review) ? (review as ExplorerReviewFilter) : defaults.review
+    maxAmount: cleanValue(searchParams.get("max_amount"))
   };
 }
 
@@ -120,8 +131,13 @@ export function toExplorerAnalyticsApiParams(
   filters: ExplorerFilterState
 ): ExplorerAnalyticsApiParams {
   const params: ExplorerAnalyticsApiParams = {
-    category_view: filters.categoryView
+    category_view: filters.categoryView,
+    perspective: filters.perspective
   };
+
+  if (filters.compare === "previous") {
+    params.compare = "previous";
+  }
 
   if (filters.category) {
     params.category = filters.category;
@@ -169,6 +185,12 @@ export function buildExplorerFilterSearchParams(filters: ExplorerFilterState): U
   if (filters.account) {
     searchParams.set("account", filters.account);
   }
+  if (filters.perspective !== defaults.perspective) {
+    searchParams.set("perspective", filters.perspective);
+  }
+  if (filters.compare !== defaults.compare) {
+    searchParams.set("compare", filters.compare);
+  }
   if (filters.tag) {
     searchParams.set("tag", filters.tag);
   }
@@ -188,10 +210,6 @@ export function buildExplorerFilterSearchParams(filters: ExplorerFilterState): U
 
   if (filters.categoryView !== defaults.categoryView) {
     searchParams.set("category_view", filters.categoryView);
-  }
-
-  if (filters.review !== defaults.review) {
-    searchParams.set("review", filters.review);
   }
 
   if (filters.transactionType !== defaults.transactionType) {
@@ -227,14 +245,17 @@ export function toValidExplorerFilterState(filters: ExplorerFilterState): Explor
     maxAmount: cleanValue(filters.maxAmount)
   };
 
+  if (!PERSPECTIVE_VALUES.has(next.perspective)) {
+    next.perspective = "overview";
+  }
+  if (!COMPARE_VALUES.has(next.compare)) {
+    next.compare = "none";
+  }
   if (!RANGE_VALUES.has(next.range)) {
     next.range = "90d";
   }
   if (!CATEGORY_VIEW_VALUES.has(next.categoryView)) {
     next.categoryView = "granular";
-  }
-  if (!REVIEW_VALUES.has(next.review)) {
-    next.review = "all";
   }
   if (!TRANSACTION_TYPE_VALUES.has(next.transactionType)) {
     next.transactionType = "all";
@@ -249,4 +270,38 @@ export function toValidExplorerFilterState(filters: ExplorerFilterState): Explor
   }
 
   return next;
+}
+
+export function savedExplorerFiltersToState(
+  rawFilters: Record<string, unknown> | null | undefined
+): ExplorerFilterState {
+  const defaults = createDefaultExplorerFilterState();
+  if (!rawFilters || typeof rawFilters !== "object") {
+    return defaults;
+  }
+
+  const source = rawFilters as Record<string, unknown>;
+  return toValidExplorerFilterState({
+    perspective: typeof source.perspective === "string" ? (source.perspective as ExplorerPerspective) : defaults.perspective,
+    compare: typeof source.compare === "string" ? (source.compare as ExplorerCompareMode) : defaults.compare,
+    query: typeof source.query === "string" ? source.query : defaults.query,
+    merchant: typeof source.merchant === "string" ? source.merchant : defaults.merchant,
+    category: typeof source.category === "string" ? source.category : defaults.category,
+    account: typeof source.account === "string" ? source.account : defaults.account,
+    categoryView: typeof source.categoryView === "string"
+      ? (source.categoryView as ExplorerCategoryView)
+      : defaults.categoryView,
+    range: typeof source.range === "string" ? source.range : defaults.range,
+    start: typeof source.start === "string" ? source.start : defaults.start,
+    end: typeof source.end === "string" ? source.end : defaults.end,
+    transactionType: typeof source.transactionType === "string"
+      ? (source.transactionType as ExplorerTypeFilter)
+      : defaults.transactionType,
+    direction: typeof source.direction === "string"
+      ? (source.direction as ExplorerDirectionFilter)
+      : defaults.direction,
+    tag: typeof source.tag === "string" ? source.tag : defaults.tag,
+    minAmount: typeof source.minAmount === "string" ? source.minAmount : defaults.minAmount,
+    maxAmount: typeof source.maxAmount === "string" ? source.maxAmount : defaults.maxAmount
+  });
 }

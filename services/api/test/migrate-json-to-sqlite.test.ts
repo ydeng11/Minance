@@ -14,6 +14,7 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "../../..");
 
 const SQLITE_MAX_BUFFER = 1024 * 1024 * 20;
+const TSX_BIN = path.resolve(ROOT_DIR, "apps/web/node_modules/.bin/tsx");
 
 function createTempPaths() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "minance-migrate-json-to-sqlite-"));
@@ -33,6 +34,18 @@ function querySqliteJson(dbPath: string, sql: string) {
   assert.equal(result.status, 0, result.stderr || result.error?.message || "sqlite3 query failed");
   const raw = String(result.stdout || "").trim();
   return raw ? JSON.parse(raw) : [];
+}
+
+function runTsxScript(args: string[], options: { env?: NodeJS.ProcessEnv } = {}) {
+  return spawnSync(TSX_BIN, args, {
+    cwd: ROOT_DIR,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...options.env
+    },
+    maxBuffer: SQLITE_MAX_BUFFER
+  });
 }
 
 test(
@@ -140,15 +153,13 @@ test(
       writeStoreCollectionsToSqlite(staleStore, { dbPath: temp.dbPath });
       fs.writeFileSync(temp.sourcePath, JSON.stringify(sourceStore, null, 2));
 
-      const result = spawnSync(
-        "pnpm",
-        ["migrate:sqlite", "--", "--source", temp.sourcePath, "--db", temp.dbPath],
-        {
-          cwd: ROOT_DIR,
-          encoding: "utf8",
-          maxBuffer: SQLITE_MAX_BUFFER
-        }
-      );
+      const result = runTsxScript([
+        "scripts/migrate-json-to-sqlite.ts",
+        "--source",
+        temp.sourcePath,
+        "--db",
+        temp.dbPath
+      ]);
 
       assert.equal(
         result.status,
@@ -173,34 +184,112 @@ test(
 );
 
 test(
-  "migrate-json-to-sqlite and validate:sqlite use the default JSON fixture successfully",
+  "migrate-json-to-sqlite and validate:sqlite support the committed fixture when passed explicitly",
   { skip: !isSqliteCliAvailable() },
   () => {
     const temp = createTempPaths();
+    const fixturePath = path.resolve(ROOT_DIR, "services/api/test/fixtures/deterministic-financial-store.json");
 
     try {
-      const migrateResult = spawnSync("pnpm", ["migrate:sqlite", "--", "--db", temp.dbPath], {
-        cwd: ROOT_DIR,
-        encoding: "utf8",
-        maxBuffer: SQLITE_MAX_BUFFER
+      const migrateResult = runTsxScript([
+        "scripts/migrate-json-to-sqlite.ts",
+        "--source",
+        fixturePath,
+        "--db",
+        temp.dbPath
+      ]);
+      assert.equal(
+        migrateResult.status,
+        0,
+        `explicit fixture migration failed\nstdout:\n${migrateResult.stdout}\nstderr:\n${migrateResult.stderr}`
+      );
+
+      const validateResult = runTsxScript([
+        "scripts/validate-json-vs-sqlite.ts",
+        "--source",
+        fixturePath,
+        "--db",
+        temp.dbPath
+      ]);
+      assert.equal(
+        validateResult.status,
+        0,
+        `explicit fixture validation failed\nstdout:\n${validateResult.stdout}\nstderr:\n${validateResult.stderr}`
+      );
+    } finally {
+      fs.rmSync(temp.dir, { recursive: true, force: true });
+    }
+  }
+);
+
+test(
+  "migrate-json-to-sqlite and validate:sqlite default to the live JSON store path",
+  { skip: !isSqliteCliAvailable() },
+  () => {
+    const temp = createTempPaths();
+    const liveStorePath = path.resolve(ROOT_DIR, "services/api/data/store.json");
+    const existingLiveStore = fs.existsSync(liveStorePath) ? fs.readFileSync(liveStorePath, "utf8") : null;
+    const liveStore = {
+      users: [
+        {
+          id: "user_live_default",
+          email: "live-default@minance.local",
+          createdAt: "2026-03-07T00:00:00.000Z",
+          updatedAt: "2026-03-07T00:00:00.000Z"
+        }
+      ],
+      accounts: [],
+      transactions: [],
+      categories: [],
+      imports: [],
+      rules: [],
+      settings: [],
+      auditEvents: []
+    };
+
+    try {
+      fs.mkdirSync(path.dirname(liveStorePath), { recursive: true });
+      fs.writeFileSync(liveStorePath, JSON.stringify(liveStore, null, 2));
+
+      const migrateResult = runTsxScript(["scripts/migrate-json-to-sqlite.ts", "--db", temp.dbPath], {
+        env: {
+          MINANCE_DATA_FILE: "",
+          MINANCE_SQLITE_FILE: temp.dbPath
+        }
       });
       assert.equal(
         migrateResult.status,
         0,
-        `default fixture migration failed\nstdout:\n${migrateResult.stdout}\nstderr:\n${migrateResult.stderr}`
+        `live-store migration failed\nstdout:\n${migrateResult.stdout}\nstderr:\n${migrateResult.stderr}`
       );
 
-      const validateResult = spawnSync("pnpm", ["validate:sqlite", "--", "--db", temp.dbPath], {
-        cwd: ROOT_DIR,
-        encoding: "utf8",
-        maxBuffer: SQLITE_MAX_BUFFER
+      const users = querySqliteJson(temp.dbPath, "SELECT id FROM users ORDER BY id;");
+      assert.deepEqual(users, [{ id: "user_live_default" }]);
+
+      const validateResult = runTsxScript(["scripts/validate-json-vs-sqlite.ts", "--db", temp.dbPath], {
+        env: {
+          MINANCE_DATA_FILE: "",
+          MINANCE_SQLITE_FILE: temp.dbPath
+        }
       });
       assert.equal(
         validateResult.status,
         0,
-        `default fixture validation failed\nstdout:\n${validateResult.stdout}\nstderr:\n${validateResult.stderr}`
+        `live-store validation failed\nstdout:\n${validateResult.stdout}\nstderr:\n${validateResult.stderr}`
       );
+
+      const stdout = String(validateResult.stdout || "");
+      const jsonStart = stdout.indexOf("{");
+      assert.notEqual(jsonStart, -1, `validate:sqlite output did not contain JSON:\n${stdout}`);
+
+      const summary = JSON.parse(stdout.slice(jsonStart));
+      assert.equal(summary.sourcePath, liveStorePath);
     } finally {
+      if (existingLiveStore == null) {
+        fs.rmSync(liveStorePath, { force: true });
+      } else {
+        fs.writeFileSync(liveStorePath, existingLiveStore);
+      }
       fs.rmSync(temp.dir, { recursive: true, force: true });
     }
   }

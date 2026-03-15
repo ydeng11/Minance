@@ -503,6 +503,116 @@ export interface OverviewResponse {
   meta: AnalyticsMeta;
 }
 
+export interface ExplorerSummaryDeltaValue {
+  delta: number;
+  percent: number | null;
+}
+
+export interface ExplorerCategoryCompositionItem {
+  category: string;
+  amount: number;
+  share: number;
+  emoji?: string;
+}
+
+export interface ExplorerTrendItem {
+  month: string;
+  spend: number;
+  income: number;
+  net: number;
+  spendComposition: ExplorerCategoryCompositionItem[];
+  incomeComposition: ExplorerCategoryCompositionItem[];
+}
+
+export interface ExplorerAccountTrendItem {
+  month: string;
+  outflow: number;
+  inflow: number;
+  net: number;
+}
+
+export interface ExplorerAccountItem {
+  accountId: string | null;
+  accountKey: string;
+  accountName: string;
+  sourceInstitution: string | null;
+  outflow: number;
+  inflow: number;
+  net: number;
+  transactionCount: number;
+  share: number;
+  trend: ExplorerAccountTrendItem[];
+}
+
+export interface ExplorerCategoryItem {
+  category: string;
+  amount: number;
+  count?: number;
+  share?: number;
+  emoji?: string;
+  coarseKey?: string;
+  excluded?: boolean;
+  spend: number;
+  income: number;
+  net: number;
+  transactionCount: number;
+  spendShare: number;
+  incomeShare: number;
+}
+
+export interface ExplorerSummaryDelta {
+  totalSpend: ExplorerSummaryDeltaValue;
+  totalIncome: ExplorerSummaryDeltaValue;
+  netFlow: ExplorerSummaryDeltaValue;
+  recurringSpend: ExplorerSummaryDeltaValue;
+  transactionCount: ExplorerSummaryDeltaValue;
+}
+
+export interface ExplorerSummarySparklinePoint {
+  date: string;
+  spend: number;
+  income: number;
+  net: number;
+}
+
+export interface ExplorerAnalyticsResponse {
+  summary: {
+    current: OverviewResponse["summary"];
+    previous: OverviewResponse["summary"] | null;
+    delta: ExplorerSummaryDelta | null;
+    sparkline: ExplorerSummarySparklinePoint[];
+  };
+  comparison: {
+    enabled: boolean;
+    current: OverviewResponse["summary"];
+    previous: OverviewResponse["summary"] | null;
+    delta: ExplorerSummaryDelta | null;
+  };
+  trend: {
+    items: ExplorerTrendItem[];
+  };
+  categories: {
+    items: ExplorerCategoryItem[];
+  };
+  accounts: {
+    items: ExplorerAccountItem[];
+    totals: {
+      accounts: number;
+      outflow: number;
+    };
+  };
+  merchants: {
+    items: OverviewResponse["topMerchants"];
+  };
+  heatmap: {
+    items: HeatmapItem[];
+  };
+  anomalies: {
+    items: AnomalyItem[];
+  };
+  meta: AnalyticsMeta;
+}
+
 export interface HeatmapItem {
   week: number;
   weekday: number;

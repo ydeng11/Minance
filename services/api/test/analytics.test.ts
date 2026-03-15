@@ -2,7 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resetStoreForTests } from "../src/store.ts";
-import { getOverview, getCategoryRollup, getAnomalies } from "../src/analytics.ts";
+import {
+  filterUserTransactions,
+  getExplorerAnalytics,
+  getOverview,
+  getCategoryRollup,
+  getAnomalies
+} from "../src/analytics.ts";
 
 const baseStore = {
   users: [{ id: "user_1", email: "user@example.com", createdAt: "2026-01-01", updatedAt: "2026-01-01" }],
@@ -109,4 +115,497 @@ test("anomaly detector surfaces high outlier", () => {
   const anomalies = getAnomalies("user_1", { start: "2025-12-01", end: "2026-01-31" });
 
   assert.ok(anomalies.some((entry) => entry.merchant === "flight"));
+});
+
+test("analytics transaction filtering honors account, query, tag, review, type, and amount filters", () => {
+  const store = structuredClone(baseStore);
+  store.transactions = [
+    {
+      id: "txn_match",
+      user_id: "user_1",
+      transaction_date: "2026-01-10",
+      account_id: "acct_card",
+      account_key: "credit card",
+      merchant_normalized: "gas station",
+      merchant_raw: "Gas Station",
+      description: "Fuel stop",
+      memo: "car commute",
+      amount: 40,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Transport",
+      tags: ["car"],
+      review_status: "reviewed",
+      needs_category_review: false,
+      dedupe_fingerprint: "match"
+    },
+    {
+      id: "txn_other",
+      user_id: "user_1",
+      transaction_date: "2026-01-11",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "coffee",
+      merchant_raw: "Coffee",
+      description: "Morning coffee",
+      memo: "latte run",
+      amount: 10,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Dining",
+      tags: ["coffee"],
+      review_status: "needs_review",
+      needs_category_review: true,
+      dedupe_fingerprint: "other"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const transactions = filterUserTransactions("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    account: "acct_card",
+    query: "fuel",
+    tag: "car",
+    review_status: "reviewed",
+    transaction_type: "expense",
+    min_amount: 20,
+    max_amount: 60
+  });
+
+  assert.equal(transactions.length, 1);
+  assert.equal(transactions[0]?.id, "txn_match");
+});
+
+test("getExplorerAnalytics returns comparison data and account rollups", () => {
+  const store = structuredClone(baseStore);
+  store.accounts = [
+    {
+      id: "acct_checking",
+      userId: "user_1",
+      displayName: "Checking",
+      sourceInstitution: "Local Bank",
+      accountType: "checking",
+      currency: "USD",
+      initialBalance: 0,
+      version: 1,
+      status: "active",
+      includeInCharts: true,
+      hidden: false,
+      closed: false,
+      closedAt: null,
+      normalizedKey: "checking",
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01"
+    },
+    {
+      id: "acct_card",
+      userId: "user_1",
+      displayName: "Credit Card",
+      sourceInstitution: "Local Bank",
+      accountType: "credit",
+      currency: "USD",
+      initialBalance: 0,
+      version: 1,
+      status: "active",
+      includeInCharts: true,
+      hidden: false,
+      closed: false,
+      closedAt: null,
+      normalizedKey: "credit card",
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01"
+    }
+  ];
+  store.transactions = [
+    {
+      id: "txn_fuel_jan",
+      user_id: "user_1",
+      transaction_date: "2026-01-10",
+      account_id: "acct_card",
+      account_key: "credit card",
+      merchant_normalized: "gas station",
+      merchant_raw: "Gas Station",
+      description: "Fuel stop",
+      amount: 40,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Transport",
+      dedupe_fingerprint: "fuel_jan"
+    },
+    {
+      id: "txn_grocery_jan",
+      user_id: "user_1",
+      transaction_date: "2026-01-12",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "super market",
+      merchant_raw: "Super Market",
+      description: "Groceries",
+      amount: 60,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Groceries",
+      dedupe_fingerprint: "grocery_jan"
+    },
+    {
+      id: "txn_payroll_jan",
+      user_id: "user_1",
+      transaction_date: "2026-01-15",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "payroll",
+      merchant_raw: "Payroll",
+      description: "Salary",
+      amount: 1000,
+      direction: "credit",
+      transaction_type: "income",
+      category_final: "Income",
+      dedupe_fingerprint: "payroll_jan"
+    },
+    {
+      id: "txn_fuel_dec",
+      user_id: "user_1",
+      transaction_date: "2025-12-12",
+      account_id: "acct_card",
+      account_key: "credit card",
+      merchant_normalized: "gas station",
+      merchant_raw: "Gas Station",
+      description: "Fuel stop",
+      amount: 20,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Transport",
+      dedupe_fingerprint: "fuel_dec"
+    },
+    {
+      id: "txn_coffee_dec",
+      user_id: "user_1",
+      transaction_date: "2025-12-14",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "coffee",
+      merchant_raw: "Coffee",
+      description: "Coffee",
+      amount: 10,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Dining",
+      dedupe_fingerprint: "coffee_dec"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const analytics = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "granular",
+    compare: "previous"
+  });
+
+  assert.equal(analytics.summary.current.totalSpend, 100);
+  assert.equal(analytics.comparison.previous.totalSpend, 30);
+  assert.equal(analytics.accounts.items[0]?.accountName, "Checking");
+  assert.equal(analytics.accounts.items[0]?.outflow, 60);
+  assert.equal(analytics.accounts.items[1]?.accountName, "Credit Card");
+  assert.ok(analytics.categories.items.length > 0);
+  assert.ok(analytics.merchants.items.length > 0);
+  assert.ok(Array.isArray(analytics.heatmap.items));
+  assert.ok(Array.isArray(analytics.anomalies.items));
+});
+
+test("getExplorerAnalytics returns a seven-point summary sparkline", () => {
+  const store = structuredClone(baseStore);
+  store.transactions = [
+    {
+      id: "txn_card_1",
+      user_id: "user_1",
+      transaction_date: "2026-01-10",
+      merchant_normalized: "grocer",
+      merchant_raw: "Grocer",
+      description: "Groceries",
+      amount: 45,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Groceries",
+      dedupe_fingerprint: "spark_1"
+    },
+    {
+      id: "txn_card_2",
+      user_id: "user_1",
+      transaction_date: "2026-01-12",
+      merchant_normalized: "gas",
+      merchant_raw: "Gas",
+      description: "Gas",
+      amount: 20,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Transport",
+      dedupe_fingerprint: "spark_2"
+    },
+    {
+      id: "txn_income",
+      user_id: "user_1",
+      transaction_date: "2026-01-15",
+      merchant_normalized: "payroll",
+      merchant_raw: "Payroll",
+      description: "Payroll",
+      amount: 500,
+      direction: "credit",
+      transaction_type: "income",
+      category_final: "Income",
+      dedupe_fingerprint: "spark_3"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const analytics = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-15",
+    category_view: "granular"
+  });
+
+  assert.equal(analytics.summary.sparkline.length, 7);
+  assert.equal(analytics.summary.sparkline[0]?.date, "2026-01-09");
+  assert.equal(analytics.summary.sparkline[6]?.date, "2026-01-15");
+  assert.equal(analytics.summary.sparkline[1]?.spend, 45);
+  assert.equal(analytics.summary.sparkline[3]?.spend, 20);
+  assert.equal(analytics.summary.sparkline[6]?.income, 500);
+});
+
+test("getExplorerAnalytics includes category balance metrics and monthly composition", () => {
+  const store = structuredClone(baseStore);
+  store.transactions = [
+    {
+      id: "txn_groceries_feb",
+      user_id: "user_1",
+      transaction_date: "2026-02-03",
+      merchant_normalized: "super market",
+      merchant_raw: "Super Market",
+      description: "Groceries",
+      amount: 60,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Groceries",
+      dedupe_fingerprint: "groceries_feb"
+    },
+    {
+      id: "txn_dining_feb",
+      user_id: "user_1",
+      transaction_date: "2026-02-09",
+      merchant_normalized: "noodles",
+      merchant_raw: "Noodles",
+      description: "Dinner",
+      amount: 40,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Dining",
+      dedupe_fingerprint: "dining_feb"
+    },
+    {
+      id: "txn_salary_feb",
+      user_id: "user_1",
+      transaction_date: "2026-02-15",
+      merchant_normalized: "payroll",
+      merchant_raw: "Payroll",
+      description: "Salary",
+      amount: 1000,
+      direction: "credit",
+      transaction_type: "income",
+      category_final: "Salary",
+      dedupe_fingerprint: "salary_feb"
+    },
+    {
+      id: "txn_refund_feb",
+      user_id: "user_1",
+      transaction_date: "2026-02-18",
+      merchant_normalized: "insurance",
+      merchant_raw: "Insurance",
+      description: "Refund",
+      amount: 200,
+      direction: "credit",
+      transaction_type: "income",
+      category_final: "Refunds",
+      dedupe_fingerprint: "refund_feb"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const analytics = getExplorerAnalytics("user_1", {
+    start: "2026-02-01",
+    end: "2026-02-28",
+    category_view: "granular"
+  });
+
+  const groceries = analytics.categories.items.find((entry) => entry.category === "Groceries");
+  assert.equal(groceries?.spend, 60);
+  assert.equal(groceries?.income, 0);
+  assert.equal(groceries?.net, -60);
+  assert.equal(groceries?.transactionCount, 1);
+  assert.equal(groceries?.spendShare, 60);
+  assert.equal(groceries?.incomeShare, 0);
+
+  const salary = analytics.categories.items.find((entry) => entry.category === "Salary");
+  assert.equal(salary?.spend, 0);
+  assert.equal(salary?.income, 1000);
+  assert.equal(salary?.net, 1000);
+  assert.equal(salary?.transactionCount, 1);
+  assert.equal(salary?.spendShare, 0);
+  assert.equal(salary?.incomeShare, 83.33);
+
+  const february = analytics.trend.items.find((entry) => entry.month === "2026-02");
+  assert.deepEqual(
+    february?.spendComposition.map((entry) => [entry.category, entry.amount]),
+    [
+      ["Groceries", 60],
+      ["Dining", 40]
+    ]
+  );
+  assert.deepEqual(
+    february?.incomeComposition.map((entry) => [entry.category, entry.amount]),
+    [
+      ["Salary", 1000],
+      ["Refunds", 200]
+    ]
+  );
+});
+
+test("analytics transfer filters honor custom category transfer types", () => {
+  const store = structuredClone(baseStore);
+  store.categories = [
+    {
+      id: "cat_transfer_custom",
+      userId: "user_1",
+      name: "Brokerage Sweep",
+      emoji: "🔁",
+      coarseKey: "neutral",
+      type: "transfer",
+      budget: null,
+      isSystem: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    }
+  ];
+  store.transactions = [
+    {
+      id: "txn_transfer_custom",
+      user_id: "user_1",
+      transaction_date: "2026-01-09",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "brokerage",
+      merchant_raw: "Brokerage",
+      description: "Sweep to brokerage",
+      amount: 250,
+      direction: "debit",
+      category_final: "Brokerage Sweep",
+      dedupe_fingerprint: "transfer_custom"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const transactions = filterUserTransactions("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    transaction_type: "transfer"
+  });
+
+  assert.deepEqual(transactions.map((entry) => entry.id), ["txn_transfer_custom"]);
+});
+
+test("explorer selector rollups stay populated while category or account is focused", () => {
+  const store = structuredClone(baseStore);
+  store.accounts = [
+    {
+      id: "acct_checking",
+      userId: "user_1",
+      displayName: "Checking",
+      sourceInstitution: "Local Bank",
+      accountType: "checking",
+      currency: "USD",
+      initialBalance: 0,
+      version: 1,
+      status: "active",
+      includeInCharts: true,
+      hidden: false,
+      closed: false,
+      closedAt: null,
+      normalizedKey: "checking",
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01"
+    },
+    {
+      id: "acct_card",
+      userId: "user_1",
+      displayName: "Credit Card",
+      sourceInstitution: "Local Bank",
+      accountType: "credit",
+      currency: "USD",
+      initialBalance: 0,
+      version: 1,
+      status: "active",
+      includeInCharts: true,
+      hidden: false,
+      closed: false,
+      closedAt: null,
+      normalizedKey: "credit card",
+      createdAt: "2026-01-01",
+      updatedAt: "2026-01-01"
+    }
+  ];
+  store.transactions = [
+    {
+      id: "txn_card_transport",
+      user_id: "user_1",
+      transaction_date: "2026-01-10",
+      account_id: "acct_card",
+      account_key: "credit card",
+      merchant_normalized: "gas station",
+      merchant_raw: "Gas Station",
+      description: "Fuel stop",
+      amount: 40,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Transport",
+      dedupe_fingerprint: "selector_card_transport"
+    },
+    {
+      id: "txn_checking_groceries",
+      user_id: "user_1",
+      transaction_date: "2026-01-12",
+      account_id: "acct_checking",
+      account_key: "checking",
+      merchant_normalized: "super market",
+      merchant_raw: "Super Market",
+      description: "Groceries",
+      amount: 60,
+      direction: "debit",
+      transaction_type: "expense",
+      category_final: "Groceries",
+      dedupe_fingerprint: "selector_checking_groceries"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const categoryFocused = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "granular",
+    category: "Groceries"
+  });
+  assert.ok(categoryFocused.categories.items.some((entry) => entry.category === "Transport"));
+
+  const accountFocused = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "granular",
+    account: "acct_card"
+  });
+  assert.ok(accountFocused.accounts.items.some((entry) => entry.accountId === "acct_checking"));
 });

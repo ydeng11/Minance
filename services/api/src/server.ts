@@ -54,6 +54,7 @@ import {
 } from "./investments.ts";
 // TODO(maybe-later): Keep investments API support for future re-enable while frontend hides this module.
 import {
+  getExplorerAnalytics,
   getOverview,
   getCategoryRollup,
   getMerchantRollup,
@@ -985,6 +986,30 @@ async function handleApiRequest(req, res, url) {
         category_view: searchParams.get("category_view"),
         category: searchParams.get("category"),
         merchant: searchParams.get("merchant")
+      });
+      sendJson(res, 200, result);
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/analytics/explorer") {
+      const user = requireUser(req);
+      const result = getExplorerAnalytics(user.id, {
+        start: searchParams.get("start"),
+        end: searchParams.get("end"),
+        range: searchParams.get("range"),
+        category_view: searchParams.get("category_view"),
+        perspective: searchParams.get("perspective"),
+        compare: searchParams.get("compare"),
+        category: searchParams.get("category"),
+        account: searchParams.get("account"),
+        merchant: searchParams.get("merchant"),
+        query: searchParams.get("query"),
+        direction: searchParams.get("direction"),
+        transaction_type: searchParams.get("transaction_type"),
+        tag: searchParams.get("tag"),
+        review_status: searchParams.get("review_status"),
+        min_amount: searchParams.get("min_amount"),
+        max_amount: searchParams.get("max_amount")
       });
       sendJson(res, 200, result);
       return;

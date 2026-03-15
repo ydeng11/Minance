@@ -10,13 +10,13 @@ import {
   stableStringify
 } from "./sqlite-cutover-lib.ts";
 
-const DEFAULT_SOURCE_FIXTURE = "services/api/test/fixtures/deterministic-financial-store.json";
+const DEFAULT_SOURCE_PATH = "services/api/data/store.json";
 
 function printHelp() {
   console.log(`Usage: tsx scripts/validate-json-vs-sqlite.ts [--source <json>] [--db <sqlite>] [--sample-size <n>] [--fail-fast <true|false>]
 
 Options:
-  --source       Source JSON fixture path (default: MINANCE_DATA_FILE or ${DEFAULT_SOURCE_FIXTURE})
+  --source       Source JSON store path (default: MINANCE_DATA_FILE or ${DEFAULT_SOURCE_PATH})
   --db           SQLite file path to validate (default: MINANCE_SQLITE_FILE or services/api/data/minance.sqlite)
   --sample-size  Number of deterministic sample rows per table (default: 10)
   --fail-fast    Stop at first mismatch (default: true)
@@ -142,7 +142,7 @@ function main() {
     return;
   }
 
-  const sourcePath = resolvePathFromRoot(args.source || process.env.MINANCE_DATA_FILE, DEFAULT_SOURCE_FIXTURE);
+  const sourcePath = resolvePathFromRoot(args.source || process.env.MINANCE_DATA_FILE, DEFAULT_SOURCE_PATH);
   const dbPath = resolvePathFromRoot(args.db || process.env.MINANCE_SQLITE_FILE, "services/api/data/minance.sqlite");
   const sampleSize = Math.max(1, Number.parseInt(String(args["sample-size"] || "10"), 10));
   const failFast = String(args["fail-fast"] ?? "true").toLowerCase() !== "false";

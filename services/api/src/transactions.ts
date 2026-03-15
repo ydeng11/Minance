@@ -323,7 +323,7 @@ function normalizeRecurringRuleId(rawValue, fallback = null) {
   return value;
 }
 
-function normalizeTransactionRecord(transaction) {
+function normalizeTransactionRecord(transaction, store = null) {
   const tx = transaction || {};
   const rawAmount = Number(tx.amount ?? 0);
   const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
@@ -341,10 +341,11 @@ function normalizeTransactionRecord(transaction) {
 
   const fallbackCategoryFinal = direction === "inflow" ? "Income" : "Uncategorized";
   const categoryFinal = String(tx.category_final || fallbackCategoryFinal).trim() || fallbackCategoryFinal;
+  const category = findUserCategoryByName(store || loadStore(), tx.user_id || tx.userId || null, categoryFinal);
 
   let transactionType;
   try {
-    transactionType = normalizeTransactionType(tx.transaction_type, direction, categoryFinal, null);
+    transactionType = normalizeTransactionType(tx.transaction_type, direction, categoryFinal, category?.type || null);
   } catch {
     transactionType = inferTransactionType(direction, categoryFinal);
   }
@@ -467,7 +468,7 @@ function resolveManualContractFields(
   options = {}
 ) {
   const enforceCategoryConstraint = options.enforceCategoryConstraint === true;
-  const fallback = fallbackTransaction ? normalizeTransactionRecord(fallbackTransaction) : null;
+  const fallback = fallbackTransaction ? normalizeTransactionRecord(fallbackTransaction, store) : null;
 
   const category = findUserCategoryByName(store, userId, normalizedInput.category_final);
   if (enforceCategoryConstraint && !category) {
@@ -535,39 +536,6 @@ function maybeCreateRuleFromCorrection(store, userId, transaction, previousCateg
   });
 }
 
-function normalizeTransactionTypeFilter(rawType) {
-  if (rawType == null || String(rawType).trim() === "") {
-    return null;
-  }
-
-  const normalized = normalizeText(rawType).replace(/\s+/g, "_");
-  const transactionType = TRANSACTION_TYPE_ALIASES.get(normalized);
-  if (!transactionType) {
-    throw new Error("Invalid transaction type");
-  }
-  return transactionType;
-}
-
-function normalizeTagFilter(rawTag) {
-  if (rawTag == null || String(rawTag).trim() === "") {
-    return null;
-  }
-  return normalizeTagValue(rawTag);
-}
-
-function normalizeAmountFilter(rawValue, label) {
-  if (rawValue == null || String(rawValue).trim() === "") {
-    return null;
-  }
-
-  const amount = toDecimal(rawValue);
-  if (amount === null || amount < 0) {
-    throw new Error(`Invalid ${label}`);
-  }
-
-  return Math.abs(amount);
-}
-
 function normalizeBulkTransactionIds(rawIds) {
   if (!Array.isArray(rawIds) || rawIds.length === 0 || rawIds.length > BULK_MUTATION_MAX_COUNT) {
     throw new Error("transaction_ids must include 1-200 items");
@@ -596,6 +564,7 @@ export function listTransactions(userId, filters = {}) {
     effectiveFilters.range = "all";
   }
 
+  const store = loadStore();
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
   let txns = filterUserTransactions(userId, effectiveFilters);
@@ -604,64 +573,11 @@ export function listTransactions(userId, filters = {}) {
     txns = txns.filter((entry) => entry.source_type === effectiveFilters.source_type);
   }
 
-  if (effectiveFilters.query) {
-    const query = normalizeText(effectiveFilters.query);
-    txns = txns.filter((entry) =>
-      normalizeText(`${entry.merchant_raw} ${entry.description} ${entry.memo || ""}`).includes(query)
-    );
-  }
-
-  if (effectiveFilters.account) {
-    const accountFilter = normalizeText(effectiveFilters.account);
-    txns = txns.filter((entry) => {
-      const accountKey = normalizeText(entry.account_key || "");
-      const accountId = normalizeText(entry.account_id || "");
-      return accountKey === accountFilter || accountId === accountFilter;
-    });
-  }
-
-  txns = txns.map((entry) => normalizeTransactionRecord(entry));
-
-  if (effectiveFilters.needs_category_review === "true") {
-    txns = txns.filter((entry) => entry.needs_category_review);
-  }
-
-  const reviewStatusFilter = String(effectiveFilters.review_status || "").trim().toLowerCase();
-  if (reviewStatusFilter) {
-    if (!REVIEW_STATUS_VALUES.has(reviewStatusFilter)) {
-      throw new Error("Invalid review status");
-    }
-    txns = txns.filter((entry) => entry.review_status === reviewStatusFilter);
-  }
-
-  const transactionTypeFilter = normalizeTransactionTypeFilter(effectiveFilters.transaction_type);
-  if (transactionTypeFilter) {
-    txns = txns.filter((entry) => entry.transaction_type === transactionTypeFilter);
-  }
-
-  const tagFilter = normalizeTagFilter(effectiveFilters.tag);
-  if (tagFilter) {
-    txns = txns.filter((entry) => entry.tags.includes(tagFilter));
-  }
+  txns = txns.map((entry) => normalizeTransactionRecord(entry, store));
 
   if (effectiveFilters.recurring_rule_id) {
     const recurringRuleIdFilter = normalizeRecurringRuleId(effectiveFilters.recurring_rule_id, null);
     txns = txns.filter((entry) => entry.recurring_rule_id === recurringRuleIdFilter);
-  }
-
-  const minAmountFilter = normalizeAmountFilter(effectiveFilters.min_amount, "min amount");
-  const maxAmountFilter = normalizeAmountFilter(effectiveFilters.max_amount, "max amount");
-  if (minAmountFilter != null || maxAmountFilter != null) {
-    txns = txns.filter((entry) => {
-      const amount = Math.abs(Number(entry.amount || 0));
-      if (minAmountFilter != null && amount < minAmountFilter) {
-        return false;
-      }
-      if (maxAmountFilter != null && amount > maxAmountFilter) {
-        return false;
-      }
-      return true;
-    });
   }
 
   txns = [...txns].sort((a, b) => {
@@ -767,7 +683,7 @@ export function createManualTransaction(userId, payload) {
   saveStore(store);
   addAuditEvent(userId, "transaction.manual.create", { transactionId: tx.id });
 
-  return normalizeTransactionRecord(tx);
+  return normalizeTransactionRecord(tx, store);
 }
 
 export function updateTransaction(userId, transactionId, payload) {
@@ -779,7 +695,7 @@ export function updateTransaction(userId, transactionId, payload) {
     throw new Error("Transaction not found");
   }
 
-  const normalizedExisting = normalizeTransactionRecord(tx);
+  const normalizedExisting = normalizeTransactionRecord(tx, store);
   const previousCategory = normalizedExisting.category_final;
   const categoryFieldTouched = hasOwnField(payload, "category_final");
 
@@ -849,7 +765,7 @@ export function updateTransaction(userId, transactionId, payload) {
   saveStore(store);
   addAuditEvent(userId, "transaction.update", { transactionId });
 
-  return normalizeTransactionRecord(tx);
+  return normalizeTransactionRecord(tx, store);
 }
 
 export function bulkUpdateTransactions(userId, payload = {}) {
@@ -946,7 +862,7 @@ export function bulkUpdateTransactions(userId, payload = {}) {
   const normalizedTransactions = [];
 
   for (const entry of updates) {
-    const previous = normalizeTransactionRecord(entry);
+    const previous = normalizeTransactionRecord(entry, store);
     const nextShape = {
       ...previous,
       category_final: hasCategoryUpdate ? nextCategory : previous.category_final
@@ -990,7 +906,7 @@ export function bulkUpdateTransactions(userId, payload = {}) {
     entry.review_status = nextShape.review_status;
     entry.updated_at = updatedAt;
 
-    normalizedTransactions.push(normalizeTransactionRecord(entry));
+    normalizedTransactions.push(normalizeTransactionRecord(entry, store));
   }
 
   saveStore(store);
@@ -1051,5 +967,5 @@ export function restoreTransaction(userId, transactionId) {
   saveStore(store);
   addAuditEvent(userId, "transaction.restore", { transactionId });
 
-  return normalizeTransactionRecord(tx);
+  return normalizeTransactionRecord(tx, store);
 }

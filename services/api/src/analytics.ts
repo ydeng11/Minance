@@ -1,5 +1,6 @@
 import { loadStore } from "./store.ts";
 import { computeDateRange, inDateRange, monthKey } from "./utils.ts";
+import { applySharedTransactionFilters } from "./transactionFilters.ts";
 import {
   CATEGORY_VIEW_COARSE,
   createCategoryResolver,
@@ -79,7 +80,7 @@ export function filterUserTransactions(userId, filters = {}) {
     filtered.push(normalizedTxn);
   }
 
-  return filtered;
+  return applySharedTransactionFilters(filtered, filters);
 }
 
 export function getUserDataBounds(userId) {
@@ -173,6 +174,146 @@ function buildCategoryRollupFromTransactions(txns, resolveCategory, categoryView
       share: round2((entry.amount / safeTotal) * 100)
     }))
     .sort((a, b) => b.amount - a.amount);
+}
+
+function buildExplorerCategoryRollupFromTransactions(txns, resolveCategory, categoryView) {
+  const grouped = {};
+  let totalSpend = 0;
+  let totalIncome = 0;
+
+  for (const txn of txns) {
+    const categoryMeta = resolveTxnCategory(resolveCategory, txn);
+    const categoryName = categoryView === CATEGORY_VIEW_COARSE
+      ? categoryMeta.categoryCoarse
+      : categoryMeta.categoryGranular;
+    const emoji = categoryView === CATEGORY_VIEW_COARSE
+      ? categoryMeta.categoryCoarseEmoji
+      : categoryMeta.categoryEmoji;
+
+    if (!grouped[categoryName]) {
+      grouped[categoryName] = {
+        category: categoryName,
+        spend: 0,
+        income: 0,
+        transactionCount: 0,
+        emoji,
+        coarseKey: categoryMeta.categoryCoarseKey,
+        excluded: categoryMeta.categoryExcluded
+      };
+    }
+
+    const amount = toAmount(txn);
+    if (txn.direction === "outflow") {
+      grouped[categoryName].spend += amount;
+      totalSpend += amount;
+    } else {
+      grouped[categoryName].income += amount;
+      totalIncome += amount;
+    }
+    grouped[categoryName].transactionCount += 1;
+  }
+
+  const safeTotalSpend = totalSpend || 1;
+  const safeTotalIncome = totalIncome || 1;
+
+  return Object.values(grouped)
+    .map((entry) => ({
+      ...entry,
+      spend: round2(entry.spend),
+      income: round2(entry.income),
+      net: round2(entry.income - entry.spend),
+      amount: round2(entry.spend),
+      count: entry.transactionCount,
+      share: round2((entry.spend / safeTotalSpend) * 100),
+      spendShare: round2((entry.spend / safeTotalSpend) * 100),
+      incomeShare: round2((entry.income / safeTotalIncome) * 100)
+    }))
+    .sort((a, b) => {
+      if (b.amount !== a.amount) {
+        return b.amount - a.amount;
+      }
+      if (b.income !== a.income) {
+        return b.income - a.income;
+      }
+      return a.category.localeCompare(b.category);
+    });
+}
+
+function buildCategoryCompositionItems(grouped) {
+  const entries = Object.values(grouped);
+  const totalAmount = entries.reduce((sum, entry) => sum + entry.amount, 0);
+  const safeTotal = totalAmount || 1;
+
+  return entries
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 4)
+    .map((entry) => ({
+      category: entry.category,
+      amount: round2(entry.amount),
+      share: round2((entry.amount / safeTotal) * 100),
+      emoji: entry.emoji
+    }));
+}
+
+function buildExplorerTrendFromTransactions(txns, resolveCategory, categoryView) {
+  const byMonth = {};
+
+  for (const txn of txns) {
+    const key = monthKey(txn.transaction_date) || "unknown";
+    if (!byMonth[key]) {
+      byMonth[key] = {
+        month: key,
+        spend: 0,
+        income: 0,
+        spendBuckets: {},
+        incomeBuckets: {}
+      };
+    }
+
+    const bucket = byMonth[key];
+    const categoryMeta = resolveTxnCategory(resolveCategory, txn);
+    const categoryName = categoryView === CATEGORY_VIEW_COARSE
+      ? categoryMeta.categoryCoarse
+      : categoryMeta.categoryGranular;
+    const emoji = categoryView === CATEGORY_VIEW_COARSE
+      ? categoryMeta.categoryCoarseEmoji
+      : categoryMeta.categoryEmoji;
+    const amount = toAmount(txn);
+
+    if (txn.direction === "outflow") {
+      bucket.spend += amount;
+      if (!bucket.spendBuckets[categoryName]) {
+        bucket.spendBuckets[categoryName] = {
+          category: categoryName,
+          amount: 0,
+          emoji
+        };
+      }
+      bucket.spendBuckets[categoryName].amount += amount;
+      continue;
+    }
+
+    bucket.income += amount;
+    if (!bucket.incomeBuckets[categoryName]) {
+      bucket.incomeBuckets[categoryName] = {
+        category: categoryName,
+        amount: 0,
+        emoji
+      };
+    }
+    bucket.incomeBuckets[categoryName].amount += amount;
+  }
+
+  return Object.values(byMonth)
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .map((entry) => ({
+      month: entry.month,
+      spend: round2(entry.spend),
+      income: round2(entry.income),
+      net: round2(entry.income - entry.spend),
+      spendComposition: buildCategoryCompositionItems(entry.spendBuckets),
+      incomeComposition: buildCategoryCompositionItems(entry.incomeBuckets)
+    }));
 }
 
 export function getOverview(userId, filters = {}) {
@@ -275,6 +416,95 @@ export function getMerchantRollup(userId, filters = {}) {
   return items.map((entry, idx) => ({ ...entry, rank: idx + 1, concentrationIndex: round4(concentration) }));
 }
 
+export function getAccountRollup(userId, filters = {}) {
+  const store = loadStore();
+  const txns = filterUserTransactions(userId, filters);
+  const accountById = new Map(
+    store.accounts
+      .filter((entry) => entry.userId === userId)
+      .map((entry) => [entry.id, entry])
+  );
+  const grouped = {};
+  let totalOutflow = 0;
+
+  for (const txn of txns) {
+    const account = txn.account_id ? (accountById.get(txn.account_id) || null) : null;
+    const accountName = account?.displayName || String(txn.account_key || "").trim() || "Unassigned";
+    const accountKey = account?.normalizedKey || String(txn.account_key || "").trim().toLowerCase() || "unassigned";
+    const groupKey = String(txn.account_id || accountKey);
+
+    if (!grouped[groupKey]) {
+      grouped[groupKey] = {
+        accountId: txn.account_id || account?.id || null,
+        accountKey,
+        accountName,
+        sourceInstitution: account?.sourceInstitution || null,
+        outflow: 0,
+        inflow: 0,
+        net: 0,
+        transactionCount: 0,
+        trendMap: {}
+      };
+    }
+
+    const bucket = grouped[groupKey];
+    const month = monthKey(txn.transaction_date) || "unknown";
+    if (!bucket.trendMap[month]) {
+      bucket.trendMap[month] = {
+        month,
+        outflow: 0,
+        inflow: 0,
+        net: 0
+      };
+    }
+
+    const amount = toAmount(txn);
+    if (txn.direction === "outflow") {
+      bucket.outflow += amount;
+      bucket.trendMap[month].outflow += amount;
+      totalOutflow += amount;
+    } else {
+      bucket.inflow += amount;
+      bucket.trendMap[month].inflow += amount;
+    }
+
+    bucket.net = bucket.inflow - bucket.outflow;
+    bucket.trendMap[month].net = bucket.trendMap[month].inflow - bucket.trendMap[month].outflow;
+    bucket.transactionCount += 1;
+  }
+
+  const safeTotalOutflow = totalOutflow || 1;
+  const items = Object.values(grouped)
+    .map((entry) => ({
+      accountId: entry.accountId,
+      accountKey: entry.accountKey,
+      accountName: entry.accountName,
+      sourceInstitution: entry.sourceInstitution,
+      outflow: round2(entry.outflow),
+      inflow: round2(entry.inflow),
+      net: round2(entry.net),
+      transactionCount: entry.transactionCount,
+      share: round2((entry.outflow / safeTotalOutflow) * 100),
+      trend: Object.values(entry.trendMap)
+        .sort((a, b) => a.month.localeCompare(b.month))
+        .map((bucket) => ({
+          month: bucket.month,
+          outflow: round2(bucket.outflow),
+          inflow: round2(bucket.inflow),
+          net: round2(bucket.net)
+        }))
+    }))
+    .sort((a, b) => (b.outflow === a.outflow ? a.accountName.localeCompare(b.accountName) : b.outflow - a.outflow));
+
+  return {
+    items,
+    totals: {
+      accounts: items.length,
+      outflow: round2(totalOutflow)
+    }
+  };
+}
+
 export function getHeatmap(userId, filters = {}) {
   const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "outflow");
   const buckets = new Map();
@@ -375,6 +605,79 @@ export function getAnomalies(userId, filters = {}) {
     });
 }
 
+export function getExplorerAnalytics(userId, filters = {}) {
+  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const strategy = ensureCategoryStrategyForUser(userId);
+  const resolveCategory = createCategoryResolver(strategy);
+  const currentTransactions = filterUserTransactions(userId, filters);
+  const currentOverview = getOverview(userId, {
+    ...filters,
+    category_view: categoryView
+  });
+  const previousFilters = filters.compare === "previous"
+    ? derivePreviousComparisonFilters(filters)
+    : null;
+  const previousOverview = previousFilters
+    ? getOverview(userId, {
+        ...previousFilters,
+        category_view: categoryView
+      })
+    : null;
+  const categorySelectorFilters = {
+    ...filters,
+    category: null
+  };
+  const accountSelectorFilters = {
+    ...filters,
+    account: null
+  };
+
+  return {
+    summary: {
+      current: currentOverview.summary,
+      previous: previousOverview?.summary || null,
+      delta: previousOverview ? buildSummaryDelta(currentOverview.summary, previousOverview.summary) : null,
+      sparkline: buildSummarySparkline(currentTransactions, filters)
+    },
+    comparison: {
+      enabled: Boolean(previousOverview),
+      current: currentOverview.summary,
+      previous: previousOverview?.summary || null,
+      delta: previousOverview ? buildSummaryDelta(currentOverview.summary, previousOverview.summary) : null
+    },
+    trend: {
+      items: buildExplorerTrendFromTransactions(currentTransactions, resolveCategory, categoryView)
+    },
+    categories: {
+      items: buildExplorerCategoryRollupFromTransactions(
+        filterUserTransactions(userId, {
+          ...categorySelectorFilters,
+          category_view: categoryView
+        }),
+        resolveCategory,
+        categoryView
+      )
+    },
+    accounts: getAccountRollup(userId, accountSelectorFilters),
+    merchants: {
+      items: getMerchantRollup(userId, filters)
+    },
+    heatmap: {
+      items: getHeatmap(userId, filters)
+    },
+    anomalies: {
+      items: getAnomalies(userId, {
+        ...filters,
+        category_view: categoryView
+      })
+    },
+    meta: buildAnalyticsMeta(userId, {
+      ...filters,
+      category_view: categoryView
+    })
+  };
+}
+
 function getWeekOfYear(date) {
   const start = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
   const dayOfYear = Math.floor((date - start) / (24 * 60 * 60 * 1000));
@@ -390,6 +693,104 @@ function shiftMonth(monthText, delta) {
   const date = new Date(Date.UTC(year, month - 1 + delta, 1));
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
+
+function derivePreviousComparisonFilters(filters = {}) {
+  const currentRange = computeDateRange(filters.range, filters.start, filters.end);
+  if (!currentRange.start || !currentRange.end) {
+    return null;
+  }
+
+  const currentStart = new Date(`${currentRange.start}T12:00:00Z`);
+  const currentEnd = new Date(`${currentRange.end}T12:00:00Z`);
+  if (Number.isNaN(currentStart.getTime()) || Number.isNaN(currentEnd.getTime()) || currentEnd < currentStart) {
+    return null;
+  }
+
+  const days = Math.round((currentEnd.getTime() - currentStart.getTime()) / DAY_IN_MS) + 1;
+  const previousEnd = new Date(currentStart);
+  previousEnd.setUTCDate(previousEnd.getUTCDate() - 1);
+  const previousStart = new Date(previousEnd);
+  previousStart.setUTCDate(previousStart.getUTCDate() - (days - 1));
+
+  return {
+    ...filters,
+    start: formatDateYmd(previousStart),
+    end: formatDateYmd(previousEnd),
+    range: "custom"
+  };
+}
+
+function buildSummaryDelta(currentSummary, previousSummary) {
+  return {
+    totalSpend: buildDeltaValue(currentSummary.totalSpend, previousSummary.totalSpend),
+    totalIncome: buildDeltaValue(currentSummary.totalIncome, previousSummary.totalIncome),
+    netFlow: buildDeltaValue(currentSummary.netFlow, previousSummary.netFlow),
+    recurringSpend: buildDeltaValue(currentSummary.recurringSpend, previousSummary.recurringSpend),
+    transactionCount: buildDeltaValue(currentSummary.transactionCount, previousSummary.transactionCount)
+  };
+}
+
+function buildSummarySparkline(transactions, filters = {}) {
+  const appliedRange = buildAppliedRange(filters);
+  if (!appliedRange.end) {
+    return [];
+  }
+
+  const endDate = new Date(`${appliedRange.end}T12:00:00Z`);
+  if (Number.isNaN(endDate.getTime())) {
+    return [];
+  }
+
+  const points = [];
+  const pointMap = new Map();
+
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const pointDate = new Date(endDate.getTime() - offset * DAY_IN_MS);
+    const date = formatDateYmd(pointDate);
+    const point = {
+      date,
+      spend: 0,
+      income: 0,
+      net: 0
+    };
+    points.push(point);
+    pointMap.set(date, point);
+  }
+
+  for (const transaction of transactions) {
+    const point = pointMap.get(transaction.transaction_date);
+    if (!point) {
+      continue;
+    }
+
+    const amount = toAmount(transaction);
+    if (transaction.direction === "inflow") {
+      point.income = round2(point.income + amount);
+      point.net = round2(point.net + amount);
+      continue;
+    }
+
+    point.spend = round2(point.spend + amount);
+    point.net = round2(point.net - amount);
+  }
+
+  return points;
+}
+
+function buildDeltaValue(currentValue, previousValue) {
+  const delta = round2(currentValue - previousValue);
+  const safePrevious = previousValue === 0 ? null : previousValue;
+  return {
+    delta,
+    percent: safePrevious == null ? null : round2((delta / safePrevious) * 100)
+  };
+}
+
+function formatDateYmd(date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 function round2(value) {
   return Math.round(value * 100) / 100;

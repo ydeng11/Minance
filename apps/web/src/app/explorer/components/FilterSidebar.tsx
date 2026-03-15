@@ -33,7 +33,6 @@ export function FilterSidebar({
     if (filters.tag) count++;
     if (filters.transactionType !== "all") count++;
     if (filters.direction !== "all") count++;
-    if (filters.review !== "all") count++;
     if (filters.minAmount) count++;
     if (filters.maxAmount) count++;
     if (filters.range !== "90d") count++;
@@ -49,7 +48,6 @@ export function FilterSidebar({
       tag: "",
       transactionType: "all",
       direction: "all",
-      review: "all",
       minAmount: "",
       maxAmount: "",
       range: "90d",
@@ -286,19 +284,6 @@ export function FilterSidebar({
         )}
       </section>
 
-      {/* Review Status */}
-      <section className="space-y-2">
-        <h4 className="text-xs font-medium uppercase tracking-wide text-neutral-500">Review</h4>
-        <select
-          value={filters.review}
-          onChange={(e) => onChange({ review: e.target.value as ExplorerFilterState["review"] })}
-          className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
-        >
-          <option value="all">All statuses</option>
-          <option value="reviewed">Reviewed</option>
-          <option value="needs_review">Needs Review</option>
-        </select>
-      </section>
     </aside>
   );
 }

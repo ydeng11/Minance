@@ -38,7 +38,7 @@ export function CategoryBreakdown({ overview, onCategoryClick, loading }: Catego
   return (
     <div className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-6">
       <h3 className="text-sm font-medium text-neutral-300">Categories</h3>
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 space-y-2" data-testid="analytics-category-bars">
         {categories.slice(0, 8).map((entry) => {
           const barWidth = `${Math.max(5, (entry.amount / maxAmount) * 100)}%`;
           return (
