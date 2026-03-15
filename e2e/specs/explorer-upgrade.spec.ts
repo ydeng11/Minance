@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   analyticsHeatmapCells,
+  explorerWeekdaySummaryCells,
   gotoView,
   loginWithSeedAccount,
   uploadAndCommitFixtureCsv
@@ -35,7 +36,7 @@ test("overview perspective uses a full-width trend chart with the active range l
   await expect(page.getByTestId("explorer-overview-trend")).not.toContainText("Last 6 months");
   await expect(page.getByTestId("analytics-category-bars")).toBeVisible();
   await expect(page.getByTestId("analytics-merchant-bars")).toBeVisible();
-  await expect(page.getByTestId("analytics-heatmap")).toBeVisible();
+  await expect(page.getByTestId("explorer-weekday-summary")).toBeVisible();
   await expect(page.getByTestId("analytics-anomalies")).toBeVisible();
 });
 
@@ -68,6 +69,19 @@ test("summary cards separate selected-range totals from recent seven-day context
   await expect(summary).toContainText("within current filters");
   await expect(summary).not.toContainText("Recent 7-day trend");
   await expect(page.getByTestId("explorer-summary-sparkline-net")).toBeVisible();
+});
+
+test("overview uses a fixed weekday spend summary across date ranges", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+
+  await page.goto("/explorer?range=365d");
+
+  await expect(page.getByTestId("explorer-weekday-summary")).toBeVisible();
+  await expect(page.getByTestId("explorer-weekday-summary")).toContainText("Sun");
+  await expect(page.getByTestId("explorer-weekday-summary")).toContainText("Sat");
+  await expect(explorerWeekdaySummaryCells(page)).toHaveCount(7);
+  await expect(page.getByTestId("analytics-heatmap")).toHaveCount(0);
 });
 
 test("spending heatmap uses weekday headers and a legend instead of weekday indexes", async ({ page }) => {

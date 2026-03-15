@@ -403,7 +403,7 @@ export default function ExplorerPage() {
           <OverviewPerspective
             overview={overview}
             trend={explorer?.trend.items || []}
-            heatmap={explorer?.heatmap.items || []}
+            weekdaySummary={explorer?.weekdaySummary.items || []}
             anomalies={explorer?.anomalies.items || []}
             trendRangeLabel={dateRangeDisplay}
             onApplyMonthFilter={handleApplyMonthFilter}

@@ -101,6 +101,10 @@ export function analyticsHeatmapCells(page) {
   return page.locator('[data-testid="analytics-heatmap"] > div');
 }
 
+export function explorerWeekdaySummaryCells(page) {
+  return page.getByTestId("explorer-weekday-summary-cell");
+}
+
 export function analyticsAnomalyRows(page) {
   return page.getByTestId("analytics-anomaly-card");
 }

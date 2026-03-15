@@ -4,13 +4,13 @@ import type { ExplorerAnalyticsResponse, OverviewResponse } from "@/lib/api/type
 import { Anomalies } from "./Anomalies";
 import { CategoryBreakdown } from "./CategoryBreakdown";
 import { MerchantAnalysis } from "./MerchantAnalysis";
-import { SpendingHeatmap } from "./SpendingHeatmap";
 import { TrendChart } from "./TrendChart";
+import { WeekdaySpendSummary } from "./WeekdaySpendSummary";
 
 interface OverviewPerspectiveProps {
   overview: OverviewResponse | null;
   trend: ExplorerAnalyticsResponse["trend"]["items"];
-  heatmap: ExplorerAnalyticsResponse["heatmap"]["items"];
+  weekdaySummary: ExplorerAnalyticsResponse["weekdaySummary"]["items"];
   anomalies: ExplorerAnalyticsResponse["anomalies"]["items"];
   trendRangeLabel: string;
   onApplyMonthFilter: (month: string) => void;
@@ -22,7 +22,7 @@ interface OverviewPerspectiveProps {
 export function OverviewPerspective({
   overview,
   trend,
-  heatmap,
+  weekdaySummary,
   anomalies,
   trendRangeLabel,
   onApplyMonthFilter,
@@ -47,7 +47,7 @@ export function OverviewPerspective({
           <CategoryBreakdown overview={overview} onCategoryClick={onCategoryClick} loading={loading} />
         </div>
         <div className="space-y-6 xl:col-span-5">
-          <SpendingHeatmap heatmap={heatmap} loading={loading} />
+          <WeekdaySpendSummary items={weekdaySummary} loading={loading} />
         </div>
       </div>
 
