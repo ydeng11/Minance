@@ -59,12 +59,14 @@ export function WeekdaySpendSummary({ items, loading }: WeekdaySpendSummaryProps
           {buckets.map((entry) => (
             <div
               key={entry.weekday}
-              className={`flex min-h-[132px] items-end rounded-3xl px-4 py-4 ${getWeekdayHeatToneClassName(entry.amount, maxAmount)}`}
+              className={`flex min-h-[132px] items-end rounded-3xl py-4 ${getWeekdayHeatToneClassName(entry.amount, maxAmount)}`}
               data-testid="explorer-weekday-summary-cell"
               title={`${WEEKDAY_LABELS[entry.weekday]} • ${money(entry.amount)} • ${entry.count} transactions`}
               aria-label={`${WEEKDAY_LABELS[entry.weekday]} ${money(entry.amount)} ${entry.count} transactions`}
             >
-              <div className="w-full text-center text-[11px] font-medium uppercase tracking-[0.24em] text-neutral-300">
+              <div
+                className="w-full min-w-0 px-1 text-center text-[10px] font-medium uppercase leading-none tracking-[0.16em] text-white"
+              >
                 {WEEKDAY_LABELS[entry.weekday]}
               </div>
             </div>
