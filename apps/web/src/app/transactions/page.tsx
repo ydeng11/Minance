@@ -8,6 +8,7 @@ import { RANGE_OPTIONS } from "@/lib/constants";
 import { money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
 import { AmountRangeControl } from "@/components/filters/AmountRangeControl";
+import { MultiSelectField } from "@/components/filters/MultiSelectField";
 import type { Account, Category, Transaction, TransactionsResponse } from "@/lib/api/types";
 import {
   buildDraftFromTransaction,
@@ -38,12 +39,18 @@ import {
 import { TransactionEditorFields } from "./TransactionEditorFields";
 
 const TRANSACTION_RANGE_OPTIONS = [...RANGE_OPTIONS, { value: "custom", label: "Custom" }];
+const TRANSACTION_TYPE_FILTER_OPTIONS = [
+  { value: "expense", label: "Expense" },
+  { value: "income", label: "Income" },
+  { value: "transfer", label: "Transfer" }
+] as const;
 const FILTER_CONTROL_CLASS =
   "rounded-[24px] border border-neutral-800/80 bg-neutral-950/70 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
 const FILTER_SELECT_CLASS =
   "mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-900/90 px-3 py-2.5 text-sm text-neutral-100 outline-none transition focus:border-emerald-500";
 const FILTER_INPUT_CLASS =
   "w-full rounded-xl border border-neutral-800 bg-neutral-900/90 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500";
+type OpenTransactionsMultiSelect = "category" | "account" | "type";
 
 function formatTransactionTypeLabel(type: Transaction["transaction_type"]) {
   switch (type) {
@@ -64,17 +71,26 @@ function calculateActiveFilterCount(filters: TransactionsFilterState) {
   const defaults = createDefaultTransactionsFilterState();
   return [
     filters.query !== defaults.query,
-    filters.category !== defaults.category,
-    filters.account !== defaults.account,
+    filters.categories.length > 0,
+    filters.accounts.length > 0,
     filters.minAmount !== defaults.minAmount,
     filters.maxAmount !== defaults.maxAmount,
     filters.range !== defaults.range,
     filters.start !== defaults.start,
     filters.end !== defaults.end,
     filters.categoryView !== defaults.categoryView,
-    filters.transactionType !== defaults.transactionType,
+    filters.transactionTypes.length > 0,
     filters.tag !== defaults.tag
   ].filter(Boolean).length;
+}
+
+function pruneFilterValues(selectedValues: string[], allowedValues: string[]) {
+  const allowed = new Set(allowedValues);
+  return selectedValues.filter((value) => allowed.has(value));
+}
+
+function areListsEqual(left: string[], right: string[]) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function getRequestErrorMessage(error: unknown, fallback: string) {
@@ -117,6 +133,7 @@ export default function TransactionsPage() {
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<string>>(() => new Set());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
+  const [openMultiSelect, setOpenMultiSelect] = useState<OpenTransactionsMultiSelect | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -163,6 +180,10 @@ export default function TransactionsPage() {
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [accounts, ledgerTransactions]);
+  const categoryMultiSelectOptions = useMemo(
+    () => categoryFilterOptions.map((value) => ({ value, label: value })),
+    [categoryFilterOptions]
+  );
 
   const totalPages = Math.max(1, Math.ceil(totalTransactions / TRANSACTIONS_PAGE_SIZE));
   const currentPage = Math.min(Math.max(1, filters.page), totalPages);
@@ -250,20 +271,34 @@ export default function TransactionsPage() {
     if (lastAppliedQueryRef.current !== searchParamKey) {
       setFilters(parsedFilters);
       filtersRef.current = parsedFilters;
+      setOpenMultiSelect(null);
     }
     void loadTransactions(parsedFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParamKey]);
 
   useEffect(() => {
-    if (filters.category && !categoryFilterOptions.includes(filters.category)) {
-      setFilters((previous) => {
-        const next = { ...previous, category: "" };
-        filtersRef.current = next;
-        return next;
-      });
+    const nextCategories = pruneFilterValues(filters.categories, categoryFilterOptions);
+    if (!areListsEqual(nextCategories, filters.categories)) {
+      updateFilters((previous) => ({
+        ...previous,
+        categories: nextCategories
+      }));
     }
-  }, [filters.category, categoryFilterOptions]);
+  }, [categoryFilterOptions, filters.categories]);
+
+  useEffect(() => {
+    const nextAccounts = pruneFilterValues(
+      filters.accounts,
+      accountFilterOptions.map((option) => option.value)
+    );
+    if (!areListsEqual(nextAccounts, filters.accounts)) {
+      updateFilters((previous) => ({
+        ...previous,
+        accounts: nextAccounts
+      }));
+    }
+  }, [accountFilterOptions, filters.accounts]);
 
   useEffect(() => {
     setSelectedTransactionIds((previous) => pruneSelectionToVisible(previous, visibleTransactionIds));
@@ -297,6 +332,10 @@ export default function TransactionsPage() {
 
   function closeBulkDeleteDialog() {
     setIsBulkDeleteDialogOpen(false);
+  }
+
+  function handleMultiSelectOpen(field: OpenTransactionsMultiSelect) {
+    return (nextOpen: boolean) => setOpenMultiSelect(nextOpen ? field : null);
   }
 
   function syncFiltersToUrl(nextFilters: TransactionsFilterState) {
@@ -553,59 +592,59 @@ export default function TransactionsPage() {
 
           <div className={FILTER_CONTROL_CLASS}>
             <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Category</div>
-            <select
-              value={filters.category}
-              onChange={(event) => updateFilters((previous) => ({ ...previous, category: event.target.value }))}
-              data-testid="txn-category-filter"
-              aria-label="Filter transactions by category"
-              className={FILTER_SELECT_CLASS}
-            >
-              <option value="">All</option>
-              {categoryFilterOptions.map((entry) => (
-                <option key={entry} value={entry}>
-                  {entry}
-                </option>
-              ))}
-            </select>
+            <div className="mt-2">
+              <MultiSelectField
+                selectedValues={filters.categories}
+                options={categoryMultiSelectOptions}
+                onChange={(categories) => updateFilters((previous) => ({ ...previous, categories }))}
+                emptyLabel="All categories"
+                testId="txn-category-filter"
+                isOpen={openMultiSelect === "category"}
+                onOpenChange={handleMultiSelectOpen("category")}
+                ariaLabel="Filter transactions by category"
+                searchable
+                searchPlaceholder="Search category"
+              />
+            </div>
           </div>
 
           <div className={FILTER_CONTROL_CLASS}>
             <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Account</div>
-            <select
-              value={filters.account}
-              onChange={(event) => updateFilters((previous) => ({ ...previous, account: event.target.value }))}
-              data-testid="txn-account-filter"
-              aria-label="Filter transactions by account"
-              className={FILTER_SELECT_CLASS}
-            >
-              <option value="">All</option>
-              {accountFilterOptions.map((entry) => (
-                <option key={entry.value} value={entry.value}>
-                  {entry.label}
-                </option>
-              ))}
-            </select>
+            <div className="mt-2">
+              <MultiSelectField
+                selectedValues={filters.accounts}
+                options={accountFilterOptions}
+                onChange={(accounts) => updateFilters((previous) => ({ ...previous, accounts }))}
+                emptyLabel="All accounts"
+                testId="txn-account-filter"
+                isOpen={openMultiSelect === "account"}
+                onOpenChange={handleMultiSelectOpen("account")}
+                ariaLabel="Filter transactions by account"
+                searchable
+                searchPlaceholder="Search account"
+              />
+            </div>
           </div>
 
           <div className={FILTER_CONTROL_CLASS}>
             <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Type</div>
-            <select
-              value={filters.transactionType}
-              onChange={(event) =>
-                updateFilters((previous) => ({
-                  ...previous,
-                  transactionType: event.target.value as TransactionsFilterState["transactionType"]
-                }))
-              }
-              data-testid="txn-type-filter"
-              aria-label="Filter transactions by type"
-              className={FILTER_SELECT_CLASS}
-            >
-              <option value="all">All</option>
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-              <option value="transfer">Transfer</option>
-            </select>
+            <div className="mt-2">
+              <MultiSelectField
+                selectedValues={filters.transactionTypes}
+                options={TRANSACTION_TYPE_FILTER_OPTIONS.map((option) => ({ ...option }))}
+                onChange={(transactionTypes) =>
+                  updateFilters((previous) => ({
+                    ...previous,
+                    transactionTypes: transactionTypes as TransactionsFilterState["transactionTypes"]
+                  }))
+                }
+                emptyLabel="All types"
+                testId="txn-type-filter"
+                isOpen={openMultiSelect === "type"}
+                onOpenChange={handleMultiSelectOpen("type")}
+                ariaLabel="Filter transactions by type"
+              />
+            </div>
           </div>
 
           <div className={FILTER_CONTROL_CLASS}>
@@ -617,7 +656,7 @@ export default function TransactionsPage() {
                 updateFilters((previous) => ({
                   ...previous,
                   categoryView: nextView,
-                  category: previous.categoryView === nextView ? previous.category : ""
+                  categories: []
                 }));
               }}
               data-testid="txn-category-view"

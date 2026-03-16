@@ -45,8 +45,8 @@ test("explorer advanced filters support category and type multiselect plus tag s
   await expect(page.getByTestId("explorer-advanced-filters")).toBeVisible();
 
   await page.getByTestId("explorer-category-multiselect-trigger").click();
-  await page.getByRole("option", { name: "Dining" }).click();
-  await page.getByRole("option", { name: "Groceries" }).click();
+  await page.getByRole("option", { name: "Dining", exact: true }).click();
+  await page.getByRole("option", { name: "Groceries", exact: true }).click();
 
   await page.getByTestId("explorer-type-multiselect-trigger").click();
   await page.getByRole("option", { name: "Expense" }).click();

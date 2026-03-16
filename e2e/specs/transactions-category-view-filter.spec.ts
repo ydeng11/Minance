@@ -19,15 +19,17 @@ test("@core transactions clears stale category filter when switching category vi
   const createdRow = page.locator('[data-testid="txn-table"] tr', { hasText: merchant });
   await expect.poll(async () => await createdRow.count()).toBe(1);
 
-  await page.getByTestId("txn-category-filter").selectOption("Dining");
+  await page.getByTestId("txn-category-filter-trigger").click();
+  await page.getByRole("option", { name: "Dining", exact: true }).click();
   await applyTransactionsFilters(page);
   await expect(createdRow).toBeVisible();
 
   await page.getByTestId("txn-category-view").selectOption("coarse");
   await expect(page.getByTestId("txn-category-view")).toHaveValue("coarse");
+  await expect(page.getByTestId("txn-category-filter-trigger")).toContainText("All categories");
   await applyTransactionsFilters(page);
   await expect(page).toHaveURL(/category_view=coarse/);
   expect(page.url()).not.toContain("category=Dining");
-  await expect(page.getByTestId("txn-category-filter")).toHaveValue("");
+  await expect(page.getByTestId("txn-category-filter-trigger")).toContainText("All categories");
   await expect(createdRow).toBeVisible();
 });
