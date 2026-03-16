@@ -316,6 +316,88 @@ function buildExplorerTrendFromTransactions(txns, resolveCategory, categoryView)
     }));
 }
 
+function buildExplorerWeekdaySummary(txns) {
+  const buckets = Array.from({ length: 7 }, (_, weekday) => ({
+    weekday,
+    amount: 0,
+    count: 0
+  }));
+
+  for (const txn of txns) {
+    const date = new Date(`${txn.transaction_date}T12:00:00Z`);
+    if (Number.isNaN(date.getTime())) {
+      continue;
+    }
+
+    const weekday = date.getUTCDay();
+    buckets[weekday].amount += toAmount(txn);
+    buckets[weekday].count += 1;
+  }
+
+  return buckets.map((entry) => ({
+    ...entry,
+    amount: round2(entry.amount)
+  }));
+}
+
+function buildExplorerCategoryWeekdayHeatmap(txns, resolveCategory, categoryView) {
+  const grouped = {};
+
+  for (const txn of txns) {
+    const date = new Date(`${txn.transaction_date}T12:00:00Z`);
+    if (Number.isNaN(date.getTime())) {
+      continue;
+    }
+
+    const categoryMeta = resolveTxnCategory(resolveCategory, txn);
+    const categoryName = categoryView === CATEGORY_VIEW_COARSE
+      ? categoryMeta.categoryCoarse
+      : categoryMeta.categoryGranular;
+    const emoji = categoryView === CATEGORY_VIEW_COARSE
+      ? categoryMeta.categoryCoarseEmoji
+      : categoryMeta.categoryEmoji;
+
+    if (!grouped[categoryName]) {
+      grouped[categoryName] = {
+        category: categoryName,
+        emoji,
+        coarseKey: categoryMeta.categoryCoarseKey,
+        totalSpend: 0,
+        transactionCount: 0,
+        cells: Array.from({ length: 7 }, (_, weekday) => ({
+          weekday,
+          amount: 0,
+          count: 0
+        }))
+      };
+    }
+
+    const weekday = date.getUTCDay();
+    const amount = toAmount(txn);
+    grouped[categoryName].totalSpend += amount;
+    grouped[categoryName].transactionCount += 1;
+    grouped[categoryName].cells[weekday].amount += amount;
+    grouped[categoryName].cells[weekday].count += 1;
+  }
+
+  return Object.values(grouped)
+    .map((entry) => ({
+      ...entry,
+      totalSpend: round2(entry.totalSpend),
+      cells: entry.cells.map((cell) => ({
+        ...cell,
+        amount: round2(cell.amount)
+      }))
+    }))
+    .sort((a, b) => {
+      if (b.totalSpend !== a.totalSpend) {
+        return b.totalSpend - a.totalSpend;
+      }
+      return a.category.localeCompare(b.category);
+    })
+    .slice(0, 7);
+}
+
 export function getOverview(userId, filters = {}) {
   const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
   const strategy = ensureCategoryStrategyForUser(userId);
@@ -610,6 +692,7 @@ export function getExplorerAnalytics(userId, filters = {}) {
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
   const currentTransactions = filterUserTransactions(userId, filters);
+  const currentOutflowTransactions = currentTransactions.filter((txn) => txn.direction === "outflow");
   const currentOverview = getOverview(userId, {
     ...filters,
     category_view: categoryView
@@ -661,6 +744,12 @@ export function getExplorerAnalytics(userId, filters = {}) {
     accounts: getAccountRollup(userId, accountSelectorFilters),
     merchants: {
       items: getMerchantRollup(userId, filters)
+    },
+    weekdaySummary: {
+      items: buildExplorerWeekdaySummary(currentOutflowTransactions)
+    },
+    categoryWeekdayHeatmap: {
+      items: buildExplorerCategoryWeekdayHeatmap(currentOutflowTransactions, resolveCategory, categoryView)
     },
     heatmap: {
       items: getHeatmap(userId, filters)

@@ -575,6 +575,27 @@ export interface ExplorerSummarySparklinePoint {
   net: number;
 }
 
+export interface ExplorerWeekdaySummaryItem {
+  weekday: number;
+  amount: number;
+  count: number;
+}
+
+export interface ExplorerCategoryWeekdayHeatmapCell {
+  weekday: number;
+  amount: number;
+  count: number;
+}
+
+export interface ExplorerCategoryWeekdayHeatmapRow {
+  category: string;
+  emoji?: string;
+  coarseKey?: string;
+  totalSpend: number;
+  transactionCount: number;
+  cells: ExplorerCategoryWeekdayHeatmapCell[];
+}
+
 export interface ExplorerAnalyticsResponse {
   summary: {
     current: OverviewResponse["summary"];
@@ -603,6 +624,12 @@ export interface ExplorerAnalyticsResponse {
   };
   merchants: {
     items: OverviewResponse["topMerchants"];
+  };
+  weekdaySummary: {
+    items: ExplorerWeekdaySummaryItem[];
+  };
+  categoryWeekdayHeatmap: {
+    items: ExplorerCategoryWeekdayHeatmapRow[];
   };
   heatmap: {
     items: HeatmapItem[];

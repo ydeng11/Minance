@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
-  analyticsHeatmapCells,
+  explorerCategoryHeatmapRows,
+  explorerWeekdaySummaryCells,
   gotoView,
   loginWithSeedAccount,
   uploadAndCommitFixtureCsv
@@ -35,7 +36,7 @@ test("overview perspective uses a full-width trend chart with the active range l
   await expect(page.getByTestId("explorer-overview-trend")).not.toContainText("Last 6 months");
   await expect(page.getByTestId("analytics-category-bars")).toBeVisible();
   await expect(page.getByTestId("analytics-merchant-bars")).toBeVisible();
-  await expect(page.getByTestId("analytics-heatmap")).toBeVisible();
+  await expect(page.getByTestId("explorer-weekday-summary")).toBeVisible();
   await expect(page.getByTestId("analytics-anomalies")).toBeVisible();
 });
 
@@ -70,16 +71,49 @@ test("summary cards separate selected-range totals from recent seven-day context
   await expect(page.getByTestId("explorer-summary-sparkline-net")).toBeVisible();
 });
 
-test("spending heatmap uses weekday headers and a legend instead of weekday indexes", async ({ page }) => {
+test("overview uses a fixed weekday spend summary across date ranges", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);
-  await gotoView(page, "explorer");
 
-  await expect(page.getByTestId("analytics-heatmap-weekdays")).toContainText("Sun");
-  await expect(page.getByTestId("analytics-heatmap-weekdays")).toContainText("Sat");
-  await expect(page.getByTestId("analytics-heatmap-legend")).toContainText("Low");
-  await expect(page.getByTestId("analytics-heatmap-legend")).toContainText("High");
-  await expect(analyticsHeatmapCells(page).first()).toHaveText("");
+  await page.goto("/explorer?range=365d");
+
+  const summary = page.getByTestId("explorer-weekday-summary");
+  const cells = explorerWeekdaySummaryCells(page);
+
+  await expect(summary).toBeVisible();
+  await expect(summary).toContainText("Sun");
+  await expect(summary).toContainText("Sat");
+  await expect(cells).toHaveCount(7);
+  await expect(cells.first()).not.toContainText("$");
+  await expect(cells.first()).not.toContainText(/txns/i);
+  await expect(cells.first()).toHaveAttribute("title", /\$\d/);
+  await expect(cells.first()).toHaveAttribute("title", /transactions/i);
+  await expect(page.getByTestId("analytics-heatmap")).toHaveCount(0);
+});
+
+test("category perspective compares filtered top categories by weekday before applying a filter", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+  await page.goto("/explorer?perspective=category&range=365d");
+
+  await expect(page.getByTestId("explorer-category-weekday-heatmap")).toBeVisible();
+  await expect(page.getByTestId("explorer-category-weekday-heatmap")).toContainText("Sun");
+  await expect(page.getByTestId("explorer-category-weekday-heatmap")).toContainText("Sat");
+
+  const rows = explorerCategoryHeatmapRows(page);
+  const rowCount = await rows.count();
+  expect(rowCount).toBeGreaterThan(0);
+  expect(rowCount).toBeLessThanOrEqual(7);
+  await expect(rows.first()).toContainText("Spend");
+  await expect(rows.first()).toContainText("Transactions");
+  await expect(rows.first()).not.toContainText("•");
+
+  await page.getByTestId("explorer-category-lens").getByRole("button").first().click();
+  await expect(page).toHaveURL(/perspective=category/);
+  await expect(page).not.toHaveURL(/category=/);
+
+  await page.getByTestId("explorer-category-apply-filter").click();
+  await expect(page).toHaveURL(/category=/);
 });
 
 test("merchant and anomaly cards use polished presentation", async ({ page }) => {

@@ -403,7 +403,7 @@ export default function ExplorerPage() {
           <OverviewPerspective
             overview={overview}
             trend={explorer?.trend.items || []}
-            heatmap={explorer?.heatmap.items || []}
+            weekdaySummary={explorer?.weekdaySummary.items || []}
             anomalies={explorer?.anomalies.items || []}
             trendRangeLabel={dateRangeDisplay}
             onApplyMonthFilter={handleApplyMonthFilter}
@@ -415,6 +415,7 @@ export default function ExplorerPage() {
           <CategoryPerspective
             overview={overview}
             categories={explorer?.categories.items || []}
+            categoryWeekdayHeatmap={explorer?.categoryWeekdayHeatmap.items || []}
             selectedCategory={filters.category}
             onCategoryClick={handleCategoryClick}
             trend={explorer?.trend.items || []}
