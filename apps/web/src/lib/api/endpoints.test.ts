@@ -24,11 +24,13 @@ function createRecorder() {
   return { calls, request };
 }
 
-test("transactionsApi.list forwards coarse/granular view and review flag", async () => {
+test("transactionsApi.list appends repeated category, account, and type params", async () => {
   const { calls, request } = createRecorder();
   await transactionsApi.list(request, {
     range: "90d",
-    category: "Essential",
+    category: ["Essential", "Travel"],
+    account: ["checking", "travel-card"],
+    transaction_type: ["expense", "transfer"],
     category_view: "coarse",
     needs_category_review: true,
     min_amount: 25,
@@ -38,7 +40,7 @@ test("transactionsApi.list forwards coarse/granular view and review flag", async
   assert.equal(calls.length, 1);
   assert.equal(
     calls[0].path,
-    "/v1/transactions?range=90d&category=Essential&category_view=coarse&needs_category_review=true&min_amount=25&max_amount=250"
+    "/v1/transactions?range=90d&category=Essential&category=Travel&account=checking&account=travel-card&transaction_type=expense&transaction_type=transfer&category_view=coarse&needs_category_review=true&min_amount=25&max_amount=250"
   );
 });
 

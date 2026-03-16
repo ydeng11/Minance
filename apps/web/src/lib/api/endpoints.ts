@@ -214,15 +214,15 @@ export const transactionsApi = {
       start?: string;
       end?: string;
       query?: string;
-      category?: string;
-      account?: string;
+      category?: string[];
+      account?: string[];
       min_amount?: number;
       max_amount?: number;
       range?: string;
       category_view?: "granular" | "coarse";
       needs_category_review?: boolean;
       review_status?: "reviewed" | "needs_review";
-      transaction_type?: "expense" | "income" | "transfer";
+      transaction_type?: Array<"expense" | "income" | "transfer">;
       tag?: string;
       recurring_rule_id?: string;
       limit?: number;
