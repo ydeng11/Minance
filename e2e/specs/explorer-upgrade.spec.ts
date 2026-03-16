@@ -91,6 +91,131 @@ test("overview uses a fixed weekday spend summary across date ranges", async ({ 
   await expect(page.getByTestId("analytics-heatmap")).toHaveCount(0);
 });
 
+test("overview weekday summary keeps weekday labels horizontally centered in a lower label band", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+  await page.goto("/explorer?range=365d");
+
+  const cells = explorerWeekdaySummaryCells(page);
+  await expect(cells).toHaveCount(7);
+
+  const metrics = await cells.evaluateAll((elements) => {
+    return elements.map((element) => {
+      const label = element.firstElementChild;
+      if (!(label instanceof HTMLElement)) {
+        throw new Error("Weekday summary cell is missing its label element");
+      }
+
+      const cellRect = element.getBoundingClientRect();
+      const labelRect = label.getBoundingClientRect();
+
+      return {
+        label: label.textContent?.trim() || "",
+        xOffset: Math.abs(labelRect.left + labelRect.width / 2 - (cellRect.left + cellRect.width / 2)),
+        yDelta: labelRect.top + labelRect.height / 2 - (cellRect.top + cellRect.height / 2),
+        overflowX: Math.max(0, label.scrollWidth - label.clientWidth)
+      };
+    });
+  });
+
+  for (const metric of metrics) {
+    expect(metric.xOffset, `${metric.label} should stay horizontally centered in its capsule`).toBeLessThanOrEqual(2);
+    expect(metric.yDelta, `${metric.label} should sit below the capsule midpoint instead of vertically centered`).toBeGreaterThanOrEqual(12);
+    expect(metric.overflowX, `${metric.label} should fit inside the capsule width`).toBeLessThanOrEqual(1);
+  }
+});
+
+test("overview weekday summary uses one readable label color across all capsules", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+  await page.goto("/explorer?range=365d");
+
+  const cells = explorerWeekdaySummaryCells(page);
+  await expect(cells).toHaveCount(7);
+
+  const metrics = await cells.evaluateAll((elements) => {
+    function parseColor(color) {
+      const probe = document.createElement("span");
+      probe.style.color = "";
+      probe.style.color = color;
+      if (!probe.style.color) {
+        return null;
+      }
+
+      probe.style.position = "absolute";
+      probe.style.left = "-9999px";
+      probe.style.top = "-9999px";
+      document.body.appendChild(probe);
+      const resolved = getComputedStyle(probe).color;
+      probe.remove();
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      const context = canvas.getContext("2d");
+      if (!context) {
+        return null;
+      }
+
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = resolved;
+      context.fillRect(0, 0, 1, 1);
+      const pixel = context.getImageData(0, 0, 1, 1).data;
+
+      return {
+        r: pixel[0],
+        g: pixel[1],
+        b: pixel[2]
+      };
+    }
+
+    function toLinear(channel) {
+      const normalized = channel / 255;
+      if (normalized <= 0.04045) {
+        return normalized / 12.92;
+      }
+      return ((normalized + 0.055) / 1.055) ** 2.4;
+    }
+
+    function luminance(color) {
+      return 0.2126 * toLinear(color.r) + 0.7152 * toLinear(color.g) + 0.0722 * toLinear(color.b);
+    }
+
+    function contrastRatio(foreground, background) {
+      const light = Math.max(luminance(foreground), luminance(background));
+      const dark = Math.min(luminance(foreground), luminance(background));
+      return (light + 0.05) / (dark + 0.05);
+    }
+
+    return elements.map((element) => {
+      const label = element.firstElementChild;
+      if (!(label instanceof HTMLElement)) {
+        throw new Error("Weekday summary cell is missing its label element");
+      }
+
+      const text = getComputedStyle(label).color;
+      const background = getComputedStyle(element).backgroundColor;
+      const textColor = parseColor(text);
+      const backgroundColor = parseColor(background);
+      if (!textColor || !backgroundColor) {
+        throw new Error(`Could not parse colors for weekday summary cell: ${text} on ${background}`);
+      }
+
+      return {
+        label: label.textContent?.trim() || "",
+        text,
+        contrast: contrastRatio(textColor, backgroundColor)
+      };
+    });
+  });
+
+  expect(new Set(metrics.map((metric) => metric.text)).size).toBe(1);
+
+  for (const metric of metrics) {
+    expect(metric.contrast, `${metric.label} should keep readable contrast against its capsule`).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
 test("category perspective compares filtered top categories by weekday before applying a filter", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);

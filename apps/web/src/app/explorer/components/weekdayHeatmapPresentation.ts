@@ -4,22 +4,26 @@ const TONE_CLASS_NAMES = [
   "bg-neutral-900 ring-1 ring-inset ring-neutral-800",
   "bg-emerald-950 ring-1 ring-inset ring-emerald-900/80",
   "bg-emerald-800 ring-1 ring-inset ring-emerald-700/80",
-  "bg-emerald-500 ring-1 ring-inset ring-emerald-400/80"
+  "bg-emerald-700 ring-1 ring-inset ring-emerald-600/80"
 ] as const;
 
-export function getWeekdayHeatToneClassName(amount: number, maxAmount: number) {
+function getWeekdayHeatToneIndex(amount: number, maxAmount: number) {
   if (amount <= 0 || maxAmount <= 0) {
-    return TONE_CLASS_NAMES[0];
+    return 0;
   }
 
   const ratio = amount / maxAmount;
   if (ratio < 0.34) {
-    return TONE_CLASS_NAMES[1];
+    return 1;
   }
 
   if (ratio < 0.67) {
-    return TONE_CLASS_NAMES[2];
+    return 2;
   }
 
-  return TONE_CLASS_NAMES[3];
+  return 3;
+}
+
+export function getWeekdayHeatToneClassName(amount: number, maxAmount: number) {
+  return TONE_CLASS_NAMES[getWeekdayHeatToneIndex(amount, maxAmount)];
 }
