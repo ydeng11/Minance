@@ -200,11 +200,7 @@ export function ExplorerAdvancedFilters({
   }, [filters]);
 
   const categoryOptions = useMemo(
-    () =>
-      categories.map((category) => ({
-        value: category.name,
-        label: category.name
-      })),
+    () => categories.map(({ name }) => ({ value: name, label: name })),
     [categories]
   );
   const filteredTagSuggestions = useMemo(() => {
@@ -218,6 +214,10 @@ export function ExplorerAdvancedFilters({
 
   function updateDraft(updates: Partial<AdvancedFilterDraft>) {
     setDraft((current) => ({ ...current, ...updates }));
+  }
+
+  function handleMultiSelectOpen(field: OpenMultiSelectField) {
+    return (nextOpen: boolean) => setOpenMultiSelect(nextOpen ? field : null);
   }
 
   function resetDraft() {
@@ -271,7 +271,7 @@ export function ExplorerAdvancedFilters({
               emptyLabel="All categories"
               testId="explorer-category-multiselect"
               isOpen={openMultiSelect === "category"}
-              onOpenChange={(nextOpen) => setOpenMultiSelect(nextOpen ? "category" : null)}
+              onOpenChange={handleMultiSelectOpen("category")}
               searchable
             />
 
@@ -299,7 +299,7 @@ export function ExplorerAdvancedFilters({
               emptyLabel="All types"
               testId="explorer-type-multiselect"
               isOpen={openMultiSelect === "transactionType"}
-              onOpenChange={(nextOpen) => setOpenMultiSelect(nextOpen ? "transactionType" : null)}
+              onOpenChange={handleMultiSelectOpen("transactionType")}
             />
 
             <label className="grid gap-1 text-sm text-neutral-300">

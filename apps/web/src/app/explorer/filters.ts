@@ -106,6 +106,10 @@ function readStringArray(value: unknown) {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
 }
 
+function readSavedString<T extends string>(value: unknown, fallback: T) {
+  return typeof value === "string" ? value as T : fallback;
+}
+
 export function createDefaultExplorerFilterState(): ExplorerFilterState {
   return {
     perspective: "overview",
@@ -299,24 +303,20 @@ export function savedExplorerFiltersToState(
 
   const source = rawFilters as Record<string, unknown>;
   return toValidExplorerFilterState({
-    perspective: typeof source.perspective === "string" ? source.perspective as ExplorerPerspective : defaults.perspective,
-    compare: typeof source.compare === "string" ? source.compare as ExplorerCompareMode : defaults.compare,
-    query: typeof source.query === "string" ? source.query : defaults.query,
-    merchant: typeof source.merchant === "string" ? source.merchant : defaults.merchant,
+    perspective: readSavedString(source.perspective, defaults.perspective),
+    compare: readSavedString(source.compare, defaults.compare),
+    query: readSavedString(source.query, defaults.query),
+    merchant: readSavedString(source.merchant, defaults.merchant),
     categories: readStringArray(source.categories),
-    account: typeof source.account === "string" ? source.account : defaults.account,
-    categoryView: typeof source.categoryView === "string"
-      ? (source.categoryView as ExplorerCategoryView)
-      : defaults.categoryView,
-    range: typeof source.range === "string" ? source.range : defaults.range,
-    start: typeof source.start === "string" ? source.start : defaults.start,
-    end: typeof source.end === "string" ? source.end : defaults.end,
+    account: readSavedString(source.account, defaults.account),
+    categoryView: readSavedString(source.categoryView, defaults.categoryView),
+    range: readSavedString(source.range, defaults.range),
+    start: readSavedString(source.start, defaults.start),
+    end: readSavedString(source.end, defaults.end),
     transactionTypes: readStringArray(source.transactionTypes) as ExplorerTransactionType[],
-    direction: typeof source.direction === "string"
-      ? (source.direction as ExplorerDirectionFilter)
-      : defaults.direction,
-    tag: typeof source.tag === "string" ? source.tag : defaults.tag,
-    minAmount: typeof source.minAmount === "string" ? source.minAmount : defaults.minAmount,
-    maxAmount: typeof source.maxAmount === "string" ? source.maxAmount : defaults.maxAmount
+    direction: readSavedString(source.direction, defaults.direction),
+    tag: readSavedString(source.tag, defaults.tag),
+    minAmount: readSavedString(source.minAmount, defaults.minAmount),
+    maxAmount: readSavedString(source.maxAmount, defaults.maxAmount)
   });
 }
