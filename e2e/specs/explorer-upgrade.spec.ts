@@ -77,10 +77,17 @@ test("overview uses a fixed weekday spend summary across date ranges", async ({ 
 
   await page.goto("/explorer?range=365d");
 
-  await expect(page.getByTestId("explorer-weekday-summary")).toBeVisible();
-  await expect(page.getByTestId("explorer-weekday-summary")).toContainText("Sun");
-  await expect(page.getByTestId("explorer-weekday-summary")).toContainText("Sat");
-  await expect(explorerWeekdaySummaryCells(page)).toHaveCount(7);
+  const summary = page.getByTestId("explorer-weekday-summary");
+  const cells = explorerWeekdaySummaryCells(page);
+
+  await expect(summary).toBeVisible();
+  await expect(summary).toContainText("Sun");
+  await expect(summary).toContainText("Sat");
+  await expect(cells).toHaveCount(7);
+  await expect(cells.first()).not.toContainText("$");
+  await expect(cells.first()).not.toContainText(/txns/i);
+  await expect(cells.first()).toHaveAttribute("title", /\$\d/);
+  await expect(cells.first()).toHaveAttribute("title", /transactions/i);
   await expect(page.getByTestId("analytics-heatmap")).toHaveCount(0);
 });
 
@@ -97,6 +104,9 @@ test("category perspective compares filtered top categories by weekday before ap
   const rowCount = await rows.count();
   expect(rowCount).toBeGreaterThan(0);
   expect(rowCount).toBeLessThanOrEqual(7);
+  await expect(rows.first()).toContainText("Spend");
+  await expect(rows.first()).toContainText("Transactions");
+  await expect(rows.first()).not.toContainText("•");
 
   await page.getByTestId("explorer-category-lens").getByRole("button").first().click();
   await expect(page).toHaveURL(/perspective=category/);

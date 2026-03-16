@@ -50,7 +50,7 @@ export function WeekdaySpendSummary({ items, loading }: WeekdaySpendSummaryProps
           </p>
         </div>
         <div className="rounded-full border border-neutral-800 bg-neutral-900 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-400">
-          Total spend pattern
+          Hover for totals
         </div>
       </div>
 
@@ -59,19 +59,13 @@ export function WeekdaySpendSummary({ items, loading }: WeekdaySpendSummaryProps
           {buckets.map((entry) => (
             <div
               key={entry.weekday}
-              className={`rounded-3xl px-4 py-4 ${getWeekdayHeatToneClassName(entry.amount, maxAmount)}`}
+              className={`flex min-h-[132px] items-end rounded-3xl px-4 py-4 ${getWeekdayHeatToneClassName(entry.amount, maxAmount)}`}
               data-testid="explorer-weekday-summary-cell"
               title={`${WEEKDAY_LABELS[entry.weekday]} • ${money(entry.amount)} • ${entry.count} transactions`}
               aria-label={`${WEEKDAY_LABELS[entry.weekday]} ${money(entry.amount)} ${entry.count} transactions`}
             >
-              <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-400">
+              <div className="w-full text-center text-[11px] font-medium uppercase tracking-[0.24em] text-neutral-300">
                 {WEEKDAY_LABELS[entry.weekday]}
-              </div>
-              <div className="mt-4 text-lg font-semibold text-neutral-50">
-                {money(entry.amount)}
-              </div>
-              <div className="mt-2 text-xs text-neutral-400">
-                {entry.count} txns
               </div>
             </div>
           ))}
