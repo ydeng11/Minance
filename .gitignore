@@ -11,6 +11,8 @@ target/
 coverage
 output/playwright
 playwright-report
+.playwright-cli
+.playwright-cli.*
 apps/web/.next/
 apps/web/.next-e2e/
 
