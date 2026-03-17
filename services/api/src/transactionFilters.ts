@@ -28,6 +28,41 @@ function normalizeTransactionTypeFilter(rawType) {
   return transactionType;
 }
 
+function normalizeTransactionTypeFilters(rawType) {
+  const values = Array.isArray(rawType) ? rawType : rawType == null ? [] : [rawType];
+  const normalized = [];
+  const seen = new Set();
+
+  for (const value of values) {
+    const transactionType = normalizeTransactionTypeFilter(value);
+    if (!transactionType || seen.has(transactionType)) {
+      continue;
+    }
+    seen.add(transactionType);
+    normalized.push(transactionType);
+  }
+
+  return normalized;
+}
+
+function normalizeTextFilters(rawValue) {
+  const values = Array.isArray(rawValue) ? rawValue : rawValue == null ? [] : [rawValue];
+  const normalized = [];
+  const seen = new Set();
+
+  for (const value of values) {
+    const normalizedValue = normalizeText(value);
+    if (!normalizedValue || seen.has(normalizedValue)) {
+      continue;
+    }
+
+    seen.add(normalizedValue);
+    normalized.push(normalizedValue);
+  }
+
+  return normalized;
+}
+
 function normalizeTagValue(rawTag) {
   if (typeof rawTag !== "string") {
     throw new Error("Invalid tags");
@@ -167,8 +202,9 @@ export function applySharedTransactionFilters(transactions, filters = {}) {
     );
   }
 
-  if (filters.account) {
-    txns = txns.filter((entry) => matchesAccount(entry, filters.account));
+  const accountFilters = normalizeTextFilters(filters.account);
+  if (accountFilters.length) {
+    txns = txns.filter((entry) => accountFilters.some((account) => matchesAccount(entry, account)));
   }
 
   const needsCategoryReview = filters.needs_category_review === true || filters.needs_category_review === "true";
@@ -184,9 +220,10 @@ export function applySharedTransactionFilters(transactions, filters = {}) {
     txns = txns.filter((entry) => normalizeReviewStatus(entry) === reviewStatusFilter);
   }
 
-  const transactionTypeFilter = normalizeTransactionTypeFilter(filters.transaction_type);
-  if (transactionTypeFilter) {
-    txns = txns.filter((entry) => normalizeTransactionType(entry, categoryTypeLookup) === transactionTypeFilter);
+  const transactionTypeFilters = normalizeTransactionTypeFilters(filters.transaction_type);
+  if (transactionTypeFilters.length) {
+    const allowedTransactionTypes = new Set(transactionTypeFilters);
+    txns = txns.filter((entry) => allowedTransactionTypes.has(normalizeTransactionType(entry, categoryTypeLookup)));
   }
 
   const tagFilter = normalizeTagFilter(filters.tag);

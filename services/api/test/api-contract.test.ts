@@ -213,6 +213,267 @@ test("system storage reports sqlite for non-test runtime even when JSON backend 
   assert.equal(storage.payload?.storage?.sqlite?.backend, "sqlite");
 });
 
+test("explorer analytics applies OR within filters and AND across filter groups", async (t) => {
+  const context = await startApiServer(t);
+
+  const signupResponse = await apiRequest(context, "POST", "/v1/auth/signup", {
+    expectedStatus: 201,
+    body: {
+      email: "explorer-filters-contract@example.com",
+      password: "contractpass123"
+    }
+  });
+  const accessToken = signupResponse.payload?.tokens?.accessToken;
+  assert.equal(typeof accessToken, "string");
+
+  await ensureCategoryExists(context, accessToken, "Food", "essential", "expense");
+  await ensureCategoryExists(context, accessToken, "Travel", "extra", "expense");
+  await ensureCategoryExists(context, accessToken, "Income", "neutral", "income");
+  await ensureCategoryExists(context, accessToken, "Transfer", "neutral", "transfer");
+  const transactions = [
+    {
+      transaction_date: "2026-02-01",
+      description: "Weekly groceries",
+      merchant_raw: "Corner Market",
+      amount: -25,
+      account_name: "Primary Checking",
+      category_final: "Food",
+      tags: ["weekly"]
+    },
+    {
+      transaction_date: "2026-02-02",
+      description: "Flight booking",
+      merchant_raw: "Airline",
+      amount: -220,
+      account_name: "Primary Checking",
+      category_final: "Travel",
+      tags: ["trip"]
+    },
+    {
+      transaction_date: "2026-02-03",
+      description: "Move to savings",
+      merchant_raw: "Bank Transfer",
+      amount: -150,
+      account_name: "Primary Checking",
+      category_final: "Transfer"
+    },
+    {
+      transaction_date: "2026-02-04",
+      description: "Payday",
+      merchant_raw: "Payroll",
+      amount: 1800,
+      account_name: "Primary Checking",
+      category_final: "Income"
+    }
+  ];
+
+  for (const body of transactions) {
+    const created = await apiRequest(context, "POST", "/v1/transactions", {
+      token: accessToken,
+      expectedStatus: 201,
+      body
+    });
+    assert.equal(typeof created.payload?.transaction?.id, "string");
+  }
+
+  const explorer = await apiRequest(
+    context,
+    "GET",
+    "/v1/analytics/explorer?range=all&category=Food&category=Travel&transaction_type=expense&transaction_type=transfer",
+    {
+      token: accessToken,
+      expectedStatus: 200
+    }
+  );
+
+  assert.equal(explorer.payload?.summary?.current?.transactionCount, 2);
+  assert.equal(typeof explorer.payload?.meta?.amountBounds?.min, "number");
+  assert.equal(typeof explorer.payload?.meta?.amountBounds?.max, "number");
+  assert.deepEqual(explorer.payload?.meta?.availableTags, ["trip", "weekly"]);
+  assert.deepEqual(
+    (explorer.payload?.merchants?.items || [])
+      .map((entry) => entry.merchant)
+      .sort((left, right) => left.localeCompare(right)),
+    ["airline", "corner market"]
+  );
+});
+
+test("transactions API accepts repeated account params", async (t) => {
+  const context = await startApiServer(t);
+
+  const signupResponse = await apiRequest(context, "POST", "/v1/auth/signup", {
+    expectedStatus: 201,
+    body: {
+      email: "transactions-account-filter-contract@example.com",
+      password: "contractpass123"
+    }
+  });
+  const accessToken = signupResponse.payload?.tokens?.accessToken;
+  assert.equal(typeof accessToken, "string");
+
+  await ensureCategoryExists(context, accessToken, "Dining", "extra", "expense");
+
+  const firstTransaction = await apiRequest(context, "POST", "/v1/transactions", {
+    token: accessToken,
+    expectedStatus: 201,
+    body: {
+      transaction_date: "2026-02-01",
+      description: "Dinner on account A",
+      merchant_raw: "Account A Dinner",
+      amount: -24.5,
+      account_name: "Contract Checking A",
+      category_final: "Dining"
+    }
+  });
+  const secondTransaction = await apiRequest(context, "POST", "/v1/transactions", {
+    token: accessToken,
+    expectedStatus: 201,
+    body: {
+      transaction_date: "2026-02-02",
+      description: "Dinner on account B",
+      merchant_raw: "Account B Dinner",
+      amount: -31.25,
+      account_name: "Contract Checking B",
+      category_final: "Dining"
+    }
+  });
+
+  const firstAccountId = firstTransaction.payload?.transaction?.account_id;
+  const secondAccountId = secondTransaction.payload?.transaction?.account_id;
+  const firstTransactionId = firstTransaction.payload?.transaction?.id;
+  const secondTransactionId = secondTransaction.payload?.transaction?.id;
+  assert.equal(typeof firstAccountId, "string");
+  assert.equal(typeof secondAccountId, "string");
+  assert.equal(typeof firstTransactionId, "string");
+  assert.equal(typeof secondTransactionId, "string");
+
+  const response = await apiRequest(
+    context,
+    "GET",
+    `/v1/transactions?range=all&account=${encodeURIComponent(firstAccountId)}&account=${encodeURIComponent(secondAccountId)}`,
+    {
+      token: accessToken,
+      expectedStatus: 200
+    }
+  );
+
+  assert.equal(
+    response.payload?.items?.some((entry) => entry.id === firstTransactionId),
+    true
+  );
+  assert.equal(
+    response.payload?.items?.some((entry) => entry.id === secondTransactionId),
+    true
+  );
+});
+
+test("transactions API applies OR within multiselects and AND across filter groups", async (t) => {
+  const context = await startApiServer(t);
+
+  const signupResponse = await apiRequest(context, "POST", "/v1/auth/signup", {
+    expectedStatus: 201,
+    body: {
+      email: "transactions-multiselect-contract@example.com",
+      password: "contractpass123"
+    }
+  });
+  const accessToken = signupResponse.payload?.tokens?.accessToken;
+  assert.equal(typeof accessToken, "string");
+
+  await ensureCategoryExists(context, accessToken, "Dining", "extra", "expense");
+  await ensureCategoryExists(context, accessToken, "Income", "neutral", "income");
+  await ensureCategoryExists(context, accessToken, "Transfer", "neutral", "transfer");
+
+  const matchingExpense = await apiRequest(context, "POST", "/v1/transactions", {
+    token: accessToken,
+    expectedStatus: 201,
+    body: {
+      transaction_date: "2026-02-03",
+      description: "Dining expense match",
+      merchant_raw: "Dining Match",
+      amount: -18.75,
+      account_name: "Primary Checking",
+      category_final: "Dining"
+    }
+  });
+  const matchingTransfer = await apiRequest(context, "POST", "/v1/transactions", {
+    token: accessToken,
+    expectedStatus: 201,
+    body: {
+      transaction_date: "2026-02-04",
+      description: "Transfer match",
+      merchant_raw: "Transfer Match",
+      amount: -42.5,
+      account_name: "Travel Card",
+      category_final: "Transfer"
+    }
+  });
+  const wrongAccount = await apiRequest(context, "POST", "/v1/transactions", {
+    token: accessToken,
+    expectedStatus: 201,
+    body: {
+      transaction_date: "2026-02-05",
+      description: "Wrong account",
+      merchant_raw: "Wrong Account Merchant",
+      amount: -13.2,
+      account_name: "Side Savings",
+      category_final: "Dining"
+    }
+  });
+  const wrongType = await apiRequest(context, "POST", "/v1/transactions", {
+    token: accessToken,
+    expectedStatus: 201,
+    body: {
+      transaction_date: "2026-02-06",
+      description: "Wrong type",
+      merchant_raw: "Wrong Type Merchant",
+      amount: 820,
+      account_name: "Primary Checking",
+      category_final: "Income"
+    }
+  });
+
+  const firstAccountId = matchingExpense.payload?.transaction?.account_id;
+  const secondAccountId = matchingTransfer.payload?.transaction?.account_id;
+  const matchingExpenseId = matchingExpense.payload?.transaction?.id;
+  const matchingTransferId = matchingTransfer.payload?.transaction?.id;
+  const wrongAccountId = wrongAccount.payload?.transaction?.id;
+  const wrongTypeId = wrongType.payload?.transaction?.id;
+  assert.equal(typeof firstAccountId, "string");
+  assert.equal(typeof secondAccountId, "string");
+  assert.equal(typeof matchingExpenseId, "string");
+  assert.equal(typeof matchingTransferId, "string");
+  assert.equal(typeof wrongAccountId, "string");
+  assert.equal(typeof wrongTypeId, "string");
+
+  const response = await apiRequest(
+    context,
+    "GET",
+    `/v1/transactions?range=all&category_view=granular&category=Dining&category=Transfer&account=${encodeURIComponent(firstAccountId)}&account=${encodeURIComponent(secondAccountId)}&transaction_type=expense&transaction_type=transfer`,
+    {
+      token: accessToken,
+      expectedStatus: 200
+    }
+  );
+
+  assert.equal(
+    response.payload?.items?.some((entry) => entry.id === matchingExpenseId),
+    true
+  );
+  assert.equal(
+    response.payload?.items?.some((entry) => entry.id === matchingTransferId),
+    true
+  );
+  assert.equal(
+    response.payload?.items?.some((entry) => entry.id === wrongAccountId),
+    false
+  );
+  assert.equal(
+    response.payload?.items?.some((entry) => entry.id === wrongTypeId),
+    false
+  );
+});
+
 test("api parity contract suite for categories/transactions/settings and missing domains", async (t) => {
   const context = await startApiServer(t);
 

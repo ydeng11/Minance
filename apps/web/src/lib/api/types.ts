@@ -335,6 +335,7 @@ export interface AnalyticsMeta {
     min: number;
     max: number;
   };
+  availableTags?: string[];
 }
 
 export interface TransactionsResponse {

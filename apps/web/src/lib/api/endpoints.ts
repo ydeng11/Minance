@@ -45,9 +45,27 @@ export type ApiRequest = <T>(path: string, options?: {
   body?: BodyInit | object | null;
 }) => Promise<T>;
 
-function buildQuery(params: Record<string, string | number | boolean | null | undefined>) {
+type QueryValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | Array<string | number | boolean | null | undefined>;
+
+function buildQuery(params: Record<string, QueryValue>) {
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item === null || item === undefined || item === "") {
+          continue;
+        }
+        query.append(key, String(item));
+      }
+      continue;
+    }
+
     if (value === null || value === undefined || value === "") {
       continue;
     }
@@ -196,15 +214,15 @@ export const transactionsApi = {
       start?: string;
       end?: string;
       query?: string;
-      category?: string;
-      account?: string;
+      category?: string[];
+      account?: string[];
       min_amount?: number;
       max_amount?: number;
       range?: string;
       category_view?: "granular" | "coarse";
       needs_category_review?: boolean;
       review_status?: "reviewed" | "needs_review";
-      transaction_type?: "expense" | "income" | "transfer";
+      transaction_type?: Array<"expense" | "income" | "transfer">;
       tag?: string;
       recurring_rule_id?: string;
       limit?: number;
@@ -356,11 +374,11 @@ export const analyticsApi = {
       perspective?: "overview" | "category" | "account";
       compare?: "previous";
       account?: string;
-      category?: string;
+      category?: string[];
       merchant?: string;
       query?: string;
       direction?: "outflow" | "inflow";
-      transaction_type?: "expense" | "income" | "transfer";
+      transaction_type?: Array<"expense" | "income" | "transfer">;
       tag?: string;
       review_status?: "reviewed" | "needs_review";
       min_amount?: number;

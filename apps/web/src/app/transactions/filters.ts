@@ -1,34 +1,34 @@
 import { RANGE_OPTIONS } from "@/lib/constants";
 
 export type TransactionCategoryView = "granular" | "coarse";
-export type TransactionTypeFilter = "all" | "expense" | "income" | "transfer";
+export type TransactionTypeFilter = "expense" | "income" | "transfer";
 
 export interface TransactionsFilterState {
   query: string;
-  category: string;
-  account: string;
+  categories: string[];
+  accounts: string[];
   minAmount: string;
   maxAmount: string;
   range: string;
   start: string;
   end: string;
   categoryView: TransactionCategoryView;
-  transactionType: TransactionTypeFilter;
+  transactionTypes: TransactionTypeFilter[];
   tag: string;
   page: number;
 }
 
 export interface TransactionsListApiParams {
   query?: string;
-  category?: string;
-  account?: string;
+  category?: string[];
+  account?: string[];
   min_amount?: number;
   max_amount?: number;
   range?: string;
   start?: string;
   end?: string;
   category_view: TransactionCategoryView;
-  transaction_type?: "expense" | "income" | "transfer";
+  transaction_type?: TransactionTypeFilter[];
   tag?: string;
   limit: number;
   offset: number;
@@ -43,15 +43,39 @@ export interface TransactionsOverviewApiParams {
 
 const RANGE_VALUES = new Set([...RANGE_OPTIONS.map((option) => option.value), "custom"]);
 const CATEGORY_VIEW_VALUES = new Set(["granular", "coarse"]);
-const TRANSACTION_TYPE_VALUES = new Set(["all", "expense", "income", "transfer"]);
+const TRANSACTION_TYPE_VALUES = new Set<TransactionTypeFilter>(["expense", "income", "transfer"]);
 export const TRANSACTIONS_PAGE_SIZE = 50;
 
 interface SearchParamsLike {
   get(key: string): string | null;
+  getAll(key: string): string[];
 }
 
 function cleanValue(value: string | null) {
   return String(value || "").trim();
+}
+
+function cleanStringList(values: string[]) {
+  const cleaned: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    const normalized = cleanValue(value);
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    cleaned.push(normalized);
+  }
+
+  return cleaned;
+}
+
+function cleanTransactionTypes(values: string[]) {
+  return cleanStringList(values).filter((value): value is TransactionTypeFilter =>
+    TRANSACTION_TYPE_VALUES.has(value as TransactionTypeFilter)
+  );
 }
 
 function cleanAmountValue(value: string | null) {
@@ -88,15 +112,15 @@ function cleanPositiveInteger(value: string | null, fallback = 1) {
 export function createDefaultTransactionsFilterState(): TransactionsFilterState {
   return {
     query: "",
-    category: "",
-    account: "",
+    categories: [],
+    accounts: [],
     minAmount: "",
     maxAmount: "",
     range: "all",
     start: "",
     end: "",
     categoryView: "granular",
-    transactionType: "all",
+    transactionTypes: [],
     tag: "",
     page: 1
   };
@@ -107,12 +131,11 @@ export function parseTransactionsFilterState(searchParams: SearchParamsLike): Tr
 
   const range = cleanValue(searchParams.get("range"));
   const categoryView = cleanValue(searchParams.get("category_view"));
-  const transactionType = cleanValue(searchParams.get("type"));
 
   return {
     query: cleanValue(searchParams.get("query")),
-    category: cleanValue(searchParams.get("category")),
-    account: cleanValue(searchParams.get("account")),
+    categories: cleanStringList(searchParams.getAll("category")),
+    accounts: cleanStringList(searchParams.getAll("account")),
     minAmount: cleanAmountValue(searchParams.get("min_amount")),
     maxAmount: cleanAmountValue(searchParams.get("max_amount")),
     range: RANGE_VALUES.has(range) ? range : defaults.range,
@@ -121,9 +144,7 @@ export function parseTransactionsFilterState(searchParams: SearchParamsLike): Tr
     categoryView: CATEGORY_VIEW_VALUES.has(categoryView)
       ? (categoryView as TransactionCategoryView)
       : defaults.categoryView,
-    transactionType: TRANSACTION_TYPE_VALUES.has(transactionType)
-      ? (transactionType as TransactionTypeFilter)
-      : defaults.transactionType,
+    transactionTypes: cleanTransactionTypes(searchParams.getAll("type")),
     tag: cleanValue(searchParams.get("tag")),
     page: cleanPositiveInteger(searchParams.get("page"), defaults.page)
   };
@@ -140,11 +161,11 @@ export function toTransactionsListApiParams(filters: TransactionsFilterState): T
   if (filters.query) {
     params.query = filters.query;
   }
-  if (filters.category) {
-    params.category = filters.category;
+  if (filters.categories.length) {
+    params.category = filters.categories;
   }
-  if (filters.account) {
-    params.account = filters.account;
+  if (filters.accounts.length) {
+    params.account = filters.accounts;
   }
   if (filters.minAmount) {
     params.min_amount = Number(filters.minAmount);
@@ -152,8 +173,8 @@ export function toTransactionsListApiParams(filters: TransactionsFilterState): T
   if (filters.maxAmount) {
     params.max_amount = Number(filters.maxAmount);
   }
-  if (filters.transactionType !== "all") {
-    params.transaction_type = filters.transactionType;
+  if (filters.transactionTypes.length) {
+    params.transaction_type = filters.transactionTypes;
   }
   if (filters.tag) {
     params.tag = filters.tag;
@@ -199,11 +220,11 @@ export function buildTransactionsFilterSearchParams(filters: TransactionsFilterS
   if (filters.query) {
     searchParams.set("query", filters.query);
   }
-  if (filters.category) {
-    searchParams.set("category", filters.category);
+  for (const category of filters.categories) {
+    searchParams.append("category", category);
   }
-  if (filters.account) {
-    searchParams.set("account", filters.account);
+  for (const account of filters.accounts) {
+    searchParams.append("account", account);
   }
   if (filters.minAmount) {
     searchParams.set("min_amount", filters.minAmount);
@@ -232,8 +253,8 @@ export function buildTransactionsFilterSearchParams(filters: TransactionsFilterS
     searchParams.set("category_view", filters.categoryView);
   }
 
-  if (filters.transactionType !== defaults.transactionType) {
-    searchParams.set("type", filters.transactionType);
+  for (const transactionType of filters.transactionTypes) {
+    searchParams.append("type", transactionType);
   }
 
   if (filters.page > defaults.page) {
@@ -244,15 +265,17 @@ export function buildTransactionsFilterSearchParams(filters: TransactionsFilterS
 }
 
 export function toValidFilterState(filters: TransactionsFilterState): TransactionsFilterState {
-  const next = {
-    ...filters,
+  const next: TransactionsFilterState = {
     query: cleanValue(filters.query),
-    category: cleanValue(filters.category),
-    account: cleanValue(filters.account),
+    categories: cleanStringList(filters.categories),
+    accounts: cleanStringList(filters.accounts),
     minAmount: cleanAmountValue(filters.minAmount),
     maxAmount: cleanAmountValue(filters.maxAmount),
+    range: filters.range,
     start: cleanIsoDate(filters.start),
     end: cleanIsoDate(filters.end),
+    categoryView: filters.categoryView,
+    transactionTypes: cleanTransactionTypes(filters.transactionTypes),
     tag: cleanValue(filters.tag),
     page: Math.max(1, Number.isFinite(filters.page) ? Math.trunc(filters.page) : 1)
   };
@@ -262,9 +285,6 @@ export function toValidFilterState(filters: TransactionsFilterState): Transactio
   }
   if (!CATEGORY_VIEW_VALUES.has(next.categoryView)) {
     next.categoryView = "granular";
-  }
-  if (!TRANSACTION_TYPE_VALUES.has(next.transactionType)) {
-    next.transactionType = "all";
   }
 
   if (next.range !== "custom") {

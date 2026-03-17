@@ -20,7 +20,7 @@ test("@core cross-tab parity covers dashboard, transactions, accounts, categorie
 
   await expect(page.getByTestId("transactions-page")).toBeVisible();
   await expect(page).toHaveURL(/\/transactions\?/);
-  await expect(page.getByTestId("txn-type-filter")).toHaveValue("expense");
+  await expect(page.getByTestId("txn-type-filter-trigger")).toContainText("Expense");
   await expect(page.getByTestId("txn-table")).toBeVisible();
 
   await gotoView(page, "accounts");

@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   explorerCategoryHeatmapRows,
   explorerWeekdaySummaryCells,
+  createManualTransaction,
   gotoView,
   loginWithSeedAccount,
   uploadAndCommitFixtureCsv
@@ -23,6 +24,36 @@ test("explorer advanced filters omit review status controls", async ({ page }) =
   await expect(page.getByTestId("explorer-advanced-filter-review")).toHaveCount(0);
   await expect(page.getByTestId("explorer-active-filters")).not.toContainText("Reviewed");
   await expect(page.getByTestId("explorer-active-filters")).not.toContainText("Needs Review");
+});
+
+test("explorer advanced filters support category and type multiselect plus tag suggestions", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+  await createManualTransaction(page, {
+    category: "Dining",
+    merchant: `Explorer Tag Suggestion ${Date.now()}`,
+    tags: "monthly, household"
+  });
+  await createManualTransaction(page, {
+    category: "Groceries",
+    merchant: `Explorer Category Seed ${Date.now()}`,
+    tags: "weekly"
+  });
+  await gotoView(page, "explorer");
+
+  await page.getByTestId("explorer-open-advanced-filters").click();
+  await expect(page.getByTestId("explorer-advanced-filters")).toBeVisible();
+
+  await page.getByTestId("explorer-category-multiselect-trigger").click();
+  await page.getByRole("option", { name: "Dining", exact: true }).click();
+  await page.getByRole("option", { name: "Groceries", exact: true }).click();
+
+  await page.getByTestId("explorer-type-multiselect-trigger").click();
+  await page.getByRole("option", { name: "Expense" }).click();
+  await page.getByRole("option", { name: "Transfer" }).click();
+
+  await page.getByTestId("explorer-tag-filter").fill("mon");
+  await expect(page.getByTestId("explorer-tag-suggestions")).toContainText("monthly");
 });
 
 test("overview perspective uses a full-width trend chart with the active range label", async ({ page }) => {

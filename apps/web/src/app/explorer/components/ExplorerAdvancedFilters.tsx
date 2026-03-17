@@ -1,30 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import type { Category } from "@/lib/api/types";
+import { AmountRangeControl } from "@/components/filters/AmountRangeControl";
+import { MultiSelectField, type MultiSelectOption } from "@/components/filters/MultiSelectField";
 import {
   createDefaultExplorerFilterState,
-  type ExplorerFilterState
+  type ExplorerFilterState,
+  type ExplorerTransactionType
 } from "../filters";
 
 interface ExplorerAdvancedFiltersProps {
   filters: ExplorerFilterState;
   categories: Category[];
+  availableTags: string[];
+  amountBounds?: {
+    min: number;
+    max: number;
+  } | null;
   onApply: (updates: Partial<ExplorerFilterState>) => void;
   onClose: () => void;
 }
 
 type AdvancedFilterDraft = Pick<
   ExplorerFilterState,
-  "merchant" | "category" | "transactionType" | "direction" | "tag" | "minAmount" | "maxAmount" | "categoryView"
+  "merchant" | "categories" | "transactionTypes" | "direction" | "tag" | "minAmount" | "maxAmount" | "categoryView"
 >;
+type OpenMultiSelectField = "category" | "transactionType";
+
+const TRANSACTION_TYPE_OPTIONS: Array<{ value: ExplorerTransactionType; label: string }> = [
+  { value: "expense", label: "Expense" },
+  { value: "income", label: "Income" },
+  { value: "transfer", label: "Transfer" }
+];
 
 function createDraft(filters: ExplorerFilterState): AdvancedFilterDraft {
   return {
     merchant: filters.merchant,
-    category: filters.category,
-    transactionType: filters.transactionType,
+    categories: [...filters.categories],
+    transactionTypes: [...filters.transactionTypes],
     direction: filters.direction,
     tag: filters.tag,
     minAmount: filters.minAmount,
@@ -33,41 +48,57 @@ function createDraft(filters: ExplorerFilterState): AdvancedFilterDraft {
   };
 }
 
+function createDefaultDraft() {
+  return createDraft(createDefaultExplorerFilterState());
+}
+
 export function ExplorerAdvancedFilters({
   filters,
   categories,
+  availableTags,
+  amountBounds,
   onApply,
   onClose
 }: ExplorerAdvancedFiltersProps) {
   const [draft, setDraft] = useState<AdvancedFilterDraft>(() => createDraft(filters));
+  const [openMultiSelect, setOpenMultiSelect] = useState<OpenMultiSelectField | null>(null);
 
   useEffect(() => {
     setDraft(createDraft(filters));
+    setOpenMultiSelect(null);
   }, [filters]);
+
+  const categoryOptions = useMemo(
+    () => categories.map(({ name }) => ({ value: name, label: name })),
+    [categories]
+  );
+  const filteredTagSuggestions = useMemo(() => {
+    const normalizedTag = draft.tag.trim().toLowerCase();
+    return availableTags
+      .filter((tag) => tag.includes(normalizedTag))
+      .slice(0, 8);
+  }, [availableTags, draft.tag]);
+  const amountBoundMin = Math.floor(amountBounds?.min ?? 0);
+  const amountBoundMax = Math.max(amountBoundMin, Math.ceil(amountBounds?.max ?? 0));
 
   function updateDraft(updates: Partial<AdvancedFilterDraft>) {
     setDraft((current) => ({ ...current, ...updates }));
   }
 
+  function handleMultiSelectOpen(field: OpenMultiSelectField) {
+    return (nextOpen: boolean) => setOpenMultiSelect(nextOpen ? field : null);
+  }
+
   function resetDraft() {
-    const defaults = createDefaultExplorerFilterState();
-    setDraft({
-      merchant: defaults.merchant,
-      category: defaults.category,
-      transactionType: defaults.transactionType,
-      direction: defaults.direction,
-      tag: defaults.tag,
-      minAmount: defaults.minAmount,
-      maxAmount: defaults.maxAmount,
-      categoryView: defaults.categoryView
-    });
+    setOpenMultiSelect(null);
+    setDraft(createDefaultDraft());
   }
 
   return (
     <div className="fixed inset-0 z-40 bg-black/55 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true">
       <div className="mx-auto flex max-w-6xl justify-end">
         <section
-          className="w-full max-w-md rounded-[28px] border border-neutral-800 bg-[linear-gradient(180deg,rgba(15,18,20,0.98),rgba(8,10,12,0.94))] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
+          className="w-full max-w-xl rounded-[28px] border border-neutral-800 bg-[linear-gradient(180deg,rgba(15,18,20,0.98),rgba(8,10,12,0.94))] p-5 shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
           data-testid="explorer-advanced-filters"
         >
           <div className="flex items-start justify-between gap-4">
@@ -77,7 +108,7 @@ export function ExplorerAdvancedFilters({
               </p>
               <h3 className="mt-2 text-xl font-semibold tracking-tight text-neutral-50">Refine this workspace</h3>
               <p className="mt-2 text-sm text-neutral-400">
-                Apply deeper constraints without sacrificing dashboard width.
+                Stack category and type filters, narrow by amount, and reuse known tags faster.
               </p>
             </div>
             <button
@@ -102,20 +133,19 @@ export function ExplorerAdvancedFilters({
             </label>
 
             <label className="grid gap-1 text-sm text-neutral-300 sm:col-span-2">
-              Category
-              <select
-                value={draft.category}
-                onChange={(event) => updateDraft({ category: event.target.value })}
-                className="h-11 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-neutral-100 outline-none transition focus:border-emerald-500"
-              >
-                <option value="">All categories</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.name}>
-                    {category.emoji ? `${category.emoji} ` : ""}
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              <span>Category</span>
+              <MultiSelectField
+                selectedValues={draft.categories}
+                options={categoryOptions}
+                onChange={(categories) => updateDraft({ categories })}
+                emptyLabel="All categories"
+                testId="explorer-category-multiselect"
+                isOpen={openMultiSelect === "category"}
+                onOpenChange={handleMultiSelectOpen("category")}
+                ariaLabel="Filter explorer by category"
+                searchable
+                searchPlaceholder="Search category"
+              />
             </label>
 
             <label className="grid gap-1 text-sm text-neutral-300">
@@ -133,19 +163,19 @@ export function ExplorerAdvancedFilters({
             </label>
 
             <label className="grid gap-1 text-sm text-neutral-300">
-              Transaction type
-              <select
-                value={draft.transactionType}
-                onChange={(event) =>
-                  updateDraft({ transactionType: event.target.value as ExplorerFilterState["transactionType"] })
+              <span>Transaction type</span>
+              <MultiSelectField
+                selectedValues={draft.transactionTypes}
+                options={TRANSACTION_TYPE_OPTIONS}
+                onChange={(transactionTypes) =>
+                  updateDraft({ transactionTypes: transactionTypes as ExplorerTransactionType[] })
                 }
-                className="h-11 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-neutral-100 outline-none transition focus:border-emerald-500"
-              >
-                <option value="all">All types</option>
-                <option value="expense">Expense</option>
-                <option value="income">Income</option>
-                <option value="transfer">Transfer</option>
-              </select>
+                emptyLabel="All types"
+                testId="explorer-type-multiselect"
+                isOpen={openMultiSelect === "transactionType"}
+                onOpenChange={handleMultiSelectOpen("transactionType")}
+                ariaLabel="Filter explorer by transaction type"
+              />
             </label>
 
             <label className="grid gap-1 text-sm text-neutral-300">
@@ -163,36 +193,49 @@ export function ExplorerAdvancedFilters({
               </select>
             </label>
 
-            <label className="grid gap-1 text-sm text-neutral-300">
-              Minimum amount
-              <input
-                value={draft.minAmount}
-                onChange={(event) => updateDraft({ minAmount: event.target.value })}
-                type="number"
-                placeholder="0"
-                className="h-11 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-neutral-100 outline-none transition focus:border-emerald-500"
+            <div className="sm:col-span-2">
+              <AmountRangeControl
+                minBound={amountBoundMin}
+                maxBound={amountBoundMax}
+                minValue={draft.minAmount}
+                maxValue={draft.maxAmount}
+                onChange={({ minAmount, maxAmount }) => updateDraft({ minAmount, maxAmount })}
+                testIdPrefix="explorer"
+                inputClassName="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500"
               />
-            </label>
-
-            <label className="grid gap-1 text-sm text-neutral-300">
-              Maximum amount
-              <input
-                value={draft.maxAmount}
-                onChange={(event) => updateDraft({ maxAmount: event.target.value })}
-                type="number"
-                placeholder="1000"
-                className="h-11 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-neutral-100 outline-none transition focus:border-emerald-500"
-              />
-            </label>
+            </div>
 
             <label className="grid gap-1 text-sm text-neutral-300 sm:col-span-2">
               Tag
               <input
                 value={draft.tag}
                 onChange={(event) => updateDraft({ tag: event.target.value })}
-                placeholder="travel, groceries, tax"
+                placeholder="Filter by tag"
+                data-testid="explorer-tag-filter"
                 className="h-11 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-neutral-100 outline-none transition focus:border-emerald-500"
               />
+              {draft.tag.trim() && filteredTagSuggestions.length ? (
+                <div
+                  data-testid="explorer-tag-suggestions"
+                  className="rounded-2xl border border-neutral-800 bg-neutral-950/90 p-2"
+                >
+                  <div className="mb-2 text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">
+                    Suggestions
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {filteredTagSuggestions.map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => updateDraft({ tag })}
+                        className="rounded-full border border-neutral-800 bg-neutral-900 px-3 py-1 text-sm text-neutral-200 transition hover:border-neutral-700 hover:bg-neutral-800"
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </label>
           </div>
 

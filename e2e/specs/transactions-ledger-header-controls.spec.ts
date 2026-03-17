@@ -37,6 +37,7 @@ test("@core transactions header controls route into the ledger, create from the 
   await expect(page.getByTestId("txn-select-all-visible")).toBeVisible();
 
   await expect(page.getByTestId("txn-amount-filter")).toBeVisible();
+  await expect(page.getByTestId("txn-amount-range-control")).toBeVisible();
   await page.getByPlaceholder(/Min \(\$/).fill("70");
   await applyTransactionsFilters(page);
   await expect(page).toHaveURL(/min_amount=70/);

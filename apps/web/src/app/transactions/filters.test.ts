@@ -12,15 +12,15 @@ import {
 test("createDefaultTransactionsFilterState returns expected defaults", () => {
   assert.deepEqual(createDefaultTransactionsFilterState(), {
     query: "",
-    category: "",
-    account: "",
+    categories: [],
+    accounts: [],
     minAmount: "",
     maxAmount: "",
     range: "all",
     start: "",
     end: "",
     categoryView: "granular",
-    transactionType: "all",
+    transactionTypes: [],
     tag: "",
     page: 1
   });
@@ -29,21 +29,21 @@ test("createDefaultTransactionsFilterState returns expected defaults", () => {
 test("parseTransactionsFilterState reads supported query tokens", () => {
   const parsed = parseTransactionsFilterState(
     new URLSearchParams(
-      "query=Transfer&category=Dining&account=primary-checking&range=custom&start=2026-01-01&end=2026-01-31&category_view=coarse&type=transfer&tag=monthly"
+      "query=Transfer&category=Dining&category=Groceries&account=primary-checking&account=travel-card&range=custom&start=2026-01-01&end=2026-01-31&category_view=coarse&type=expense&type=transfer&tag=monthly"
     )
   );
 
   assert.deepEqual(parsed, {
     query: "Transfer",
-    category: "Dining",
-    account: "primary-checking",
+    categories: ["Dining", "Groceries"],
+    accounts: ["primary-checking", "travel-card"],
     minAmount: "",
     maxAmount: "",
     range: "custom",
     start: "2026-01-01",
     end: "2026-01-31",
     categoryView: "coarse",
-    transactionType: "transfer",
+    transactionTypes: ["expense", "transfer"],
     tag: "monthly",
     page: 1
   });
@@ -70,36 +70,38 @@ test("parseTransactionsFilterState falls back for invalid values", () => {
   assert.equal(parsed.start, "");
   assert.equal(parsed.end, "");
   assert.equal(parsed.categoryView, "granular");
-  assert.equal(parsed.transactionType, "all");
+  assert.deepEqual(parsed.categories, []);
+  assert.deepEqual(parsed.accounts, []);
+  assert.deepEqual(parsed.transactionTypes, []);
   assert.equal(parsed.page, 1);
 });
 
 test("toTransactionsListApiParams serializes custom date mode and semantic filters", () => {
   const params = toTransactionsListApiParams({
     query: "rent",
-    category: "Housing",
-    account: "fixture-checking",
+    categories: ["Housing", "Travel"],
+    accounts: ["fixture-checking", "travel-card"],
     minAmount: "25",
     maxAmount: "150",
     range: "custom",
     start: "2026-01-01",
     end: "2026-01-31",
     categoryView: "coarse",
-    transactionType: "expense",
+    transactionTypes: ["expense", "transfer"],
     tag: "monthly",
     page: 3
   });
 
   assert.deepEqual(params, {
     query: "rent",
-    category: "Housing",
-    account: "fixture-checking",
+    category: ["Housing", "Travel"],
+    account: ["fixture-checking", "travel-card"],
     min_amount: 25,
     max_amount: 150,
     start: "2026-01-01",
     end: "2026-01-31",
     category_view: "coarse",
-    transaction_type: "expense",
+    transaction_type: ["expense", "transfer"],
     tag: "monthly",
     limit: 50,
     offset: 100
@@ -139,49 +141,50 @@ test("buildTransactionsFilterSearchParams writes only non-default tokens", () =>
   const searchParams = buildTransactionsFilterSearchParams({
     ...createDefaultTransactionsFilterState(),
     query: "Transfer",
-    account: "primary-checking",
+    categories: ["Dining", "Groceries"],
+    accounts: ["primary-checking", "travel-card"],
     minAmount: "15",
     maxAmount: "120",
     range: "custom",
     start: "2026-01-01",
     end: "2026-01-31",
-    transactionType: "transfer",
+    transactionTypes: ["expense", "transfer"],
     page: 4
   });
 
   assert.equal(
     searchParams.toString(),
-    "query=Transfer&account=primary-checking&min_amount=15&max_amount=120&range=custom&start=2026-01-01&end=2026-01-31&type=transfer&page=4"
+    "query=Transfer&category=Dining&category=Groceries&account=primary-checking&account=travel-card&min_amount=15&max_amount=120&range=custom&start=2026-01-01&end=2026-01-31&type=expense&type=transfer&page=4"
   );
 });
 
 test("toValidFilterState trims values and clears custom dates when not in custom range", () => {
   const validated = toValidFilterState({
     query: "  Rent  ",
-    category: "  Housing  ",
-    account: " fixture-checking ",
+    categories: ["  Housing  ", "Travel", "Housing"],
+    accounts: [" fixture-checking ", "travel-card", "fixture-checking"],
     minAmount: " 20.5 ",
     maxAmount: " 140 ",
     range: "90d",
     start: "2026-01-01",
     end: "2026-01-31",
     categoryView: "granular",
-    transactionType: "all",
+    transactionTypes: ["expense", "transfer", "expense"],
     tag: "  monthly  ",
     page: 0
   });
 
   assert.deepEqual(validated, {
     query: "Rent",
-    category: "Housing",
-    account: "fixture-checking",
+    categories: ["Housing", "Travel"],
+    accounts: ["fixture-checking", "travel-card"],
     minAmount: "20.5",
     maxAmount: "140",
     range: "90d",
     start: "",
     end: "",
     categoryView: "granular",
-    transactionType: "all",
+    transactionTypes: ["expense", "transfer"],
     tag: "monthly",
     page: 1
   });

@@ -14,7 +14,7 @@ interface CategoryPerspectiveProps {
   overview: OverviewResponse | null;
   categories: ExplorerAnalyticsResponse["categories"]["items"];
   categoryWeekdayHeatmap: ExplorerAnalyticsResponse["categoryWeekdayHeatmap"]["items"];
-  selectedCategory: string;
+  selectedCategories: string[];
   onCategoryClick: (category: string) => void;
   trend: ExplorerAnalyticsResponse["trend"]["items"];
   onApplyMonthFilter: (month: string) => void;
@@ -26,7 +26,7 @@ export function CategoryPerspective({
   overview,
   categories,
   categoryWeekdayHeatmap,
-  selectedCategory,
+  selectedCategories,
   onCategoryClick,
   trend,
   onApplyMonthFilter,
@@ -35,12 +35,12 @@ export function CategoryPerspective({
 }: CategoryPerspectiveProps) {
   const defaultInspectedCategory = categoryWeekdayHeatmap[0]?.category || categories[0]?.category || "";
   const [inspectedCategory, setInspectedCategory] = useState(
-    selectedCategory || defaultInspectedCategory
+    selectedCategories[0] || defaultInspectedCategory
   );
 
   useEffect(() => {
-    if (selectedCategory) {
-      setInspectedCategory(selectedCategory);
+    if (selectedCategories.length === 1) {
+      setInspectedCategory(selectedCategories[0]);
       return;
     }
 
@@ -61,18 +61,21 @@ export function CategoryPerspective({
 
       return defaultInspectedCategory;
     });
-  }, [selectedCategory, defaultInspectedCategory, categoryWeekdayHeatmap, categories]);
+  }, [selectedCategories, defaultInspectedCategory, categoryWeekdayHeatmap, categories]);
 
   const activeCategory = categories.find((entry) => entry.category === inspectedCategory) || null;
+  const selectedSet = new Set(selectedCategories);
 
   return (
     <div className="space-y-6" data-testid="explorer-category-view">
       <ExplorerCard
         testId="explorer-category-lens"
         title="Category Lens"
-        subtitle={inspectedCategory
-          ? `Inspecting ${inspectedCategory}. Apply the filter when you want to narrow Explorer to that category.`
-          : "Choose a category to compare spend and income side by side, then inspect its net impact."}
+        subtitle={activeCategory
+          ? `Focused on ${activeCategory.category}. Click another category to pivot the workspace.`
+          : selectedCategories.length > 1
+            ? `Comparing ${selectedCategories.length} categories within the current Explorer filters.`
+            : "Choose a category to compare spend and income side by side, then inspect its net impact."}
       >
         {loading ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -89,7 +92,7 @@ export function CategoryPerspective({
                 onClick={() => setInspectedCategory(entry.category)}
                 className={cn(
                   "rounded-2xl border px-4 py-4 text-left transition",
-                  inspectedCategory === entry.category
+                  selectedSet.has(entry.category)
                     ? "border-emerald-400/30 bg-emerald-400/10"
                     : "border-neutral-900 bg-neutral-950/70 hover:border-neutral-800 hover:bg-neutral-900/80"
                 )}
@@ -176,11 +179,15 @@ export function CategoryPerspective({
                 className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-400/15"
                 data-testid="explorer-category-apply-filter"
               >
-                {selectedCategory === inspectedCategory
+                {selectedCategories[0] === inspectedCategory
                   ? `Filtered to ${inspectedCategory}`
                   : `Filter Explorer to ${inspectedCategory}`}
               </button>
             </div>
+          </div>
+        ) : !loading && selectedCategories.length > 1 ? (
+          <div className="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/70 px-4 py-3 text-sm text-neutral-400">
+            Multiple categories are active. Select a single category to inspect its spend, income, net, and transaction mix.
           </div>
         ) : !loading && categories.length > 0 ? (
           <div className="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/70 px-4 py-3 text-sm text-neutral-400">
