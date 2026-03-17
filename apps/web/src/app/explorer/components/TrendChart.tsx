@@ -65,15 +65,17 @@ export function TrendChart({
 
   useEffect(() => {
     if (trendBars.length === 0) {
-      setSelectedMonth(null);
+      queueMicrotask(() => setSelectedMonth(null));
       return;
     }
 
-    setSelectedMonth((current) =>
-      current && trendBars.some((entry) => entry.month === current)
-        ? current
-        : trendBars[trendBars.length - 1]?.month ?? null
-    );
+    queueMicrotask(() => {
+      setSelectedMonth((current) =>
+        current && trendBars.some((entry) => entry.month === current)
+          ? current
+          : trendBars[trendBars.length - 1]?.month ?? null
+      );
+    });
   }, [trendBars]);
 
   const selectedTrend = useMemo(
