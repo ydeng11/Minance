@@ -1,6 +1,6 @@
 "use client";
 
-import { money } from "@/lib/utils";
+import { cn, money } from "@/lib/utils";
 import type { ExplorerAnalyticsResponse } from "@/lib/api/types";
 import { getWeekdayHeatToneClassName, WEEKDAY_LABELS } from "./weekdayHeatmapPresentation";
 
@@ -57,17 +57,26 @@ export function WeekdaySpendSummary({ items, loading }: WeekdaySpendSummaryProps
       {hasSpend ? (
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
           {buckets.map((entry) => (
-            <div
-              key={entry.weekday}
-              className={`flex min-h-[132px] items-end rounded-3xl py-4 ${getWeekdayHeatToneClassName(entry.amount, maxAmount)}`}
-              data-testid="explorer-weekday-summary-cell"
-              title={`${WEEKDAY_LABELS[entry.weekday]} • ${money(entry.amount)} • ${entry.count} transactions`}
-              aria-label={`${WEEKDAY_LABELS[entry.weekday]} ${money(entry.amount)} ${entry.count} transactions`}
-            >
+            <div key={entry.weekday} className="group relative">
               <div
-                className="w-full min-w-0 px-1 text-center text-[10px] font-medium uppercase leading-none tracking-[0.16em] text-white"
+                className={cn(
+                  "flex min-h-[132px] items-end rounded-3xl py-4",
+                  getWeekdayHeatToneClassName(entry.amount, maxAmount)
+                )}
+                data-testid="explorer-weekday-summary-cell"
+                title={`${WEEKDAY_LABELS[entry.weekday]} • ${money(entry.amount)} • ${entry.count} transactions`}
+                aria-label={`${WEEKDAY_LABELS[entry.weekday]} ${money(entry.amount)} ${entry.count} transactions`}
               >
-                {WEEKDAY_LABELS[entry.weekday]}
+                <div className="w-full min-w-0 px-1 text-center text-[10px] font-medium uppercase leading-none tracking-[0.16em] text-white">
+                  {WEEKDAY_LABELS[entry.weekday]}
+                </div>
+              </div>
+
+              {/* Tooltip */}
+              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm whitespace-nowrap group-hover:block">
+                <div className="font-medium text-neutral-100">{WEEKDAY_LABELS[entry.weekday]}</div>
+                <div className="text-neutral-300">{money(entry.amount)}</div>
+                <div className="text-xs text-neutral-400">{entry.count} transactions</div>
               </div>
             </div>
           ))}

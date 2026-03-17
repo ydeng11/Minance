@@ -102,18 +102,26 @@ export function CategoryWeekdayHeatmap({
                   </div>
 
                   {row.cells.map((cell) => (
-                    <div
-                      key={cell.weekday}
-                      className={cn(
-                        "flex min-h-[56px] items-center justify-center rounded-2xl px-2",
-                        getWeekdayHeatToneClassName(cell.amount, maxAmount)
-                      )}
-                      title={`${row.category} • ${WEEKDAY_LABELS[cell.weekday]} • ${money(cell.amount)} • ${cell.count} transactions`}
-                      aria-label={`${row.category} ${WEEKDAY_LABELS[cell.weekday]} ${money(cell.amount)} ${cell.count} transactions`}
-                    >
-                      <span className="text-xs font-medium text-neutral-200">
-                        {cell.count > 0 ? money(cell.amount) : ""}
-                      </span>
+                    <div key={cell.weekday} className="group relative">
+                      <div
+                        className={cn(
+                          "flex min-h-[56px] items-center justify-center rounded-2xl px-2",
+                          getWeekdayHeatToneClassName(cell.amount, maxAmount)
+                        )}
+                        title={`${row.category} • ${WEEKDAY_LABELS[cell.weekday]} • ${money(cell.amount)} • ${cell.count} transactions`}
+                        aria-label={`${row.category} ${WEEKDAY_LABELS[cell.weekday]} ${money(cell.amount)} ${cell.count} transactions`}
+                      >
+                        <span className="text-xs font-medium text-neutral-200">
+                          {cell.count > 0 ? money(cell.amount) : ""}
+                        </span>
+                      </div>
+
+                      {/* Tooltip */}
+                      <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm whitespace-nowrap group-hover:block">
+                        <div className="font-medium text-neutral-100">{WEEKDAY_LABELS[cell.weekday]}</div>
+                        <div className="text-neutral-300">{money(cell.amount)}</div>
+                        <div className="text-xs text-neutral-400">{cell.count} transactions</div>
+                      </div>
                     </div>
                   ))}
                 </button>
