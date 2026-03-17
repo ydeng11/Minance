@@ -166,19 +166,20 @@ export default function ExplorerPage() {
   const openTransactionsDrillDown = useCallback(
     (overrides: Partial<{ query: string; category: string; account: string; transactionType: "expense" | "income" | "transfer"; tag: string }>) => {
       const singleCategory = filters.categories.length === 1 ? filters.categories[0] : "";
-      const singleTransactionType = filters.transactionTypes.length === 1 ? filters.transactionTypes[0] : "all";
+      const singleTransactionType = filters.transactionTypes.length === 1 ? filters.transactionTypes[0] : null;
+      const transactionTypeValue = overrides.transactionType ?? singleTransactionType;
       const transactionFilters = toValidTransactionsFilterState({
         ...createDefaultTransactionsFilterState(),
         query: overrides.query ?? filters.query,
-        category: overrides.category ?? singleCategory,
-        account: overrides.account ?? filters.account,
+        categories: [overrides.category ?? singleCategory].filter(Boolean),
+        accounts: [overrides.account ?? filters.account].filter(Boolean),
         minAmount: filters.minAmount,
         maxAmount: filters.maxAmount,
         range: filters.range,
         start: filters.start,
         end: filters.end,
         categoryView: filters.categoryView,
-        transactionType: overrides.transactionType ?? singleTransactionType,
+        transactionTypes: transactionTypeValue ? [transactionTypeValue] : [],
         tag: overrides.tag ?? filters.tag,
         page: 1
       });
