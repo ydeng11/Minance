@@ -508,28 +508,12 @@ export function getOverview(userId, filters = {}) {
     byMonth[key].net = byMonth[key].income - byMonth[key].spend;
   }
 
-  const merchantCounts = {};
-  const merchantByMonth = {};
-  for (const txn of txns) {
-    if (txn.direction !== "outflow") {
-      continue;
-    }
-    merchantCounts[txn.merchant_normalized] = (merchantCounts[txn.merchant_normalized] || 0) + toAmount(txn);
-
-    const key = `${txn.merchant_normalized}::${monthKey(txn.transaction_date)}`;
-    merchantByMonth[key] = (merchantByMonth[key] || 0) + 1;
-  }
-
+  // Rule-based calculation: sum outflow transactions with a recurring rule
   let recurringSpend = 0;
-  const recurringMerchants = new Set();
-  for (const key of Object.keys(merchantByMonth)) {
-    const [merchant] = key.split("::");
-    recurringMerchants.add(merchant);
-  }
-  for (const merchant of recurringMerchants) {
-    const activeMonths = Object.keys(merchantByMonth).filter((key) => key.startsWith(`${merchant}::`)).length;
-    if (activeMonths >= 2) {
-      recurringSpend += merchantCounts[merchant] || 0;
+  for (const txn of txns) {
+    if (txn.direction !== "outflow") continue;
+    if (txn.recurring_rule_id) {
+      recurringSpend += toAmount(txn);
     }
   }
 

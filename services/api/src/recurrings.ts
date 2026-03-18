@@ -1,5 +1,6 @@
 import { loadStore, saveStore, addAuditEvent } from "./store.ts";
 import { createId, nowIso, normalizeText, parseDate, toDecimal } from "./utils.ts";
+import { DISMISSAL_REASON } from "./recurring-suggestions.ts";
 
 const CADENCE_VALUES = new Set(["weekly", "biweekly", "monthly", "quarterly", "yearly"]);
 const STATUS_VALUES = new Set(["active", "paused", "archived"]);
@@ -438,7 +439,7 @@ export function updateRecurringRule(userId, ruleId, payload) {
 
 export function deleteRecurringRule(userId, ruleId) {
   const store = loadStore();
-  const { rules, index } = findRuleRecord(store, userId, ruleId);
+  const { rules, index, record } = findRuleRecord(store, userId, ruleId);
 
   let detachedCount = 0;
   for (const transaction of store.transactions || []) {
@@ -453,6 +454,23 @@ export function deleteRecurringRule(userId, ruleId) {
   }
 
   rules.splice(index, 1);
+
+  // Add entry to dismissed registry with 30-day cooldown
+  const dismissedEntry = {
+    id: createId("rdis"),
+    user_id: userId,
+    merchant_pattern: record.merchant_pattern,
+    amount: record.amount,
+    dismissed_at: nowIso(),
+    dismissed_reason: DISMISSAL_REASON.RULE_DELETED,
+    cooldown_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  };
+
+  if (!Array.isArray(store.dismissedRecurringSuggestions)) {
+    store.dismissedRecurringSuggestions = [];
+  }
+  store.dismissedRecurringSuggestions.push(dismissedEntry);
+
   saveStore(store);
   addAuditEvent(userId, "recurrings.rule.delete", {
     ruleId,

@@ -465,6 +465,26 @@ export interface RecurringEvaluation {
   linked_transaction_ids: string[];
 }
 
+export interface RecurringSuggestion {
+  id: string;
+  user_id: string;
+  merchant_pattern: string;
+  amount: number;
+  detected_at: string;
+  occurrence_count: number;
+  transaction_ids: string[];
+}
+
+export interface DismissedRecurringSuggestion {
+  id: string;
+  user_id: string;
+  merchant_pattern: string;
+  amount: number;
+  dismissed_at: string;
+  dismissed_reason: "user_dismissed" | "rule_deleted";
+  cooldown_until: string | null;
+}
+
 export interface TransactionsBulkUpdateRequest {
   transaction_ids: string[];
   operation?: "update" | "delete";

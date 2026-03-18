@@ -14,6 +14,7 @@ import {
   buildDraftFromTransaction,
   createInitialTransactionDraft,
   validateTransactionDraft,
+  parseTagListInput,
   type TransactionFormDraft,
   type TransactionFormErrors
 } from "./form";
@@ -82,7 +83,8 @@ function calculateActiveFilterCount(filters: TransactionsFilterState) {
     filters.end !== defaults.end,
     filters.categoryView !== defaults.categoryView,
     filters.transactionTypes.length > 0,
-    filters.tag !== defaults.tag
+    filters.tag !== defaults.tag,
+    filters.recurring !== defaults.recurring
   ].filter(Boolean).length;
 }
 
@@ -119,7 +121,7 @@ export default function TransactionsPage() {
 
   const parsedFilters = useMemo(
     () => toValidFilterState(parseTransactionsFilterState(searchParams)),
-    [searchParamKey, searchParams]
+    [searchParams]
   );
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -133,6 +135,14 @@ export default function TransactionsPage() {
   const [form, setForm] = useState<TransactionFormDraft>(() => createInitialTransactionDraft());
   const [formErrors, setFormErrors] = useState<TransactionFormErrors>({});
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<string>>(() => new Set());
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [bulkCategoryOpen, setBulkCategoryOpen] = useState(false);
+  const [bulkCategoryValue, setBulkCategoryValue] = useState("");
+  const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
+  const [bulkTagsValue, setBulkTagsValue] = useState("");
+  const [bulkTagsError, setBulkTagsError] = useState<string | null>(null);
+  const [bulkReviewOpen, setBulkReviewOpen] = useState(false);
+  const [bulkApplying, setBulkApplying] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [openMultiSelect, setOpenMultiSelect] = useState<OpenTransactionsMultiSelect | null>(null);
@@ -338,6 +348,39 @@ export default function TransactionsPage() {
     }
   }, [selectedTransactionIds]);
 
+  // Close bulk dropdowns on click outside
+  useEffect(() => {
+    if (!bulkCategoryOpen && !bulkTagsOpen && !bulkReviewOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as HTMLElement;
+      if (!target.closest("[data-bulk-dropdown]")) {
+        setBulkCategoryOpen(false);
+        setBulkTagsOpen(false);
+        setBulkReviewOpen(false);
+      }
+    }
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [bulkCategoryOpen, bulkTagsOpen, bulkReviewOpen]);
+
+  // Close bulk dropdowns on Escape key
+  useEffect(() => {
+    if (!bulkCategoryOpen && !bulkTagsOpen && !bulkReviewOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setBulkCategoryOpen(false);
+        setBulkTagsOpen(false);
+        setBulkReviewOpen(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [bulkCategoryOpen, bulkTagsOpen, bulkReviewOpen]);
+
   function clearSelectedTransactions() {
     setSelectedTransactionIds(new Set());
     setIsBulkDeleteDialogOpen(false);
@@ -517,6 +560,7 @@ export default function TransactionsPage() {
   }
 
   function startEdit(transaction: Transaction) {
+    setDeleteConfirmId(null);
     clearSelectedTransactions();
     setIsCreateDialogOpen(false);
     setForm(buildDraftFromTransaction(transaction));
@@ -563,6 +607,77 @@ export default function TransactionsPage() {
       setMessage(getRequestErrorMessage(error, "Failed to delete selected transactions."));
     } finally {
       setBulkDeleting(false);
+    }
+  }
+
+  async function applyBulkCategory() {
+    if (!bulkCategoryValue) return;
+    const selectedIds = Array.from(selectedTransactionIds);
+    setBulkApplying(true);
+    try {
+      await api.transactions.bulkUpdate({
+        transaction_ids: selectedIds,
+        operation: "update",
+        category_final: bulkCategoryValue
+      });
+      setMessage(`${formatTransactionCountLabel(selectedVisibleCount)} updated.`);
+      setBulkCategoryOpen(false);
+      setBulkCategoryValue("");
+      setSelectedTransactionIds(new Set());
+      await refreshTransactionsView(filtersRef.current, { preserveMessage: true });
+    } catch (error) {
+      setMessage(getRequestErrorMessage(error, "Failed to update categories."));
+    } finally {
+      setBulkApplying(false);
+    }
+  }
+
+  async function applyBulkTags() {
+    const parsed = parseTagListInput(bulkTagsValue);
+    if (parsed.error) {
+      setBulkTagsError(parsed.error);
+      return;
+    }
+    if (!parsed.tags.length) return;
+
+    const selectedIds = Array.from(selectedTransactionIds);
+    setBulkApplying(true);
+    setBulkTagsError(null);
+    try {
+      await api.transactions.bulkUpdate({
+        transaction_ids: selectedIds,
+        operation: "update",
+        tags: parsed.tags
+      });
+      setMessage(`${formatTransactionCountLabel(selectedVisibleCount)} tagged.`);
+      setBulkTagsOpen(false);
+      setBulkTagsValue("");
+      setSelectedTransactionIds(new Set());
+      await refreshTransactionsView(filtersRef.current, { preserveMessage: true });
+    } catch (error) {
+      setMessage(getRequestErrorMessage(error, "Failed to update tags."));
+    } finally {
+      setBulkApplying(false);
+    }
+  }
+
+  async function applyBulkReview(status: "reviewed" | "needs_review") {
+    const selectedIds = Array.from(selectedTransactionIds);
+    setBulkApplying(true);
+    try {
+      await api.transactions.bulkUpdate({
+        transaction_ids: selectedIds,
+        operation: "update",
+        review_status: status
+      });
+      setMessage(`${formatTransactionCountLabel(selectedVisibleCount)} marked as ${status === "reviewed" ? "reviewed" : "needing review"}.`);
+      setBulkReviewOpen(false);
+      setSelectedTransactionIds(new Set());
+      await refreshTransactionsView(filtersRef.current, { preserveMessage: true });
+    } catch (error) {
+      setMessage(getRequestErrorMessage(error, "Failed to update review status."));
+    } finally {
+      setBulkApplying(false);
     }
   }
 
@@ -823,6 +938,17 @@ export default function TransactionsPage() {
           </div>
 
           <div className="flex flex-col gap-2 xl:items-end xl:justify-center">
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.recurring}
+                onChange={(event) => updateFilters((previous) => ({ ...previous, recurring: event.target.checked }))}
+                data-testid="txn-recurring-filter"
+                aria-label="Show only recurring transactions"
+                className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-400 focus:ring-emerald-400"
+              />
+              <span className="text-sm text-neutral-300">Recurring only</span>
+            </label>
             <button
               type="button"
               onClick={applyFilters}
@@ -887,7 +1013,7 @@ export default function TransactionsPage() {
         {hasVisibleSelection ? (
           <div
             data-testid="txn-bulk-bar"
-            className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-900 bg-neutral-900/60 px-5 py-3.5"
+            className="relative flex flex-wrap items-center justify-between gap-3 border-b border-neutral-900 bg-neutral-900/60 px-5 py-3.5"
           >
             <div className="text-sm text-neutral-200">
               <span className="font-semibold text-neutral-50">{selectedVisibleCount}</span> selected on this page
@@ -901,6 +1027,131 @@ export default function TransactionsPage() {
               >
                 Clear selection
               </button>
+
+              {/* Category action */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkCategoryOpen(!bulkCategoryOpen);
+                    setBulkTagsOpen(false);
+                    setBulkReviewOpen(false);
+                  }}
+                  disabled={bulkApplying}
+                  className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                  data-testid="txn-bulk-category-btn"
+                >
+                  Category
+                </button>
+                {bulkCategoryOpen && (
+                  <div data-bulk-dropdown className="absolute top-full left-0 mt-1 z-10 w-56 rounded-lg border border-neutral-800 bg-neutral-950 p-3 shadow-xl">
+                    <select
+                      value={bulkCategoryValue}
+                      onChange={(e) => setBulkCategoryValue(e.target.value)}
+                      className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200"
+                      data-testid="txn-bulk-category-select"
+                    >
+                      <option value="">Select category</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.name}>
+                          {c.emoji ? `${c.emoji} ` : ""}{c.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => void applyBulkCategory()}
+                      disabled={!bulkCategoryValue || bulkApplying}
+                      className="mt-2 w-full rounded-md border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300 disabled:opacity-60"
+                      data-testid="txn-bulk-category-apply"
+                    >
+                      {bulkApplying ? "Applying..." : `Apply to ${selectedVisibleCount}`}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Tags action */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkTagsOpen(!bulkTagsOpen);
+                    setBulkCategoryOpen(false);
+                    setBulkReviewOpen(false);
+                  }}
+                  disabled={bulkApplying}
+                  className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                  data-testid="txn-bulk-tags-btn"
+                >
+                  Tags
+                </button>
+                {bulkTagsOpen && (
+                  <div data-bulk-dropdown className="absolute top-full left-0 mt-1 z-10 w-64 rounded-lg border border-neutral-800 bg-neutral-950 p-3 shadow-xl">
+                    <input
+                      type="text"
+                      value={bulkTagsValue}
+                      onChange={(e) => setBulkTagsValue(e.target.value)}
+                      placeholder="Enter tags (comma-separated)"
+                      className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200"
+                      data-testid="txn-bulk-tags-input"
+                    />
+                    <p className="mt-1 text-xs text-neutral-500">e.g. &quot;monthly, recurring&quot;</p>
+                    {bulkTagsError ? (
+                      <p className="mt-1 text-xs text-rose-300" data-testid="txn-bulk-tags-error">{bulkTagsError}</p>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => void applyBulkTags()}
+                      disabled={!bulkTagsValue.trim() || bulkApplying}
+                      className="mt-2 w-full rounded-md border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300 disabled:opacity-60"
+                      data-testid="txn-bulk-tags-apply"
+                    >
+                      {bulkApplying ? "Applying..." : `Apply to ${selectedVisibleCount}`}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Review action */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBulkReviewOpen(!bulkReviewOpen);
+                    setBulkCategoryOpen(false);
+                    setBulkTagsOpen(false);
+                  }}
+                  disabled={bulkApplying}
+                  className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                  data-testid="txn-bulk-review-btn"
+                >
+                  Review
+                </button>
+                {bulkReviewOpen && (
+                  <div data-bulk-dropdown className="absolute top-full left-0 mt-1 z-10 w-48 rounded-lg border border-neutral-800 bg-neutral-950 p-2 shadow-xl">
+                    <button
+                      type="button"
+                      onClick={() => void applyBulkReview("reviewed")}
+                      disabled={bulkApplying}
+                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-neutral-200 hover:bg-neutral-800"
+                      data-testid="txn-bulk-review-mark-reviewed"
+                    >
+                      Mark as reviewed
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void applyBulkReview("needs_review")}
+                      disabled={bulkApplying}
+                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-neutral-200 hover:bg-neutral-800"
+                      data-testid="txn-bulk-review-mark-needs-review"
+                    >
+                      Mark as needs review
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button
                 type="button"
                 onClick={openBulkDeleteDialog}
@@ -1032,6 +1283,15 @@ export default function TransactionsPage() {
                           {txn.direction === "inflow" ? "+" : "-"}
                           {money(Math.abs(txn.amount))}
                         </span>
+                        {txn.recurring_rule_id && (
+                          <span
+                            className="ml-2 inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300"
+                            title="Linked to recurring rule"
+                            data-testid={`tx-recurring-badge-${txn.id}`}
+                          >
+                            ↻
+                          </span>
+                        )}
                       </td>
 
                       <td className="px-5 py-5 text-right">
@@ -1045,15 +1305,39 @@ export default function TransactionsPage() {
                           >
                             Edit
                           </button>
+                          {deleteConfirmId === txn.id ? (
+                          <div className="flex gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void removeTransaction(txn.id)}
+                              disabled={saving}
+                              className="rounded-lg border border-rose-600 bg-rose-950/60 px-2 py-1 text-xs text-rose-200 transition hover:bg-rose-900/40 disabled:opacity-60"
+                              data-testid={`txn-delete-confirm-${txn.id}`}
+                            >
+                              Confirm?
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(null)}
+                              disabled={saving}
+                              className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-300 transition hover:bg-neutral-800 disabled:opacity-60"
+                              data-testid={`txn-delete-cancel-${txn.id}`}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
                           <button
                             type="button"
-                            onClick={() => void removeTransaction(txn.id)}
+                            onClick={() => setDeleteConfirmId(txn.id)}
+                            disabled={saving || isEditing}
+                            className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
                             data-testid={`txn-delete-${txn.id}`}
                             aria-label={`Delete transaction ${txn.merchant_raw}`}
-                            className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
                           >
                             Delete
                           </button>
+                        )}
                         </div>
                       </td>
                     </tr>

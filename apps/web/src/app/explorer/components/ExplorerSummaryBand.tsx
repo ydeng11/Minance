@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ArrowDownRight, CreditCard, Repeat, Wallet } from "lucide-react";
 import { buildSummarySecondaryState, getSummaryValueClassName } from "../presentation";
 import { money } from "@/lib/utils";
 import type { ExplorerAnalyticsResponse } from "@/lib/api/types";
 import { ExplorerCard } from "./ExplorerCard";
 import { ExplorerMiniSparkline } from "./ExplorerMiniSparkline";
+import { useApi } from "@/hooks/useApi";
+import { SuggestionsCallout } from "@/components/recurrings/SuggestionsCallout";
 
 interface ExplorerSummaryBandProps {
   summary: ExplorerAnalyticsResponse["summary"] | null;
@@ -29,9 +32,26 @@ function formatDelta(delta: { delta: number; percent: number | null } | null | u
 }
 
 export function ExplorerSummaryBand({ summary, comparison, loading }: ExplorerSummaryBandProps) {
+  const api = useApi();
+  const [suggestionsCount, setSuggestionsCount] = useState(0);
+
   const currentSummary = summary?.current;
   const summaryDelta = summary?.delta;
   const comparisonEnabled = comparison?.enabled ?? false;
+
+  useEffect(() => {
+    async function loadSuggestionsCount() {
+      try {
+        const response = await api.recurrings.getSuggestions({ count_only: true });
+        if ("count" in response) {
+          setSuggestionsCount(response.count);
+        }
+      } catch {
+        // Silently ignore errors - suggestions callout is optional
+      }
+    }
+    void loadSuggestionsCount();
+  }, [api]);
 
   const items = [
     {
@@ -138,6 +158,11 @@ export function ExplorerSummaryBand({ summary, comparison, loading }: ExplorerSu
                       <p className="mt-1 text-sm text-neutral-300">
                         {comparisonEnabled ? (deltaText || "No prior-period delta available.") : "Within current filters."}
                       </p>
+                      {item.key === "recurring" && suggestionsCount > 0 && (
+                        <div className="mt-2">
+                          <SuggestionsCallout count={suggestionsCount} />
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

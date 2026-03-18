@@ -30,6 +30,7 @@ import type {
   ProviderPreferences,
   RecurringEvaluation,
   RecurringRule,
+  RecurringSuggestion,
   SavedView,
   StorageStatusResponse,
   Transaction,
@@ -358,6 +359,20 @@ export const recurringsApi = {
   remove: (request: ApiRequest, id: string) =>
     request<{ result: { deleted: boolean; detached_count: number } }>(`/v1/recurrings/${id}`, {
       method: "DELETE"
+    }),
+  getSuggestions: (request: ApiRequest, params?: { count_only?: boolean }) =>
+    request<{ items: RecurringSuggestion[] } | { count: number }>(
+      `/v1/recurrings/suggestions${buildQuery(params || {})}`
+    ),
+  dismissSuggestion: (request: ApiRequest, id: string, reason?: "user_dismissed" | "rule_deleted") =>
+    request<{ dismissed: boolean }>(`/v1/recurrings/suggestions/${id}/dismiss`, {
+      method: "POST",
+      body: { reason: reason || "user_dismissed" }
+    }),
+  createRuleFromSuggestion: (request: ApiRequest, id: string, body: { name?: string; cadence?: string }) =>
+    request<{ recurring: RecurringRule }>(`/v1/recurrings/suggestions/${id}/create-rule`, {
+      method: "POST",
+      body
     })
 };
 

@@ -34,12 +34,11 @@ export default function ExplorerPage() {
   const api = useApi();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const searchParamKey = searchParams.toString();
 
   // Parse and validate filters from URL
   const parsedFilters = useMemo(
     () => toValidExplorerFilterState(parseExplorerFilterState(searchParams)),
-    [searchParamKey, searchParams]
+    [searchParams]
   );
 
   // State

@@ -14,6 +14,8 @@ const defaultStore = {
   accounts: [],
   transactions: [],
   recurringRules: [],
+  recurringSuggestions: [],
+  dismissedRecurringSuggestions: [],
   investmentHoldings: [],
   investmentSnapshots: [],
   categories: [],

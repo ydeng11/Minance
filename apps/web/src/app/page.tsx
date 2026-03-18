@@ -8,6 +8,7 @@ import { RANGE_OPTIONS } from "@/lib/constants";
 import { cn, money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
 import type { OverviewResponse } from "@/lib/api/types";
+import { SuggestionsCallout } from "@/components/recurrings/SuggestionsCallout";
 
 const DASHBOARD_FILTERS_STORAGE_KEY = "minance:dashboard:filters";
 const RANGE_VALUES = new Set<string>(RANGE_OPTIONS.map((entry) => entry.value));
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [suggestionsCount, setSuggestionsCount] = useState(0);
 
   async function loadDashboardData(
     nextRange = range,
@@ -125,6 +127,23 @@ export default function DashboardPage() {
       })
     );
   }, [categoryView, hydrated, range]);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    api.recurrings
+      .getSuggestions({ count_only: true })
+      .then((result) => {
+        if ("count" in result) {
+          setSuggestionsCount(result.count);
+        }
+      })
+      .catch(() => {
+        // Silently ignore suggestions count errors
+      });
+  }, [api.recurrings, hydrated]);
 
   const trendBars = useMemo(() => {
     const trend = overview?.trend || [];
@@ -261,6 +280,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2 text-neutral-400">
               <entry.icon className="h-4 w-4" />
               <span className="text-xs font-medium uppercase tracking-wide">{entry.label}</span>
+              {entry.id === "recurring-spend" && <SuggestionsCallout count={suggestionsCount} />}
             </div>
             <div className="mt-2 flex items-end justify-between gap-2">
               <div className="text-xl font-semibold text-neutral-100">{entry.value}</div>

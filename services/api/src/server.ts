@@ -44,6 +44,12 @@ import {
   evaluateRecurringRule
 } from "./recurrings.ts";
 import {
+  detectRecurringSuggestions,
+  listRecurringSuggestions,
+  dismissRecurringSuggestion,
+  createRuleFromSuggestion
+} from "./recurring-suggestions.ts";
+import {
   listInvestmentHoldings,
   createManualInvestmentHolding,
   importInvestmentHoldingsFromCsv,
@@ -899,6 +905,54 @@ async function handleApiRequest(req, res, url) {
       const result = deleteRecurringRule(user.id, recurringParams.id);
       recordMutationGuardResult(user.id, guard, 200, { result });
       sendJson(res, 200, { result });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/recurrings/suggestions") {
+      const user = requireUser(req);
+      const countOnly = searchParams.get("count_only") === "true";
+      const suggestions = listRecurringSuggestions(user.id, { count_only: countOnly });
+      sendJson(res, 200, suggestions);
+      return;
+    }
+
+    const suggestionDismissParams = matchPath(pathname, "/v1/recurrings/suggestions/:id/dismiss");
+    if (req.method === "POST" && suggestionDismissParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `POST /v1/recurrings/suggestions/:id/dismiss#${suggestionDismissParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const result = dismissRecurringSuggestion(user.id, suggestionDismissParams.id, body?.reason || "user_dismissed");
+      recordMutationGuardResult(user.id, guard, 200, result);
+      sendJson(res, 200, result);
+      return;
+    }
+
+    const suggestionCreateRuleParams = matchPath(pathname, "/v1/recurrings/suggestions/:id/create-rule");
+    if (req.method === "POST" && suggestionCreateRuleParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const guard = resolveMutationGuard(
+        req,
+        user.id,
+        `POST /v1/recurrings/suggestions/:id/create-rule#${suggestionCreateRuleParams.id}`,
+        body
+      );
+      if (guard?.replay) {
+        sendMutationReplay(res, guard.replay);
+        return;
+      }
+      const recurring = createRuleFromSuggestion(user.id, suggestionCreateRuleParams.id, body || {});
+      recordMutationGuardResult(user.id, guard, 201, { recurring });
+      sendJson(res, 201, { recurring });
       return;
     }
 

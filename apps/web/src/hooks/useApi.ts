@@ -101,7 +101,10 @@ export function useApi() {
         pause: recurringsApi.pause.bind(null, request),
         resume: recurringsApi.resume.bind(null, request),
         archive: recurringsApi.archive.bind(null, request),
-        remove: recurringsApi.remove.bind(null, request)
+        remove: recurringsApi.remove.bind(null, request),
+        getSuggestions: recurringsApi.getSuggestions.bind(null, request),
+        dismissSuggestion: recurringsApi.dismissSuggestion.bind(null, request),
+        createRuleFromSuggestion: recurringsApi.createRuleFromSuggestion.bind(null, request)
       },
       savedViews: {
         list: () => savedViewsApi.list(request),

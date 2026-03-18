@@ -16,6 +16,8 @@ export interface TransactionsFilterState {
   transactionTypes: TransactionTypeFilter[];
   tag: string;
   page: number;
+  recurringRuleId: string;
+  recurring: boolean;
 }
 
 export interface TransactionsListApiParams {
@@ -32,6 +34,7 @@ export interface TransactionsListApiParams {
   tag?: string;
   limit: number;
   offset: number;
+  recurring_rule_id?: string;
 }
 
 export interface TransactionsOverviewApiParams {
@@ -122,7 +125,9 @@ export function createDefaultTransactionsFilterState(): TransactionsFilterState 
     categoryView: "granular",
     transactionTypes: [],
     tag: "",
-    page: 1
+    page: 1,
+    recurringRuleId: "",
+    recurring: false
   };
 }
 
@@ -131,6 +136,7 @@ export function parseTransactionsFilterState(searchParams: SearchParamsLike): Tr
 
   const range = cleanValue(searchParams.get("range"));
   const categoryView = cleanValue(searchParams.get("category_view"));
+  const recurringParam = searchParams.get("recurring");
 
   return {
     query: cleanValue(searchParams.get("query")),
@@ -146,7 +152,9 @@ export function parseTransactionsFilterState(searchParams: SearchParamsLike): Tr
       : defaults.categoryView,
     transactionTypes: cleanTransactionTypes(searchParams.getAll("type")),
     tag: cleanValue(searchParams.get("tag")),
-    page: cleanPositiveInteger(searchParams.get("page"), defaults.page)
+    page: cleanPositiveInteger(searchParams.get("page"), defaults.page),
+    recurringRuleId: cleanValue(searchParams.get("recurring_rule_id")),
+    recurring: recurringParam === "true"
   };
 }
 
@@ -178,6 +186,11 @@ export function toTransactionsListApiParams(filters: TransactionsFilterState): T
   }
   if (filters.tag) {
     params.tag = filters.tag;
+  }
+  if (filters.recurring) {
+    params.recurring_rule_id = "true";
+  } else if (filters.recurringRuleId) {
+    params.recurring_rule_id = filters.recurringRuleId;
   }
 
   if (filters.range === "custom") {
@@ -261,6 +274,14 @@ export function buildTransactionsFilterSearchParams(filters: TransactionsFilterS
     searchParams.set("page", String(filters.page));
   }
 
+  if (filters.recurringRuleId) {
+    searchParams.set("recurring_rule_id", filters.recurringRuleId);
+  }
+
+  if (filters.recurring) {
+    searchParams.set("recurring", "true");
+  }
+
   return searchParams;
 }
 
@@ -277,7 +298,9 @@ export function toValidFilterState(filters: TransactionsFilterState): Transactio
     categoryView: filters.categoryView,
     transactionTypes: cleanTransactionTypes(filters.transactionTypes),
     tag: cleanValue(filters.tag),
-    page: Math.max(1, Number.isFinite(filters.page) ? Math.trunc(filters.page) : 1)
+    page: Math.max(1, Number.isFinite(filters.page) ? Math.trunc(filters.page) : 1),
+    recurringRuleId: cleanValue(filters.recurringRuleId),
+    recurring: Boolean(filters.recurring)
   };
 
   if (!RANGE_VALUES.has(next.range)) {

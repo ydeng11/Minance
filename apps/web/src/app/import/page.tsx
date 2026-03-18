@@ -65,7 +65,10 @@ export default function ImportPage() {
     () => accounts.slice().sort((left, right) => left.displayName.localeCompare(right.displayName)),
     [accounts]
   );
-  const visibleRows = state.processedRows?.items || [];
+  const visibleRows = useMemo(
+    () => state.processedRows?.items || [],
+    [state.processedRows?.items]
+  );
   const selectedVisibleRowIds = useMemo(
     () => collectVisibleSelectedRowIds(visibleRows, selectedRowIds),
     [visibleRows, selectedRowIds]

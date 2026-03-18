@@ -22,7 +22,9 @@ test("createDefaultTransactionsFilterState returns expected defaults", () => {
     categoryView: "granular",
     transactionTypes: [],
     tag: "",
-    page: 1
+    page: 1,
+    recurringRuleId: "",
+    recurring: false
   });
 });
 
@@ -45,7 +47,9 @@ test("parseTransactionsFilterState reads supported query tokens", () => {
     categoryView: "coarse",
     transactionTypes: ["expense", "transfer"],
     tag: "monthly",
-    page: 1
+    page: 1,
+    recurringRuleId: "",
+    recurring: false
   });
 });
 
@@ -76,6 +80,44 @@ test("parseTransactionsFilterState falls back for invalid values", () => {
   assert.equal(parsed.page, 1);
 });
 
+test("parseTransactionsFilterState reads recurring_rule_id parameter", () => {
+  const parsed = parseTransactionsFilterState(
+    new URLSearchParams("recurring_rule_id=rrule_abc123")
+  );
+  assert.equal(parsed.recurringRuleId, "rrule_abc123");
+});
+
+test("parseTransactionsFilterState reads recurring parameter", () => {
+  const parsedTrue = parseTransactionsFilterState(
+    new URLSearchParams("recurring=true")
+  );
+  assert.equal(parsedTrue.recurring, true);
+
+  const parsedFalse = parseTransactionsFilterState(
+    new URLSearchParams("recurring=false")
+  );
+  assert.equal(parsedFalse.recurring, false);
+
+  const parsedMissing = parseTransactionsFilterState(new URLSearchParams(""));
+  assert.equal(parsedMissing.recurring, false);
+});
+
+test("toTransactionsListApiParams sets recurring_rule_id to 'true' when recurring filter is on", () => {
+  const params = toTransactionsListApiParams({
+    ...createDefaultTransactionsFilterState(),
+    recurring: true
+  });
+  assert.equal(params.recurring_rule_id, "true");
+});
+
+test("buildTransactionsFilterSearchParams includes recurring when true", () => {
+  const searchParams = buildTransactionsFilterSearchParams({
+    ...createDefaultTransactionsFilterState(),
+    recurring: true
+  });
+  assert.equal(searchParams.get("recurring"), "true");
+});
+
 test("toTransactionsListApiParams serializes custom date mode and semantic filters", () => {
   const params = toTransactionsListApiParams({
     query: "rent",
@@ -89,7 +131,9 @@ test("toTransactionsListApiParams serializes custom date mode and semantic filte
     categoryView: "coarse",
     transactionTypes: ["expense", "transfer"],
     tag: "monthly",
-    page: 3
+    page: 3,
+    recurringRuleId: "rrule_xyz",
+    recurring: false
   });
 
   assert.deepEqual(params, {
@@ -104,7 +148,8 @@ test("toTransactionsListApiParams serializes custom date mode and semantic filte
     transaction_type: ["expense", "transfer"],
     tag: "monthly",
     limit: 50,
-    offset: 100
+    offset: 100,
+    recurring_rule_id: "rrule_xyz"
   });
 });
 
@@ -149,12 +194,13 @@ test("buildTransactionsFilterSearchParams writes only non-default tokens", () =>
     start: "2026-01-01",
     end: "2026-01-31",
     transactionTypes: ["expense", "transfer"],
-    page: 4
+    page: 4,
+    recurringRuleId: "rrule_test"
   });
 
   assert.equal(
     searchParams.toString(),
-    "query=Transfer&category=Dining&category=Groceries&account=primary-checking&account=travel-card&min_amount=15&max_amount=120&range=custom&start=2026-01-01&end=2026-01-31&type=expense&type=transfer&page=4"
+    "query=Transfer&category=Dining&category=Groceries&account=primary-checking&account=travel-card&min_amount=15&max_amount=120&range=custom&start=2026-01-01&end=2026-01-31&type=expense&type=transfer&page=4&recurring_rule_id=rrule_test"
   );
 });
 
@@ -171,7 +217,9 @@ test("toValidFilterState trims values and clears custom dates when not in custom
     categoryView: "granular",
     transactionTypes: ["expense", "transfer", "expense"],
     tag: "  monthly  ",
-    page: 0
+    page: 0,
+    recurringRuleId: "  rrule_123  ",
+    recurring: true
   });
 
   assert.deepEqual(validated, {
@@ -186,6 +234,8 @@ test("toValidFilterState trims values and clears custom dates when not in custom
     categoryView: "granular",
     transactionTypes: ["expense", "transfer"],
     tag: "monthly",
-    page: 1
+    page: 1,
+    recurringRuleId: "rrule_123",
+    recurring: true
   });
 });

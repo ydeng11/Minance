@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Archive, Link2, PauseCircle, PlayCircle, Plus, Repeat2, Trash2 } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
-import type { RecurringMatch, RecurringRule } from "@/lib/api/types";
+import type { Account, Category, RecurringMatch, RecurringRule, RecurringSuggestion } from "@/lib/api/types";
 import { useApi } from "@/hooks/useApi";
 import { money } from "@/lib/utils";
+import { RecurringTotalsBand } from "@/components/recurrings/RecurringTotalsBand";
+import { SuggestionsSection } from "@/components/recurrings/SuggestionsSection";
 
 const CADENCE_OPTIONS = ["weekly", "biweekly", "monthly", "quarterly", "yearly"] as const;
 
@@ -36,17 +39,26 @@ export default function RecurringsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<RecurringSuggestion[]>([]);
+
   const [createDraft, setCreateDraft] = useState({
     name: "",
     cadence: "monthly" as (typeof CADENCE_OPTIONS)[number],
-    amount: ""
+    amount: "",
+    direction: "" as "" | "outflow" | "inflow"
   });
 
   const [editDraft, setEditDraft] = useState({
     name: "",
     cadence: "monthly" as (typeof CADENCE_OPTIONS)[number],
     amount: "",
-    merchant_pattern: ""
+    merchant_pattern: "",
+    category_final: "",
+    account_id: "",
+    direction: "" as "" | "outflow" | "inflow"
   });
 
   async function loadRules(nextSelectedRuleId: string | null = selectedRuleId) {
@@ -90,7 +102,10 @@ export default function RecurringsPage() {
         name: recurring.name,
         cadence: recurring.cadence,
         amount: String(recurring.amount),
-        merchant_pattern: recurring.merchant_pattern || ""
+        merchant_pattern: recurring.merchant_pattern || "",
+        category_final: recurring.category_final || "",
+        account_id: recurring.account_id || "",
+        direction: recurring.direction || ""
       });
     } catch (error) {
       if (error instanceof ApiError) {
@@ -100,6 +115,36 @@ export default function RecurringsPage() {
       }
     }
   }
+
+  async function loadMetadata() {
+    try {
+      const [categoriesData, accountsData] = await Promise.all([
+        api.categories.list(),
+        api.accounts.list()
+      ]);
+      setCategories(categoriesData.categories);
+      setAccounts(accountsData.accounts);
+    } catch {
+      // Metadata loading is optional; keep page usable
+    }
+  }
+
+  async function loadSuggestions() {
+    try {
+      const response = await api.recurrings.getSuggestions();
+      if ("items" in response) {
+        setSuggestions(response.items);
+      }
+    } catch {
+      // Suggestions loading is optional; keep page usable
+    }
+  }
+
+  useEffect(() => {
+    void loadMetadata();
+    void loadSuggestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     void loadRules(null);
@@ -113,6 +158,10 @@ export default function RecurringsPage() {
     setMatches([]);
     void loadRuleDetail(selectedRuleId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRuleId]);
+
+  useEffect(() => {
+    setDeleteConfirmId(null);
   }, [selectedRuleId]);
 
   async function createRule(event: React.FormEvent<HTMLFormElement>) {
@@ -133,12 +182,14 @@ export default function RecurringsPage() {
       const response = await api.recurrings.create({
         name: createDraft.name.trim(),
         cadence: createDraft.cadence,
-        amount
+        amount,
+        direction: createDraft.direction || undefined
       });
       setCreateDraft({
         name: "",
         cadence: "monthly",
-        amount: ""
+        amount: "",
+        direction: ""
       });
       setMessage("Recurring rule created.");
       await loadRules(response.recurring.id);
@@ -170,7 +221,10 @@ export default function RecurringsPage() {
         name: editDraft.name.trim(),
         cadence: editDraft.cadence,
         amount,
-        merchant_pattern: editDraft.merchant_pattern.trim() || null
+        merchant_pattern: editDraft.merchant_pattern.trim() || null,
+        category_final: editDraft.category_final || null,
+        account_id: editDraft.account_id || null,
+        direction: editDraft.direction || null
       });
       setMessage("Recurring rule updated.");
       await Promise.all([loadRules(selectedRuleId), loadRuleDetail(selectedRuleId)]);
@@ -227,6 +281,7 @@ export default function RecurringsPage() {
       } else {
         await api.recurrings.remove(selectedRuleId);
         setMessage("Recurring rule deleted.");
+        setDeleteConfirmId(null);
         setSelectedRuleId(null);
         setSelectedRule(null);
         setMatches([]);
@@ -265,6 +320,16 @@ export default function RecurringsPage() {
         </p>
       ) : null}
 
+      <RecurringTotalsBand rules={rules} />
+
+      <SuggestionsSection
+        suggestions={suggestions}
+        onSuggestionHandled={() => {
+          void loadSuggestions();
+          void loadRules(selectedRuleId);
+        }}
+      />
+
       <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4">
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -287,7 +352,7 @@ export default function RecurringsPage() {
           </label>
         </div>
 
-        <form onSubmit={createRule} className="mb-4 grid gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 p-3 md:grid-cols-[1.4fr_1fr_1fr_auto]">
+        <form onSubmit={createRule} className="mb-4 grid gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 p-3 md:grid-cols-[1.2fr_1fr_1fr_1fr_auto]">
           <input
             value={createDraft.name}
             onChange={(event) => setCreateDraft((previous) => ({ ...previous, name: event.target.value }))}
@@ -305,14 +370,27 @@ export default function RecurringsPage() {
               <option key={option} value={option}>{formatCadence(option)}</option>
             ))}
           </select>
-          <input
-            value={createDraft.amount}
-            onChange={(event) => setCreateDraft((previous) => ({ ...previous, amount: event.target.value }))}
-            placeholder="Amount"
-            inputMode="decimal"
+          <div className="flex flex-col">
+            <input
+              value={createDraft.amount}
+              onChange={(event) => setCreateDraft((previous) => ({ ...previous, amount: event.target.value }))}
+              placeholder="Amount"
+              inputMode="decimal"
+              className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
+              data-testid="recurrings-create-amount"
+            />
+            <p className="text-xs text-neutral-500">Matches within ±$0.01</p>
+          </div>
+          <select
+            value={createDraft.direction}
+            onChange={(event) => setCreateDraft((previous) => ({ ...previous, direction: event.target.value as "" | "outflow" | "inflow" }))}
             className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
-            data-testid="recurrings-create-amount"
-          />
+            data-testid="recurrings-create-direction"
+          >
+            <option value="">Any direction</option>
+            <option value="outflow">Outflow</option>
+            <option value="inflow">Inflow</option>
+          </select>
           <button
             type="submit"
             disabled={saving}
@@ -364,7 +442,7 @@ export default function RecurringsPage() {
           <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-3" data-testid="recurrings-detail-panel">
             {selectedRule ? (
               <div className="space-y-4">
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   <label className="grid gap-1 text-xs uppercase tracking-wide text-neutral-400">
                     Name
                     <input
@@ -396,6 +474,7 @@ export default function RecurringsPage() {
                       className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
                       data-testid="recurrings-edit-amount"
                     />
+                    <p className="text-xs text-neutral-500">Matches within ±$0.01</p>
                   </label>
                   <label className="grid gap-1 text-xs uppercase tracking-wide text-neutral-400">
                     Merchant pattern
@@ -405,6 +484,49 @@ export default function RecurringsPage() {
                       className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
                       data-testid="recurrings-edit-pattern"
                     />
+                  </label>
+                  <label className="grid gap-1 text-xs uppercase tracking-wide text-neutral-400">
+                    Category
+                    <select
+                      value={editDraft.category_final}
+                      onChange={(event) => setEditDraft((previous) => ({ ...previous, category_final: event.target.value }))}
+                      className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
+                      data-testid="recurrings-edit-category"
+                    >
+                      <option value="">Any category</option>
+                      {categories.map((c) => (
+                        <option key={c.id} value={c.name}>
+                          {c.emoji ? `${c.emoji} ` : ""}{c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-xs uppercase tracking-wide text-neutral-400">
+                    Account
+                    <select
+                      value={editDraft.account_id}
+                      onChange={(event) => setEditDraft((previous) => ({ ...previous, account_id: event.target.value }))}
+                      className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
+                      data-testid="recurrings-edit-account"
+                    >
+                      <option value="">Any account</option>
+                      {accounts.map((a) => (
+                        <option key={a.id} value={a.id}>{a.displayName}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1 text-xs uppercase tracking-wide text-neutral-400">
+                    Direction
+                    <select
+                      value={editDraft.direction}
+                      onChange={(event) => setEditDraft((previous) => ({ ...previous, direction: event.target.value as "" | "outflow" | "inflow" }))}
+                      className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
+                      data-testid="recurrings-edit-direction"
+                    >
+                      <option value="">Any direction</option>
+                      <option value="outflow">Outflow (expense)</option>
+                      <option value="inflow">Inflow (income)</option>
+                    </select>
                   </label>
                 </div>
 
@@ -457,15 +579,38 @@ export default function RecurringsPage() {
                   >
                     <Archive className="h-4 w-4" /> Archive
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => void runLifecycleAction("remove")}
-                    disabled={saving}
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-700/70 bg-rose-950/40 px-3 py-2 text-sm text-rose-200 transition hover:bg-rose-900/40 disabled:opacity-60"
-                    data-testid="recurrings-delete"
-                  >
-                    <Trash2 className="h-4 w-4" /> Delete
-                  </button>
+                  {deleteConfirmId === selectedRuleId ? (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void runLifecycleAction("remove")}
+                        disabled={saving}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-600 bg-rose-950/60 px-3 py-2 text-sm text-rose-200 transition hover:bg-rose-900/40 disabled:opacity-60"
+                        data-testid="recurrings-delete-confirm"
+                      >
+                        Confirm delete?
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeleteConfirmId(null)}
+                        disabled={saving}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                        data-testid="recurrings-delete-cancel"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirmId(selectedRuleId)}
+                      disabled={saving}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-700/70 bg-rose-950/40 px-3 py-2 text-sm text-rose-200 transition hover:bg-rose-900/40 disabled:opacity-60"
+                      data-testid="recurrings-delete"
+                    >
+                      <Trash2 className="h-4 w-4" /> Delete
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid gap-2 text-xs text-neutral-400 sm:grid-cols-2">
@@ -482,10 +627,14 @@ export default function RecurringsPage() {
                   {matches.length ? (
                     <div className="space-y-2">
                       {matches.map((entry) => (
-                        <div key={entry.id} className="flex items-center justify-between rounded-md bg-neutral-900/70 px-3 py-2 text-sm text-neutral-300">
+                        <Link
+                          key={entry.id}
+                          href={`/transactions?recurring_rule_id=${selectedRuleId}`}
+                          className="flex items-center justify-between rounded-md bg-neutral-900/70 px-3 py-2 text-sm text-neutral-300 transition hover:bg-neutral-800/70"
+                        >
                           <span>{entry.transaction_date} · {entry.merchant_raw}</span>
                           <span className="font-medium text-neutral-100">{money(entry.amount)}</span>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   ) : selectedLinkedIds.length ? (

@@ -889,3 +889,69 @@ test("category weekday matrix honors account and merchant filters", () => {
     ["Dining"]
   );
 });
+
+test("recurringSpend only counts transactions with recurring_rule_id", () => {
+  const store = structuredClone(baseStore);
+  store.transactions = [
+    {
+      id: "txn_recurring_1",
+      user_id: "user_1",
+      transaction_date: "2026-01-05",
+      merchant_normalized: "netflix",
+      merchant_raw: "Netflix",
+      description: "Netflix subscription",
+      amount: 15,
+      direction: "debit",
+      category_final: "Entertainment",
+      recurring_rule_id: "rule_netflix",
+      dedupe_fingerprint: "recurring_1"
+    },
+    {
+      id: "txn_recurring_2",
+      user_id: "user_1",
+      transaction_date: "2026-01-15",
+      merchant_normalized: "gym",
+      merchant_raw: "Gym",
+      description: "Gym membership",
+      amount: 50,
+      direction: "debit",
+      category_final: "Health",
+      recurring_rule_id: "rule_gym",
+      dedupe_fingerprint: "recurring_2"
+    },
+    {
+      id: "txn_non_recurring",
+      user_id: "user_1",
+      transaction_date: "2026-01-20",
+      merchant_normalized: "groceries",
+      merchant_raw: "Groceries",
+      description: "Groceries",
+      amount: 100,
+      direction: "debit",
+      category_final: "Groceries",
+      dedupe_fingerprint: "non_recurring"
+    },
+    {
+      id: "txn_recurring_income",
+      user_id: "user_1",
+      transaction_date: "2026-01-01",
+      merchant_normalized: "salary",
+      merchant_raw: "Salary",
+      description: "Salary",
+      amount: 2000,
+      direction: "credit",
+      category_final: "Income",
+      recurring_rule_id: "rule_salary",
+      dedupe_fingerprint: "recurring_income"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const overview = getOverview("user_1", { start: "2026-01-01", end: "2026-01-31" });
+
+  // Only outflow transactions with recurring_rule_id should be counted (15 + 50 = 65)
+  assert.equal(overview.summary.recurringSpend, 65);
+  // Total spend should include all outflow (15 + 50 + 100 = 165)
+  assert.equal(overview.summary.totalSpend, 165);
+});

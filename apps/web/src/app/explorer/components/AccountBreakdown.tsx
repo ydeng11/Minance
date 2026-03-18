@@ -18,7 +18,7 @@ export function AccountBreakdown({ overview, onAccountClick, loading }: AccountB
   const accountData = useMemo(() => {
     // This is a placeholder - ideally the API would return account breakdown
     return [] as Array<{ account: string; amount: number }>;
-  }, [overview]);
+  }, []);
 
   const maxAmount = Math.max(1, ...accountData.map((a) => a.amount));
 

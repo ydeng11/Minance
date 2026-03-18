@@ -22,6 +22,7 @@ import {
   inferImportDirectionDeterministic,
   parseSignedAmount
 } from "./import-direction.ts";
+import { detectRecurringSuggestions } from "./recurring-suggestions.ts";
 
 const EDITABLE_ROW_FIELDS = [
   "transaction_date",
@@ -1452,6 +1453,13 @@ export async function commitImport(userId, importId) {
 
   saveStore(store);
   addAuditEvent(userId, "import.committed", { importId, summary });
+
+  // Run recurring detection asynchronously (don't block import on failure)
+  try {
+    detectRecurringSuggestions(userId);
+  } catch (err) {
+    console.error("Failed to detect recurring suggestions:", err);
+  }
 
   return {
     importId,
