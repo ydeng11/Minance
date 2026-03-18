@@ -484,15 +484,17 @@ export default function TransactionsPage() {
       }
 
       // Convert to CSV
+      const escapeCsvField = (value: string): string => `"${value.replace(/"/g, '""')}"`;
+
       const headers = ["date", "merchant", "category", "amount", "account", "type", "tags"];
       const rows = allTransactions.map((t) => [
         t.transaction_date,
-        `"${(t.merchant_normalized || "").replace(/"/g, '""')}"`,
-        `"${(t.category_final || "").replace(/"/g, '""')}"`,
+        escapeCsvField(t.merchant_normalized || ""),
+        escapeCsvField(t.category_final || ""),
         t.amount.toString(),
-        `"${(t.account_key || "").replace(/"/g, '""')}"`,
+        escapeCsvField(t.account_key || ""),
         t.transaction_type,
-        `"${(t.tags || []).join("; ").replace(/"/g, '""')}"`
+        escapeCsvField((t.tags || []).join("; "))
       ].join(","));
 
       const csv = [headers.join(","), ...rows].join("\n");

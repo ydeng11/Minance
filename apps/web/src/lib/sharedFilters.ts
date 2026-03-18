@@ -1,6 +1,7 @@
 import { RANGE_OPTIONS } from "@/lib/constants";
+import type { TransactionTypeFilter } from "@/app/transactions/filters";
 
-export type TransactionTypeFilter = "expense" | "income" | "transfer";
+export type { TransactionTypeFilter };
 
 export interface SharedFilterState {
   range: string;
