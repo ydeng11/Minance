@@ -439,6 +439,11 @@ git commit -m "feat(explorer): add tooltips to weekday spend capsules"
 
 ## Final Verification
 
+**Note:** Branch `ux-cleanup-p2-tasks` should already be created. If not, run:
+```bash
+git checkout main && git pull && git checkout -b ux-cleanup-p2-tasks
+```
+
 - [ ] **Step 1: Run full TypeScript check**
 
 Run: `cd apps/web && npx tsc --noEmit`
