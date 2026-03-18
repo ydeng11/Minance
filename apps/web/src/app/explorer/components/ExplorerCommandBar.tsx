@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarRange, Download, Search, SlidersHorizontal } from "lucide-react";
+import { CalendarRange, Search, SlidersHorizontal } from "lucide-react";
 import type { Account } from "@/lib/api/types";
 import { RANGE_OPTIONS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -85,14 +85,6 @@ export function ExplorerCommandBar({
           >
             <SlidersHorizontal className="h-4 w-4" />
             + Filter
-          </button>
-
-          <button
-            type="button"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-sm font-medium text-neutral-200 transition hover:bg-neutral-900"
-          >
-            <Download className="h-4 w-4" />
-            Export
           </button>
         </div>
       </div>

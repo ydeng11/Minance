@@ -127,15 +127,29 @@ export default function DashboardPage() {
   }, [categoryView, hydrated, range]);
 
   const trendBars = useMemo(() => {
-    return (overview?.trend || []).slice(-6).map((entry) => {
-      const maxAbsNet = Math.max(1, ...(overview?.trend || []).map((item) => Math.abs(item.net)));
+    const trend = overview?.trend || [];
+
+    // Dynamic bar count based on range
+    const rangeToCount: Record<string, number> = {
+      "7d": 7,
+      "14d": 14,
+      "30d": 4,
+      "90d": 3,
+      "180d": 6,
+      "1y": 12,
+      all: Math.min(trend.length, 24)
+    };
+    const barCount = rangeToCount[range] || 6;
+
+    return trend.slice(-barCount).map((entry) => {
+      const maxAbsNet = Math.max(1, ...trend.map((item) => Math.abs(item.net)));
       return {
         ...entry,
         barHeight: Math.max(14, Math.round((Math.abs(entry.net) / maxAbsNet) * 120)),
         isPositive: entry.net >= 0
       };
     });
-  }, [overview]);
+  }, [overview, range]);
 
   function buildTransactionsDrillDownUrl(drillDown: TransactionsDrillDown = {}) {
     const searchParams = new URLSearchParams();
@@ -259,7 +273,10 @@ export default function DashboardPage() {
 
       <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-6" data-testid="dashboard-trend">
         <h3 className="text-sm font-medium text-neutral-300">Net Flow Trend</h3>
-        <div className="mt-4 grid min-h-56 grid-cols-6 items-end gap-2">
+        <div
+          className="mt-4 grid min-h-56 items-end gap-2"
+          style={{ gridTemplateColumns: `repeat(${trendBars.length || 6}, minmax(0, 1fr))` }}
+        >
           {loading
             ? Array.from({ length: 6 }).map((_, index) => (
                 <div key={index} className="h-10 animate-pulse rounded-md bg-neutral-900" />

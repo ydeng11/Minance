@@ -16,8 +16,10 @@ import {
   parseExplorerFilterState,
   savedExplorerFiltersToState,
   toValidExplorerFilterState,
-  toExplorerAnalyticsApiParams
+  toExplorerAnalyticsApiParams,
+  type ExplorerTransactionType
 } from "./filters";
+import { getSharedFilters, setSharedFilters, type TransactionTypeFilter } from "@/lib/sharedFilters";
 import { AccountPerspective } from "./components/AccountPerspective";
 import { ExplorerAdvancedFilters } from "./components/ExplorerAdvancedFilters";
 import { ExplorerCommandBar } from "./components/ExplorerCommandBar";
@@ -54,6 +56,20 @@ export default function ExplorerPage() {
     (nextFilters: typeof filters) => {
       const next = toValidExplorerFilterState(nextFilters);
       setFilters(next);
+
+      // Update shared filters for cross-page sync
+      setSharedFilters({
+        range: next.range,
+        start: next.start,
+        end: next.end,
+        categories: next.categories,
+        accounts: next.account ? [next.account] : [],
+        query: next.query,
+        tag: next.tag,
+        transactionTypes: next.transactionTypes,
+        categoryView: next.categoryView
+      });
+
       const nextSearchParams = buildExplorerFilterSearchParams(next);
       router.push(`/explorer?${nextSearchParams.toString()}`);
     },
@@ -64,6 +80,30 @@ export default function ExplorerPage() {
   useEffect(() => {
     setFilters(parsedFilters);
   }, [parsedFilters]);
+
+  // On mount, apply shared filters if no URL params present
+  useEffect(() => {
+    const hasUrlParams = searchParams.toString().length > 0;
+    if (!hasUrlParams) {
+      const shared = getSharedFilters();
+      const merged = toValidExplorerFilterState({
+        ...filters,
+        range: shared.range,
+        start: shared.start,
+        end: shared.end,
+        categories: shared.categories,
+        account: shared.accounts[0] || "",
+        query: shared.query,
+        tag: shared.tag,
+        transactionTypes: shared.transactionTypes as ExplorerTransactionType[],
+        categoryView: shared.categoryView
+      });
+      setFilters(merged);
+      const nextSearchParams = buildExplorerFilterSearchParams(merged);
+      router.replace(`/explorer?${nextSearchParams.toString()}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch categories and accounts on mount
   useEffect(() => {

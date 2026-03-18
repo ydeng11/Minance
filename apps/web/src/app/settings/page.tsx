@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowRight,
   Bot,
@@ -13,11 +13,7 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import { useSession } from "@/lib/session";
-import { EmojiPicker } from "@/components/EmojiPicker";
-import type {
-  Category,
-  Transaction
-} from "@/lib/api/types";
+import type { Transaction } from "@/lib/api/types";
 import { getHelpResources } from "@/components/help/helpResources";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
 
@@ -27,33 +23,8 @@ export default function SettingsPage() {
   const appEnv = process.env.NEXT_PUBLIC_APP_ENV || "local";
   const helpResources = useMemo(() => getHelpResources(), []);
 
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  const [newCategory, setNewCategory] = useState("");
-  const [newCategoryEmoji, setNewCategoryEmoji] = useState("");
-  const [rulePattern, setRulePattern] = useState("");
-  const [ruleCategory, setRuleCategory] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [message, setMessage] = useState("");
-
-  async function loadSettings() {
-    try {
-      const [categoryData] = await Promise.all([
-        api.categories.list()
-      ]);
-
-      const nextCategories = categoryData.categories;
-      setCategories(nextCategories);
-      setRuleCategory(nextCategories[0]?.name || "");
-    } catch (error) {
-      setMessage(error instanceof ApiError ? error.message : "Failed to load settings.");
-    }
-  }
-
-  useEffect(() => {
-    void loadSettings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function listAllTransactions() {
     const pageSize = 250;
@@ -129,49 +100,11 @@ export default function SettingsPage() {
     }
   }
 
-  async function addCategory() {
-    if (!newCategory.trim()) {
-      return;
-    }
-
-    try {
-      await api.categories.add({
-        name: newCategory.trim(),
-        emoji: newCategoryEmoji.trim() || undefined
-      });
-      setNewCategory("");
-      setNewCategoryEmoji("");
-      setMessage("Category added.");
-      await loadSettings();
-    } catch (error) {
-      setMessage(error instanceof ApiError ? error.message : "Failed to add category.");
-    }
-  }
-
-  async function addRule() {
-    if (!rulePattern.trim() || !ruleCategory) {
-      setMessage("Rule pattern and category are required.");
-      return;
-    }
-
-    try {
-      await api.categories.addRule({
-        pattern: rulePattern.trim(),
-        category: ruleCategory,
-        type: "contains"
-      });
-      setRulePattern("");
-      setMessage("Rule added.");
-    } catch (error) {
-      setMessage(error instanceof ApiError ? error.message : "Failed to add rule.");
-    }
-  }
-
   return (
     <div className="space-y-6" data-testid="settings-page">
       <header>
         <h2 className="text-3xl font-semibold tracking-tight">Settings</h2>
-        <p className="text-neutral-400">Self-host controls, integrations, and taxonomy configuration.</p>
+        <p className="text-neutral-400">Self-host controls and integrations.</p>
       </header>
 
       <SettingsMenu />
@@ -187,7 +120,7 @@ export default function SettingsPage() {
         <p className="mt-1 text-xs text-neutral-400">
           This workspace defaults to self-host behavior and keeps SaaS-only surfaces optional.
         </p>
-        <div className="mt-3 grid gap-2 md:grid-cols-2">
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <a
             href="#settings-data-controls"
             className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
@@ -200,13 +133,6 @@ export default function SettingsPage() {
             className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
           >
             Integrations
-            <ArrowRight className="h-4 w-4 text-neutral-400" />
-          </a>
-          <a
-            href="#settings-taxonomy-rules"
-            className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
-          >
-            Taxonomy &amp; rules
             <ArrowRight className="h-4 w-4 text-neutral-400" />
           </a>
         </div>
@@ -285,76 +211,6 @@ export default function SettingsPage() {
           ) : (
             <p>No hosted support endpoint configured; local help docs are used as the default fallback.</p>
           )}
-        </div>
-      </section>
-
-      <section id="settings-taxonomy-rules" className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4">
-        <h3 className="text-sm font-medium text-neutral-300">Taxonomy &amp; Rules</h3>
-        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_120px_auto]">
-          <label className="grid gap-1 text-sm text-neutral-300">
-            New category
-            <input
-              value={newCategory}
-              onChange={(event) => setNewCategory(event.target.value)}
-              data-testid="new-category"
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-200"
-            />
-          </label>
-
-          <label className="grid gap-1 text-sm text-neutral-300">
-            Emoji
-            <EmojiPicker
-              value={newCategoryEmoji}
-              onChange={setNewCategoryEmoji}
-              ariaLabel="Emoji for new category"
-              triggerTestId="settings-new-category-emoji-trigger"
-              triggerClassName="w-full"
-            />
-          </label>
-
-          <button
-            type="button"
-            onClick={() => void addCategory()}
-            data-testid="add-category"
-            className="self-end rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200"
-          >
-            Add Category
-          </button>
-        </div>
-
-        <div className="mt-3 grid gap-2 md:grid-cols-[1fr_220px_auto]">
-          <label className="grid gap-1 text-sm text-neutral-300">
-            Rule pattern
-            <input
-              value={rulePattern}
-              onChange={(event) => setRulePattern(event.target.value)}
-              data-testid="new-rule-pattern"
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-200"
-            />
-          </label>
-          <label className="grid gap-1 text-sm text-neutral-300">
-            Rule category
-            <select
-              value={ruleCategory}
-              onChange={(event) => setRuleCategory(event.target.value)}
-              data-testid="new-rule-category"
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-neutral-200"
-            >
-              {categories.map((entry) => (
-                <option key={entry.id} value={entry.name}>
-                  {entry.emoji ? `${entry.emoji} ` : ""}{entry.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            onClick={() => void addRule()}
-            data-testid="add-rule"
-            className="self-end rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200"
-          >
-            Add Rule
-          </button>
         </div>
       </section>
     </div>
