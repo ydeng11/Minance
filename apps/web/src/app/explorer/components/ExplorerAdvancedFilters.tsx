@@ -64,8 +64,10 @@ export function ExplorerAdvancedFilters({
   const [openMultiSelect, setOpenMultiSelect] = useState<OpenMultiSelectField | null>(null);
 
   useEffect(() => {
-    setDraft(createDraft(filters));
-    setOpenMultiSelect(null);
+    queueMicrotask(() => {
+      setDraft(createDraft(filters));
+      setOpenMultiSelect(null);
+    });
   }, [filters]);
 
   const categoryOptions = useMemo(

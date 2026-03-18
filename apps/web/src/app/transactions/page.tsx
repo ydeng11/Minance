@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Download, Search, SlidersHorizontal, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { RANGE_OPTIONS } from "@/lib/constants";
 import { money } from "@/lib/utils";
@@ -24,8 +24,10 @@ import {
   TRANSACTIONS_PAGE_SIZE,
   toTransactionsListApiParams,
   toValidFilterState,
-  type TransactionsFilterState
+  type TransactionsFilterState,
+  type TransactionTypeFilter
 } from "./filters";
+import { getSharedFilters, setSharedFilters } from "@/lib/sharedFilters";
 import {
   buildCreateResultMessage,
   getLedgerAmountBounds,
@@ -137,6 +139,7 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [message, setMessage] = useState("");
 
   const ledgerTransactions = useMemo(() => sortTransactionsForLedger(transactions), [transactions]);
@@ -267,6 +270,31 @@ export default function TransactionsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // On mount, apply shared filters if no URL params present
+  useEffect(() => {
+    const hasUrlParams = searchParams.toString().length > 0;
+    if (!hasUrlParams) {
+      const shared = getSharedFilters();
+      const merged = toValidFilterState({
+        ...createDefaultTransactionsFilterState(),
+        range: shared.range,
+        start: shared.start,
+        end: shared.end,
+        categories: shared.categories,
+        accounts: shared.accounts,
+        query: shared.query,
+        tag: shared.tag,
+        transactionTypes: shared.transactionTypes as TransactionTypeFilter[],
+        categoryView: shared.categoryView
+      });
+      setFilters(merged);
+      filtersRef.current = merged;
+      const nextSearchParams = buildTransactionsFilterSearchParams(merged);
+      router.replace(nextSearchParams.toString() ? `/transactions?${nextSearchParams.toString()}` : "/transactions");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (lastAppliedQueryRef.current !== searchParamKey) {
       setFilters(parsedFilters);
@@ -360,6 +388,19 @@ export default function TransactionsPage() {
   function commitFilters(nextFilters: TransactionsFilterState) {
     updateFilters(nextFilters);
     syncFiltersToUrl(nextFilters);
+
+    // Update shared filters for cross-page sync
+    setSharedFilters({
+      range: nextFilters.range,
+      start: nextFilters.start,
+      end: nextFilters.end,
+      categories: nextFilters.categories,
+      accounts: nextFilters.accounts,
+      query: nextFilters.query,
+      tag: nextFilters.tag,
+      transactionTypes: nextFilters.transactionTypes,
+      categoryView: nextFilters.categoryView
+    });
   }
 
   function commitFiltersWithSelectionReset(nextFilters: TransactionsFilterState) {
@@ -418,6 +459,61 @@ export default function TransactionsPage() {
   function closeCreateDialog() {
     setIsCreateDialogOpen(false);
     resetManualForm();
+  }
+
+  async function exportTransactionsToCsv() {
+    setIsExporting(true);
+    try {
+      // Fetch all transactions matching current filters
+      const allTransactions: Transaction[] = [];
+      const pageSize = 250;
+      let offset = 0;
+
+      for (let page = 0; page < 100; page += 1) {
+        const response = await api.transactions.list({
+          ...toTransactionsListApiParams(filters),
+          limit: pageSize,
+          offset
+        });
+        allTransactions.push(...response.items);
+
+        offset += response.items.length;
+        if (!response.items.length || offset >= response.total || response.items.length < pageSize) {
+          break;
+        }
+      }
+
+      // Convert to CSV
+      const escapeCsvField = (value: string): string => `"${value.replace(/"/g, '""')}"`;
+
+      const headers = ["date", "merchant", "category", "amount", "account", "type", "tags"];
+      const rows = allTransactions.map((t) => [
+        t.transaction_date,
+        escapeCsvField(t.merchant_normalized || ""),
+        escapeCsvField(t.category_final || ""),
+        t.amount.toString(),
+        escapeCsvField(t.account_key || ""),
+        t.transaction_type,
+        escapeCsvField((t.tags || []).join("; "))
+      ].join(","));
+
+      const csv = [headers.join(","), ...rows].join("\n");
+
+      // Download
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      setMessage(`Exported ${allTransactions.length} transactions.`);
+    } catch (error) {
+      setMessage(getRequestErrorMessage(error, "Failed to export transactions."));
+    } finally {
+      setIsExporting(false);
+    }
   }
 
   function startEdit(transaction: Transaction) {
@@ -552,6 +648,16 @@ export default function TransactionsPage() {
               disabled={saving}
             >
               New transaction
+            </button>
+            <button
+              type="button"
+              onClick={() => void exportTransactionsToCsv()}
+              disabled={isExporting || totalTransactions === 0}
+              data-testid="txn-export-csv"
+              className="inline-flex items-center gap-2 rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? "Exporting..." : "Export CSV"}
             </button>
           </div>
         </div>

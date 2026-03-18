@@ -55,8 +55,6 @@ function createProcessedRow(rowId: string, accountName: string): ProcessedRow {
       memo: null
     },
     normalized: {
-      import_id: "imp_1",
-      row_index: 1,
       transaction_date: "2026-01-01",
       merchant_raw: "Coffee",
       merchant_normalized: "coffee",

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDownRight, ArrowUpRight, CreditCard, DollarSign } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { RANGE_OPTIONS } from "@/lib/constants";
-import { money } from "@/lib/utils";
+import { cn, money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
 import type { OverviewResponse } from "@/lib/api/types";
 
@@ -127,14 +127,29 @@ export default function DashboardPage() {
   }, [categoryView, hydrated, range]);
 
   const trendBars = useMemo(() => {
-    return (overview?.trend || []).slice(-6).map((entry) => {
-      const maxSpend = Math.max(1, ...(overview?.trend || []).map((item) => item.spend));
+    const trend = overview?.trend || [];
+
+    // Dynamic bar count based on range
+    const rangeToCount: Record<string, number> = {
+      "7d": 7,
+      "14d": 14,
+      "30d": 4,
+      "90d": 3,
+      "180d": 6,
+      "1y": 12,
+      all: Math.min(trend.length, 24)
+    };
+    const barCount = rangeToCount[range] || 6;
+
+    return trend.slice(-barCount).map((entry) => {
+      const maxAbsNet = Math.max(1, ...trend.map((item) => Math.abs(item.net)));
       return {
         ...entry,
-        spendHeight: Math.max(14, Math.round((entry.spend / maxSpend) * 120))
+        barHeight: Math.max(14, Math.round((Math.abs(entry.net) / maxAbsNet) * 120)),
+        isPositive: entry.net >= 0
       };
     });
-  }, [overview]);
+  }, [overview, range]);
 
   function buildTransactionsDrillDownUrl(drillDown: TransactionsDrillDown = {}) {
     const searchParams = new URLSearchParams();
@@ -257,8 +272,11 @@ export default function DashboardPage() {
       </div>
 
       <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-6" data-testid="dashboard-trend">
-        <h3 className="text-sm font-medium text-neutral-300">Spending Trend</h3>
-        <div className="mt-4 grid min-h-56 grid-cols-6 items-end gap-2">
+        <h3 className="text-sm font-medium text-neutral-300">Net Flow Trend</h3>
+        <div
+          className="mt-4 grid min-h-56 items-end gap-2"
+          style={{ gridTemplateColumns: `repeat(${trendBars.length || 6}, minmax(0, 1fr))` }}
+        >
           {loading
             ? Array.from({ length: 6 }).map((_, index) => (
                 <div key={index} className="h-10 animate-pulse rounded-md bg-neutral-900" />
@@ -269,7 +287,14 @@ export default function DashboardPage() {
               )
               : trendBars.map((item) => (
                   <div key={item.month} className="flex flex-col items-center gap-2">
-                    <div className="w-full rounded-md bg-emerald-500/80" style={{ height: item.spendHeight }} />
+                    <div
+                      className={cn(
+                        "w-full rounded-md",
+                        item.isPositive ? "bg-emerald-500/80" : "bg-rose-500/80"
+                      )}
+                      style={{ height: item.barHeight }}
+                      title={`${item.month}: ${money(item.net)}`}
+                    />
                     <div className="text-[11px] text-neutral-400">{item.month.slice(5)}</div>
                   </div>
                 ))}

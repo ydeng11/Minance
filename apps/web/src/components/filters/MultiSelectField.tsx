@@ -66,7 +66,7 @@ export function MultiSelectField({
 
   useEffect(() => {
     if (!isOpen) {
-      setQuery("");
+      queueMicrotask(() => setQuery(""));
     }
   }, [isOpen]);
 

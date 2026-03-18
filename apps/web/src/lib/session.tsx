@@ -115,13 +115,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const storedTokens = readStoredTokens();
     const nextStatus = deriveBootstrapStatus(storedTokens);
-    setStatus(nextStatus);
+    queueMicrotask(() => setStatus(nextStatus));
 
     if (nextStatus === "unauthenticated") {
       return;
     }
 
-    setTokensState(storedTokens);
+    queueMicrotask(() => setTokensState(storedTokens));
   }, []);
 
   useEffect(() => {

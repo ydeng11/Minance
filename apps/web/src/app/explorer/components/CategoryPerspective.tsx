@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BadgeDollarSign, Layers3 } from "lucide-react";
 import { cn, money } from "@/lib/utils";
 import type { ExplorerAnalyticsResponse, OverviewResponse } from "@/lib/api/types";
-import { CategoryBreakdown } from "./CategoryBreakdown";
 import { ExplorerCard } from "./ExplorerCard";
 import { CategoryWeekdayHeatmap } from "./CategoryWeekdayHeatmap";
 import { MerchantAnalysis } from "./MerchantAnalysis";
@@ -37,10 +36,20 @@ export function CategoryPerspective({
   const [inspectedCategory, setInspectedCategory] = useState(
     selectedCategories[0] || defaultInspectedCategory
   );
+  const prevSelectedCategoriesRef = useRef(selectedCategories);
 
   useEffect(() => {
+    const prevSelectedCategories = prevSelectedCategoriesRef.current;
+    prevSelectedCategoriesRef.current = selectedCategories;
+
+    // Only update if selectedCategories actually changed
+    if (prevSelectedCategories === selectedCategories) {
+      return;
+    }
+
     if (selectedCategories.length === 1) {
-      setInspectedCategory(selectedCategories[0]);
+      // Defer state update to avoid synchronous setState in effect
+      queueMicrotask(() => setInspectedCategory(selectedCategories[0]));
       return;
     }
 
@@ -50,16 +59,18 @@ export function CategoryPerspective({
     ]);
 
     if (availableCategories.size === 0) {
-      setInspectedCategory("");
+      queueMicrotask(() => setInspectedCategory(""));
       return;
     }
 
-    setInspectedCategory((current) => {
-      if (current && availableCategories.has(current)) {
-        return current;
-      }
+    queueMicrotask(() => {
+      setInspectedCategory((current) => {
+        if (current && availableCategories.has(current)) {
+          return current;
+        }
 
-      return defaultInspectedCategory;
+        return defaultInspectedCategory;
+      });
     });
   }, [selectedCategories, defaultInspectedCategory, categoryWeekdayHeatmap, categories]);
 
@@ -203,16 +214,13 @@ export function CategoryPerspective({
         loading={loading}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <div data-testid="explorer-category-trend">
-          <TrendChart
-            overview={overview}
-            trend={trend}
-            onApplyMonthFilter={onApplyMonthFilter}
-            loading={loading}
-          />
-        </div>
-        <CategoryBreakdown overview={overview} onCategoryClick={setInspectedCategory} loading={loading} />
+      <div data-testid="explorer-category-trend">
+        <TrendChart
+          overview={overview}
+          trend={trend}
+          onApplyMonthFilter={onApplyMonthFilter}
+          loading={loading}
+        />
       </div>
 
       <div data-testid="explorer-category-merchants">
