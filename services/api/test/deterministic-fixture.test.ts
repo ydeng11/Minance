@@ -15,9 +15,10 @@ import { listTransactions } from "../src/transactions.ts";
 import { getOverview } from "../src/analytics.ts";
 
 const FIXTURE_FILE_PATH = path.resolve(
-  "services/api/test/fixtures/deterministic-financial-store.json"
+  import.meta.dirname,
+  "fixtures/deterministic-financial-store.json"
 );
-const ROOT_DIR = path.resolve(".");
+const ROOT_DIR = path.resolve(import.meta.dirname, "../..");
 
 test("deterministic financial fixture has stable shape and coverage", () => {
   const fixture = createDeterministicFinancialFixture();
@@ -90,7 +91,7 @@ test("seed:fixture dry-run defaults to the committed test fixture path", () => {
   const payload = JSON.parse(stdout.slice(jsonStart));
   assert.equal(
     payload.targetPath,
-    path.resolve("services/api/test/fixtures/deterministic-financial-store.json")
+    FIXTURE_FILE_PATH
   );
   assert.equal(payload.wrote, false);
 });

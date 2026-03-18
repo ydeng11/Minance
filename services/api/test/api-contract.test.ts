@@ -103,7 +103,7 @@ async function startApiServer(t, options = {}) {
     ...(options.env || {})
   };
 
-  const serverProcess = spawn(process.execPath, ["--import", "tsx/esm", "services/api/src/server.ts"], {
+  const serverProcess = spawn(process.execPath, ["--import", "tsx/esm", "src/server.ts"], {
     cwd: process.cwd(),
     env,
     stdio: ["ignore", "pipe", "pipe"]

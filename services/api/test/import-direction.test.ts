@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { parseCsv, inferMapping } from "../src/csv.ts";
 import { inferImportDirectionDeterministic } from "../src/import-direction.ts";
 
-const FIXTURE_DIR = path.resolve("services/api/test/fixtures/testCsv");
+const FIXTURE_DIR = path.resolve(import.meta.dirname, "fixtures/testCsv");
 
 function loadFixture(name) {
   const csvText = fs.readFileSync(path.join(FIXTURE_DIR, name), "utf8");

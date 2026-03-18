@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import { detectDelimiter, parseCsv, inferMapping } from "../src/csv.ts";
 
-const FIXTURE_DIR = path.resolve("services/api/test/fixtures/testCsv");
+const FIXTURE_DIR = path.resolve(import.meta.dirname, "fixtures/testCsv");
 
 test("detectDelimiter chooses common delimiter", () => {
   assert.equal(detectDelimiter("date,merchant,amount"), ",");
