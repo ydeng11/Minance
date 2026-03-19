@@ -18,7 +18,8 @@ function toAmount(txn: any): number {
 
 function amountMatches(a: number, b: number): boolean {
   const tolerance = Math.max(AMOUNT_TOLERANCE_MIN, a * AMOUNT_TOLERANCE_PERCENT);
-  return Math.abs(a - b) <= tolerance;
+  const EPSILON = 0.0001;
+  return Math.abs(a - b) <= tolerance + EPSILON;
 }
 
 function isCooldownExpired(dismissedAt: string): boolean {
