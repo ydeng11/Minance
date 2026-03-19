@@ -2,7 +2,8 @@ import { loadStore, saveStore, addAuditEvent } from "./store.ts";
 import { createId, nowIso, monthKey } from "./utils.ts";
 import { createRecurringRule, evaluateRecurringRule } from "./recurrings.ts";
 
-const AMOUNT_TOLERANCE = 0.01;
+const AMOUNT_TOLERANCE_MIN = 0.10;
+const AMOUNT_TOLERANCE_PERCENT = 0.05;
 const MAX_TRANSACTION_IDS = 10;
 const COOLDOWN_DAYS = 30;
 
@@ -16,7 +17,8 @@ function toAmount(txn: any): number {
 }
 
 function amountMatches(a: number, b: number): boolean {
-  return Math.abs(a - b) <= AMOUNT_TOLERANCE;
+  const tolerance = Math.max(AMOUNT_TOLERANCE_MIN, a * AMOUNT_TOLERANCE_PERCENT);
+  return Math.abs(a - b) <= tolerance;
 }
 
 function isCooldownExpired(dismissedAt: string): boolean {

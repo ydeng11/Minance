@@ -118,6 +118,20 @@ test("detectRecurringSuggestions groups transactions with amounts within $0.01 t
   assert.equal(result[0].occurrence_count, 2);
 });
 
+// Test 1b: 5% tolerance with $0.10 floor
+test("amountMatches uses 5% tolerance with $0.10 floor", () => {
+  resetForSuggestions([
+    { id: "t1", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-01-15", merchant_raw: "Test", merchant_normalized: "test", description: "", amount: -100, direction: "outflow", category_final: "Test", created_at: "2026-01-15T00:00:00Z", updated_at: "2026-01-15T00:00:00Z" },
+    { id: "t2", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-02-15", merchant_raw: "Test", merchant_normalized: "test", description: "", amount: -95, direction: "outflow", category_final: "Test", created_at: "2026-02-15T00:00:00Z", updated_at: "2026-02-15T00:00:00Z" } // Within 5%
+  ]);
+
+  const result = detectRecurringSuggestions(USER_ID);
+
+  // Both should be grouped together (within 5% tolerance)
+  assert.equal(result.length, 1);
+  assert.equal(result[0].occurrence_count, 2);
+});
+
 // Test 2: MAX_TRANSACTION_IDS = 10 - transaction_ids list should be capped at 10
 test("detectRecurringSuggestions caps transaction_ids at 10", () => {
   const transactions = [];
