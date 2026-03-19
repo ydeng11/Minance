@@ -273,3 +273,35 @@ test("runRecurringDetectionTask respects is_running overlap protection", async (
   assert.equal(result.users_scanned, 0);
   assert.equal(result.merchants_analyzed, 0);
 });
+
+test("commitImport increments scan counter", async () => {
+  const { createImportJob, commitImport } = await import("../src/imports.ts");
+
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    accounts: [{ id: ACCOUNT_ID, userId: USER_ID, normalizedKey: "checking", displayName: "Checking", accountType: "checking", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    transactions: [],
+    userRecurringScanState: []
+  });
+
+  const csvText = "date,merchant,description,amount,account\n2026-03-15,Netflix,Subscription,-15.99,Checking";
+  const job = await createImportJob({ userId: USER_ID, fileName: "test.csv", csvText });
+  await commitImport(USER_ID, job.importJob.id);
+
+  const state = getUserScanState(USER_ID);
+  assert.equal(state.transactions_since_scan, 1, "Scan counter should be 1 for single imported transaction");
+});
+
+test("incrementUserScanCounter works for manual transaction creation", () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    userRecurringScanState: []
+  });
+
+  // Simulate what happens in POST /v1/transactions handler
+  incrementUserScanCounter(USER_ID);
+  incrementUserScanCounter(USER_ID); // Second transaction
+
+  const state = getUserScanState(USER_ID);
+  assert.equal(state.transactions_since_scan, 2, "Scan counter should be 2 for two manual transactions");
+});

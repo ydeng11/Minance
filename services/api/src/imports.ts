@@ -23,6 +23,7 @@ import {
   parseSignedAmount
 } from "./import-direction.ts";
 import { detectRecurringSuggestions } from "./recurring-suggestions.ts";
+import { incrementUserScanCounter } from "./recurring-scan.ts";
 
 const EDITABLE_ROW_FIELDS = [
   "transaction_date",
@@ -1453,6 +1454,11 @@ export async function commitImport(userId, importId) {
 
   saveStore(store);
   addAuditEvent(userId, "import.committed", { importId, summary });
+
+  // Increment scan counter for each imported transaction
+  for (let i = 0; i < summary.imported; i++) {
+    incrementUserScanCounter(userId);
+  }
 
   // Run recurring detection asynchronously (don't block import on failure)
   try {

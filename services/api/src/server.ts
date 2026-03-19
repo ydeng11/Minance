@@ -49,6 +49,7 @@ import {
   dismissRecurringSuggestion,
   createRuleFromSuggestion
 } from "./recurring-suggestions.ts";
+import { incrementUserScanCounter } from "./recurring-scan.ts";
 import {
   listInvestmentHoldings,
   createManualInvestmentHolding,
@@ -684,6 +685,7 @@ async function handleApiRequest(req, res, url) {
         return;
       }
       const transaction = createManualTransaction(user.id, body);
+      incrementUserScanCounter(user.id);
       recordMutationGuardResult(user.id, guard, 201, { transaction });
       sendJson(res, 201, { transaction });
       return;
