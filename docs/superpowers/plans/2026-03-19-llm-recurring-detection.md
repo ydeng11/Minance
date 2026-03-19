@@ -1418,7 +1418,6 @@ test("incrementUserScanCounter works for manual transaction creation", () => {
   assert.equal(state.transactions_since_scan, 2, "Scan counter should be 2 for two manual transactions");
 });
 ```
-```
 
 - [ ] **Step 6: Run test to verify it passes**
 
