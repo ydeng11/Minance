@@ -5,6 +5,7 @@ import { resetStoreForTests, loadStore } from "../src/store.ts";
 import {
   incrementUserScanCounter,
   getUserScanState,
+  updateUserScanState,
   getAdaptiveThreshold,
   daysBetween,
   subMonths
@@ -53,4 +54,38 @@ test("daysBetween returns Infinity for null", () => {
 test("subMonths returns correct date", () => {
   assert.equal(subMonths("2026-03-19", 6), "2025-09-19");
   assert.equal(subMonths("2026-01-15", 1), "2025-12-15");
+});
+
+test("getUserScanState creates default state for new user", () => {
+  resetStoreForTests({});
+
+  const state = getUserScanState(USER_ID);
+
+  assert.ok(state, "State should be created");
+  assert.equal(state.user_id, USER_ID);
+  assert.equal(state.last_recurring_scan_at, null);
+  assert.equal(state.transactions_since_scan, 0);
+});
+
+test("updateUserScanState creates state if not exists", () => {
+  resetStoreForTests({});
+
+  updateUserScanState(USER_ID, { transactions_since_scan: 5 });
+
+  const state = getUserScanState(USER_ID);
+  assert.equal(state.transactions_since_scan, 5);
+});
+
+test("updateUserScanState updates existing state", () => {
+  resetStoreForTests({});
+  incrementUserScanCounter(USER_ID); // Create initial state
+
+  updateUserScanState(USER_ID, {
+    last_recurring_scan_at: "2026-03-19T00:00:00Z",
+    transactions_since_scan: 0
+  });
+
+  const state = getUserScanState(USER_ID);
+  assert.equal(state.last_recurring_scan_at, "2026-03-19T00:00:00Z");
+  assert.equal(state.transactions_since_scan, 0);
 });

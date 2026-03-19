@@ -1,8 +1,6 @@
 // services/api/src/recurring-scan.ts
 import { loadStore, saveStore } from "./store.ts";
-import { nowIso, createId } from "./utils.ts";
-
-const COOLDOWN_DAYS = 30;
+import { nowIso } from "./utils.ts";
 
 export interface UserRecurringScanState {
   user_id: string;
