@@ -100,6 +100,26 @@ test("detectRecurringPatternsWithLlm handles requireAiFeature throwing error", a
   assert.deepEqual(result.patterns, []);
 });
 
+test("formatTransactionsForLlm handles malformed transactions", () => {
+  const txns = [
+    { transaction_date: "2026-03-15", amount: -15.99 },
+    { transaction_date: null, amount: -10 }, // Missing date - should be filtered
+    { amount: -20 }, // Missing date - should be filtered
+    { transaction_date: "2026-02-15" }, // Missing amount - should be filtered
+    { transaction_date: "2026-01-15", amount: -12.00 }
+  ];
+
+  const result = formatTransactionsForLlm(txns);
+  const lines = result.split("\n");
+  assert.equal(lines.length, 2); // Only valid transactions
+  assert.ok(result.includes("2026-03-15"));
+  assert.ok(result.includes("2026-01-15"));
+});
+
+test("formatTransactionsForLlm returns empty string for empty array", () => {
+  assert.equal(formatTransactionsForLlm([]), "");
+});
+
 test("buildUserPrompt formats transactions correctly", async () => {
   // Test the user prompt building logic separately
   const { buildUserPrompt } = await import("../../src/llm/recurring-detection.ts");

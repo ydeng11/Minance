@@ -27,7 +27,8 @@ Rules:
 
 export function formatTransactionsForLlm(transactions: any[]): string {
   return transactions
-    .sort((a, b) => b.transaction_date.localeCompare(a.transaction_date))
+    .filter(t => t && t.transaction_date && typeof t.amount === "number")
+    .sort((a, b) => (b.transaction_date || "").localeCompare(a.transaction_date || ""))
     .slice(0, 50)
     .map(t => `- ${t.transaction_date}: $${Math.abs(t.amount).toFixed(2)}`)
     .join("\n");
