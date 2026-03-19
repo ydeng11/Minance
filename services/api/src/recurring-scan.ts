@@ -1,6 +1,23 @@
 // services/api/src/recurring-scan.ts
 import { loadStore, saveStore } from "./store.ts";
 import { nowIso, normalizeText } from "./utils.ts";
+import { DISMISSAL_REASON } from "./recurring-suggestions.ts";
+
+const AMOUNT_TOLERANCE_MIN = 0.10;
+const AMOUNT_TOLERANCE_PERCENT = 0.05;
+const COOLDOWN_DAYS = 30;
+
+function amountMatches(a: number, b: number): boolean {
+  const tolerance = Math.max(AMOUNT_TOLERANCE_MIN, b * AMOUNT_TOLERANCE_PERCENT);
+  const EPSILON = 0.0001;
+  return Math.abs(a - b) <= tolerance + EPSILON;
+}
+
+function isCooldownExpired(dismissedAt: string): boolean {
+  const dismissedDate = new Date(dismissedAt);
+  const expiresAt = new Date(dismissedDate.getTime() + COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
+  return new Date() >= expiresAt;
+}
 
 export interface UserRecurringScanState {
   user_id: string;
@@ -113,4 +130,36 @@ export function getMerchantTransactions(userId: string, merchant: string, option
     normalizeText(t.merchant_normalized) === normalizeText(merchant) &&
     t.transaction_date >= cutoff
   );
+}
+
+export function existingRuleMatches(userId: string, merchant: string, amount: number): boolean {
+  const store = loadStore();
+  const rules = store.recurringRules.filter(r => r.user_id === userId);
+  const dismissed = store.dismissedRecurringSuggestions.filter(d => d.user_id === userId);
+
+  // Check for existing rule
+  const hasRule = rules.some(r =>
+    normalizeText(r.merchant_pattern || "") === normalizeText(merchant) &&
+    amountMatches(amount, r.amount)
+  );
+  if (hasRule) return true;
+
+  // Check for permanent dismissal
+  const permanentlyDismissed = dismissed.some(d =>
+    normalizeText(d.merchant_pattern || "") === normalizeText(merchant) &&
+    amountMatches(amount, d.amount) &&
+    d.dismissed_reason === DISMISSAL_REASON.USER_DISMISSED
+  );
+  if (permanentlyDismissed) return true;
+
+  // Check for cooldown dismissal
+  const cooldownDismissed = dismissed.some(d =>
+    normalizeText(d.merchant_pattern || "") === normalizeText(merchant) &&
+    amountMatches(amount, d.amount) &&
+    d.dismissed_reason === DISMISSAL_REASON.RULE_DELETED &&
+    !isCooldownExpired(d.dismissed_at)
+  );
+  if (cooldownDismissed) return true;
+
+  return false;
 }

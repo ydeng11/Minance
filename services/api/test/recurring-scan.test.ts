@@ -11,8 +11,10 @@ import {
   subMonths,
   getUsersWithPendingScans,
   getMerchantsWithNewTransactions,
-  getMerchantTransactions
+  getMerchantTransactions,
+  existingRuleMatches
 } from "../src/recurring-scan.ts";
+import { DISMISSAL_REASON } from "../src/recurring-suggestions.ts";
 import { normalizeText } from "../src/utils.ts";
 
 const USER_ID = "user_scan_1";
@@ -142,4 +144,66 @@ test("getMerchantTransactions returns transactions within window", () => {
 
   const txns = getMerchantTransactions(USER_ID, "netflix", { months: 6 });
   assert.equal(txns.length, 2);
+});
+
+test("existingRuleMatches returns true for existing rule", () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    recurringRules: [{ id: "rr1", user_id: USER_ID, name: "Netflix", cadence: "monthly", amount: 15.99, merchant_pattern: "netflix", status: "active" }]
+  });
+
+  assert.ok(existingRuleMatches(USER_ID, "netflix", 16));
+  assert.ok(!existingRuleMatches(USER_ID, "spotify", 9.99));
+});
+
+test("existingRuleMatches returns true for USER_DISMISSED", () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    dismissedRecurringSuggestions: [{
+      id: "d1",
+      user_id: USER_ID,
+      merchant_pattern: "netflix",
+      amount: 15.99,
+      dismissed_at: new Date().toISOString(),
+      dismissed_reason: DISMISSAL_REASON.USER_DISMISSED
+    }]
+  });
+
+  assert.ok(existingRuleMatches(USER_ID, "netflix", 16));
+});
+
+test("existingRuleMatches returns true for RULE_DELETED within cooldown", () => {
+  const yesterday = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString();
+
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    dismissedRecurringSuggestions: [{
+      id: "d1",
+      user_id: USER_ID,
+      merchant_pattern: "netflix",
+      amount: 15.99,
+      dismissed_at: yesterday,
+      dismissed_reason: DISMISSAL_REASON.RULE_DELETED
+    }]
+  });
+
+  assert.ok(existingRuleMatches(USER_ID, "netflix", 16));
+});
+
+test("existingRuleMatches returns false for RULE_DELETED after cooldown", () => {
+  const oldDate = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    dismissedRecurringSuggestions: [{
+      id: "d1",
+      user_id: USER_ID,
+      merchant_pattern: "netflix",
+      amount: 15.99,
+      dismissed_at: oldDate,
+      dismissed_reason: DISMISSAL_REASON.RULE_DELETED
+    }]
+  });
+
+  assert.ok(!existingRuleMatches(USER_ID, "netflix", 16));
 });
