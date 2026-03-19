@@ -798,10 +798,37 @@ test("validatePatterns handles missing patterns array gracefully", () => {
   assert.deepEqual(validatePatterns(input), []);
 });
 
-// Note: Timeout and actual LLM call tests require integration tests with mocked LLM
-// See Task 11 for integration test guidance
-  const lines = result.split("\n");
-  assert.equal(lines.length, 50);
+// Mock-based tests for detectRecurringPatternsWithLlm error handling
+// These test the function's error handling without making actual LLM calls
+test("detectRecurringPatternsWithLlm handles requireAiFeature throwing error", async () => {
+  // Import with mocked dependencies
+  const { detectRecurringPatternsWithLlm } = await import("../../src/llm/recurring-detection.ts");
+
+  // User without AI setup will cause requireAiFeature to throw
+  const result = await detectRecurringPatternsWithLlm({
+    userId: "user_without_ai",
+    merchant: "netflix",
+    transactions: [{ transaction_date: "2026-01-15", amount: -15.99 }]
+  });
+
+  assert.equal(result.ok, false);
+  assert.ok(result.error, "Should have error message");
+  assert.deepEqual(result.patterns, []);
+});
+
+test("buildUserPrompt formats transactions correctly", async () => {
+  // Test the user prompt building logic separately
+  const { buildUserPrompt } = await import("../../src/llm/recurring-detection.ts");
+
+  const txns = [
+    { transaction_date: "2026-03-15", amount: -15.99 },
+    { transaction_date: "2026-02-15", amount: -15.99 }
+  ];
+
+  const prompt = buildUserPrompt("netflix", txns, []);
+  assert.ok(prompt.includes("Merchant: netflix"));
+  assert.ok(prompt.includes("2026-03-15"));
+  assert.ok(prompt.includes("Existing rules for this merchant: none"));
 });
 ```
 
@@ -864,6 +891,19 @@ export function validatePatterns(patterns: unknown): RecurringPattern[] {
     }));
 }
 
+export function buildUserPrompt(merchant: string, transactions: any[], existingRules: any[]): string {
+  return [
+    `Merchant: ${merchant}`,
+    "",
+    "Transactions (last 6 months):",
+    formatTransactionsForLlm(transactions),
+    "",
+    existingRules.length > 0
+      ? `Existing rules for this merchant: ${JSON.stringify(existingRules)}`
+      : "Existing rules for this merchant: none"
+  ].join("\n");
+}
+
 export async function detectRecurringPatternsWithLlm({
   userId,
   merchant,
@@ -877,17 +917,7 @@ export async function detectRecurringPatternsWithLlm({
 }): Promise<{ ok: boolean; patterns: RecurringPattern[]; error?: string }> {
   try {
     const aiContext = requireAiFeature(userId, "recurring_detection");
-
-    const userPrompt = [
-      `Merchant: ${merchant}`,
-      "",
-      "Transactions (last 6 months):",
-      formatTransactionsForLlm(transactions),
-      "",
-      existingRules.length > 0
-        ? `Existing rules for this merchant: ${JSON.stringify(existingRules)}`
-        : "Existing rules for this merchant: none"
-    ].join("\n");
+    const userPrompt = buildUserPrompt(merchant, transactions, existingRules);
 
     const result = await runStructuredLlm({
       provider: aiContext.provider,
@@ -1371,8 +1401,23 @@ test("commitImport increments scan counter", async () => {
   await commitImport(USER_ID, job.importJob.id);
 
   const state = getUserScanState(USER_ID);
-  assert.ok(state.transactions_since_scan > 0, "Scan counter should be incremented");
+  assert.equal(state.transactions_since_scan, 1, "Scan counter should be 1 for single imported transaction");
 });
+
+test("incrementUserScanCounter works for manual transaction creation", () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    userRecurringScanState: []
+  });
+
+  // Simulate what happens in POST /v1/transactions handler
+  incrementUserScanCounter(USER_ID);
+  incrementUserScanCounter(USER_ID); // Second transaction
+
+  const state = getUserScanState(USER_ID);
+  assert.equal(state.transactions_since_scan, 2, "Scan counter should be 2 for two manual transactions");
+});
+```
 ```
 
 - [ ] **Step 6: Run test to verify it passes**
