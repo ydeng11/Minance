@@ -130,6 +130,101 @@ git commit -m "feat(store): add userRecurringScanState and scanRunState collecti
 
 ---
 
+### Task 1.5: Add Migration for Existing Users
+
+**Files:**
+- Create: `services/api/src/migrations/recurring-scan-init.ts`
+- Test: `services/api/test/migrations/recurring-scan-init.test.ts`
+
+- [ ] **Step 1: Write failing test for migration**
+
+```typescript
+// In services/api/test/migrations/recurring-scan-init.test.ts
+import test from "node:test";
+import assert from "node:assert/strict";
+import { resetStoreForTests, loadStore } from "../../src/store.ts";
+import { migrateRecurringScanState } from "../../src/migrations/recurring-scan-init.ts";
+
+test("migration initializes scan state for existing users", () => {
+  resetStoreForTests({
+    users: [
+      { id: "user1", email: "a@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" },
+      { id: "user2", email: "b@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }
+    ],
+    transactions: [
+      { id: "t1", user_id: "user1", account_id: "a1", transaction_date: "2026-01-15", amount: -10, created_at: "2026-01-15T00:00:00Z" },
+      { id: "t2", user_id: "user1", account_id: "a1", transaction_date: "2026-02-15", amount: -20, created_at: "2026-02-15T00:00:00Z" },
+      { id: "t3", user_id: "user2", account_id: "a1", transaction_date: "2026-01-15", amount: -30, deleted_at: "2026-02-01T00:00:00Z" } // Deleted, should not count
+    ],
+    userRecurringScanState: []
+  });
+
+  migrateRecurringScanState();
+
+  const store = loadStore();
+  const user1State = store.userRecurringScanState.find(s => s.user_id === "user1");
+  const user2State = store.userRecurringScanState.find(s => s.user_id === "user2");
+
+  assert.equal(user1State?.transactions_since_scan, 2, "User1 should have 2 transactions");
+  assert.equal(user2State?.transactions_since_scan, 0, "User2 should have 0 (deleted transaction excluded)");
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `cd services/api && npm test -- test/migrations/recurring-scan-init.test.ts`
+Expected: FAIL with module not found
+
+- [ ] **Step 3: Create migration function**
+
+```typescript
+// services/api/src/migrations/recurring-scan-init.ts
+import { loadStore, saveStore } from "../store.ts";
+import { nowIso } from "../utils.ts";
+
+export function migrateRecurringScanState(): void {
+  const store = loadStore();
+
+  // Skip if already migrated
+  if (store.userRecurringScanState.length > 0) {
+    return;
+  }
+
+  // Get all users
+  const users = store.users || [];
+
+  for (const user of users) {
+    // Count non-deleted transactions for this user
+    const txCount = (store.transactions || []).filter(t =>
+      t.user_id === user.id && !t.deleted_at
+    ).length;
+
+    store.userRecurringScanState.push({
+      user_id: user.id,
+      last_recurring_scan_at: null,
+      transactions_since_scan: txCount,
+      updated_at: nowIso()
+    });
+  }
+
+  saveStore(store);
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `cd services/api && npm test -- test/migrations/recurring-scan-init.test.ts`
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add services/api/src/migrations/recurring-scan-init.ts services/api/test/migrations/recurring-scan-init.test.ts
+git commit -m "feat(migration): add recurring scan state initialization for existing users"
+```
+
+---
+
 ### Task 2: Update Amount Tolerance in recurrings.ts
 
 **Files:**
@@ -673,6 +768,41 @@ test("formatTransactionsForLlm limits to 50 transactions", () => {
   const lines = result.split("\n");
   assert.equal(lines.length, 50);
 });
+
+test("validatePatterns handles multiple valid patterns", () => {
+  const input = [
+    { is_recurring: true, amount: 15.99, cadence: "monthly" },
+    { is_recurring: true, amount: 189.99, cadence: "yearly" }
+  ];
+
+  const result = validatePatterns(input);
+  assert.equal(result.length, 2);
+  assert.equal(result[0].cadence, "monthly");
+  assert.equal(result[1].cadence, "yearly");
+});
+
+test("validatePatterns returns empty array when no recurring patterns", () => {
+  const input = [
+    { is_recurring: false, amount: 15.99, cadence: "monthly" }
+  ];
+
+  const result = validatePatterns(input);
+  // Note: validation passes, but caller should filter by is_recurring
+  assert.equal(result.length, 1);
+  assert.equal(result[0].is_recurring, false);
+});
+
+test("validatePatterns handles missing patterns array gracefully", () => {
+  const input = { patterns: null };
+  // When patterns is missing, validatePatterns should return empty
+  assert.deepEqual(validatePatterns(input), []);
+});
+
+// Note: Timeout and actual LLM call tests require integration tests with mocked LLM
+// See Task 11 for integration test guidance
+  const lines = result.split("\n");
+  assert.equal(lines.length, 50);
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -969,8 +1099,44 @@ test("runRecurringDetectionTask skips user without AI setup", async () => {
 });
 
 test("runRecurringDetectionTask skips merchant with < 2 transactions", async () => {
-  // This test would require mocking the LLM, skip for now
-  // Integration tests will cover this
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    accounts: [{ id: ACCOUNT_ID, userId: USER_ID, normalizedKey: "checking", displayName: "Checking", accountType: "checking", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    transactions: [
+      // Only 1 transaction for this merchant - should be skipped
+      { id: "t1", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-15", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-03-15T00:00:00Z" }
+    ],
+    userRecurringScanState: [{ user_id: USER_ID, last_recurring_scan_at: null, transactions_since_scan: 10, updated_at: "2026-01-01T00:00:00Z" }],
+    aiProviderCredentials: [{ id: "c1", userId: USER_ID, provider: "openrouter", status: "active", apiKeyEncrypted: "test" }]
+  });
+
+  // Mock hasAiSetup to return true for this test
+  // (Or set up actual AI credentials in test fixture)
+
+  const result = await runRecurringDetectionTask();
+
+  // Merchant should be skipped (only 1 transaction)
+  assert.equal(result.merchants_analyzed, 0);
+  assert.equal(result.suggestions_created, 0);
+});
+
+test("runRecurringDetectionTask skips merchant with all transactions in same month", async () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    accounts: [{ id: ACCOUNT_ID, userId: USER_ID, normalizedKey: "checking", displayName: "Checking", accountType: "checking", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    transactions: [
+      // 2 transactions but both in same month - should be skipped
+      { id: "t1", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-10", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-03-10T00:00:00Z" },
+      { id: "t2", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-20", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-03-20T00:00:00Z" }
+    ],
+    userRecurringScanState: [{ user_id: USER_ID, last_recurring_scan_at: null, transactions_since_scan: 10, updated_at: "2026-01-01T00:00:00Z" }],
+    aiProviderCredentials: [{ id: "c1", userId: USER_ID, provider: "openrouter", status: "active", apiKeyEncrypted: "test" }]
+  });
+
+  const result = await runRecurringDetectionTask();
+
+  // Merchant should be skipped (only 1 distinct month)
+  assert.equal(result.merchants_analyzed, 0);
 });
 ```
 
@@ -1143,16 +1309,17 @@ git commit -m "feat(recurring-scan): add daily task runner with LLM detection"
 
 ---
 
-### Task 9: Integrate Scan Counter with Imports
+### Task 9: Integrate Scan Counter with Transaction Creation
 
 **Files:**
 - Modify: `services/api/src/imports.ts`
+- Modify: `services/api/src/server.ts`
 
 - [ ] **Step 1: Find where transactions are committed in imports.ts**
 
 Search for `commitImport` function and identify where transactions are successfully created.
 
-- [ ] **Step 2: Add import and call to incrementUserScanCounter**
+- [ ] **Step 2: Add import and call to incrementUserScanCounter in imports.ts**
 
 ```typescript
 // At top of services/api/src/imports.ts
@@ -1164,7 +1331,28 @@ import { incrementUserScanCounter } from "./recurring-scan.ts";
 incrementUserScanCounter(userId);
 ```
 
-- [ ] **Step 3: Write test for integration**
+- [ ] **Step 3: Add increment to POST /v1/transactions endpoint in server.ts**
+
+```typescript
+// In services/api/src/server.ts, find the POST /v1/transactions handler
+// After the transaction is successfully created, add:
+import { incrementUserScanCounter } from "./recurring-scan.ts";
+
+// In the handler (around line 678), after successful creation:
+incrementUserScanCounter(user.id);
+```
+
+- [ ] **Step 4: Add increment to POST /v1/transactions/bulk endpoint**
+
+```typescript
+// In the bulk handler (around line 692), after successful creation:
+// Increment by the number of transactions created
+for (let i = 0; i < createdCount; i++) {
+  incrementUserScanCounter(user.id);
+}
+```
+
+- [ ] **Step 5: Write test for import integration**
 
 ```typescript
 // Add to services/api/test/recurring-scan.test.ts
@@ -1187,12 +1375,12 @@ test("commitImport increments scan counter", async () => {
 });
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 6: Run test to verify it passes**
 
 Run: `cd services/api && npm test -- --test-name-pattern="commitImport increments"`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add services/api/src/imports.ts services/api/test/recurring-scan.test.ts
@@ -1223,14 +1411,20 @@ if (req.method === "POST" && pathname === "/v1/admin/recurring-scan/run") {
 - [ ] **Step 2: Write test for admin endpoint**
 
 ```typescript
-// Add to services/api/test/recurring-scan.test.ts or create admin test file
-test("POST /v1/admin/recurring-scan/run returns scan results", async () => {
+// Add to services/api/test/recurring-scan.test.ts
+// Note: Direct HTTP tests require test server setup - see server.test.ts for patterns
+// This test verifies the function works correctly
+test("runRecurringDetectionTask returns expected result structure", async () => {
   resetStoreForTests({
-    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }]
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    userRecurringScanState: []
   });
 
-  // Would need to set up test server - skip for unit tests
-  // Integration/E2E tests will cover this
+  const result = await runRecurringDetectionTask();
+
+  assert.ok(typeof result.users_scanned === "number", "users_scanned should be a number");
+  assert.ok(typeof result.merchants_analyzed === "number", "merchants_analyzed should be a number");
+  assert.ok(typeof result.suggestions_created === "number", "suggestions_created should be a number");
 });
 ```
 
