@@ -207,3 +207,69 @@ test("existingRuleMatches returns false for RULE_DELETED after cooldown", () => 
 
   assert.ok(!existingRuleMatches(USER_ID, "netflix", 16));
 });
+
+test("runRecurringDetectionTask skips user without AI setup", async () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    accounts: [{ id: ACCOUNT_ID, userId: USER_ID, normalizedKey: "checking", displayName: "Checking", accountType: "checking", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    transactions: [
+      { id: "t1", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-15", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-03-15T00:00:00Z" }
+    ],
+    userRecurringScanState: [{ user_id: USER_ID, last_recurring_scan_at: null, transactions_since_scan: 10, updated_at: "2026-01-01T00:00:00Z" }]
+  });
+
+  const { runRecurringDetectionTask } = await import("../src/recurring-scan.ts");
+  const result = await runRecurringDetectionTask();
+
+  assert.equal(result.users_scanned, 0);
+  assert.equal(result.suggestions_created, 0);
+});
+
+test("runRecurringDetectionTask skips merchant with < 2 transactions", async () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    accounts: [{ id: ACCOUNT_ID, userId: USER_ID, normalizedKey: "checking", displayName: "Checking", accountType: "checking", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    transactions: [
+      { id: "t1", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-15", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-03-15T00:00:00Z" }
+    ],
+    userRecurringScanState: [{ user_id: USER_ID, last_recurring_scan_at: null, transactions_since_scan: 10, updated_at: "2026-01-01T00:00:00Z" }],
+    aiProviderCredentials: [{ id: "c1", userId: USER_ID, provider: "openrouter", status: "active", apiKeyEncrypted: "test" }]
+  });
+
+  const { runRecurringDetectionTask } = await import("../src/recurring-scan.ts");
+  const result = await runRecurringDetectionTask();
+
+  assert.equal(result.merchants_analyzed, 0);
+  assert.equal(result.suggestions_created, 0);
+});
+
+test("runRecurringDetectionTask skips merchant with all transactions in same month", async () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    accounts: [{ id: ACCOUNT_ID, userId: USER_ID, normalizedKey: "checking", displayName: "Checking", accountType: "checking", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    transactions: [
+      { id: "t1", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-10", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-03-10T00:00:00Z" },
+      { id: "t2", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-20", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-03-20T00:00:00Z" }
+    ],
+    userRecurringScanState: [{ user_id: USER_ID, last_recurring_scan_at: null, transactions_since_scan: 10, updated_at: "2026-01-01T00:00:00Z" }],
+    aiProviderCredentials: [{ id: "c1", userId: USER_ID, provider: "openrouter", status: "active", apiKeyEncrypted: "test" }]
+  });
+
+  const { runRecurringDetectionTask } = await import("../src/recurring-scan.ts");
+  const result = await runRecurringDetectionTask();
+
+  assert.equal(result.merchants_analyzed, 0);
+});
+
+test("runRecurringDetectionTask respects is_running overlap protection", async () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    scanRunState: { is_running: true, last_run_at: null, last_run_status: null, last_run_duration_ms: null }
+  });
+
+  const { runRecurringDetectionTask } = await import("../src/recurring-scan.ts");
+  const result = await runRecurringDetectionTask();
+
+  assert.equal(result.users_scanned, 0);
+  assert.equal(result.merchants_analyzed, 0);
+});

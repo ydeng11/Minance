@@ -1,11 +1,14 @@
 // services/api/src/recurring-scan.ts
 import { loadStore, saveStore } from "./store.ts";
-import { nowIso, normalizeText } from "./utils.ts";
+import { nowIso, normalizeText, createId } from "./utils.ts";
 import { DISMISSAL_REASON } from "./recurring-suggestions.ts";
+import { resolveProviderForFeature } from "./ai.ts";
+import { detectRecurringPatternsWithLlm } from "./llm/recurring-detection.ts";
 
 const AMOUNT_TOLERANCE_MIN = 0.10;
 const AMOUNT_TOLERANCE_PERCENT = 0.05;
 const COOLDOWN_DAYS = 30;
+const USER_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes per user
 
 function amountMatches(a: number, b: number): boolean {
   const tolerance = Math.max(AMOUNT_TOLERANCE_MIN, b * AMOUNT_TOLERANCE_PERCENT);
@@ -162,4 +165,147 @@ export function existingRuleMatches(userId: string, merchant: string, amount: nu
   if (cooldownDismissed) return true;
 
   return false;
+}
+
+export function hasAiSetup(userId: string): boolean {
+  const result = resolveProviderForFeature(userId, "recurring_detection");
+  return result.ok === true;
+}
+
+function getMatchingTransactionIds(userId: string, merchant: string, amount: number): string[] {
+  const store = loadStore();
+  const txns = store.transactions.filter(t =>
+    t.user_id === userId &&
+    !t.deleted_at &&
+    normalizeText(t.merchant_normalized || "") === normalizeText(merchant) &&
+    amountMatches(Math.abs(t.amount), amount)
+  );
+  return txns.map(t => t.id);
+}
+
+function createSuggestion(userId: string, merchant: string, amount: number): void {
+  const store = loadStore();
+  const matchingTxns = getMatchingTransactionIds(userId, merchant, amount);
+
+  const suggestion = {
+    id: createId("rsug"),
+    user_id: userId,
+    merchant_pattern: merchant,
+    amount,
+    detected_at: nowIso(),
+    occurrence_count: matchingTxns.length,
+    transaction_ids: matchingTxns.slice(0, 10)
+  };
+
+  if (!Array.isArray(store.recurringSuggestions)) {
+    store.recurringSuggestions = [];
+  }
+  store.recurringSuggestions.push(suggestion);
+  saveStore(store);
+}
+
+export async function runRecurringDetectionTask(): Promise<{
+  users_scanned: number;
+  merchants_analyzed: number;
+  suggestions_created: number;
+}> {
+  const store = loadStore();
+
+  // Check overlap protection
+  if (store.scanRunState.is_running) {
+    console.log("[recurring-scan] Already running, skipping");
+    return { users_scanned: 0, merchants_analyzed: 0, suggestions_created: 0 };
+  }
+
+  store.scanRunState.is_running = true;
+  const startTime = Date.now();
+  let runStatus: "success" | "partial" | "failed" = "success";
+  let merchantsAnalyzed = 0;
+  let suggestionsCreated = 0;
+  let usersScanned = 0;
+
+  try {
+    const users = getUsersWithPendingScans();
+
+    for (const user of users) {
+      const userStartTime = Date.now();
+      const daysSinceScan = daysBetween(user.last_recurring_scan_at, nowIso());
+      const threshold = getAdaptiveThreshold(daysSinceScan);
+
+      // Skip if not enough new transactions
+      if (user.transactions_since_scan < threshold) {
+        continue;
+      }
+
+      // Check AI setup
+      if (!hasAiSetup(user.user_id)) {
+        continue;
+      }
+
+      usersScanned++;
+
+      // Get merchants with new transactions
+      const newMerchants = getMerchantsWithNewTransactions(user.user_id);
+
+      for (const merchant of newMerchants) {
+        // Check per-user timeout
+        if (Date.now() - userStartTime > USER_TIMEOUT_MS) {
+          console.log(`[recurring-scan] User ${user.user_id} timeout, skipping remaining merchants`);
+          runStatus = "partial";
+          break;
+        }
+
+        // Pull 6-month history
+        const history = getMerchantTransactions(user.user_id, merchant, { months: 6 });
+
+        // Skip if fewer than 2 transactions OR fewer than 2 distinct months
+        const distinctMonths = new Set(history.map(t => t.transaction_date.slice(0, 7)));
+        if (history.length < 2 || distinctMonths.size < 2) {
+          continue;
+        }
+
+        merchantsAnalyzed++;
+
+        // LLM detection
+        const result = await detectRecurringPatternsWithLlm({
+          userId: user.user_id,
+          merchant,
+          transactions: history
+        });
+
+        if (!result.ok) {
+          console.log(`[recurring-scan] LLM failed for ${merchant}: ${result.error}`);
+          runStatus = "partial";
+          continue;
+        }
+
+        // Create suggestions for detected patterns
+        for (const pattern of result.patterns.filter(p => p.is_recurring)) {
+          if (!existingRuleMatches(user.user_id, merchant, pattern.amount)) {
+            createSuggestion(user.user_id, merchant, pattern.amount);
+            suggestionsCreated++;
+          }
+        }
+      }
+
+      // Reset scan state
+      updateUserScanState(user.user_id, {
+        last_recurring_scan_at: nowIso(),
+        transactions_since_scan: 0
+      });
+    }
+
+    return { users_scanned: usersScanned, merchants_analyzed: merchantsAnalyzed, suggestions_created: suggestionsCreated };
+  } catch (error: any) {
+    console.log(`[recurring-scan] Scan failed: ${error.message}`);
+    runStatus = "failed";
+    return { users_scanned: 0, merchants_analyzed: merchantsAnalyzed, suggestions_created: suggestionsCreated };
+  } finally {
+    const finalStore = loadStore();
+    finalStore.scanRunState.is_running = false;
+    finalStore.scanRunState.last_run_at = nowIso();
+    finalStore.scanRunState.last_run_status = runStatus;
+    finalStore.scanRunState.last_run_duration_ms = Date.now() - startTime;
+    saveStore(finalStore);
+  }
 }
