@@ -8,10 +8,15 @@ import {
   updateUserScanState,
   getAdaptiveThreshold,
   daysBetween,
-  subMonths
+  subMonths,
+  getUsersWithPendingScans,
+  getMerchantsWithNewTransactions,
+  getMerchantTransactions
 } from "../src/recurring-scan.ts";
+import { normalizeText } from "../src/utils.ts";
 
 const USER_ID = "user_scan_1";
+const ACCOUNT_ID = "acct_scan_1";
 
 test("incrementUserScanCounter creates state if not exists", () => {
   resetStoreForTests({});
@@ -88,4 +93,53 @@ test("updateUserScanState updates existing state", () => {
   const state = getUserScanState(USER_ID);
   assert.equal(state.last_recurring_scan_at, "2026-03-19T00:00:00Z");
   assert.equal(state.transactions_since_scan, 0);
+});
+
+test("getUsersWithPendingScans returns only users with pending scans", () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    accounts: [{ id: ACCOUNT_ID, userId: USER_ID, normalizedKey: "checking", displayName: "Checking", accountType: "checking", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    transactions: [
+      { id: "t1", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-15", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-03-15T00:00:00Z" }
+    ]
+  });
+
+  // Increment scan counter for this user
+  incrementUserScanCounter(USER_ID);
+
+  const pending = getUsersWithPendingScans();
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0].user_id, USER_ID);
+});
+
+test("getMerchantsWithNewTransactions returns merchants since last scan", () => {
+  const since = "2026-03-01T00:00:00Z";
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    accounts: [{ id: ACCOUNT_ID, userId: USER_ID, normalizedKey: "checking", displayName: "Checking", accountType: "checking", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    transactions: [
+      { id: "t1", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-02-15", merchant_normalized: "oldmerchant", amount: -10, created_at: "2026-02-15T00:00:00Z" },
+      { id: "t2", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-15", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-03-15T00:00:00Z" },
+      { id: "t3", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-16", merchant_normalized: "spotify", amount: -9.99, created_at: "2026-03-16T00:00:00Z" }
+    ],
+    userRecurringScanState: [{ user_id: USER_ID, last_recurring_scan_at: since, transactions_since_scan: 2, updated_at: since }]
+  });
+
+  const merchants = getMerchantsWithNewTransactions(USER_ID);
+  assert.deepEqual(merchants.sort(), ["netflix", "spotify"]);
+});
+
+test("getMerchantTransactions returns transactions within window", () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    accounts: [{ id: ACCOUNT_ID, userId: USER_ID, normalizedKey: "checking", displayName: "Checking", accountType: "checking", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    transactions: [
+      { id: "t1", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2025-09-01", merchant_normalized: "netflix", amount: -15.99, created_at: "2025-09-01T00:00:00Z" }, // Too old
+      { id: "t2", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-01-01", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-01-01T00:00:00Z" }, // Within 6 months
+      { id: "t3", user_id: USER_ID, account_id: ACCOUNT_ID, transaction_date: "2026-03-15", merchant_normalized: "netflix", amount: -15.99, created_at: "2026-03-15T00:00:00Z" }
+    ]
+  });
+
+  const txns = getMerchantTransactions(USER_ID, "netflix", { months: 6 });
+  assert.equal(txns.length, 2);
 });

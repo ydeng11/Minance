@@ -1,6 +1,6 @@
 // services/api/src/recurring-scan.ts
 import { loadStore, saveStore } from "./store.ts";
-import { nowIso } from "./utils.ts";
+import { nowIso, normalizeText } from "./utils.ts";
 
 export interface UserRecurringScanState {
   user_id: string;
@@ -81,4 +81,36 @@ export function subMonths(date: string, months: number): string {
   const d = new Date(date);
   d.setMonth(d.getMonth() - months);
   return d.toISOString().slice(0, 10);
+}
+
+export function getUsersWithPendingScans(): UserRecurringScanState[] {
+  const store = loadStore();
+  return store.userRecurringScanState.filter(u => u.transactions_since_scan > 0);
+}
+
+export function getMerchantsWithNewTransactions(userId: string): string[] {
+  const store = loadStore();
+  const state = getUserScanState(userId);
+  const since = state.last_recurring_scan_at;
+
+  const txns = store.transactions.filter(t =>
+    t.user_id === userId &&
+    !t.deleted_at &&
+    t.merchant_normalized &&
+    (since === null || t.created_at > since)
+  );
+
+  return [...new Set(txns.map(t => t.merchant_normalized).filter(Boolean))];
+}
+
+export function getMerchantTransactions(userId: string, merchant: string, options: { months: number }): any[] {
+  const store = loadStore();
+  const cutoff = subMonths(nowIso().slice(0, 10), options.months);
+
+  return store.transactions.filter(t =>
+    t.user_id === userId &&
+    !t.deleted_at &&
+    normalizeText(t.merchant_normalized) === normalizeText(merchant) &&
+    t.transaction_date >= cutoff
+  );
 }
