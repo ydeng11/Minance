@@ -37,15 +37,26 @@ interface UserRecurringScanState {
 }
 ```
 
-### Updated Rule Matching
+### Amount Tolerance
 
-Replace `AMOUNT_TOLERANCE = 0.01` with 5% percentage-based tolerance:
+Replace `AMOUNT_TOLERANCE = 0.01` with 5% percentage-based tolerance, with a minimum floor:
 
 ```typescript
+const AMOUNT_TOLERANCE_MIN = 0.10; // Minimum $0.10 tolerance for small amounts
+const AMOUNT_TOLERANCE_PERCENT = 0.05; // 5% for larger amounts
+
 function amountMatches(transactionAmount: number, ruleAmount: number): boolean {
-  return Math.abs(transactionAmount - ruleAmount) <= ruleAmount * 0.05;
+  const tolerance = Math.max(AMOUNT_TOLERANCE_MIN, ruleAmount * AMOUNT_TOLERANCE_PERCENT);
+  return Math.abs(transactionAmount - ruleAmount) <= tolerance;
 }
 ```
+
+| Rule Amount | Tolerance Used |
+|-------------|----------------|
+| $0.10       | $0.10 (floor)  |
+| $10.00      | $0.50 (5%)     |
+| $100.00     | $5.00 (5%)     |
+| $1000.00    | $50.00 (5%)    |
 
 ### LLM Output Schema
 
@@ -67,50 +78,76 @@ interface LlmDetectionResult {
 
 ```typescript
 async function runRecurringDetectionTask() {
-  const users = getUsersWithPendingScans();
+  // Check overlap protection
+  if (scanRunState.is_running) {
+    log("Scan already running, skipping");
+    return;
+  }
 
-  for (const user of users) {
-    const daysSinceScan = daysBetween(user.last_recurring_scan_at, now);
-    const threshold = getAdaptiveThreshold(daysSinceScan);
+  scanRunState.is_running = true;
+  const startTime = Date.now();
 
-    // Skip if not enough new transactions
-    if (user.transactions_since_scan < threshold) {
-      continue;
-    }
+  try {
+    const users = getUsersWithPendingScans();
 
-    // Check AI setup
-    if (!hasAiSetup(user.user_id)) {
-      continue;
-    }
+    for (const user of users) {
+      const daysSinceScan = daysBetween(user.last_recurring_scan_at, now);
+      const threshold = getAdaptiveThreshold(daysSinceScan);
 
-    // Get merchants with new transactions
-    const newMerchants = getMerchantsWithNewTransactions(user.user_id);
-
-    for (const merchant of newMerchants) {
-      // Pull 6-month history
-      const history = getMerchantTransactions(user.user_id, merchant, { months: 6 });
-
-      // Skip if fewer than 2 transactions
-      if (history.length < 2) {
+      // Skip if not enough new transactions
+      if (user.transactions_since_scan < threshold) {
         continue;
       }
 
-      // LLM detection
-      const patterns = await detectRecurringPatternsWithLlm(merchant, history);
+      // Check AI setup
+      if (!hasAiSetup(user.user_id)) {
+        continue;
+      }
 
-      // Create suggestions for detected patterns
-      for (const pattern of patterns.filter(p => p.is_recurring)) {
-        if (!existingRuleMatches(merchant, pattern.amount)) {
-          createSuggestion(user.user_id, merchant, pattern.amount, pattern.cadence);
+      // Get merchants with new transactions
+      const newMerchants = getMerchantsWithNewTransactions(user.user_id);
+
+      for (const merchant of newMerchants) {
+        // Pull 6-month history
+        const history = getMerchantTransactions(user.user_id, merchant, { months: 6 });
+
+        // Skip if fewer than 2 transactions OR fewer than 2 distinct months
+        const distinctMonths = new Set(history.map(t => t.transaction_date.slice(0, 7)));
+        if (history.length < 2 || distinctMonths.size < 2) {
+          continue;
+        }
+
+        // LLM detection
+        const result = await detectRecurringPatternsWithLlm({
+          userId: user.user_id,
+          merchant,
+          transactions: history
+        });
+
+        if (!result.ok) {
+          log(`LLM failed for ${merchant}: ${result.error}`);
+          continue;
+        }
+
+        // Create suggestions for detected patterns
+        for (const pattern of result.patterns.filter(p => p.is_recurring)) {
+          if (!existingRuleMatches(user.user_id, merchant, pattern.amount)) {
+            createSuggestion(user.user_id, merchant, pattern.amount, pattern.cadence);
+          }
         }
       }
-    }
 
-    // Reset scan state
-    updateUserScanState(user.user_id, {
-      last_recurring_scan_at: now(),
-      transactions_since_scan: 0
-    });
+      // Reset scan state
+      updateUserScanState(user.user_id, {
+        last_recurring_scan_at: now(),
+        transactions_since_scan: 0
+      });
+    }
+  } finally {
+    scanRunState.is_running = false;
+    scanRunState.last_run_at = now();
+    scanRunState.last_run_duration_ms = Date.now() - startTime;
+    saveStore(store);
   }
 }
 ```
@@ -134,24 +171,224 @@ function getAdaptiveThreshold(daysSinceScan: number): number {
 ### Scan State Triggers
 
 Increment `transactions_since_scan` when transactions are created via:
-- `commitImport()` - after transactions committed
+- `commitImport()` - after transactions committed (excluding duplicates skipped)
 - Manual transaction creation API
 - Any other transaction creation endpoint
+
+**What counts as "new":**
+- Transactions created after `last_recurring_scan_at` (or all if never scanned)
+- Only non-deleted transactions
+- Duplicates (skipped during import) do NOT increment the counter
+
+### Race Conditions
+
+**New transactions during scan:**
+- Counter is incremented atomically before scan starts
+- Scan reads counter value at start, resets to 0 when done
+- Any transactions created during scan will be captured in next cycle
+
+**User actions during scan:**
+- If user dismisses a suggestion while scan is creating it: suggestion may briefly appear then be removed on next render
+- If user creates a rule while scan is running: `existingRuleMatches` check is done at suggestion creation time, so rule will be detected
+
+**Concurrent scans:**
+- `scanRunState.is_running` flag prevents overlapping runs
+- If flag is stuck (previous run crashed), admin can clear via API
+
+## Scheduling Mechanism
+
+The recurring detection task runs daily via the application server:
+
+- **Trigger:** Scheduled internally via `setInterval` or external cron calling an admin endpoint
+- **Time:** Runs at 3:00 AM server time (configurable)
+- **Timeout:** Maximum 30 minutes per run
+- **Overlap protection:** Track `is_scan_running` flag to prevent concurrent runs
+- **Failure handling:** Log errors, continue with remaining users, report to audit log
+
+```typescript
+interface ScanRunState {
+  is_running: boolean;
+  last_run_at: string | null;
+  last_run_status: "success" | "partial" | "failed" | null;
+  last_run_duration_ms: number | null;
+}
+```
+
+### API Endpoint (Admin/Internal)
+
+```
+POST /v1/admin/recurring-scan/run
+Authorization: Bearer <admin_token or internal>
+```
+
+Returns: `{ users_scanned: number, merchants_analyzed: number, suggestions_created: number }`
+
+## Helper Functions
+
+```typescript
+// Get users with pending scans (transactions_since_scan > 0)
+function getUsersWithPendingScans(): UserRecurringScanState[] {
+  return store.userRecurringScanState.filter(u => u.transactions_since_scan > 0);
+}
+
+// Get merchants with transactions created since last scan
+// "New" = transactions where created_at > last_recurring_scan_at (or all if never scanned)
+function getMerchantsWithNewTransactions(userId: string): string[] {
+  const state = getUserScanState(userId);
+  const since = state.last_recurring_scan_at;
+  const txns = store.transactions.filter(t =>
+    t.user_id === userId &&
+    !t.deleted_at &&
+    (since === null || t.created_at > since)
+  );
+  return [...new Set(txns.map(t => t.merchant_normalized).filter(Boolean))];
+}
+
+// Pull transactions for a merchant within rolling window
+function getMerchantTransactions(userId: string, merchant: string, options: { months: number }): Transaction[] {
+  const cutoff = subMonths(now(), options.months);
+  return store.transactions.filter(t =>
+    t.user_id === userId &&
+    !t.deleted_at &&
+    t.merchant_normalized === merchant &&
+    t.transaction_date >= cutoff
+  );
+}
+
+// Check if existing rule matches merchant + amount (within 5%)
+function existingRuleMatches(userId: string, merchant: string, amount: number): boolean {
+  const rules = store.recurringRules.filter(r => r.user_id === userId);
+  const dismissed = store.dismissedRecurringSuggestions.filter(d => d.user_id === userId);
+
+  // Check for existing rule
+  const hasRule = rules.some(r =>
+    normalizeText(r.merchant_pattern) === normalizeText(merchant) &&
+    amountMatches(amount, r.amount)
+  );
+  if (hasRule) return true;
+
+  // Check for permanent dismissal
+  const permanentlyDismissed = dismissed.some(d =>
+    normalizeText(d.merchant_pattern) === normalizeText(merchant) &&
+    amountMatches(amount, d.amount) &&
+    d.dismissed_reason === DISMISSAL_REASON.USER_DISMISSED
+  );
+  if (permanentlyDismissed) return true;
+
+  // Check for cooldown dismissal
+  const cooldownDismissed = dismissed.some(d =>
+    normalizeText(d.merchant_pattern) === normalizeText(merchant) &&
+    amountMatches(amount, d.amount) &&
+    d.dismissed_reason === DISMISSAL_REASON.RULE_DELETED &&
+    !isCooldownExpired(d.dismissed_at)
+  );
+  if (cooldownDismissed) return true;
+
+  return false;
+}
+
+// Create a suggestion from detected pattern
+function createSuggestion(userId: string, merchant: string, amount: number, cadence: string): RecurringSuggestion {
+  const suggestion = {
+    id: createId("rsug"),
+    user_id: userId,
+    merchant_pattern: merchant,
+    amount,
+    detected_at: nowIso(),
+    occurrence_count: countOccurrences(userId, merchant, amount),
+    transaction_ids: getMatchingTransactionIds(userId, merchant, amount).slice(0, 10)
+  };
+  store.recurringSuggestions.push(suggestion);
+  saveStore(store);
+  return suggestion;
+}
+
+// Update user's scan state after processing
+function updateUserScanState(userId: string, updates: Partial<UserRecurringScanState>): void {
+  let state = store.userRecurringScanState.find(s => s.user_id === userId);
+  if (!state) {
+    state = { user_id: userId, last_recurring_scan_at: null, transactions_since_scan: 0, updated_at: nowIso() };
+    store.userRecurringScanState.push(state);
+  }
+  Object.assign(state, updates, { updated_at: nowIso() });
+  saveStore(store);
+}
+```
 
 ## LLM Integration
 
 ### New File: `services/api/src/llm/recurring-detection.ts`
 
 ```typescript
+import { runStructuredLlm } from "./client.ts";
+import { requireAiFeature } from "../ai.ts";
+
+interface RecurringPattern {
+  is_recurring: boolean;
+  amount: number;
+  cadence: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
+}
+
 export async function detectRecurringPatternsWithLlm({
+  userId,
   merchant,
-  transactions,
-  aiContext
-}): Promise<LlmDetectionResult> {
-  // Uses existing runStructuredLlm infrastructure
-  // Returns { patterns: [...] }
+  transactions
+}): Promise<{ ok: boolean; patterns: RecurringPattern[]; error?: string }> {
+  try {
+    const aiContext = requireAiFeature(userId, "recurring_detection");
+
+    const systemPrompt = `...`; // See System Prompt section
+    const userPrompt = formatUserPrompt(merchant, transactions);
+
+    const result = await runStructuredLlm({
+      provider: aiContext.provider,
+      apiKey: aiContext.apiKey,
+      model: aiContext.model,
+      systemPrompt,
+      userPrompt,
+      maxTokens: 500,
+      temperature: 0
+    });
+
+    if (!result.ok) {
+      return { ok: false, patterns: [], error: result.error };
+    }
+
+    return { ok: true, patterns: result.data.patterns || [] };
+  } catch (error) {
+    return { ok: false, patterns: [], error: error.message };
+  }
 }
 ```
+
+### Transaction History Format for LLM
+
+Transactions are formatted as a simple list for the LLM:
+
+```typescript
+function formatTransactionsForLlm(transactions: Transaction[]): string {
+  return transactions
+    .sort((a, b) => b.transaction_date.localeCompare(a.transaction_date))
+    .slice(0, 50) // Maximum 50 transactions per merchant
+    .map(t => `- ${t.transaction_date}: $${Math.abs(t.amount).toFixed(2)}`)
+    .join("\n");
+}
+```
+
+Example output:
+```
+- 2026-03-15: $15.99
+- 2026-02-15: $15.99
+- 2026-01-15: $15.99
+- 2025-12-15: $15.99
+```
+
+### LLM Call Orchestration
+
+- Process merchants sequentially within a user scan (avoid rate limiting)
+- Log each merchant's result for debugging
+- If LLM fails for one merchant, continue with remaining merchants
+- Total timeout per user: 5 minutes (configurable)
 
 ### System Prompt
 
@@ -166,7 +403,7 @@ Output schema:
 }
 
 Rules:
-- A pattern is recurring if transactions appear consistently at regular intervals (at least 2 occurrences).
+- A pattern is recurring if transactions appear consistently at regular intervals across at least 2 distinct months.
 - Multiple patterns can exist for the same merchant (e.g., phone bill at $80/mo, internet at $60/mo).
 - Group transactions by similar amounts (within ~5%) when detecting patterns.
 - If no recurring pattern exists, return empty patterns array.
@@ -202,11 +439,11 @@ Update `transactionMatchesRule()` in `recurrings.ts`:
 
 ## Conflict Resolution
 
-| Scenario                           | Action                                    |
-|------------------------------------|-------------------------------------------|
-| Rule exists for merchant + amount  | Skip suggestion (within 5% tolerance)     |
-| Rule deleted within 30 days        | Skip (cooldown from dismissed registry)   |
-| User dismissed suggestion          | Skip permanently                          |
+| Scenario                                  | Action                                    |
+|-------------------------------------------|-------------------------------------------|
+| Rule exists for merchant + amount         | Skip suggestion (within 5% tolerance)     |
+| Rule deleted within 30 days (RULE_DELETED)| Skip during cooldown period                |
+| User dismissed suggestion (USER_DISMISSED)| Skip permanently                          |
 
 ## Error Handling
 
@@ -221,8 +458,10 @@ Update `transactionMatchesRule()` in `recurrings.ts`:
 ### Pre-LLM Checks
 
 - Skip merchant if `< 2 transactions` in 6-month window
+- Skip merchant if transactions are all in same month (need 2+ distinct months)
 - Skip user if no AI credentials configured
 - Exclude soft-deleted transactions (`deleted_at` is set)
+- Maximum 50 transactions per merchant sent to LLM
 
 ## Files to Create/Modify
 
@@ -240,10 +479,32 @@ Update `transactionMatchesRule()` in `recurrings.ts`:
 ## Migration
 
 1. Add `userRecurringScanState` collection to store (empty initially)
-2. For existing users, set `last_recurring_scan_at: null`, `transactions_since_scan: total_txn_count`
-3. Existing `recurringSuggestions` and `recurringRules` remain unchanged
-4. Update `transactionMatchesRule()` with new tolerance logic
+2. Add `scanRunState` singleton to store for overlap protection
+3. For existing users, initialize scan state:
+   - `last_recurring_scan_at: null`
+   - `transactions_since_scan`: count of non-deleted transactions (`deleted_at` is null)
+4. Existing `recurringSuggestions` and `recurringRules` remain unchanged
+5. Update `transactionMatchesRule()` with new tolerance logic (5% with $0.10 floor)
 
-## Open Questions
+## Test Requirements
 
-None - design is complete.
+### `services/api/test/recurring-scan.test.ts`
+
+- Scan state increment/decrement on transaction create
+- Adaptive threshold calculation
+- LLM called only when threshold met
+- Suggestions created for detected patterns
+- Existing rules skipped (no duplicate suggestions)
+- Cooldown respected (RULE_DELETED within 30 days)
+- Permanent dismissal respected (USER_DISMISSED)
+- Merchant with < 2 transactions skipped
+- User without AI setup skipped
+- Amount tolerance (5% with floor) works correctly
+
+### `services/api/test/llm/recurring-detection.test.ts`
+
+- LLM returns valid patterns
+- LLM returns empty patterns for non-recurring
+- LLM returns multiple patterns for same merchant
+- Invalid JSON handled gracefully
+- Timeout handled gracefully
