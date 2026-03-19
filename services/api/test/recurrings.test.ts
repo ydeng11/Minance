@@ -8,7 +8,8 @@ import {
   evaluateRecurringRule,
   getRecurringRule,
   listRecurringRules,
-  updateRecurringRule
+  updateRecurringRule,
+  transactionMatchesRule
 } from "../src/recurrings.ts";
 
 const USER_ID = "user_recurrings_1";
@@ -161,4 +162,93 @@ test("recurring evaluation links matching transactions and detaches stale links"
 
   const deleted = deleteRecurringRule(USER_ID, recurring.id);
   assert.equal(deleted.deleted, true);
+});
+
+test("transactionMatchesRule uses 5% tolerance with $0.10 floor", () => {
+  const baseTransaction = {
+    id: "txn_test",
+    user_id: USER_ID,
+    account_id: ACCOUNT_ID,
+    transaction_date: "2026-01-05",
+    merchant_raw: "test",
+    description: "test transaction",
+    amount: -100,
+    direction: "outflow",
+    category_final: null,
+    recurring_rule_id: null,
+    created_at: "2026-01-05T00:00:00.000Z",
+    updated_at: "2026-01-05T00:00:00.000Z"
+  };
+
+  const rule = {
+    id: "rr1",
+    user_id: USER_ID,
+    name: "Test",
+    cadence: "monthly",
+    amount: 100,
+    merchant_pattern: "test",
+    status: "active"
+  };
+
+  // Within 5% ($5 for $100)
+  assert.ok(
+    transactionMatchesRule(
+      { ...baseTransaction, amount: -95, merchant_raw: "test" },
+      rule
+    ),
+    "Should match within 5%"
+  );
+
+  // Outside 5%
+  assert.ok(
+    !transactionMatchesRule(
+      { ...baseTransaction, amount: -90, merchant_raw: "test" },
+      rule
+    ),
+    "Should not match outside 5%"
+  );
+});
+
+test("transactionMatchesRule uses $0.10 floor for small amounts", () => {
+  const baseTransaction = {
+    id: "txn_test",
+    user_id: USER_ID,
+    account_id: ACCOUNT_ID,
+    transaction_date: "2026-01-05",
+    merchant_raw: "test",
+    description: "test transaction",
+    amount: -1,
+    direction: "outflow",
+    category_final: null,
+    recurring_rule_id: null,
+    created_at: "2026-01-05T00:00:00.000Z",
+    updated_at: "2026-01-05T00:00:00.000Z"
+  };
+
+  const rule = {
+    id: "rr2",
+    user_id: USER_ID,
+    name: "Small",
+    cadence: "monthly",
+    amount: 1,
+    merchant_pattern: "test",
+    status: "active"
+  };
+
+  // Floor of $0.10 applies (5% of $1 is $0.05, but floor is $0.10)
+  assert.ok(
+    transactionMatchesRule(
+      { ...baseTransaction, amount: -1.10, merchant_raw: "test" },
+      rule
+    ),
+    "Should match within $0.10 floor"
+  );
+
+  assert.ok(
+    !transactionMatchesRule(
+      { ...baseTransaction, amount: -1.20, merchant_raw: "test" },
+      rule
+    ),
+    "Should not match outside $0.10 floor"
+  );
 });

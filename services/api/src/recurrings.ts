@@ -7,7 +7,15 @@ const STATUS_VALUES = new Set(["active", "paused", "archived"]);
 const DIRECTION_VALUES = new Set(["outflow", "inflow"]);
 const MAX_NAME_LENGTH = 120;
 const MAX_PATTERN_LENGTH = 160;
-const AMOUNT_TOLERANCE = 0.01;
+const AMOUNT_TOLERANCE_MIN = 0.10;
+const AMOUNT_TOLERANCE_PERCENT = 0.05;
+
+function amountMatchesRule(transactionAmount, ruleAmount) {
+  const tolerance = Math.max(AMOUNT_TOLERANCE_MIN, ruleAmount * AMOUNT_TOLERANCE_PERCENT);
+  // Use a small epsilon to handle floating point precision issues
+  const EPSILON = 0.0001;
+  return Math.abs(transactionAmount - ruleAmount) <= tolerance + EPSILON;
+}
 
 function hasOwnField(payload, key) {
   return Boolean(payload && typeof payload === "object" && Object.hasOwn(payload, key));
@@ -297,7 +305,7 @@ function computeNextRunDate(baseDate, cadence) {
   return addMonths(date, 1);
 }
 
-function transactionMatchesRule(transaction, rule) {
+export function transactionMatchesRule(transaction, rule) {
   if (transaction.deleted_at) {
     return false;
   }
@@ -318,7 +326,7 @@ function transactionMatchesRule(transaction, rule) {
     }
   }
 
-  if (Math.abs(Math.abs(Number(transaction.amount || 0)) - rule.amount) > AMOUNT_TOLERANCE) {
+  if (!amountMatchesRule(Math.abs(Number(transaction.amount || 0)), rule.amount)) {
     return false;
   }
 
