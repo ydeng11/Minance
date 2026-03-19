@@ -355,6 +355,7 @@ async function handleApiRequest(req, res, url) {
     }
 
     if (req.method === "POST" && pathname === "/v1/admin/recurring-scan/run") {
+      requireUser(req);
       const result = await runRecurringDetectionTask();
       sendJson(res, 200, result);
       return;
