@@ -11,7 +11,8 @@ const COOLDOWN_DAYS = 30;
 const USER_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes per user
 
 function amountMatches(a: number, b: number): boolean {
-  const tolerance = Math.max(AMOUNT_TOLERANCE_MIN, b * AMOUNT_TOLERANCE_PERCENT);
+  // Use 'a' as reference amount (consistent with recurring-suggestions.ts)
+  const tolerance = Math.max(AMOUNT_TOLERANCE_MIN, a * AMOUNT_TOLERANCE_PERCENT);
   const EPSILON = 0.0001;
   return Math.abs(a - b) <= tolerance + EPSILON;
 }
@@ -231,6 +232,7 @@ export async function runRecurringDetectionTask(): Promise<{
       const userStartTime = Date.now();
       const daysSinceScan = daysBetween(user.last_recurring_scan_at, nowIso());
       const threshold = getAdaptiveThreshold(daysSinceScan);
+      let userTimedOut = false;
 
       // Skip if not enough new transactions
       if (user.transactions_since_scan < threshold) {
@@ -252,6 +254,7 @@ export async function runRecurringDetectionTask(): Promise<{
         if (Date.now() - userStartTime > USER_TIMEOUT_MS) {
           console.log(`[recurring-scan] User ${user.user_id} timeout, skipping remaining merchants`);
           runStatus = "partial";
+          userTimedOut = true;
           break;
         }
 
@@ -288,10 +291,11 @@ export async function runRecurringDetectionTask(): Promise<{
         }
       }
 
-      // Reset scan state
+      // Reset scan state - only reset counter if user didn't timeout
+      // On timeout, keep the counter so remaining merchants get processed next run
       updateUserScanState(user.user_id, {
         last_recurring_scan_at: nowIso(),
-        transactions_since_scan: 0
+        transactions_since_scan: userTimedOut ? user.transactions_since_scan : 0
       });
     }
 
@@ -299,7 +303,7 @@ export async function runRecurringDetectionTask(): Promise<{
   } catch (error: any) {
     console.log(`[recurring-scan] Scan failed: ${error.message}`);
     runStatus = "failed";
-    return { users_scanned: 0, merchants_analyzed: merchantsAnalyzed, suggestions_created: suggestionsCreated };
+    return { users_scanned: usersScanned, merchants_analyzed: merchantsAnalyzed, suggestions_created: suggestionsCreated };
   } finally {
     const finalStore = loadStore();
     finalStore.scanRunState.is_running = false;
