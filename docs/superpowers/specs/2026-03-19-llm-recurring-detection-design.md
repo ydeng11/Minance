@@ -37,6 +37,19 @@ interface UserRecurringScanState {
 }
 ```
 
+### Singleton: `scanRunState`
+
+Stored in main store as `store.scanRunState` for overlap protection:
+
+```typescript
+interface ScanRunState {
+  is_running: boolean;
+  last_run_at: string | null;
+  last_run_status: "success" | "partial" | "failed" | null;
+  last_run_duration_ms: number | null;
+}
+```
+
 ### Amount Tolerance
 
 Replace `AMOUNT_TOLERANCE = 0.01` with 5% percentage-based tolerance, with a minimum floor:
@@ -202,17 +215,9 @@ The recurring detection task runs daily via the application server:
 - **Trigger:** Scheduled internally via `setInterval` or external cron calling an admin endpoint
 - **Time:** Runs at 3:00 AM server time (configurable)
 - **Timeout:** Maximum 30 minutes per run
-- **Overlap protection:** Track `is_scan_running` flag to prevent concurrent runs
+- **Overlap protection:** `scanRunState.is_running` flag prevents concurrent runs
 - **Failure handling:** Log errors, continue with remaining users, report to audit log
-
-```typescript
-interface ScanRunState {
-  is_running: boolean;
-  last_run_at: string | null;
-  last_run_status: "success" | "partial" | "failed" | null;
-  last_run_duration_ms: number | null;
-}
-```
+- **Per-user timeout:** 5 minutes max; if exceeded, skip remaining merchants for that user and log as "partial"
 
 ### API Endpoint (Admin/Internal)
 
@@ -226,6 +231,26 @@ Returns: `{ users_scanned: number, merchants_analyzed: number, suggestions_creat
 ## Helper Functions
 
 ```typescript
+// Date utilities
+function daysBetween(date1: string | null, date2: string): number {
+  if (!date1) return Infinity; // Never scanned = infinite days ago
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  return Math.floor((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function subMonths(date: string, months: number): string {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() - months);
+  return d.toISOString().slice(0, 10);
+}
+
+// Check if user has AI setup (wraps existing resolveProviderForFeature)
+function hasAiSetup(userId: string): boolean {
+  const result = resolveProviderForFeature(userId, "recurring_detection");
+  return result.ok === true;
+}
+
 // Get users with pending scans (transactions_since_scan > 0)
 function getUsersWithPendingScans(): UserRecurringScanState[] {
   return store.userRecurringScanState.filter(u => u.transactions_since_scan > 0);
@@ -289,18 +314,30 @@ function existingRuleMatches(userId: string, merchant: string, amount: number): 
 
 // Create a suggestion from detected pattern
 function createSuggestion(userId: string, merchant: string, amount: number, cadence: string): RecurringSuggestion {
+  const matchingTxns = getMatchingTransactionIds(userId, merchant, amount);
   const suggestion = {
     id: createId("rsug"),
     user_id: userId,
     merchant_pattern: merchant,
     amount,
     detected_at: nowIso(),
-    occurrence_count: countOccurrences(userId, merchant, amount),
-    transaction_ids: getMatchingTransactionIds(userId, merchant, amount).slice(0, 10)
+    occurrence_count: matchingTxns.length,
+    transaction_ids: matchingTxns.slice(0, 10)
   };
   store.recurringSuggestions.push(suggestion);
   saveStore(store);
   return suggestion;
+}
+
+// Get transaction IDs matching merchant + amount (within 5% tolerance)
+function getMatchingTransactionIds(userId: string, merchant: string, amount: number): string[] {
+  const txns = store.transactions.filter(t =>
+    t.user_id === userId &&
+    !t.deleted_at &&
+    normalizeText(t.merchant_normalized) === normalizeText(merchant) &&
+    amountMatches(Math.abs(t.amount), amount)
+  );
+  return txns.map(t => t.id);
 }
 
 // Update user's scan state after processing
@@ -354,10 +391,30 @@ export async function detectRecurringPatternsWithLlm({
       return { ok: false, patterns: [], error: result.error };
     }
 
-    return { ok: true, patterns: result.data.patterns || [] };
+    // Validate LLM output schema
+    const validated = validatePatterns(result.data.patterns);
+    return { ok: true, patterns: validated };
   } catch (error) {
     return { ok: false, patterns: [], error: error.message };
   }
+}
+
+// Validate LLM output: filter invalid patterns
+function validatePatterns(patterns: unknown): RecurringPattern[] {
+  if (!Array.isArray(patterns)) return [];
+
+  const VALID_CADENCES = ["weekly", "biweekly", "monthly", "quarterly", "yearly"];
+
+  return patterns
+    .filter(p => p && typeof p === "object")
+    .filter(p => typeof p.is_recurring === "boolean")
+    .filter(p => typeof p.amount === "number" && p.amount > 0)
+    .filter(p => VALID_CADENCES.includes(p.cadence))
+    .map(p => ({
+      is_recurring: p.is_recurring,
+      amount: Math.abs(p.amount),
+      cadence: p.cadence
+    }));
 }
 ```
 
@@ -434,7 +491,7 @@ When a rule is created from a suggestion:
 
 Update `transactionMatchesRule()` in `recurrings.ts`:
 - Remove fixed `AMOUNT_TOLERANCE = 0.01`
-- Apply 5% tolerance: `Math.abs(txnAmount - ruleAmount) <= ruleAmount * 0.05`
+- Apply 5% tolerance with $0.10 floor (use `amountMatches()` function defined in Data Model)
 - Merchant matching remains unchanged (substring match on normalized text)
 
 ## Conflict Resolution
@@ -479,12 +536,14 @@ Update `transactionMatchesRule()` in `recurrings.ts`:
 ## Migration
 
 1. Add `userRecurringScanState` collection to store (empty initially)
-2. Add `scanRunState` singleton to store for overlap protection
+2. Add `scanRunState` singleton to store for overlap protection:
+   - `is_running: false`, `last_run_at: null`, `last_run_status: null`
 3. For existing users, initialize scan state:
    - `last_recurring_scan_at: null`
    - `transactions_since_scan`: count of non-deleted transactions (`deleted_at` is null)
-4. Existing `recurringSuggestions` and `recurringRules` remain unchanged
-5. Update `transactionMatchesRule()` with new tolerance logic (5% with $0.10 floor)
+4. **Note:** This triggers immediate scans for all existing users on first daily run (intentional - runs LLM detection for all existing history)
+5. Existing `recurringSuggestions` and `recurringRules` remain unchanged
+6. Update `transactionMatchesRule()` with new tolerance logic (5% with $0.10 floor)
 
 ## Test Requirements
 
@@ -508,3 +567,6 @@ Update `transactionMatchesRule()` in `recurrings.ts`:
 - LLM returns multiple patterns for same merchant
 - Invalid JSON handled gracefully
 - Timeout handled gracefully
+- Invalid cadence filtered out
+- Negative/zero amounts filtered out
+- Missing patterns array returns empty
