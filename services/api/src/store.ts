@@ -30,7 +30,14 @@ const defaultStore = {
   assistantQueries: [],
   savedViews: [],
   migrationRuns: [],
-  auditEvents: []
+  auditEvents: [],
+  userRecurringScanState: [],
+  scanRunState: {
+    is_running: false,
+    last_run_at: null,
+    last_run_status: null,
+    last_run_duration_ms: null
+  }
 };
 
 let cache = null;
@@ -75,6 +82,18 @@ function writeJsonStoreFromCache() {
 function normalizeStore(store) {
   const normalized = structuredClone({ ...defaultStore, ...(store || {}) });
   for (const key of Object.keys(defaultStore)) {
+    if (key === "scanRunState") {
+      // Ensure scanRunState is an object, not an array
+      if (!normalized[key] || typeof normalized[key] !== "object" || Array.isArray(normalized[key])) {
+        normalized[key] = { ...defaultStore.scanRunState };
+      } else {
+        normalized[key] = {
+          ...defaultStore.scanRunState,
+          ...normalized[key]
+        };
+      }
+      continue;
+    }
     if (!Array.isArray(normalized[key])) {
       normalized[key] = [];
     }

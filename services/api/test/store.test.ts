@@ -4,7 +4,7 @@ import fs from "node:fs";
 
 import { SQLITE_FILE, STORE_BACKEND } from "../src/config.ts";
 import { login, signup } from "../src/auth.ts";
-import { refreshStoreCacheIfChanged, resetStoreForTests } from "../src/store.ts";
+import { loadStore, refreshStoreCacheIfChanged, resetStoreForTests } from "../src/store.ts";
 import { readStoreCollectionsFromSqlite } from "../src/sqlite-store-repository.ts";
 
 const EMPTY_STORE = {
@@ -13,6 +13,8 @@ const EMPTY_STORE = {
   accounts: [],
   transactions: [],
   recurringRules: [],
+  recurringSuggestions: [],
+  dismissedRecurringSuggestions: [],
   investmentHoldings: [],
   investmentSnapshots: [],
   categories: [],
@@ -27,8 +29,25 @@ const EMPTY_STORE = {
   assistantQueries: [],
   savedViews: [],
   migrationRuns: [],
-  auditEvents: []
+  auditEvents: [],
+  userRecurringScanState: [],
+  scanRunState: {
+    is_running: false,
+    last_run_at: null,
+    last_run_status: null,
+    last_run_duration_ms: null
+  }
 };
+
+test("store includes userRecurringScanState and scanRunState collections", () => {
+  resetStoreForTests({});
+  const store = loadStore();
+
+  assert.ok(Array.isArray(store.userRecurringScanState), "userRecurringScanState should be an array");
+  assert.ok(store.scanRunState, "scanRunState should exist");
+  assert.equal(store.scanRunState.is_running, false);
+  assert.equal(store.scanRunState.last_run_at, null);
+});
 
 test("test runtime persists auth mutations through isolated sqlite storage", () => {
   resetStoreForTests(structuredClone(EMPTY_STORE));
