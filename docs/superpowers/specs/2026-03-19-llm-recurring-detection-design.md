@@ -90,6 +90,8 @@ interface LlmDetectionResult {
 ### Daily Task Flow
 
 ```typescript
+const USER_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes per user
+
 async function runRecurringDetectionTask() {
   // Check overlap protection
   if (scanRunState.is_running) {
@@ -99,11 +101,13 @@ async function runRecurringDetectionTask() {
 
   scanRunState.is_running = true;
   const startTime = Date.now();
+  let runStatus: "success" | "partial" | "failed" = "success";
 
   try {
     const users = getUsersWithPendingScans();
 
     for (const user of users) {
+      const userStartTime = Date.now();
       const daysSinceScan = daysBetween(user.last_recurring_scan_at, now);
       const threshold = getAdaptiveThreshold(daysSinceScan);
 
@@ -121,6 +125,13 @@ async function runRecurringDetectionTask() {
       const newMerchants = getMerchantsWithNewTransactions(user.user_id);
 
       for (const merchant of newMerchants) {
+        // Check per-user timeout
+        if (Date.now() - userStartTime > USER_TIMEOUT_MS) {
+          log(`User ${user.user_id} timeout, skipping remaining merchants`);
+          runStatus = "partial";
+          break;
+        }
+
         // Pull 6-month history
         const history = getMerchantTransactions(user.user_id, merchant, { months: 6 });
 
@@ -139,6 +150,7 @@ async function runRecurringDetectionTask() {
 
         if (!result.ok) {
           log(`LLM failed for ${merchant}: ${result.error}`);
+          runStatus = "partial";
           continue;
         }
 
@@ -156,9 +168,13 @@ async function runRecurringDetectionTask() {
         transactions_since_scan: 0
       });
     }
+  } catch (error) {
+    log(`Scan failed: ${error.message}`);
+    runStatus = "failed";
   } finally {
     scanRunState.is_running = false;
     scanRunState.last_run_at = now();
+    scanRunState.last_run_status = runStatus;
     scanRunState.last_run_duration_ms = Date.now() - startTime;
     saveStore(store);
   }
@@ -508,9 +524,11 @@ Update `transactionMatchesRule()` in `recurrings.ts`:
 
 | Error Type          | Action                                    |
 |---------------------|-------------------------------------------|
-| Timeout/error       | Log, skip merchant, continue with others  |
-| Invalid JSON        | Retry once, then skip                     |
+| Timeout/error       | Log, mark partial, skip merchant          |
+| Invalid JSON        | `runStructuredLlm` retries internally; skip if both fail |
 | Rate limiting       | Backoff, continue next cycle              |
+
+**Note:** The `runStructuredLlm` function in `client.ts` handles retries internally (tries once with JSON response format, then once without). The daily task skips the merchant and continues with others after logging the failure.
 
 ### Pre-LLM Checks
 
