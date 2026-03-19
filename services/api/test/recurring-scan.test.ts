@@ -305,3 +305,17 @@ test("incrementUserScanCounter works for manual transaction creation", () => {
   const state = getUserScanState(USER_ID);
   assert.equal(state.transactions_since_scan, 2, "Scan counter should be 2 for two manual transactions");
 });
+
+test("runRecurringDetectionTask returns expected result structure", async () => {
+  resetStoreForTests({
+    users: [{ id: USER_ID, email: "test@example.com", passwordHash: "h", salt: "s", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z" }],
+    userRecurringScanState: []
+  });
+
+  const { runRecurringDetectionTask: runTask } = await import("../src/recurring-scan.ts");
+  const result = await runTask();
+
+  assert.ok(typeof result.users_scanned === "number", "users_scanned should be a number");
+  assert.ok(typeof result.merchants_analyzed === "number", "merchants_analyzed should be a number");
+  assert.ok(typeof result.suggestions_created === "number", "suggestions_created should be a number");
+});

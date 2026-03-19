@@ -49,7 +49,7 @@ import {
   dismissRecurringSuggestion,
   createRuleFromSuggestion
 } from "./recurring-suggestions.ts";
-import { incrementUserScanCounter } from "./recurring-scan.ts";
+import { incrementUserScanCounter, runRecurringDetectionTask } from "./recurring-scan.ts";
 import {
   listInvestmentHoldings,
   createManualInvestmentHolding,
@@ -351,6 +351,12 @@ async function handleApiRequest(req, res, url) {
       sendJson(res, 200, {
         metrics: getMetricsSnapshot()
       });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/v1/admin/recurring-scan/run") {
+      const result = await runRecurringDetectionTask();
+      sendJson(res, 200, result);
       return;
     }
 
