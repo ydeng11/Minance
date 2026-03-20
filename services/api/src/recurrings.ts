@@ -1,5 +1,5 @@
 import { loadStore, saveStore, addAuditEvent } from "./store.ts";
-import { createId, nowIso, normalizeText, parseDate, toDecimal } from "./utils.ts";
+import { createId, nowIso, normalizeText, parseDate, toDecimal, inDateRange } from "./utils.ts";
 import { DISMISSAL_REASON } from "./recurring-suggestions.ts";
 
 const CADENCE_VALUES = new Set(["weekly", "biweekly", "monthly", "quarterly", "yearly"]);
@@ -338,20 +338,6 @@ export function transactionMatchesRule(transaction, rule) {
     }
   }
 
-  return true;
-}
-
-function inDateRange(transactionDate, start, end) {
-  const value = parseDate(transactionDate);
-  if (!value) {
-    return false;
-  }
-  if (start && value < start) {
-    return false;
-  }
-  if (end && value > end) {
-    return false;
-  }
   return true;
 }
 

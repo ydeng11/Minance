@@ -1455,9 +1455,9 @@ export async function commitImport(userId, importId) {
   saveStore(store);
   addAuditEvent(userId, "import.committed", { importId, summary });
 
-  // Increment scan counter for each imported transaction
-  for (let i = 0; i < summary.imported; i++) {
-    incrementUserScanCounter(userId);
+  // Increment scan counter for imported transactions (bulk)
+  if (summary.imported > 0) {
+    incrementUserScanCounter(userId, summary.imported);
   }
 
   // Run recurring detection asynchronously (don't block import on failure)

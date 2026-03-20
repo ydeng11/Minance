@@ -30,21 +30,25 @@ export interface UserRecurringScanState {
   updated_at: string;
 }
 
-export function incrementUserScanCounter(userId: string): void {
+function createDefaultScanState(userId: string): UserRecurringScanState {
+  return {
+    user_id: userId,
+    last_recurring_scan_at: null,
+    transactions_since_scan: 0,
+    updated_at: nowIso()
+  };
+}
+
+export function incrementUserScanCounter(userId: string, count: number = 1): void {
   const store = loadStore();
   let state = store.userRecurringScanState.find(s => s.user_id === userId);
 
   if (!state) {
-    state = {
-      user_id: userId,
-      last_recurring_scan_at: null,
-      transactions_since_scan: 0,
-      updated_at: nowIso()
-    };
+    state = createDefaultScanState(userId);
     store.userRecurringScanState.push(state);
   }
 
-  state.transactions_since_scan += 1;
+  state.transactions_since_scan += count;
   state.updated_at = nowIso();
   saveStore(store);
 }
@@ -54,12 +58,7 @@ export function getUserScanState(userId: string): UserRecurringScanState {
   let state = store.userRecurringScanState.find(s => s.user_id === userId);
 
   if (!state) {
-    state = {
-      user_id: userId,
-      last_recurring_scan_at: null,
-      transactions_since_scan: 0,
-      updated_at: nowIso()
-    };
+    state = createDefaultScanState(userId);
     store.userRecurringScanState.push(state);
     saveStore(store);
   }
@@ -72,12 +71,7 @@ export function updateUserScanState(userId: string, updates: Partial<UserRecurri
   let state = store.userRecurringScanState.find(s => s.user_id === userId);
 
   if (!state) {
-    state = {
-      user_id: userId,
-      last_recurring_scan_at: null,
-      transactions_since_scan: 0,
-      updated_at: nowIso()
-    };
+    state = createDefaultScanState(userId);
     store.userRecurringScanState.push(state);
   }
 
