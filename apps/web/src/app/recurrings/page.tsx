@@ -379,7 +379,6 @@ export default function RecurringsPage() {
               className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
               data-testid="recurrings-create-amount"
             />
-            <p className="text-xs text-neutral-500">Matches within ±$0.01</p>
           </div>
           <select
             value={createDraft.direction}
@@ -474,7 +473,6 @@ export default function RecurringsPage() {
                       className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-neutral-200 outline-none transition focus:border-emerald-500"
                       data-testid="recurrings-edit-amount"
                     />
-                    <p className="text-xs text-neutral-500">Matches within ±$0.01</p>
                   </label>
                   <label className="grid gap-1 text-xs uppercase tracking-wide text-neutral-400">
                     Merchant pattern
