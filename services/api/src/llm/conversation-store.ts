@@ -1,6 +1,23 @@
 // services/api/src/llm/conversation-store.ts
 
-import type { ToolCallingMessage } from "./client.ts";
+/**
+ * Represents a message in a tool-calling conversation.
+ * This type supports the OpenAI-style message format with optional tool calls.
+ */
+export interface ToolCallingMessage {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string | null;
+  name?: string;
+  tool_call_id?: string;
+  tool_calls?: Array<{
+    id: string;
+    type: "function";
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }>;
+}
 
 export interface ConversationSession {
   id: string;
@@ -17,26 +34,8 @@ export interface ConversationStore {
   delete(id: string): Promise<void>;
 }
 
-// Cleanup interval for expired sessions (runs every 5 minutes)
-const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
-
 export class InMemoryConversationStore implements ConversationStore {
   private sessions = new Map<string, ConversationSession>();
-  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
-
-  constructor() {
-    // Start periodic cleanup
-    this.cleanupTimer = setInterval(() => this.cleanupExpired(), CLEANUP_INTERVAL_MS);
-  }
-
-  private cleanupExpired(): void {
-    const now = new Date();
-    for (const [id, session] of this.sessions) {
-      if (new Date(session.expiresAt) < now) {
-        this.sessions.delete(id);
-      }
-    }
-  }
 
   async get(id: string): Promise<ConversationSession | null> {
     const session = this.sessions.get(id);
@@ -59,14 +58,6 @@ export class InMemoryConversationStore implements ConversationStore {
 
   async delete(id: string): Promise<void> {
     this.sessions.delete(id);
-  }
-
-  /** Stop the cleanup timer (for testing/shutdown) */
-  stopCleanup(): void {
-    if (this.cleanupTimer) {
-      clearInterval(this.cleanupTimer);
-      this.cleanupTimer = null;
-    }
   }
 }
 
