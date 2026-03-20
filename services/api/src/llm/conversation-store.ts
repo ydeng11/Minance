@@ -1,23 +1,6 @@
 // services/api/src/llm/conversation-store.ts
 
-/**
- * Represents a message in a tool-calling conversation.
- * This type supports the OpenAI-style message format with optional tool calls.
- */
-export interface ToolCallingMessage {
-  role: "system" | "user" | "assistant" | "tool";
-  content: string | null;
-  name?: string;
-  tool_call_id?: string;
-  tool_calls?: Array<{
-    id: string;
-    type: "function";
-    function: {
-      name: string;
-      arguments: string;
-    };
-  }>;
-}
+import type { ToolCallingMessage } from "./client.ts";
 
 export interface ConversationSession {
   id: string;
