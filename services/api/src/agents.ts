@@ -1,3 +1,14 @@
+/**
+ * @deprecated CrewAI integration has been replaced by the tool-calling agent.
+ * This module is no longer used by the assistant and will be removed in a future version.
+ * See: services/api/src/llm/agent.ts for the replacement implementation.
+ *
+ * The tool-calling agent provides equivalent functionality with:
+ * - Direct LLM integration (no Python subprocess)
+ * - Structured tool definitions
+ * - Multi-turn conversation support
+ * - Better observability and error handling
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";

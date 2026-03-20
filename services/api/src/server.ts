@@ -79,7 +79,13 @@ import {
   updateCategory,
   deleteCategory
 } from "./categories.ts";
-import { runAssistantQuery, getAssistantQuery } from "./assistant.ts";
+import {
+  runAssistantQuery,
+  getAssistantQuery,
+  createConversation,
+  getConversation,
+  requireConversationOwnership
+} from "./assistant.ts";
 import { loadStore, saveStore, addAuditEvent, refreshStoreCacheIfChanged } from "./store.ts";
 import { getTrainingStatus } from "./training.ts";
 import {
@@ -1161,6 +1167,39 @@ async function handleApiRequest(req, res, url) {
       const user = requireUser(req);
       const query = getAssistantQuery(user.id, assistantGetParams.id);
       sendJson(res, 200, { query });
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/v1/assistant/conversations") {
+      const user = requireUser(req);
+      const conversationId = await createConversation(user.id);
+      sendJson(res, 201, { conversationId });
+      return;
+    }
+
+    const conversationGetParams = matchPath(pathname, "/v1/assistant/conversations/:id");
+    if (req.method === "GET" && conversationGetParams) {
+      const user = requireUser(req);
+      const conversation = await requireConversationOwnership(conversationGetParams.id, user.id);
+      if (!conversation) {
+        sendError(res, 404, "Conversation not found");
+        return;
+      }
+      sendJson(res, 200, { conversation });
+      return;
+    }
+
+    const conversationQueryParams = matchPath(pathname, "/v1/assistant/conversations/:id/query");
+    if (req.method === "POST" && conversationQueryParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const conversation = await requireConversationOwnership(conversationQueryParams.id, user.id);
+      if (!conversation) {
+        sendError(res, 404, "Conversation not found");
+        return;
+      }
+      const query = await runAssistantQuery(user.id, body.question, conversationQueryParams.id);
+      sendJson(res, 201, { query });
       return;
     }
 

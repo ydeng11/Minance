@@ -12,13 +12,102 @@ import {
   getUsersWithPendingScans,
   getMerchantsWithNewTransactions,
   getMerchantTransactions,
-  existingRuleMatches
+  existingRuleMatches,
+  shouldCheckForRecurring
 } from "../src/recurring-scan.ts";
 import { DISMISSAL_REASON } from "../src/recurring-suggestions.ts";
 import { normalizeText } from "../src/utils.ts";
 
 const USER_ID = "user_scan_1";
 const ACCOUNT_ID = "acct_scan_1";
+
+// Tests for shouldCheckForRecurring pre-filter
+test("shouldCheckForRecurring returns false for negative amounts", () => {
+  assert.equal(shouldCheckForRecurring({ amount: -15.99, merchant: "netflix" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: -100, merchant: "spotify" }), false);
+});
+
+test("shouldCheckForRecurring returns false for zero amounts", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 0, merchant: "netflix" }), false);
+});
+
+test("shouldCheckForRecurring returns true for positive amounts with subscription merchants", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 15.99, merchant: "netflix" }), true);
+  assert.equal(shouldCheckForRecurring({ amount: 9.99, merchant: "spotify" }), true);
+  assert.equal(shouldCheckForRecurring({ amount: 12.99, merchant: "adobe creative cloud" }), true);
+});
+
+test("shouldCheckForRecurring returns false for gas stations", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 45.00, merchant: "shell" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 50.00, merchant: "chevron" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 40.00, merchant: "exxon" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 35.00, merchant: "bp gas station" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 42.00, merchant: "mobil" }), false);
+});
+
+test("shouldCheckForRecurring returns false for restaurants", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 25.00, merchant: "mcdonalds" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 30.00, merchant: "burger king" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 15.00, merchant: "wendys" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 20.00, merchant: "taco bell" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 45.00, merchant: "restaurant" }), false);
+});
+
+test("shouldCheckForRecurring returns false for coffee shops", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 5.00, merchant: "starbucks" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 4.50, merchant: "dunkin donuts" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 3.00, merchant: "coffee bean" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 4.00, merchant: "tim hortons" }), false);
+});
+
+test("shouldCheckForRecurring returns false for ride sharing", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 15.00, merchant: "uber" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 12.00, merchant: "lyft" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 20.00, merchant: "taxi" }), false);
+});
+
+test("shouldCheckForRecurring returns false for grocery stores", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 100.00, merchant: "walmart" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 75.00, merchant: "target" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 150.00, merchant: "costco" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 80.00, merchant: "kroger" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 90.00, merchant: "safeway grocery" }), false);
+});
+
+test("shouldCheckForRecurring returns false for online retailers", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 50.00, merchant: "amazon" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 25.00, merchant: "etsy" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 30.00, merchant: "ebay" }), false);
+});
+
+test("shouldCheckForRecurring returns false for food delivery", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 25.00, merchant: "uber eats" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 30.00, merchant: "doordash" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 28.00, merchant: "grubhub" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 22.00, merchant: "postmates" }), false);
+});
+
+test("shouldCheckForRecurring returns false for convenience stores", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 10.00, merchant: "7-eleven" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 8.00, merchant: "7eleven" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 12.00, merchant: "circle k" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 15.00, merchant: "speedway" }), false);
+});
+
+test("shouldCheckForRecurring returns true for utilities and subscriptions", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 120.00, merchant: "electric company" }), true);
+  assert.equal(shouldCheckForRecurring({ amount: 50.00, merchant: "internet provider" }), true);
+  assert.equal(shouldCheckForRecurring({ amount: 15.00, merchant: "hulu" }), true);
+  assert.equal(shouldCheckForRecurring({ amount: 10.00, merchant: "disney plus" }), true);
+  assert.equal(shouldCheckForRecurring({ amount: 100.00, merchant: "gym membership" }), true);
+});
+
+test("shouldCheckForRecurring is case insensitive", () => {
+  assert.equal(shouldCheckForRecurring({ amount: 45.00, merchant: "SHELL" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 5.00, merchant: "STARBUCKS" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 50.00, merchant: "AMAZON" }), false);
+  assert.equal(shouldCheckForRecurring({ amount: 15.99, merchant: "NETFLIX" }), true);
+});
 
 test("incrementUserScanCounter creates state if not exists", () => {
   resetStoreForTests({});

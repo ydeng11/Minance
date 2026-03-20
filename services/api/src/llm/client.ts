@@ -154,6 +154,152 @@ async function callChatCompletion({
   }
 }
 
+export interface ToolDefinition {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+export interface ToolCall {
+  id: string;
+  function: {
+    name: string;
+    arguments: string;
+  };
+}
+
+export interface ToolCallingMessage {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string;
+  toolCalls?: ToolCall[];
+  toolCallId?: string;
+}
+
+export interface ToolCallingResult {
+  ok: boolean;
+  content?: string;
+  toolCalls?: ToolCall[];
+  error?: string;
+  latencyMs: number;
+}
+
+export async function runToolCallingLlm({
+  provider,
+  apiKey,
+  model,
+  messages,
+  tools,
+  maxTokens = 800,
+  temperature = 0.1
+}: {
+  provider: string;
+  apiKey: string;
+  model: string;
+  messages: ToolCallingMessage[];
+  tools: ToolDefinition[];
+  maxTokens?: number;
+  temperature?: number;
+}): Promise<ToolCallingResult> {
+  const startedAt = Date.now();
+  const endpoint = endpointForProvider(provider);
+
+  if (!endpoint) {
+    return {
+      ok: false,
+      error: `Unsupported provider: ${provider}`,
+      latencyMs: Date.now() - startedAt
+    };
+  }
+
+  const controller = new AbortController();
+  const timeoutMs = Number(process.env.AI_LLM_TIMEOUT_MS || 20000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  const body: Record<string, unknown> = {
+    model,
+    temperature,
+    max_tokens: maxTokens,
+    messages: messages.map(m => {
+      if (m.role === "tool") {
+        return {
+          role: "tool",
+          tool_call_id: m.toolCallId,
+          content: m.content
+        };
+      }
+      if (m.role === "assistant" && m.toolCalls) {
+        return {
+          role: "assistant",
+          content: m.content || null,
+          tool_calls: m.toolCalls.map(tc => ({
+            id: tc.id,
+            type: "function",
+            function: {
+              name: tc.function.name,
+              arguments: tc.function.arguments
+            }
+          }))
+        };
+      }
+      return { role: m.role, content: m.content };
+    }),
+    tools: tools.map(t => ({
+      type: "function",
+      function: t.function
+    }))
+  };
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: headersForProvider(provider, apiKey),
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+
+    const rawText = await response.text();
+    const payload = rawText ? JSON.parse(rawText) : null;
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: payload?.error?.message || `Request failed (${response.status})`,
+        latencyMs: Date.now() - startedAt
+      };
+    }
+
+    const message = payload?.choices?.[0]?.message;
+    const content = message?.content || "";
+    const rawToolCalls = message?.tool_calls || [];
+
+    const toolCalls: ToolCall[] = rawToolCalls.map((tc: { id: string; function: { name: string; arguments: string } }) => ({
+      id: tc.id,
+      function: {
+        name: tc.function.name,
+        arguments: tc.function.arguments
+      }
+    }));
+
+    return {
+      ok: true,
+      content,
+      toolCalls,
+      latencyMs: Date.now() - startedAt
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error?.name === "AbortError" ? "Request timed out" : String(error?.message || error),
+      latencyMs: Date.now() - startedAt
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function runStructuredLlm({
   provider,
   apiKey,

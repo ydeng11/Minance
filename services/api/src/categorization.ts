@@ -1,6 +1,23 @@
 import { CATEGORY_KEYWORDS } from "../../../packages/domain/src/constants.ts";
 import { normalizeText, clamp } from "./utils.ts";
 import { resolveTrainingCategory } from "./training.ts";
+import { runToolCallingAgent, type AgentResult } from "./llm/agent.ts";
+import { AI_TOOL_CALLING_AGENT_ENABLED } from "./flags.ts";
+
+/** Categorization strategy identifiers */
+export const CATEGORIZATION_STRATEGY = {
+  RULE_EXACT: "rule_exact",
+  RULE_CONTAINS: "rule_contains",
+  RULE_REGEX: "rule_regex",
+  MERCHANT_MEMORY: "merchant_memory",
+  TRAINING_DATA: "training_data",
+  KEYWORD_MODEL: "keyword_model",
+  HEURISTIC_FALLBACK: "heuristic_fallback",
+  AGENT_HISTORY: "agent_history",
+  AGENT_INFERRED: "agent_inferred"
+} as const;
+
+export type CategorizationStrategy = typeof CATEGORIZATION_STRATEGY[keyof typeof CATEGORIZATION_STRATEGY];
 
 const AUTO_HINT_PATTERN = /\b(jeep|honda|honda finance|honda financial|american honda)\b/i;
 
@@ -55,16 +72,16 @@ function applyRule(userRules, transaction) {
     }
 
     if (rule.type === "exact" && text === pattern) {
-      return { category: rule.category, confidence: 0.98, strategy: "rule_exact" };
+      return { category: rule.category, confidence: 0.98, strategy: CATEGORIZATION_STRATEGY.RULE_EXACT };
     }
     if (rule.type === "contains" && text.includes(pattern)) {
-      return { category: rule.category, confidence: 0.92, strategy: "rule_contains" };
+      return { category: rule.category, confidence: 0.92, strategy: CATEGORIZATION_STRATEGY.RULE_CONTAINS };
     }
     if (rule.type === "regex") {
       try {
         const regex = new RegExp(rule.pattern, "i");
         if (regex.test(text)) {
-          return { category: rule.category, confidence: 0.9, strategy: "rule_regex" };
+          return { category: rule.category, confidence: 0.9, strategy: CATEGORIZATION_STRATEGY.RULE_REGEX };
         }
       } catch {
         continue;
@@ -84,7 +101,7 @@ function applyMerchantMemory(memory, transaction) {
   return {
     category: memory[key],
     confidence: 0.87,
-    strategy: "merchant_memory"
+    strategy: CATEGORIZATION_STRATEGY.MERCHANT_MEMORY
   };
 }
 
@@ -96,7 +113,7 @@ function applyKeywordModel(transaction) {
   let best = {
     category: transaction.direction === "inflow" ? "Income" : "Uncategorized",
     confidence: transaction.direction === "inflow" ? 0.8 : 0.45,
-    strategy: "heuristic_fallback"
+    strategy: CATEGORIZATION_STRATEGY.HEURISTIC_FALLBACK
   };
 
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
@@ -110,7 +127,7 @@ function applyKeywordModel(transaction) {
       best = {
         category,
         confidence: score,
-        strategy: "keyword_model"
+        strategy: CATEGORIZATION_STRATEGY.KEYWORD_MODEL
       };
     }
   }
@@ -169,4 +186,119 @@ export function buildMerchantMemory(transactions) {
   }
 
   return memory;
+}
+
+export interface CategorizationResult {
+  category: string;
+  confidence: number;
+  strategy: string;
+}
+
+export interface CategorizeWithAgentInput {
+  transaction: {
+    merchant_normalized: string;
+    description?: string;
+    memo?: string;
+    direction?: string;
+    category_raw?: string;
+    amount?: number;
+  };
+  userRules: Array<{
+    type: string;
+    pattern?: string;
+    category: string;
+    priority?: number;
+  }>;
+  merchantMemory: Record<string, string>;
+  userId: string;
+  /** Optional injected agent function for testing */
+  _testAgentFn?: () => Promise<{ ok: boolean; category?: string; confidence?: number; source?: string }>;
+  /** Optional override for agent enabled flag (testing only) */
+  _testAgentEnabled?: boolean;
+}
+
+/**
+ * Categorizes a transaction with AI agent integration.
+ * Priority: rules > merchant memory > training data > agent > keyword model
+ */
+export async function categorizeTransactionWithAgent(
+  input: CategorizeWithAgentInput
+): Promise<CategorizationResult> {
+  const { transaction, userRules, merchantMemory, userId, _testAgentFn, _testAgentEnabled } = input;
+
+  // 1. Rules-first priority
+  const byRule = applyRule(userRules, transaction);
+  if (byRule) {
+    return applyAutoCanonicalization(byRule, transaction);
+  }
+
+  // 2. Merchant memory
+  const byMemory = applyMerchantMemory(merchantMemory, transaction);
+  if (byMemory) {
+    return applyAutoCanonicalization(byMemory, transaction);
+  }
+
+  // 3. Training data
+  const byTraining = resolveTrainingCategory({
+    categoryRaw: transaction.category_raw,
+    merchantNormalized: transaction.merchant_normalized,
+    description: transaction.description,
+    memo: transaction.memo
+  });
+  if (byTraining) {
+    return applyAutoCanonicalization(byTraining, transaction);
+  }
+
+  // 4. Agent (if enabled)
+  const agentEnabled = _testAgentEnabled !== undefined ? _testAgentEnabled : AI_TOOL_CALLING_AGENT_ENABLED;
+  if (agentEnabled) {
+    const agentResult = await callAgentForCategorization(userId, transaction, _testAgentFn);
+    if (agentResult) {
+      return applyAutoCanonicalization(
+        {
+          category: agentResult.category,
+          confidence: agentResult.confidence,
+          strategy: agentResult.source === "history"
+            ? CATEGORIZATION_STRATEGY.AGENT_HISTORY
+            : CATEGORIZATION_STRATEGY.AGENT_INFERRED
+        },
+        transaction
+      );
+    }
+  }
+
+  // 5. Keyword model fallback
+  return applyAutoCanonicalization(applyKeywordModel(transaction), transaction);
+}
+
+async function callAgentForCategorization(
+  userId: string,
+  transaction: CategorizeWithAgentInput["transaction"],
+  testAgentFn?: CategorizeWithAgentInput["_testAgentFn"]
+): Promise<{ category: string; confidence: number; source: string } | null> {
+  try {
+    const result = testAgentFn
+      ? await testAgentFn()
+      : await runToolCallingAgent({
+          mode: "categorization",
+          userId,
+          transaction: {
+            merchant: transaction.merchant_normalized,
+            amount: transaction.amount ?? 0,
+            description: transaction.description
+          }
+        });
+
+    if (result.ok && result.category) {
+      return {
+        category: result.category,
+        confidence: result.confidence ?? 0.5,
+        source: result.source ?? "inferred"
+      };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
 }

@@ -4,6 +4,8 @@ import { nowIso, normalizeText, createId } from "./utils.ts";
 import { DISMISSAL_REASON } from "./recurring-suggestions.ts";
 import { resolveProviderForFeature } from "./ai.ts";
 import { detectRecurringPatternsWithLlm } from "./llm/recurring-detection.ts";
+import { runToolCallingAgent } from "./llm/agent.ts";
+import { AI_TOOL_CALLING_AGENT_ENABLED } from "./flags.ts";
 
 const AMOUNT_TOLERANCE_MIN = 0.10;
 const AMOUNT_TOLERANCE_PERCENT = 0.05;
@@ -21,6 +23,36 @@ function isCooldownExpired(dismissedAt: string): boolean {
   const dismissedDate = new Date(dismissedAt);
   const expiresAt = new Date(dismissedDate.getTime() + COOLDOWN_DAYS * 24 * 60 * 60 * 1000);
   return new Date() >= expiresAt;
+}
+
+// Patterns for merchants that are typically one-time purchases
+const ONE_TIME_MERCHANT_PATTERNS = [
+  /gas station/i, /shell/i, /chevron/i, /exxon/i, /bp/i, /mobil/i,
+  /restaurant/i, /mcdonald/i, /burger king/i, /wendy/i, /taco bell/i,
+  /starbucks/i, /coffee/i, /dunkin/i, /tim hortons/i,
+  /uber/i, /lyft/i, /taxi/i,
+  /grocery/i, /walmart/i, /target/i, /costco/i, /kroger/i, /safeway/i,
+  /amazon/i, /etsy/i, /ebay/i,
+  /uber eats/i, /doordash/i, /grubhub/i, /postmates/i,
+  /7-?eleven/i, /circle k/i, /speedway/i
+];
+
+/**
+ * Pre-filter to skip transactions that are unlikely to be recurring.
+ * Returns false for:
+ * - Negative or zero amounts (credits, refunds)
+ * - Known one-time merchants (gas stations, restaurants, coffee shops, etc.)
+ */
+export function shouldCheckForRecurring(transaction: { amount: number; merchant: string }): boolean {
+  // Skip negative or zero amounts (credits, refunds)
+  if (transaction.amount <= 0) return false;
+
+  // Skip known one-time merchants
+  for (const pattern of ONE_TIME_MERCHANT_PATTERNS) {
+    if (pattern.test(transaction.merchant)) return false;
+  }
+
+  return true;
 }
 
 export interface UserRecurringScanState {
@@ -261,17 +293,59 @@ export async function runRecurringDetectionTask(): Promise<{
           continue;
         }
 
+        // Apply pre-filter: check if any transaction should be checked for recurring
+        // Use the most recent transaction as reference for filtering
+        const sortedHistory = [...history].sort((a, b) =>
+          b.transaction_date.localeCompare(a.transaction_date)
+        );
+        const mostRecent = sortedHistory[0];
+        if (!shouldCheckForRecurring({
+          amount: Math.abs(mostRecent.amount),
+          merchant: merchant
+        })) {
+          continue;
+        }
+
         merchantsAnalyzed++;
 
-        // LLM detection
-        const result = await detectRecurringPatternsWithLlm({
-          userId: user.user_id,
-          merchant,
-          transactions: history
-        });
+        // Use tool-calling agent if enabled, otherwise fall back to legacy LLM detection
+        let result: { ok: boolean; patterns: Array<{ is_recurring: boolean; amount: number; cadence?: string }>; error?: string };
+
+        if (AI_TOOL_CALLING_AGENT_ENABLED) {
+          const agentResult = await runToolCallingAgent({
+            mode: "recurring",
+            userId: user.user_id,
+            transaction: {
+              merchant,
+              amount: Math.abs(mostRecent.amount),
+              date: mostRecent.transaction_date
+            }
+          });
+
+          if (agentResult.ok && agentResult.isRecurring && agentResult.suggestedAmount) {
+            result = {
+              ok: true,
+              patterns: [{
+                is_recurring: true,
+                amount: agentResult.suggestedAmount,
+                cadence: agentResult.cadence
+              }]
+            };
+          } else if (agentResult.ok) {
+            result = { ok: true, patterns: [] };
+          } else {
+            result = { ok: false, patterns: [], error: agentResult.error };
+          }
+        } else {
+          result = await detectRecurringPatternsWithLlm({
+            userId: user.user_id,
+            merchant,
+            transactions: history
+          });
+        }
 
         if (!result.ok) {
-          console.log(`[recurring-scan] LLM failed for ${merchant}: ${result.error}`);
+          console.log(`[recurring-scan] Detection failed for ${merchant}: ${result.error}`);
           runStatus = "partial";
           continue;
         }
