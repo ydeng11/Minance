@@ -171,8 +171,19 @@ function executeGetAnomalies(userId: string, args: Record<string, unknown>) {
   return getAnomalies(userId, filters);
 }
 
+function buildAssistantTransactionFilters(
+  args: Record<string, unknown>,
+  overrides: Record<string, unknown> = {}
+) {
+  return {
+    ...buildFiltersFromArgs(args),
+    ...overrides,
+    include_excluded: false
+  };
+}
+
 function executeListTransactions(userId: string, args: Record<string, unknown>) {
-  const filters = buildFiltersFromArgs(args);
+  const filters = buildAssistantTransactionFilters(args);
 
   // Add pagination params
   if (args.limit !== undefined) {
@@ -195,8 +206,7 @@ function executeGetMerchantHistory(userId: string, args: Record<string, unknown>
     throw new Error("merchant parameter is required");
   }
 
-  const filters = buildFiltersFromArgs(args);
-  filters.merchant = merchant;
+  const filters = buildAssistantTransactionFilters(args, { merchant });
 
   // Get monthly breakdown for the merchant
   const transactions = filterUserTransactions(userId, filters);
@@ -236,8 +246,10 @@ function executeGetMerchantTransactions6Months(userId: string, args: Record<stri
   startDate.setMonth(startDate.getMonth() - 6);
   const start = startDate.toISOString().substring(0, 10);
 
-  const filters = buildFiltersFromArgs({ ...args, start, end });
-  filters.merchant = merchant;
+  const filters = buildAssistantTransactionFilters(
+    { ...args, start, end },
+    { merchant }
+  );
 
   const transactions = filterUserTransactions(userId, filters);
 

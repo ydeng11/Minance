@@ -170,6 +170,49 @@ test("get_overview enforces user isolation", async () => {
   assert.equal(result.data?.summary?.totalSpend, 165);
 });
 
+test("assistant analytics tools omit excluded-group transactions by default", async () => {
+  const store = structuredClone(baseStore);
+  store.transactions.push({
+    id: "txn_excluded",
+    user_id: "user_1",
+    transaction_date: "2026-01-18",
+    merchant_normalized: "internal transfer",
+    merchant_raw: "Internal Transfer",
+    description: "Move to savings",
+    amount: 200,
+    direction: "outflow",
+    category_final: "Uncategorized",
+    dedupe_fingerprint: "excluded"
+  });
+
+  resetStoreForTests(store);
+
+  const overview = await executeTool(
+    "get_overview",
+    { start: "2026-01-01", end: "2026-01-31" },
+    { userId: "user_1" }
+  );
+  const categories = await executeTool(
+    "get_category_breakdown",
+    { start: "2026-01-01", end: "2026-01-31" },
+    { userId: "user_1" }
+  );
+  const transactions = await executeTool(
+    "list_transactions",
+    { start: "2026-01-01", end: "2026-01-31" },
+    { userId: "user_1" }
+  );
+
+  assert.equal(overview.success, true);
+  assert.equal(overview.data?.summary?.totalSpend, 165);
+  assert.ok(!overview.data?.topMerchants?.some((entry: { merchant: string }) => entry.merchant === "internal transfer"));
+  assert.equal(categories.success, true);
+  assert.ok(!categories.data?.some((entry: { category: string }) => entry.category === "Other"));
+  assert.equal(transactions.success, true);
+  assert.equal(transactions.data?.total, 3);
+  assert.ok(!transactions.data?.items?.some((entry: { id: string }) => entry.id === "txn_excluded"));
+});
+
 test("get_category_breakdown returns categories with amounts", async () => {
   resetStoreForTests(structuredClone(baseStore));
 

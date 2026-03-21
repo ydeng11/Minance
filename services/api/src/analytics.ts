@@ -61,6 +61,52 @@ function normalizeFilterList(rawValue) {
   return cleaned;
 }
 
+function normalizeIncludeExcluded(rawValue, defaultValue = true) {
+  if (rawValue === undefined || rawValue === null || rawValue === "") {
+    return defaultValue;
+  }
+
+  if (typeof rawValue === "string") {
+    const normalized = rawValue.trim().toLowerCase();
+    if (!normalized) {
+      return defaultValue;
+    }
+    if (["false", "0", "no", "off"].includes(normalized)) {
+      return false;
+    }
+    if (["true", "1", "yes", "on"].includes(normalized)) {
+      return true;
+    }
+  }
+
+  return Boolean(rawValue);
+}
+
+function readIncludeExcludedFilter(filters = {}) {
+  if (Object.hasOwn(filters, "include_excluded")) {
+    return filters.include_excluded;
+  }
+  return filters.includeExcluded;
+}
+
+function withDefaultRollupExclusion(filters = {}) {
+  if (readIncludeExcludedFilter(filters) !== undefined) {
+    return filters;
+  }
+  return {
+    ...filters,
+    include_excluded: false
+  };
+}
+
+function normalizeAnalyticsFilters(filters = {}) {
+  const effectiveFilters = withDefaultRollupExclusion(filters);
+  return {
+    effectiveFilters,
+    categoryView: normalizeCategoryView(effectiveFilters.category_view || effectiveFilters.categoryView)
+  };
+}
+
 export function filterUserTransactions(userId, filters = {}) {
   const store = loadStore();
   const { start, end } = computeDateRange(filters.range, filters.start, filters.end);
@@ -68,6 +114,7 @@ export function filterUserTransactions(userId, filters = {}) {
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
   const categoryFilters = normalizeFilterList(filters.category);
+  const includeExcluded = normalizeIncludeExcluded(readIncludeExcludedFilter(filters), true);
 
   const filtered = [];
   for (const txn of store.transactions) {
@@ -82,11 +129,18 @@ export function filterUserTransactions(userId, filters = {}) {
     }
 
     const normalizedTxn = normalizeTransactionForAnalytics(txn);
+    let resolvedCategory = null;
+    if (!includeExcluded || categoryFilters.length) {
+      resolvedCategory = resolveTxnCategory(resolveCategory, normalizedTxn);
+      if (!includeExcluded && resolvedCategory.categoryExcluded) {
+        continue;
+      }
+    }
+
     if (categoryFilters.length) {
-      const resolved = resolveTxnCategory(resolveCategory, normalizedTxn);
       const categoryToMatch = categoryView === CATEGORY_VIEW_COARSE
-        ? resolved.categoryCoarse
-        : resolved.categoryGranular;
+        ? resolvedCategory.categoryCoarse
+        : resolvedCategory.categoryGranular;
       if (!categoryFilters.includes(categoryToMatch)) {
         continue;
       }
@@ -487,10 +541,10 @@ function buildExplorerCategoryWeekdayHeatmap(txns, resolveCategory, categoryView
 }
 
 export function getOverview(userId, filters = {}) {
-  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const { effectiveFilters, categoryView } = normalizeAnalyticsFilters(filters);
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
-  const txns = filterUserTransactions(userId, filters);
+  const txns = filterUserTransactions(userId, effectiveFilters);
   const spend = txns.filter((txn) => txn.direction === "outflow").reduce((sum, txn) => sum + toAmount(txn), 0);
   const income = txns.filter((txn) => txn.direction === "inflow").reduce((sum, txn) => sum + toAmount(txn), 0);
 
@@ -532,24 +586,25 @@ export function getOverview(userId, filters = {}) {
       net: round2(entry.net)
     })),
     topCategories: buildCategoryRollupFromTransactions(txns, resolveCategory, categoryView).slice(0, 5),
-    topMerchants: getMerchantRollup(userId, filters).slice(0, 5),
+    topMerchants: getMerchantRollup(userId, effectiveFilters).slice(0, 5),
     meta: buildAnalyticsMeta(userId, {
-      ...filters,
+      ...effectiveFilters,
       category_view: categoryView
     })
   };
 }
 
 export function getCategoryRollup(userId, filters = {}) {
-  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const { effectiveFilters, categoryView } = normalizeAnalyticsFilters(filters);
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
-  const txns = filterUserTransactions(userId, filters);
+  const txns = filterUserTransactions(userId, effectiveFilters);
   return buildCategoryRollupFromTransactions(txns, resolveCategory, categoryView);
 }
 
 export function getMerchantRollup(userId, filters = {}) {
-  const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "outflow");
+  const effectiveFilters = withDefaultRollupExclusion(filters);
+  const txns = filterUserTransactions(userId, effectiveFilters).filter((txn) => txn.direction === "outflow");
   const grouped = {};
   for (const txn of txns) {
     grouped[txn.merchant_normalized] = (grouped[txn.merchant_normalized] || 0) + toAmount(txn);
@@ -572,7 +627,8 @@ export function getMerchantRollup(userId, filters = {}) {
 
 export function getAccountRollup(userId, filters = {}) {
   const store = loadStore();
-  const txns = filterUserTransactions(userId, filters);
+  const effectiveFilters = withDefaultRollupExclusion(filters);
+  const txns = filterUserTransactions(userId, effectiveFilters);
   const accountById = new Map(
     store.accounts
       .filter((entry) => entry.userId === userId)
@@ -660,7 +716,8 @@ export function getAccountRollup(userId, filters = {}) {
 }
 
 export function getHeatmap(userId, filters = {}) {
-  const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "outflow");
+  const effectiveFilters = withDefaultRollupExclusion(filters);
+  const txns = filterUserTransactions(userId, effectiveFilters).filter((txn) => txn.direction === "outflow");
   const buckets = new Map();
 
   for (const txn of txns) {
@@ -693,10 +750,10 @@ export function getHeatmap(userId, filters = {}) {
 }
 
 export function getAnomalies(userId, filters = {}) {
-  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const { effectiveFilters, categoryView } = normalizeAnalyticsFilters(filters);
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
-  const txns = filterUserTransactions(userId, filters).filter((txn) => txn.direction === "outflow");
+  const txns = filterUserTransactions(userId, effectiveFilters).filter((txn) => txn.direction === "outflow");
   if (!txns.length) {
     return [];
   }
@@ -760,17 +817,17 @@ export function getAnomalies(userId, filters = {}) {
 }
 
 export function getExplorerAnalytics(userId, filters = {}) {
-  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const { effectiveFilters, categoryView } = normalizeAnalyticsFilters(filters);
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
-  const currentTransactions = filterUserTransactions(userId, filters);
+  const currentTransactions = filterUserTransactions(userId, effectiveFilters);
   const currentOutflowTransactions = currentTransactions.filter((txn) => txn.direction === "outflow");
   const currentOverview = getOverview(userId, {
-    ...filters,
+    ...effectiveFilters,
     category_view: categoryView
   });
-  const previousFilters = filters.compare === "previous"
-    ? derivePreviousComparisonFilters(filters)
+  const previousFilters = effectiveFilters.compare === "previous"
+    ? derivePreviousComparisonFilters(effectiveFilters)
     : null;
   const previousOverview = previousFilters
     ? getOverview(userId, {
@@ -779,11 +836,11 @@ export function getExplorerAnalytics(userId, filters = {}) {
       })
     : null;
   const categorySelectorFilters = {
-    ...filters,
+    ...effectiveFilters,
     category: null
   };
   const accountSelectorFilters = {
-    ...filters,
+    ...effectiveFilters,
     account: null
   };
 
@@ -815,7 +872,7 @@ export function getExplorerAnalytics(userId, filters = {}) {
     },
     accounts: getAccountRollup(userId, accountSelectorFilters),
     merchants: {
-      items: getMerchantRollup(userId, filters)
+      items: getMerchantRollup(userId, effectiveFilters)
     },
     weekdaySummary: {
       items: buildExplorerWeekdaySummary(currentOutflowTransactions)
@@ -828,12 +885,12 @@ export function getExplorerAnalytics(userId, filters = {}) {
     },
     anomalies: {
       items: getAnomalies(userId, {
-        ...filters,
+        ...effectiveFilters,
         category_view: categoryView
       })
     },
     meta: buildAnalyticsMeta(userId, {
-      ...filters,
+      ...effectiveFilters,
       category_view: categoryView
     }, currentTransactions)
   };

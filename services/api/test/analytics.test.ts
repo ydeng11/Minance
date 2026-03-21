@@ -110,6 +110,44 @@ test("coarse category rollup groups by strategy buckets", () => {
   assert.equal(categories[1].amount, 10);
 });
 
+test("overview and explorer omit excluded-group transactions by default", () => {
+  const store = structuredClone(baseStore);
+  store.transactions.push({
+    id: "txn_excluded",
+    user_id: "user_1",
+    transaction_date: "2026-01-21",
+    merchant_normalized: "internal transfer",
+    merchant_raw: "Internal Transfer",
+    description: "Move to savings",
+    amount: 250,
+    direction: "debit",
+    category_final: "Uncategorized",
+    dedupe_fingerprint: "excluded"
+  });
+
+  resetStoreForTests(store);
+
+  const rawTransactions = filterUserTransactions("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31"
+  });
+  const overview = getOverview("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31"
+  });
+  const explorer = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31"
+  });
+
+  assert.ok(rawTransactions.some((entry) => entry.id === "txn_excluded"));
+  assert.equal(overview.summary.totalSpend, 410);
+  assert.ok(!overview.topCategories.some((entry) => entry.category === "Other"));
+  assert.ok(!overview.topMerchants.some((entry) => entry.merchant === "internal transfer"));
+  assert.equal(explorer.summary.current.totalSpend, 410);
+  assert.ok(!explorer.categories.items.some((entry) => entry.category === "Other"));
+});
+
 test("anomaly detector surfaces high outlier", () => {
   resetStoreForTests(structuredClone(baseStore));
   const anomalies = getAnomalies("user_1", { start: "2025-12-01", end: "2026-01-31" });
