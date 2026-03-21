@@ -4,6 +4,7 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 type StartupMode = "dev" | "start";
+type PortKind = "web" | "api";
 
 interface PortResolutionOptions {
   isPortAvailable?: (port: number) => Promise<boolean>;
@@ -37,6 +38,13 @@ export interface StartupPlan {
   warnings: string[];
 }
 
+interface PortAssignment {
+  kind: PortKind;
+  requestedPort: number;
+  port: number;
+  reassigned: boolean;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const ROOT_DIR = path.resolve(path.dirname(__filename), "..");
 const DEFAULT_WEB_PORT = 3000;
@@ -55,8 +63,89 @@ function parsePortValue(raw: string, flagName: string) {
   return port;
 }
 
-export function createPortWarning(kind: "web" | "api", requestedPort: number, port: number) {
+export function createPortWarning(kind: PortKind, requestedPort: number, port: number) {
   return `Preferred ${kind} port ${requestedPort} is in use; using ${port} instead.`;
+}
+
+function createPortAssignment(kind: PortKind, requestedPort: number, port = requestedPort): PortAssignment {
+  return {
+    kind,
+    requestedPort,
+    port,
+    reassigned: port !== requestedPort
+  };
+}
+
+function reservePort(assignment: PortAssignment, reservedPorts: Set<number>) {
+  reservedPorts.add(assignment.port);
+  return assignment;
+}
+
+function reservePreferredPort(
+  kind: PortKind,
+  requestedPort: number,
+  preferredPortAvailable: boolean,
+  reservedPorts: Set<number>
+) {
+  if (!preferredPortAvailable || reservedPorts.has(requestedPort)) {
+    return null;
+  }
+  return reservePort(createPortAssignment(kind, requestedPort), reservedPorts);
+}
+
+async function assignOpenPort(
+  kind: PortKind,
+  requestedPort: number,
+  options: PortResolutionOptions = {}
+) {
+  return reservePort(
+    await findOpenPort(kind, requestedPort, options),
+    options.reservedPorts ?? new Set<number>()
+  );
+}
+
+async function getPreferredPortAvailability(
+  preferredWebPort: number,
+  preferredApiPort: number,
+  isAvailable: (port: number) => Promise<boolean>
+) {
+  const [web, api] = await Promise.all([
+    isAvailable(preferredWebPort),
+    preferredApiPort === preferredWebPort ? Promise.resolve(false) : isAvailable(preferredApiPort)
+  ]);
+
+  return { web, api };
+}
+
+async function resolveStartupPorts(
+  preferredWebPort: number,
+  preferredApiPort: number,
+  isAvailable: (port: number) => Promise<boolean>,
+  maxAttempts: number
+) {
+  const reservedPorts = new Set<number>();
+  const preferredAvailability = await getPreferredPortAvailability(preferredWebPort, preferredApiPort, isAvailable);
+
+  let webPort = reservePreferredPort("web", preferredWebPort, preferredAvailability.web, reservedPorts);
+  let apiPort = reservePreferredPort("api", preferredApiPort, preferredAvailability.api, reservedPorts);
+
+  if (!webPort) {
+    webPort = await assignOpenPort("web", preferredWebPort, {
+      isPortAvailable: isAvailable,
+      maxAttempts,
+      reservedPorts
+    });
+  }
+
+  if (!apiPort) {
+    apiPort = await assignOpenPort("api", preferredApiPort, {
+      isPortAvailable: isAvailable,
+      maxAttempts,
+      reservedPorts
+    });
+  }
+
+  return { webPort, apiPort };
 }
 
 export async function isPortAvailable(port: number): Promise<boolean> {
@@ -101,7 +190,7 @@ export async function isPortAvailable(port: number): Promise<boolean> {
 }
 
 export async function findOpenPort(
-  kind: "web" | "api",
+  kind: PortKind,
   requestedPort: number,
   options: PortResolutionOptions = {}
 ) {
@@ -117,12 +206,7 @@ export async function findOpenPort(
       continue;
     }
     if (await availabilityCheck(port)) {
-      return {
-        kind,
-        requestedPort,
-        port,
-        reassigned: port !== requestedPort
-      };
+      return createPortAssignment(kind, requestedPort, port);
     }
   }
 
@@ -134,67 +218,12 @@ export async function createStartupPlan(options: StartupPlanOptions): Promise<St
   const preferredApiPort = options.preferredApiPort ?? DEFAULT_API_PORT;
   const isAvailable = options.isPortAvailable ?? isPortAvailable;
   const maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
-  const reservedPorts = new Set<number>();
-
-  const [preferredWebAvailable, preferredApiAvailable] = await Promise.all([
-    isAvailable(preferredWebPort),
-    preferredApiPort === preferredWebPort ? Promise.resolve(false) : isAvailable(preferredApiPort)
-  ]);
-
-  let webPort:
-    | {
-        kind: "web";
-        requestedPort: number;
-        port: number;
-        reassigned: boolean;
-      }
-    | undefined;
-  let apiPort:
-    | {
-        kind: "api";
-        requestedPort: number;
-        port: number;
-        reassigned: boolean;
-      }
-    | undefined;
-
-  if (preferredWebAvailable) {
-    webPort = {
-      kind: "web" as const,
-      requestedPort: preferredWebPort,
-      port: preferredWebPort,
-      reassigned: false
-    };
-    reservedPorts.add(webPort.port);
-  }
-
-  if (preferredApiAvailable && !reservedPorts.has(preferredApiPort)) {
-    apiPort = {
-      kind: "api" as const,
-      requestedPort: preferredApiPort,
-      port: preferredApiPort,
-      reassigned: false
-    };
-    reservedPorts.add(apiPort.port);
-  }
-
-  if (!webPort) {
-    webPort = await findOpenPort("web", preferredWebPort, {
-      isPortAvailable: isAvailable,
-      maxAttempts,
-      reservedPorts
-    });
-    reservedPorts.add(webPort.port);
-  }
-
-  if (!apiPort) {
-    apiPort = await findOpenPort("api", preferredApiPort, {
-      isPortAvailable: isAvailable,
-      maxAttempts,
-      reservedPorts
-    });
-    reservedPorts.add(apiPort.port);
-  }
+  const { webPort, apiPort } = await resolveStartupPorts(
+    preferredWebPort,
+    preferredApiPort,
+    isAvailable,
+    maxAttempts
+  );
 
   const apiEnv: Record<string, string> = {
     PORT: String(apiPort.port)
