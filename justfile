@@ -1,0 +1,76 @@
+# Show available recipes
+default:
+    @just --list
+
+# Install workspace dependencies
+install:
+    pnpm install
+
+# Install dependencies and start both development servers
+dev:
+    pnpm install
+    pnpm dev
+
+# Start the Next.js app in development mode
+dev-web:
+    pnpm dev:web
+
+# Start the API server in development mode
+dev-api:
+    pnpm dev:api
+
+# Build the web app
+build-web:
+    pnpm build:web
+
+# Start both production servers
+start:
+    pnpm start
+
+# Start the Next.js app in production mode
+start-web:
+    pnpm start:web
+
+# Start the API server in production mode
+start-api:
+    pnpm start:api
+
+# Run the project guardrails
+guardrails:
+    pnpm guardrails
+
+# Run the full test suite
+test:
+    pnpm test
+
+# Run guardrails and tests
+check:
+    pnpm check
+
+# Run Playwright end-to-end tests
+e2e:
+    pnpm e2e
+
+# Run headed Playwright tests for local debugging
+e2e-headed:
+    pnpm e2e:headed
+
+# Run accessibility-focused Playwright tests
+e2e-a11y:
+    pnpm e2e:a11y
+
+# Migrate JSON data into SQLite
+migrate-sqlite:
+    pnpm migrate:sqlite
+
+# Validate JSON and SQLite parity
+validate-sqlite:
+    pnpm validate:sqlite
+
+# Seed the deterministic fixture dataset
+seed-fixture:
+    pnpm seed:fixture -- --target services/api/test/fixtures/deterministic-financial-store.json
+
+# Load data from the legacy API into the dev database
+seed-legacy-api:
+    pnpm seed:legacy-api -- --base-url http://10.0.0.20:18080 --start 2024-01-01 --end 2026-12-31
