@@ -5,7 +5,13 @@ import Link from "next/link";
 import { Bot, Loader2, Send, User, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
-import { assistantQueryToMessage, type AssistantMessageCard } from "@/lib/chat/adapter";
+import type { AssistantMessageCard } from "@/lib/chat/adapter";
+import {
+  appendAssistantQuery,
+  clearStoredAssistantConversationId,
+  getStoredAssistantConversationId,
+  submitAssistantQuestion
+} from "@/lib/chat/conversation";
 
 interface AssistantConversationProps {
   mode?: "page" | "panel";
@@ -13,14 +19,25 @@ interface AssistantConversationProps {
   onClose?: () => void;
 }
 
+function getAssistantConversationStorage() {
+  return typeof window === "undefined" ? null : window.localStorage;
+}
+
 export function AssistantConversation({ mode = "page", focusToken = 0, onClose }: AssistantConversationProps) {
   const api = useApi();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const responsesRef = useRef<HTMLDivElement | null>(null);
+  const isPageMode = mode === "page";
 
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AssistantMessageCard[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    setConversationId(getStoredAssistantConversationId(getAssistantConversationStorage()));
+  }, []);
 
   useEffect(() => {
     if (focusToken <= 0) {
@@ -28,6 +45,13 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
     }
     inputRef.current?.focus();
   }, [focusToken]);
+
+  useEffect(() => {
+    if (!responsesRef.current) {
+      return;
+    }
+    responsesRef.current.scrollTop = responsesRef.current.scrollHeight;
+  }, [messages]);
 
   const emptyState = useMemo(
     () => (
@@ -53,8 +77,14 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
     setMessage("");
 
     try {
-      const result = await api.assistant.ask(question);
-      setMessages((prev) => [assistantQueryToMessage(result.query), ...prev].slice(0, 25));
+      const result = await submitAssistantQuestion({
+        question,
+        assistant: api.assistant,
+        storage: getAssistantConversationStorage(),
+        conversationId
+      });
+      setConversationId(result.conversationId);
+      setMessages((prev) => appendAssistantQuery(prev, result.query));
       setInput("");
       setMessage("Assistant response ready.");
     } catch (error) {
@@ -68,12 +98,31 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
     }
   }
 
+  function resetConversation() {
+    clearStoredAssistantConversationId(getAssistantConversationStorage());
+    setConversationId(null);
+    setMessages([]);
+    setMessage("Started a new conversation.");
+    inputRef.current?.focus();
+  }
+
   return (
-    <div className={mode === "page" ? "flex h-[calc(100vh-11rem)] flex-col" : "flex h-full flex-col"} data-testid={mode === "page" ? "chat-page" : "assistant-sidebar-content"}>
-      {mode === "page" ? (
-        <header className="pb-4">
-          <h2 className="text-3xl font-semibold tracking-tight">AI Assistant</h2>
-          <p className="mt-1 text-neutral-400">Ask questions about your spending patterns.</p>
+    <div className={isPageMode ? "flex h-[calc(100vh-11rem)] flex-col" : "flex h-full flex-col"} data-testid={isPageMode ? "chat-page" : "assistant-sidebar-content"}>
+      {isPageMode ? (
+        <header className="flex items-start justify-between gap-4 pb-4">
+          <div>
+            <h2 className="text-3xl font-semibold tracking-tight">AI Assistant</h2>
+            <p className="mt-1 text-neutral-400">Ask questions about your spending patterns.</p>
+          </div>
+          <button
+            type="button"
+            onClick={resetConversation}
+            disabled={isLoading}
+            data-testid="assistant-new-conversation"
+            className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-300 transition hover:bg-neutral-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            New conversation
+          </button>
         </header>
       ) : (
         <header className="flex items-center justify-between border-b border-neutral-900 px-4 py-3">
@@ -81,26 +130,37 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
             <h2 className="text-base font-semibold tracking-tight text-neutral-100">AI Assistant</h2>
             <p className="text-xs text-neutral-400">Ask questions about your spending patterns.</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            data-testid="assistant-close"
-            className="rounded-md border border-neutral-800 bg-neutral-900 px-2 py-2 text-neutral-300 transition hover:bg-neutral-800 hover:text-white"
-            aria-label="Close assistant"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={resetConversation}
+              disabled={isLoading}
+              data-testid="assistant-new-conversation"
+              className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-xs text-neutral-300 transition hover:bg-neutral-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              New conversation
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              data-testid="assistant-close"
+              className="rounded-md border border-neutral-800 bg-neutral-900 px-2 py-2 text-neutral-300 transition hover:bg-neutral-800 hover:text-white"
+              aria-label="Close assistant"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </header>
       )}
 
       {message ? (
-        <p className={mode === "page" ? "mb-3 rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300" : "mx-4 mt-3 rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300"} data-testid="global-message">
+        <p className={isPageMode ? "mb-3 rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300" : "mx-4 mt-3 rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300"} data-testid="global-message">
           {message}
         </p>
       ) : null}
 
-      <section className={mode === "page" ? "flex flex-1 flex-col overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-950/70" : "mx-4 my-3 flex flex-1 flex-col overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-950/70"}>
-        <div className="flex-1 overflow-y-auto p-4" data-testid="assistant-responses">
+      <section className={isPageMode ? "flex flex-1 flex-col overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-950/70" : "mx-4 my-3 flex flex-1 flex-col overflow-hidden rounded-2xl border border-neutral-900 bg-neutral-950/70"}>
+        <div ref={responsesRef} className="flex-1 overflow-y-auto p-4" data-testid="assistant-responses">
           {messages.length === 0 ? (
             emptyState
           ) : (

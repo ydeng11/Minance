@@ -417,6 +417,15 @@ export const assistantApi = {
     request<{ query: AssistantQuery }>("/v1/assistant/query", {
       method: "POST",
       body: { question }
+    }),
+  createConversation: (request: ApiRequest) =>
+    request<{ conversationId: string }>("/v1/assistant/conversations", {
+      method: "POST"
+    }),
+  askInConversation: (request: ApiRequest, conversationId: string, question: string) =>
+    request<{ query: AssistantQuery }>(`/v1/assistant/conversations/${encodeURIComponent(conversationId)}/query`, {
+      method: "POST",
+      body: { question }
     })
 };
 

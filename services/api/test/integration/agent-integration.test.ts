@@ -6,6 +6,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { resetStoreForTests } from "../../src/store.ts";
 import { runToolCallingAgent, createConversationId } from "../../src/llm/agent.ts";
+import { defaultConversationStore } from "../../src/llm/conversation-store.ts";
 
 const TEST_AI_CONTEXT = {
   provider: "openai",
@@ -919,6 +920,11 @@ test("Conversation session: follow-up question with reference_previous", async (
   resetStoreForTests(structuredClone(createBaseStore()));
 
   const conversationId = createConversationId();
+  const responseContent = JSON.stringify({
+    answer: "You spent $500 this month.",
+    highlights: ["Total: $500"],
+    drill_down_filters: {}
+  });
 
   const originalFetch = global.fetch;
   global.fetch = createFetchMock([
@@ -933,11 +939,7 @@ test("Conversation session: follow-up question with reference_previous", async (
     },
     {
       ok: true,
-      content: JSON.stringify({
-        answer: "You spent $500 this month.",
-        highlights: ["Total: $500"],
-        drill_down_filters: {}
-      })
+      content: responseContent
     }
   ]);
 
@@ -952,6 +954,10 @@ test("Conversation session: follow-up question with reference_previous", async (
 
     assert.equal(result.ok, true);
     assert.equal(result.toolCallsMade, 1);
+    const session = await defaultConversationStore.get(conversationId);
+    assert.ok(session, "Conversation session should be stored");
+    assert.equal(session?.messages.at(-1)?.role, "assistant");
+    assert.equal(session?.messages.at(-1)?.content, responseContent);
   } finally {
     global.fetch = originalFetch;
   }

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   accountsApi,
   analyticsApi,
+  assistantApi,
   categoriesApi,
   importsApi,
   investmentsApi,
@@ -236,6 +237,21 @@ test("importsApi exposes reconciliation query and resolution mutation contracts"
   assert.equal(calls[0].path, "/v1/imports/imp_123/reconciliation");
   assert.equal(calls[1].path, "/v1/imports/imp_123/reconciliation/resolve");
   assert.equal(calls[1].options?.method, "POST");
+});
+
+test("assistantApi exposes conversation creation and scoped query contracts", async () => {
+  const { calls, request } = createRecorder();
+
+  await assistantApi.createConversation(request);
+  await assistantApi.askInConversation(request, "conv_123", "Ignore transfer transactions");
+
+  assert.equal(calls[0].path, "/v1/assistant/conversations");
+  assert.equal(calls[0].options?.method, "POST");
+  assert.equal(calls[1].path, "/v1/assistant/conversations/conv_123/query");
+  assert.equal(calls[1].options?.method, "POST");
+  assert.deepEqual(calls[1].options?.body, {
+    question: "Ignore transfer transactions"
+  });
 });
 
 test("recurringsApi routes lifecycle and evaluation contracts", async () => {

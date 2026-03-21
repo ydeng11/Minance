@@ -42,7 +42,9 @@ export function useApi() {
         anomalies: analyticsApi.anomalies.bind(null, request)
       },
       assistant: {
-        ask: assistantApi.ask.bind(null, request)
+        ask: assistantApi.ask.bind(null, request),
+        createConversation: assistantApi.createConversation.bind(null, request),
+        askInConversation: assistantApi.askInConversation.bind(null, request)
       },
       categories: {
         list: () => categoriesApi.list(request),

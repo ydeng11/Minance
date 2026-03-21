@@ -3,6 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { runToolCallingAgent, createConversationId } from "../../src/llm/agent.ts";
+import { defaultConversationStore } from "../../src/llm/conversation-store.ts";
 
 const TEST_AI_CONTEXT = {
   provider: "openai",
@@ -316,13 +317,14 @@ test("createConversationId should generate valid conversation ID", () => {
 
 test("runToolCallingAgent should support conversation session", async () => {
   const originalFetch = global.fetch;
+  const responseContent = JSON.stringify({
+    answer: "In your follow-up question...",
+    highlights: []
+  });
   global.fetch = createFetchMock([
     {
       ok: true,
-      content: JSON.stringify({
-        answer: "In your follow-up question...",
-        highlights: []
-      })
+      content: responseContent
     }
   ]);
 
@@ -339,6 +341,10 @@ test("runToolCallingAgent should support conversation session", async () => {
 
     assert.equal(result.ok, true);
     assert.ok(result.answer);
+    const session = await defaultConversationStore.get(conversationId);
+    assert.ok(session, "Conversation session should be stored");
+    assert.equal(session?.messages.at(-1)?.role, "assistant");
+    assert.equal(session?.messages.at(-1)?.content, responseContent);
   } finally {
     global.fetch = originalFetch;
   }

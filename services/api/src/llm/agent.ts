@@ -2,7 +2,7 @@
 
 import { requireAiFeature } from "../ai.ts";
 import { AI_TOOL_CALLING_AGENT_ENABLED } from "../flags.ts";
-import { runToolCallingLlm, type ToolCall, type ToolCallingMessage } from "./client.ts";
+import { runToolCallingLlm, type ToolCallingMessage } from "./client.ts";
 import { TOOLS_BY_MODE, type AgentMode } from "./tools.ts";
 import { executeTool, type ToolExecutionContext } from "./tool-executor.ts";
 import { defaultConversationStore, type ConversationSession } from "./conversation-store.ts";
@@ -169,7 +169,6 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
   }
 
   let toolCallsMade = 0;
-  let lastResponse;
 
   // Agent loop
   while (toolCallsMade < MAX_TOOL_CALLS) {
@@ -204,9 +203,6 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         latencyMs: Date.now() - startedAt
       };
     }
-
-    lastResponse = response;
-
     // Check if LLM wants to call tools
     if (response.toolCalls && response.toolCalls.length > 0) {
       // Add assistant message with tool calls
@@ -283,6 +279,11 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
 
     // LLM provided a final response
     if (response.content) {
+      messages.push({
+        role: "assistant",
+        content: response.content
+      });
+
       const parsed = parseAgentResponse(response.content, mode);
 
       // Update conversation session
