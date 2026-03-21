@@ -27,6 +27,7 @@ You are an expert engineer for this project.
 - Run `just build-web` before shipping frontend changes.
 - Run `just test` to run the full automated test suite.
 - Run `just check` before handoff when code changes.
+- Run `Code Simplifer` to simplify generated code
 
 ## Standards
 
