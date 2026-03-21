@@ -98,6 +98,7 @@ async function main() {
       2
     )
   );
+  process.exit(0);
 }
 
 main().catch((error) => {
