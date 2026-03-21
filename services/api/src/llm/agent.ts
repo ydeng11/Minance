@@ -40,6 +40,9 @@ export interface AgentInput {
 export interface AgentResult {
   ok: boolean;
   answer?: string;
+  summary?: string;
+  keyPoints?: string[];
+  followUp?: string;
   highlights?: string[];
   drillDownFilters?: Record<string, string>;
   clarification?: {
@@ -325,11 +328,12 @@ You are a personal finance assistant. Use tools to get real data.
 3. If ambiguous, use ask_clarification sparingly
 4. Provide specific numbers in your answer
 5. For follow-ups, use reference_previous to access earlier results
+6. Keep the response compact and easy to scan
 
 You can reference previous results by their ID (e.g., result_1, result_2).
 Use compare_results to compare two result sets.
 
-Output JSON: { "answer": string, "highlights": string[], "drill_down_filters": { "start"?, "end"?, "category"?, "merchant"? } }`,
+Output JSON: { "answer": string, "summary"?: string, "key_points"?: string[], "follow_up"?: string, "highlights": string[], "drill_down_filters": { "start"?, "end"?, "category"?, "merchant"? } }`,
 
     categorization: `You are categorizing a transaction.
 1. Get all available categories with get_categories
@@ -362,14 +366,26 @@ Output JSON: { "results": [{ "transaction_id": string, "category": string, "dire
   return prompts[mode];
 }
 
+function readOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function readStringList(value: unknown, limit = 4): string[] {
+  return Array.isArray(value) ? value.slice(0, limit).map(String) : [];
+}
+
 function parseAgentResponse(content: string, mode: AgentMode): Partial<AgentResult> {
   try {
     const parsed = JSON.parse(content);
 
     if (mode === "qa") {
+      const keyPoints = readStringList(parsed.key_points);
       return {
         answer: String(parsed.answer || content),
-        highlights: Array.isArray(parsed.highlights) ? parsed.highlights.slice(0, 4).map(String) : [],
+        summary: readOptionalString(parsed.summary),
+        keyPoints: keyPoints.length ? keyPoints : readStringList(parsed.keyPoints),
+        followUp: readOptionalString(parsed.follow_up) || readOptionalString(parsed.followUp),
+        highlights: readStringList(parsed.highlights),
         drillDownFilters: sanitizeFilters(parsed.drill_down_filters)
       };
     }
@@ -405,7 +421,7 @@ function parseAgentResponse(content: string, mode: AgentMode): Partial<AgentResu
   } catch {
     // Return as plain text answer for Q&A mode
     if (mode === "qa") {
-      return { answer: content, highlights: [], drillDownFilters: {} };
+      return { answer: content, keyPoints: [], highlights: [], drillDownFilters: {} };
     }
   }
 

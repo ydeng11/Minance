@@ -85,6 +85,9 @@ export async function runAssistantQuery(userId, question, conversationId?: strin
     question,
     result: {
       answer: agentResult.answer || "",
+      summary: agentResult.summary,
+      keyPoints: agentResult.keyPoints || [],
+      followUp: agentResult.followUp,
       highlights: agentResult.highlights || [],
       filters: agentResult.drillDownFilters || {},
       drillDownUrl: buildDrillDownUrl(agentResult.drillDownFilters || {}),

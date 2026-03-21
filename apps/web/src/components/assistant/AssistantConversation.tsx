@@ -7,11 +7,16 @@ import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import type { AssistantMessageCard } from "@/lib/chat/adapter";
 import {
-  appendAssistantQuery,
-  clearStoredAssistantConversationId,
+  clearStoredAssistantConversationState,
+  createPendingAssistantMessage,
+  createAssistantTranscriptExpiry,
+  getStoredAssistantTranscriptSnapshot,
   getStoredAssistantConversationId,
+  persistAssistantTranscriptSnapshot,
+  replaceAssistantMessage,
   submitAssistantQuestion
 } from "@/lib/chat/conversation";
+import { pickAssistantPromptPlaceholder, pickAssistantThinkingEmoji } from "@/lib/chat/display";
 
 interface AssistantConversationProps {
   mode?: "page" | "panel";
@@ -19,8 +24,95 @@ interface AssistantConversationProps {
   onClose?: () => void;
 }
 
+const MESSAGE_LIMIT = 25;
+
 function getAssistantConversationStorage() {
   return typeof window === "undefined" ? null : window.localStorage;
+}
+
+function createPendingMessageId() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto ? `pending_${crypto.randomUUID()}` : `pending_${Date.now()}`;
+}
+
+function getAssistantRequestError(error: unknown) {
+  return error instanceof ApiError ? error.message : "Assistant request failed.";
+}
+
+function renderAssistantBody(entry: AssistantMessageCard) {
+  if (entry.state === "pending") {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-neutral-100">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-neutral-800 text-base animate-bounce">
+            {entry.pendingEmoji || "🧠"}
+          </span>
+          <span className="animate-pulse">Thinking...</span>
+        </div>
+        <div className="space-y-2">
+          <div className="h-2.5 w-5/6 rounded-full bg-neutral-800/90" />
+          <div className="h-2.5 w-2/3 rounded-full bg-neutral-800/70" />
+        </div>
+      </div>
+    );
+  }
+
+  if (entry.state === "error") {
+    return (
+      <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-3 py-3 text-sm text-rose-100">
+        {entry.answer}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm leading-6 text-neutral-100">
+        {entry.summary || entry.answer}
+      </p>
+      {entry.keyPoints.length ? (
+        <ul className="space-y-2 text-sm text-neutral-200">
+          {entry.keyPoints.map((item) => (
+            <li key={item} className="flex gap-2 leading-6">
+              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {entry.followUp ? (
+        <p className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5 px-3 py-2 text-xs leading-5 text-emerald-100">
+          {entry.followUp}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function renderAssistantFooter(entry: AssistantMessageCard) {
+  if (entry.state !== "complete") {
+    return null;
+  }
+
+  return (
+    <>
+      {entry.highlights.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {entry.highlights.map((item) => (
+            <span key={item} className="rounded-full border border-emerald-500/15 bg-emerald-500/10 px-2 py-1 text-[11px] text-emerald-100">
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-neutral-500">
+        <span data-testid="assistant-provider-model">{entry.provider}/{entry.model}</span>
+        <span>·</span>
+        <Link href={entry.drillDownUrl} className="text-emerald-400 hover:text-emerald-300">
+          Drill-down
+        </Link>
+      </div>
+    </>
+  );
 }
 
 export function AssistantConversation({ mode = "page", focusToken = 0, onClose }: AssistantConversationProps) {
@@ -32,19 +124,49 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<AssistantMessageCard[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [transcriptExpiresAt, setTranscriptExpiresAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [placeholder, setPlaceholder] = useState(() => pickAssistantPromptPlaceholder());
 
   useEffect(() => {
-    setConversationId(getStoredAssistantConversationId(getAssistantConversationStorage()));
+    const storage = getAssistantConversationStorage();
+    const snapshot = getStoredAssistantTranscriptSnapshot(storage);
+    setConversationId(snapshot?.conversationId ?? getStoredAssistantConversationId(storage));
+    setMessages(snapshot?.messages ?? []);
+    setTranscriptExpiresAt(snapshot?.expiresAt ?? null);
   }, []);
 
   useEffect(() => {
     if (focusToken <= 0) {
       return;
     }
+
+    if (transcriptExpiresAt && Date.parse(transcriptExpiresAt) <= Date.now()) {
+      clearConversationState();
+    }
     inputRef.current?.focus();
-  }, [focusToken]);
+  }, [focusToken, transcriptExpiresAt]);
+
+  useEffect(() => {
+    if (!transcriptExpiresAt) {
+      return;
+    }
+
+    const timeoutMs = Date.parse(transcriptExpiresAt) - Date.now();
+    if (timeoutMs <= 0) {
+      clearConversationState();
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      clearConversationState();
+    }, timeoutMs);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [transcriptExpiresAt]);
 
   useEffect(() => {
     if (!responsesRef.current) {
@@ -67,14 +189,27 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
 
   async function askAssistant(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isLoading) {
+      return;
+    }
+
     const question = input.trim();
     if (!question) {
       setMessage("Enter a question first.");
       return;
     }
 
+    const pendingId = createPendingMessageId();
+    const pendingMessage = createPendingAssistantMessage(question, {
+      id: pendingId,
+      emoji: pickAssistantThinkingEmoji()
+    });
+
     setIsLoading(true);
     setMessage("");
+    setInput("");
+    setPlaceholder(pickAssistantPromptPlaceholder());
+    setMessages((prev) => [...prev, pendingMessage].slice(-MESSAGE_LIMIT));
 
     try {
       const result = await submitAssistantQuestion({
@@ -83,26 +218,44 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
         storage: getAssistantConversationStorage(),
         conversationId
       });
+      const nextExpiresAt = createAssistantTranscriptExpiry();
       setConversationId(result.conversationId);
-      setMessages((prev) => appendAssistantQuery(prev, result.query));
-      setInput("");
-      setMessage("Assistant response ready.");
+      setTranscriptExpiresAt(nextExpiresAt);
+      setMessages((prev) => {
+        const nextMessages = replaceAssistantMessage(prev, pendingId, result.query);
+        persistAssistantTranscriptSnapshot(getAssistantConversationStorage(), {
+          conversationId: result.conversationId,
+          messages: nextMessages,
+          expiresAt: nextExpiresAt
+        });
+        return nextMessages;
+      });
     } catch (error) {
-      if (error instanceof ApiError) {
-        setMessage(error.message);
-      } else {
-        setMessage("Assistant request failed.");
-      }
+      const errorMessage = getAssistantRequestError(error);
+      setMessages((prev) =>
+        replaceAssistantMessage(prev, pendingId, {
+          ...pendingMessage,
+          state: "error",
+          answer: errorMessage
+        })
+      );
     } finally {
       setIsLoading(false);
     }
   }
 
-  function resetConversation() {
-    clearStoredAssistantConversationId(getAssistantConversationStorage());
+  function clearConversationState(nextMessage = "") {
+    clearStoredAssistantConversationState(getAssistantConversationStorage());
     setConversationId(null);
     setMessages([]);
-    setMessage("Started a new conversation.");
+    setTranscriptExpiresAt(null);
+    setMessage(nextMessage);
+  }
+
+  function resetConversation() {
+    clearConversationState("Started a new conversation.");
+    setInput("");
+    setPlaceholder(pickAssistantPromptPlaceholder());
     inputRef.current?.focus();
   }
 
@@ -181,23 +334,8 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
                       <Bot className="h-4 w-4" />
                     </span>
                     <div className="w-full rounded-2xl border border-neutral-700/50 bg-neutral-900/70 px-4 py-3 text-sm text-neutral-200">
-                      <p>{entry.answer}</p>
-                      {entry.highlights.length ? (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {entry.highlights.map((item) => (
-                            <span key={item} className="rounded-full bg-neutral-800 px-2 py-1 text-[11px] text-neutral-300">
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-neutral-500">
-                        <span data-testid="assistant-provider-model">{entry.provider}/{entry.model}</span>
-                        <span>·</span>
-                        <Link href={entry.drillDownUrl} className="text-emerald-400 hover:text-emerald-300">
-                          Drill-down
-                        </Link>
-                      </div>
+                      {renderAssistantBody(entry)}
+                      {renderAssistantFooter(entry)}
                     </div>
                   </div>
                 </article>
@@ -216,7 +354,8 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
               ref={inputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="How much did I spend on dining last month?"
+              placeholder={placeholder}
+              disabled={isLoading}
               data-testid="assistant-question"
               className="w-full rounded-full border border-neutral-800 bg-neutral-950 py-3 pl-4 pr-12 text-sm text-neutral-100 outline-none transition focus:border-emerald-500"
             />

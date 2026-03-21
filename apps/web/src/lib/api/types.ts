@@ -696,6 +696,9 @@ export interface AssistantQuery {
   };
   result: {
     answer: string;
+    summary?: string;
+    keyPoints?: string[];
+    followUp?: string;
     highlights?: string[];
     confidence: number;
     numbers: Record<string, unknown>;

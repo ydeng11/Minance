@@ -122,6 +122,12 @@ test("runToolCallingAgent should handle Q&A mode final response", async () => {
       ok: true,
       content: JSON.stringify({
         answer: "You spent $1,234.56 last month.",
+        summary: "You spent $1,234.56 last month, led by dining and groceries.",
+        key_points: [
+          "Dining was your largest category at $420.",
+          "Groceries were up 12% from the previous month."
+        ],
+        follow_up: "I can break that down by merchant if you want.",
         highlights: ["Total: $1,234.56"],
         drill_down_filters: { start: "2025-02-01", end: "2025-02-28" }
       })
@@ -138,6 +144,12 @@ test("runToolCallingAgent should handle Q&A mode final response", async () => {
 
     assert.equal(result.ok, true);
     assert.equal(result.answer, "You spent $1,234.56 last month.");
+    assert.equal(result.summary, "You spent $1,234.56 last month, led by dining and groceries.");
+    assert.deepEqual(result.keyPoints, [
+      "Dining was your largest category at $420.",
+      "Groceries were up 12% from the previous month."
+    ]);
+    assert.equal(result.followUp, "I can break that down by merchant if you want.");
     assert.deepEqual(result.highlights, ["Total: $1,234.56"]);
     assert.deepEqual(result.drillDownFilters, { start: "2025-02-01", end: "2025-02-28" });
     assert.ok(result.provider);

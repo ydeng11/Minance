@@ -210,28 +210,28 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <BottomNav />
 
       {assistantOpen ? (
-        <>
-          <button
-            type="button"
-            onClick={closeAssistant}
-            data-testid="assistant-overlay"
-            aria-label="Close assistant"
-            className="fixed inset-0 z-[70] bg-black/45"
-          />
-          <aside
-            id="assistant-sidebar"
-            ref={assistantSidebarRef}
-            data-testid="assistant-sidebar"
-            role="dialog"
-            aria-modal="true"
-            aria-label="AI Assistant"
-            tabIndex={-1}
-            className="fixed inset-y-0 right-0 z-[80] w-full max-w-xl border-l border-neutral-900 bg-neutral-950/95 backdrop-blur-xl"
-          >
-            <AssistantConversation mode="panel" focusToken={assistantFocusToken} onClose={closeAssistant} />
-          </aside>
-        </>
+        <button
+          type="button"
+          onClick={closeAssistant}
+          data-testid="assistant-overlay"
+          aria-label="Close assistant"
+          className="fixed inset-0 z-[70] bg-black/45"
+        />
       ) : null}
+      <aside
+        id="assistant-sidebar"
+        ref={assistantSidebarRef}
+        data-testid="assistant-sidebar"
+        role="dialog"
+        aria-modal={assistantOpen ? "true" : undefined}
+        aria-hidden={assistantOpen ? undefined : true}
+        aria-label="AI Assistant"
+        tabIndex={-1}
+        hidden={!assistantOpen}
+        className="fixed inset-y-0 right-0 z-[80] w-full max-w-xl border-l border-neutral-900 bg-neutral-950/95 backdrop-blur-xl"
+      >
+        <AssistantConversation mode="panel" focusToken={assistantFocusToken} onClose={closeAssistant} />
+      </aside>
     </div>
   );
 }
