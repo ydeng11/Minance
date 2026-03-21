@@ -9,7 +9,7 @@ install:
 # Install dependencies and start both development servers
 dev:
     pnpm install
-    pnpm dev
+    pnpm exec tsx scripts/run-with-open-ports.ts dev
 
 # Start the Next.js app in development mode
 dev-web:
@@ -25,7 +25,7 @@ build-web:
 
 # Start both production servers
 start:
-    pnpm start
+    pnpm exec tsx scripts/run-with-open-ports.ts start
 
 # Start the Next.js app in production mode
 start-web:

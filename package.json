@@ -17,7 +17,7 @@
     "seed:fixture": "tsx scripts/seed-deterministic-fixture.ts",
     "seed:legacy-api": "tsx scripts/load-legacy-api.ts",
     "guardrails": "tsx scripts/run-guardrails.ts",
-    "test:test-first": "node --test scripts/check-root-script-binaries.test.mjs && env NODE_ENV=test tsx --test scripts/check-frontend-test-first.test.ts && env NODE_ENV=test tsx scripts/check-frontend-test-first.ts",
+    "test:test-first": "node --test scripts/check-root-script-binaries.test.mjs && env NODE_ENV=test tsx --test scripts/check-frontend-test-first.test.ts && env NODE_ENV=test tsx --test scripts/run-with-open-ports.test.ts && env NODE_ENV=test tsx scripts/check-frontend-test-first.ts",
     "test": "pnpm test:test-first && env NODE_ENV=test tsx --test --test-concurrency=1 services/api/test/**/*.test.ts && pnpm --filter @minance/web test",
     "check": "pnpm guardrails && pnpm test",
     "e2e": "env NODE_ENV=test playwright test",
