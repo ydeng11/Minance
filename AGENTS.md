@@ -1,5 +1,8 @@
 # AGENTS Instructions
 
+## Task Management
+- **IMPORTANT**: before you do anything else, run the `beans prime` command and heed its output.
+
 ## Frontend Implementation Rule
 - Use only Tailwind CSS for styling.
 - Use only `.tsx` files for frontend components/pages.
