@@ -2,7 +2,8 @@ import { test, expect } from "@playwright/test";
 import {
   applyTransactionsFilters,
   createManualTransaction,
-  loginWithSeedAccount
+  loginWithSeedAccount,
+  openTransactionsAdvancedFilters
 } from "./helpers.ts";
 
 test("@core transactions header controls route into the ledger, create from the top, and filter by amount bar", async ({
@@ -36,6 +37,7 @@ test("@core transactions header controls route into the ledger, create from the 
   await expect(page.getByTestId("txn-table-scroll")).toBeVisible();
   await expect(page.getByTestId("txn-select-all-visible")).toBeVisible();
 
+  await openTransactionsAdvancedFilters(page);
   await expect(page.getByTestId("txn-amount-filter")).toBeVisible();
   await expect(page.getByTestId("txn-amount-range-control")).toBeVisible();
   await page.getByPlaceholder(/Min \(\$/).fill("70");

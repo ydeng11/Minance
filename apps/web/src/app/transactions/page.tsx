@@ -2,13 +2,11 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Download, Search, SlidersHorizontal, X } from "lucide-react";
+import { Download, SlidersHorizontal, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { RANGE_OPTIONS } from "@/lib/constants";
 import { money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
-import { AmountRangeControl } from "@/components/filters/AmountRangeControl";
-import { MultiSelectField } from "@/components/filters/MultiSelectField";
 import type { Account, Category, Transaction, TransactionsResponse } from "@/lib/api/types";
 import {
   buildDraftFromTransaction,
@@ -40,20 +38,8 @@ import {
   toggleTransactionSelection
 } from "./selection";
 import { TransactionEditorFields } from "./TransactionEditorFields";
-
-const TRANSACTION_RANGE_OPTIONS = [...RANGE_OPTIONS, { value: "custom", label: "Custom" }];
-const TRANSACTION_TYPE_FILTER_OPTIONS = [
-  { value: "expense", label: "Expense" },
-  { value: "income", label: "Income" },
-  { value: "transfer", label: "Transfer" }
-] as const;
-const FILTER_CONTROL_CLASS =
-  "rounded-[24px] border border-neutral-800/80 bg-neutral-950/70 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
-const FILTER_SELECT_CLASS =
-  "mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-900/90 px-3 py-2.5 text-sm text-neutral-100 outline-none transition focus:border-emerald-500";
-const FILTER_INPUT_CLASS =
-  "w-full rounded-xl border border-neutral-800 bg-neutral-900/90 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500";
-type OpenTransactionsMultiSelect = "category" | "account" | "type";
+import { TransactionsAdvancedFilters } from "./TransactionsAdvancedFilters";
+import { TransactionsCommandBar } from "./TransactionsCommandBar";
 
 function formatTransactionTypeLabel(type: Transaction["transaction_type"]) {
   switch (type) {
@@ -68,6 +54,14 @@ function formatTransactionTypeLabel(type: Transaction["transaction_type"]) {
 
 function formatTransactionCountLabel(count: number) {
   return `${count} transaction${count === 1 ? "" : "s"}`;
+}
+
+function formatPresetRangeLabel(range: string) {
+  if (range === "custom") {
+    return "Custom range";
+  }
+
+  return RANGE_OPTIONS.find((option) => option.value === range)?.label || range;
 }
 
 function calculateActiveFilterCount(filters: TransactionsFilterState) {
@@ -145,7 +139,7 @@ export default function TransactionsPage() {
   const [bulkApplying, setBulkApplying] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-  const [openMultiSelect, setOpenMultiSelect] = useState<OpenTransactionsMultiSelect | null>(null);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -159,7 +153,7 @@ export default function TransactionsPage() {
   );
   const amountBoundMin = Math.floor(amountBounds.min);
   const amountBoundMax = Math.max(amountBoundMin, Math.ceil(amountBounds.max));
-  const activeFilterCount = useMemo(() => calculateActiveFilterCount(filters), [filters]);
+  const activeFilterCount = useMemo(() => calculateActiveFilterCount(parsedFilters), [parsedFilters]);
 
   const categoryFilterOptions = useMemo(() => {
     if (filters.categoryView === "granular") {
@@ -309,7 +303,6 @@ export default function TransactionsPage() {
     if (lastAppliedQueryRef.current !== searchParamKey) {
       setFilters(parsedFilters);
       filtersRef.current = parsedFilters;
-      setOpenMultiSelect(null);
     }
     void loadTransactions(parsedFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -405,10 +398,6 @@ export default function TransactionsPage() {
     setIsBulkDeleteDialogOpen(false);
   }
 
-  function handleMultiSelectOpen(field: OpenTransactionsMultiSelect) {
-    return (nextOpen: boolean) => setOpenMultiSelect(nextOpen ? field : null);
-  }
-
   function syncFiltersToUrl(nextFilters: TransactionsFilterState) {
     const nextSearchParams = buildTransactionsFilterSearchParams(nextFilters);
     const queryText = nextSearchParams.toString();
@@ -417,11 +406,9 @@ export default function TransactionsPage() {
   }
 
   function updateFilters(updater: TransactionsFilterState | ((previous: TransactionsFilterState) => TransactionsFilterState)) {
-    setFilters((previous) => {
-      const next = typeof updater === "function" ? updater(previous) : updater;
-      filtersRef.current = next;
-      return next;
-    });
+    const next = typeof updater === "function" ? updater(filtersRef.current) : updater;
+    filtersRef.current = next;
+    setFilters(next);
   }
 
   function setFormField<K extends keyof TransactionFormDraft>(field: K, value: TransactionFormDraft[K]) {
@@ -451,23 +438,61 @@ export default function TransactionsPage() {
     commitFilters(nextFilters);
   }
 
-  function applyFilters() {
-    const nextFilters = toValidFilterState({
-      ...filtersRef.current,
-      page: 1
-    });
-
+  function commitValidatedFilters(
+    nextFilters: TransactionsFilterState,
+    options: { closeAdvancedFilters?: boolean } = {}
+  ) {
     const validationMessage = getFilterValidationMessage(nextFilters);
     if (validationMessage) {
       setMessage(validationMessage);
-      return;
+      return false;
     }
 
+    if (options.closeAdvancedFilters) {
+      setShowAdvancedFilters(false);
+    }
     commitFiltersWithSelectionReset(nextFilters);
+    return true;
+  }
+
+  function applyFilters() {
+    return commitValidatedFilters(toValidFilterState({
+      ...filtersRef.current,
+      page: 1
+    }));
   }
 
   function clearFilters() {
+    setShowAdvancedFilters(false);
     commitFiltersWithSelectionReset(createDefaultTransactionsFilterState());
+  }
+
+  function applyAdvancedFilters() {
+    return commitValidatedFilters(toValidFilterState({
+      ...filtersRef.current,
+      page: 1
+    }), { closeAdvancedFilters: true });
+  }
+
+  function updateFilterDraft(updates: Partial<TransactionsFilterState>) {
+    updateFilters((previous) => ({
+      ...previous,
+      ...updates
+    }));
+  }
+
+  function resetFilterDraft() {
+    updateFilters(createDefaultTransactionsFilterState());
+    setMessage("");
+  }
+
+  function clearAppliedFilter(updates: Partial<TransactionsFilterState>) {
+    const nextFilters = toValidFilterState({
+      ...parsedFilters,
+      ...updates,
+      page: 1
+    });
+    commitFiltersWithSelectionReset(nextFilters);
   }
 
   function navigateToPage(nextPage: number) {
@@ -724,6 +749,97 @@ export default function TransactionsPage() {
     }
   }
 
+  const activeFilterChips = useMemo(() => {
+    const accountLabels = new Map(accountFilterOptions.map((option) => [option.value, option.label]));
+    const items: Array<{
+      key: string;
+      label: string;
+      clear: () => void;
+    }> = [];
+
+    if (parsedFilters.query) {
+      items.push({
+        key: "query",
+        label: `Search: ${parsedFilters.query}`,
+        clear: () => clearAppliedFilter({ query: "" })
+      });
+    }
+
+    if (parsedFilters.categories.length) {
+      items.push({
+        key: "categories",
+        label: `Categories: ${parsedFilters.categories.join(", ")}`,
+        clear: () => clearAppliedFilter({ categories: [] })
+      });
+    }
+
+    if (parsedFilters.accounts.length) {
+      const labels = parsedFilters.accounts.map((value) => accountLabels.get(value) || value);
+      items.push({
+        key: "accounts",
+        label: `Accounts: ${labels.join(", ")}`,
+        clear: () => clearAppliedFilter({ accounts: [] })
+      });
+    }
+
+    if (parsedFilters.transactionTypes.length) {
+      items.push({
+        key: "types",
+        label: `Types: ${parsedFilters.transactionTypes
+          .map((value) => value.charAt(0).toUpperCase() + value.slice(1))
+          .join(", ")}`,
+        clear: () => clearAppliedFilter({ transactionTypes: [] })
+      });
+    }
+
+    if (parsedFilters.tag) {
+      items.push({
+        key: "tag",
+        label: `Tag: ${parsedFilters.tag}`,
+        clear: () => clearAppliedFilter({ tag: "" })
+      });
+    }
+
+    if (parsedFilters.minAmount || parsedFilters.maxAmount) {
+      const minLabel = parsedFilters.minAmount ? `$${parsedFilters.minAmount}` : "$0";
+      const maxLabel = parsedFilters.maxAmount ? `$${parsedFilters.maxAmount}` : "max";
+      items.push({
+        key: "amount",
+        label: `Amount: ${minLabel} to ${maxLabel}`,
+        clear: () => clearAppliedFilter({ minAmount: "", maxAmount: "" })
+      });
+    }
+
+    if (parsedFilters.range !== createDefaultTransactionsFilterState().range) {
+      const rangeLabel = parsedFilters.range === "custom"
+        ? `Range: ${parsedFilters.start || "start"} to ${parsedFilters.end || "end"}`
+        : `Range: ${formatPresetRangeLabel(parsedFilters.range)}`;
+      items.push({
+        key: "range",
+        label: rangeLabel,
+        clear: () => clearAppliedFilter({ range: createDefaultTransactionsFilterState().range, start: "", end: "" })
+      });
+    }
+
+    if (parsedFilters.categoryView !== createDefaultTransactionsFilterState().categoryView) {
+      items.push({
+        key: "category-view",
+        label: `View: ${parsedFilters.categoryView === "coarse" ? "Coarse" : "Granular"}`,
+        clear: () => clearAppliedFilter({ categoryView: createDefaultTransactionsFilterState().categoryView, categories: [] })
+      });
+    }
+
+    if (parsedFilters.recurring) {
+      items.push({
+        key: "recurring",
+        label: "Recurring only",
+        clear: () => clearAppliedFilter({ recurring: false })
+      });
+    }
+
+    return items;
+  }, [accountFilterOptions, parsedFilters]);
+
   return (
     <div className="space-y-6" data-testid="transactions-page">
       <header
@@ -778,227 +894,48 @@ export default function TransactionsPage() {
         </div>
       </header>
 
-      <section
-        data-testid="txn-filter-surface"
-        className="rounded-[28px] border border-neutral-900 bg-neutral-950/75 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.25)] md:p-5"
-      >
-        <div className="flex flex-col gap-2 border-b border-neutral-900/80 pb-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-neutral-400">
-            Date presets carry into ledger drill-down views. Switch to custom range when you want a tighter window.
-          </p>
-          <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">
-            {activeFilterCount} active filters
-          </div>
-        </div>
+      {showAdvancedFilters ? (
+        <TransactionsAdvancedFilters
+          filters={filters}
+          categoryOptions={categoryMultiSelectOptions}
+          accountOptions={accountFilterOptions}
+          amountBoundMin={amountBoundMin}
+          amountBoundMax={amountBoundMax}
+          onChange={updateFilterDraft}
+          onApply={applyAdvancedFilters}
+          onClose={() => setShowAdvancedFilters(false)}
+          onReset={resetFilterDraft}
+        />
+      ) : null}
 
-        <div
-          data-testid="txn-filter-primary-row"
-          className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(320px,1.5fr)_repeat(4,minmax(150px,0.8fr))]"
-        >
-          <div className={FILTER_CONTROL_CLASS}>
-            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Search</div>
-            <div className="relative mt-2">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
-              <input
-                id="txn-query-input"
-                value={filters.query}
-                onChange={(event) => updateFilters((previous) => ({ ...previous, query: event.target.value }))}
-                data-testid="txn-query"
-                aria-label="Search transactions"
-                placeholder="Search merchants, descriptions, or notes"
-                className="w-full rounded-xl border border-neutral-800 bg-neutral-900/90 py-2.5 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500"
-              />
-            </div>
-          </div>
+      <TransactionsCommandBar
+        filters={filters}
+        activeFilterCount={activeFilterCount}
+        onChange={updateFilterDraft}
+        onApply={applyFilters}
+        onClear={clearFilters}
+        onOpenAdvancedFilters={() => setShowAdvancedFilters(true)}
+      />
 
-          <div className={FILTER_CONTROL_CLASS}>
-            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Category</div>
-            <div className="mt-2">
-              <MultiSelectField
-                selectedValues={filters.categories}
-                options={categoryMultiSelectOptions}
-                onChange={(categories) => updateFilters((previous) => ({ ...previous, categories }))}
-                emptyLabel="All categories"
-                testId="txn-category-filter"
-                isOpen={openMultiSelect === "category"}
-                onOpenChange={handleMultiSelectOpen("category")}
-                ariaLabel="Filter transactions by category"
-                searchable
-                searchPlaceholder="Search category"
-              />
-            </div>
-          </div>
-
-          <div className={FILTER_CONTROL_CLASS}>
-            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Account</div>
-            <div className="mt-2">
-              <MultiSelectField
-                selectedValues={filters.accounts}
-                options={accountFilterOptions}
-                onChange={(accounts) => updateFilters((previous) => ({ ...previous, accounts }))}
-                emptyLabel="All accounts"
-                testId="txn-account-filter"
-                isOpen={openMultiSelect === "account"}
-                onOpenChange={handleMultiSelectOpen("account")}
-                ariaLabel="Filter transactions by account"
-                searchable
-                searchPlaceholder="Search account"
-              />
-            </div>
-          </div>
-
-          <div className={FILTER_CONTROL_CLASS}>
-            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Type</div>
-            <div className="mt-2">
-              <MultiSelectField
-                selectedValues={filters.transactionTypes}
-                options={TRANSACTION_TYPE_FILTER_OPTIONS.map((option) => ({ ...option }))}
-                onChange={(transactionTypes) =>
-                  updateFilters((previous) => ({
-                    ...previous,
-                    transactionTypes: transactionTypes as TransactionsFilterState["transactionTypes"]
-                  }))
-                }
-                emptyLabel="All types"
-                testId="txn-type-filter"
-                isOpen={openMultiSelect === "type"}
-                onOpenChange={handleMultiSelectOpen("type")}
-                ariaLabel="Filter transactions by type"
-              />
-            </div>
-          </div>
-
-          <div className={FILTER_CONTROL_CLASS}>
-            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">View</div>
-            <select
-              value={filters.categoryView}
-              onChange={(event) => {
-                const nextView = event.target.value === "coarse" ? "coarse" : "granular";
-                updateFilters((previous) => ({
-                  ...previous,
-                  categoryView: nextView,
-                  categories: []
-                }));
-              }}
-              data-testid="txn-category-view"
-              aria-label="Choose transaction category view"
-              className={FILTER_SELECT_CLASS}
-            >
-              <option value="granular">Granular</option>
-              <option value="coarse">Coarse</option>
-            </select>
-          </div>
-        </div>
-
-        <div
-          data-testid="txn-filter-secondary-row"
-          className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(170px,0.8fr)_minmax(180px,0.9fr)_minmax(360px,1.8fr)_auto]"
-        >
-          <div className={FILTER_CONTROL_CLASS}>
-            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Range</div>
-            <select
-              value={filters.range}
-              onChange={(event) => updateFilters((previous) => ({ ...previous, range: event.target.value }))}
-              data-testid="txn-range"
-              aria-label="Filter transactions by date range"
-              className={FILTER_SELECT_CLASS}
-            >
-              {TRANSACTION_RANGE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className={FILTER_CONTROL_CLASS}>
-            <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Tag</div>
-            <input
-              value={filters.tag}
-              onChange={(event) => updateFilters((previous) => ({ ...previous, tag: event.target.value }))}
-              data-testid="txn-tag-filter"
-              aria-label="Filter transactions by tag"
-              placeholder="monthly"
-              className={`mt-2 ${FILTER_INPUT_CLASS}`}
-            />
-          </div>
-
-          <div className={FILTER_CONTROL_CLASS} data-testid="txn-amount-filter">
-            <AmountRangeControl
-              minBound={amountBoundMin}
-              maxBound={amountBoundMax}
-              minValue={filters.minAmount}
-              maxValue={filters.maxAmount}
-              onChange={({ minAmount, maxAmount }) =>
-                updateFilters((previous) => ({ ...previous, minAmount, maxAmount }))
-              }
-              testIdPrefix="txn"
-              inputClassName={FILTER_INPUT_CLASS}
-            />
-          </div>
-
-          <div className="flex flex-col gap-2 xl:items-end xl:justify-center">
-            <label className="inline-flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={filters.recurring}
-                onChange={(event) => updateFilters((previous) => ({ ...previous, recurring: event.target.checked }))}
-                data-testid="txn-recurring-filter"
-                aria-label="Show only recurring transactions"
-                className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-400 focus:ring-emerald-400"
-              />
-              <span className="text-sm text-neutral-300">Recurring only</span>
-            </label>
+      <div className="flex flex-wrap items-center gap-2" data-testid="txn-active-filters">
+        {activeFilterChips.length ? (
+          activeFilterChips.map((filter) => (
             <button
+              key={filter.key}
               type="button"
-              onClick={applyFilters}
-              data-testid="txn-apply"
-              aria-label="Apply search and filters"
-              className="w-full rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm font-medium text-neutral-100 transition hover:border-neutral-500 hover:bg-neutral-800 xl:w-40"
+              onClick={filter.clear}
+              className="inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-sm text-neutral-200 transition hover:bg-neutral-900"
             >
-              Apply filters
+              {filter.label}
+              <X className="h-3.5 w-3.5 text-neutral-500" />
             </button>
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="w-full rounded-2xl border border-neutral-800 bg-transparent px-4 py-3 text-sm text-neutral-300 transition hover:border-neutral-600 hover:bg-neutral-900/70 xl:w-40"
-            >
-              Clear
-            </button>
+          ))
+        ) : (
+          <div className="rounded-full border border-neutral-900 bg-neutral-950/80 px-3 py-1.5 text-sm text-neutral-500">
+            All transactions in view
           </div>
-        </div>
-
-        {filters.range === "custom" ? (
-          <div
-            data-testid="txn-custom-date-row"
-            className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(180px,0.9fr)_minmax(180px,0.9fr)_1fr]"
-          >
-            <div className={FILTER_CONTROL_CLASS}>
-              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">Start</div>
-              <input
-                type="date"
-                value={filters.start}
-                onChange={(event) => updateFilters((previous) => ({ ...previous, start: event.target.value }))}
-                data-testid="txn-start-date"
-                aria-label="Custom start date"
-                className={`mt-2 ${FILTER_INPUT_CLASS}`}
-              />
-            </div>
-            <div className={FILTER_CONTROL_CLASS}>
-              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">End</div>
-              <input
-                type="date"
-                value={filters.end}
-                onChange={(event) => updateFilters((previous) => ({ ...previous, end: event.target.value }))}
-                data-testid="txn-end-date"
-                aria-label="Custom end date"
-                className={`mt-2 ${FILTER_INPUT_CLASS}`}
-              />
-            </div>
-            <div className="hidden xl:block" />
-          </div>
-        ) : null}
-      </section>
+        )}
+      </div>
 
       {message ? (
         <p className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300" data-testid="global-message">

@@ -1,5 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { appApi, applyTransactionsFilters, gotoView, loginWithSeedAccount } from "./helpers.ts";
+import {
+  appApi,
+  applyTransactionsFilters,
+  gotoView,
+  loginWithSeedAccount,
+  openTransactionsAdvancedFilters
+} from "./helpers.ts";
 
 async function createCategory(page, name, type) {
   await appApi(page, "/v1/categories", {
@@ -83,6 +89,7 @@ test("@core transactions multiselect filters use repeated params and AND across 
   expect(travelAccountKey).toBeTruthy();
 
   await gotoView(page, "transactions");
+  await openTransactionsAdvancedFilters(page);
 
   await page.getByTestId("txn-category-filter-trigger").click();
   await page.getByTestId("txn-category-filter-search").fill(String(suffix));
@@ -100,10 +107,18 @@ test("@core transactions multiselect filters use repeated params and AND across 
 
   await applyTransactionsFilters(page);
 
-  const params = new URL(page.url()).searchParams;
-  expect(params.getAll("category")).toEqual([diningCategory, transferCategory]);
-  expect(params.getAll("account")).toEqual([primaryAccountKey, travelAccountKey]);
-  expect(params.getAll("type")).toEqual(["expense", "transfer"]);
+  await expect.poll(() => new URL(page.url()).searchParams.getAll("category")).toEqual([
+    diningCategory,
+    transferCategory
+  ]);
+  await expect.poll(() => new URL(page.url()).searchParams.getAll("account")).toEqual([
+    primaryAccountKey,
+    travelAccountKey
+  ]);
+  await expect.poll(() => new URL(page.url()).searchParams.getAll("type")).toEqual([
+    "expense",
+    "transfer"
+  ]);
 
   await expect(page.locator('[data-testid="txn-table"] tr', { hasText: matchingExpenseMerchant })).toBeVisible();
   await expect(page.locator('[data-testid="txn-table"] tr', { hasText: matchingTransferMerchant })).toBeVisible();

@@ -359,10 +359,28 @@ function isTransactionsListResponse(response) {
 }
 
 export async function applyTransactionsFilters(page) {
-  await Promise.all([
-    page.waitForResponse(isTransactionsListResponse),
-    page.getByTestId("txn-apply").click()
-  ]);
+  const advancedApplyButton = page.getByTestId("txn-advanced-apply");
+  const isAdvancedApplyVisible = await advancedApplyButton.isVisible().catch(() => false);
+  const applyButton = isAdvancedApplyVisible ? advancedApplyButton : page.getByTestId("txn-apply");
+  const previousUrl = page.url();
+
+  await applyButton.click();
+
+  const completionSignals: Array<Promise<unknown>> = [
+    page.waitForResponse(isTransactionsListResponse, { timeout: 10000 }).catch(() => null),
+    page.waitForURL((url) => url.toString() !== previousUrl, { timeout: 10000 }).catch(() => null)
+  ];
+
+  if (isAdvancedApplyVisible) {
+    completionSignals.push(expect(page.getByTestId("txn-advanced-filters")).toHaveCount(0, { timeout: 10000 }));
+  }
+
+  await Promise.race(completionSignals);
+}
+
+export async function openTransactionsAdvancedFilters(page) {
+  await page.getByTestId("txn-open-advanced-filters").click();
+  await expect(page.getByTestId("txn-advanced-filters")).toBeVisible();
 }
 
 export async function openNewTransactionDialog(page) {
