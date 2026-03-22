@@ -1,6 +1,6 @@
 # TSX + pnpm Migration Baseline (2026-03-04)
 
-This file records the baseline and enforcement inputs for OpenSpec change `migrate-to-tsx-and-pnpm`.
+This file records the baseline and enforcement inputs for the TSX + pnpm migration.
 
 ## Managed Scopes
 

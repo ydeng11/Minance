@@ -21,8 +21,7 @@ This repo contains the current pnpm workspace for Minance Next.
 - `e2e/`: Playwright end-to-end tests.
 - `e2e/fixtures/`: fixture inputs for e2e flows.
 - `e2e/specs/`: end-to-end scenarios.
-- `openspec/`: spec-driven change tracking.
-- `openspec/changes/`: proposals, designs, tasks, and spec updates.
+- `.beans/`: task tracking records for repo work.
 - `packages/`: shared workspace packages.
 - `packages/domain/`: shared domain constants and primitives.
 - `scripts/`: seed, migration, validation, backup, and restore scripts.

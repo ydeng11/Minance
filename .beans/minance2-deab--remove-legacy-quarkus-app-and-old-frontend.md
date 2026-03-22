@@ -8,7 +8,9 @@ tags:
     - cleanup
     - legacy-removal
 created_at: 2026-03-10T01:55:14Z
-updated_at: 2026-03-10T01:55:14Z
+updated_at: 2026-03-21T21:49:29Z
+blocked_by:
+    - minance2-tbbk
 ---
 
 Legacy Quarkus removal plan for the repo.
@@ -25,3 +27,7 @@ Legacy Quarkus removal plan for the repo.
 - Current docs and guardrails no longer point at deleted legacy paths.
 - `docs/plans/` remains in the repo.
 - Current pnpm test and e2e flows remain the source of truth.
+
+## Notes
+
+Audit on 2026-03-21 confirmed the legacy Quarkus/frontend removal work itself is already finished on latest `origin/main`. The remaining open item is repo-wide Playwright verification, tracked in `minance2-tbbk`, before this feature can be cleanly closed.
