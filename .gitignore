@@ -25,8 +25,4 @@ apps/web/tsconfig.tsbuildinfo
 
 # npm lockfiles are not authoritative in this repo.
 package-lock.json
-**/package-lock.json
-
-# Dolt database files (added by bd init)
-.dolt/
-.beads/
+**/package-lock.json/
