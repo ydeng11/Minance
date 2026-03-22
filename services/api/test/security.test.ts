@@ -1,7 +1,13 @@
 import test from "node:test"
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
+import path from "node:path"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { applyCors, applySecurityHeaders, checkRateLimit, resetRateLimitForTests } from "../src/security.ts"
+
+const TEST_DIR = path.dirname(fileURLToPath(import.meta.url))
+const SECURITY_MODULE_URL = pathToFileURL(path.join(TEST_DIR, "../src/security.ts")).href
 
 function createMockResponse() {
   const headers = {}
@@ -11,6 +17,48 @@ function createMockResponse() {
       headers[name] = value
     }
   }
+}
+
+function runApplyCorsInChild({ origin, env }) {
+  const childEnv = {
+    ...process.env,
+    ...env
+  }
+  for (const [key, value] of Object.entries(env)) {
+    if (value == null) {
+      delete childEnv[key]
+    }
+  }
+
+  const req = origin ? { headers: { origin } } : { headers: {} }
+  const stdout = execFileSync(
+    process.execPath,
+    [
+      "--input-type=module",
+      "--eval",
+      `
+        import { applyCors } from ${JSON.stringify(SECURITY_MODULE_URL)};
+
+        const headers = {};
+        const res = {
+          setHeader(name, value) {
+            headers[name] = value;
+          }
+        };
+
+        console.log(JSON.stringify({
+          allowed: applyCors(${JSON.stringify(req)}, res),
+          headers
+        }));
+      `
+    ],
+    {
+      encoding: "utf8",
+      env: childEnv
+    }
+  )
+
+  return JSON.parse(stdout)
 }
 
 test("applyCors allows trusted local origin and blocks unknown origin", () => {
@@ -23,6 +71,31 @@ test("applyCors allows trusted local origin and blocks unknown origin", () => {
   const blockedReq = { headers: { origin: "https://evil.example" } }
   const blockedRes = createMockResponse()
   assert.equal(applyCors(blockedReq, blockedRes), false)
+})
+
+test("applyCors allows localhost origins on arbitrary ports in development without an explicit override", () => {
+  const result = runApplyCorsInChild({
+    origin: "http://localhost:4317",
+    env: {
+      NODE_ENV: "development",
+      MINANCE_ALLOWED_ORIGINS: null
+    }
+  })
+
+  assert.equal(result.allowed, true)
+  assert.equal(result.headers["Access-Control-Allow-Origin"], "http://localhost:4317")
+})
+
+test("applyCors keeps explicit allowed origins authoritative in development", () => {
+  const result = runApplyCorsInChild({
+    origin: "http://localhost:4317",
+    env: {
+      NODE_ENV: "development",
+      MINANCE_ALLOWED_ORIGINS: "http://localhost:3000"
+    }
+  })
+
+  assert.equal(result.allowed, false)
 })
 
 test("applySecurityHeaders emits secure defaults and HSTS on TLS", () => {

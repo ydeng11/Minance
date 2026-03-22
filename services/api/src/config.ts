@@ -102,6 +102,7 @@ export const PORT = Number(process.env.PORT || 3000);
 export const TOKEN_TTL_MS = 1000 * 60 * 60; // 1 hour
 export const REFRESH_TTL_MS = 1000 * 60 * 60 * 24 * 14; // 14 days
 export const AI_SECRET = process.env.AI_CREDENTIAL_SECRET || "minance-next-local-secret-change-me";
+export const HAS_EXPLICIT_ALLOWED_ORIGINS = process.env.MINANCE_ALLOWED_ORIGINS != null;
 export const SECURITY_ALLOWED_ORIGINS = parseOriginList(
   process.env.MINANCE_ALLOWED_ORIGINS,
   "http://localhost:3000,http://127.0.0.1:3000"

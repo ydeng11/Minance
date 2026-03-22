@@ -2,12 +2,14 @@ import {
   AUTH_RATE_LIMIT_MAX_REQUESTS,
   CORS_ALLOW_CREDENTIALS,
   DEFAULT_RATE_LIMIT_MAX_REQUESTS,
+  HAS_EXPLICIT_ALLOWED_ORIGINS,
   RATE_LIMIT_WINDOW_MS,
   SECURITY_ALLOWED_ORIGINS
 } from "./config.ts"
 
 const HOP_BY_HOP_HEADERS = "Content-Type, Authorization, X-Request-Id"
 const ALLOWED_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"])
 const SECURE_HEADERS = {
   "Referrer-Policy": "no-referrer",
   "X-Content-Type-Options": "nosniff",
@@ -26,6 +28,19 @@ function originAllowAll() {
   return SECURITY_ALLOWED_ORIGINS.includes("*")
 }
 
+function allowDevelopmentLoopbackOrigin(origin) {
+  if (HAS_EXPLICIT_ALLOWED_ORIGINS || process.env.NODE_ENV !== "development") {
+    return false
+  }
+
+  try {
+    const parsedOrigin = new URL(origin)
+    return parsedOrigin.protocol === "http:" && LOOPBACK_HOSTNAMES.has(parsedOrigin.hostname)
+  } catch {
+    return false
+  }
+}
+
 export function isOriginAllowed(origin) {
   if (!origin) {
     return true
@@ -33,7 +48,10 @@ export function isOriginAllowed(origin) {
   if (originAllowAll()) {
     return true
   }
-  return SECURITY_ALLOWED_ORIGINS.includes(origin)
+  if (SECURITY_ALLOWED_ORIGINS.includes(origin)) {
+    return true
+  }
+  return allowDevelopmentLoopbackOrigin(origin)
 }
 
 export function applyCors(req, res) {
