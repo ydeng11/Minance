@@ -25,7 +25,7 @@ interface ExplorerAdvancedFiltersProps {
 
 type AdvancedFilterDraft = Pick<
   ExplorerFilterState,
-  "merchant" | "categories" | "transactionTypes" | "direction" | "tag" | "minAmount" | "maxAmount" | "categoryView"
+  "categories" | "transactionTypes" | "direction" | "tag" | "minAmount" | "maxAmount" | "categoryView"
 >;
 type OpenMultiSelectField = "category" | "transactionType";
 
@@ -37,7 +37,6 @@ const TRANSACTION_TYPE_OPTIONS: Array<{ value: ExplorerTransactionType; label: s
 
 function createDraft(filters: ExplorerFilterState): AdvancedFilterDraft {
   return {
-    merchant: filters.merchant,
     categories: [...filters.categories],
     transactionTypes: [...filters.transactionTypes],
     direction: filters.direction,
@@ -124,16 +123,6 @@ export function ExplorerAdvancedFilters({
           </div>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-1 text-sm text-neutral-300 sm:col-span-2">
-              Merchant
-              <input
-                value={draft.merchant}
-                onChange={(event) => updateDraft({ merchant: event.target.value })}
-                placeholder="Filter by merchant"
-                className="h-11 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-neutral-100 outline-none transition focus:border-emerald-500"
-              />
-            </label>
-
             <label className="grid gap-1 text-sm text-neutral-300 sm:col-span-2">
               <span>Category</span>
               <MultiSelectField

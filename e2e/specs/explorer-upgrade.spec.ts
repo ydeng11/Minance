@@ -56,6 +56,19 @@ test("explorer advanced filters support category and type multiselect plus tag s
   await expect(page.getByTestId("explorer-tag-suggestions")).toContainText("monthly");
 });
 
+test("explorer keeps merchant search in the command bar and not in the advanced filters modal", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await uploadAndCommitFixtureCsv(page);
+  await gotoView(page, "explorer");
+
+  const advancedFilters = page.getByTestId("explorer-advanced-filters");
+
+  await expect(page.getByPlaceholder("Search merchants, notes, and descriptions")).toBeVisible();
+  await page.getByTestId("explorer-open-advanced-filters").click();
+  await expect(advancedFilters).toBeVisible();
+  await expect(advancedFilters.getByPlaceholder("Filter by merchant")).toHaveCount(0);
+});
+
 test("overview perspective uses a full-width trend chart with the active range label", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page);

@@ -57,3 +57,26 @@ test("@core transactions header controls route into the ledger, create from the 
   await expect(page.locator('[data-testid^="txn-inline-form-"]')).toHaveCount(0);
   await expect(olderRow).toHaveCount(0);
 });
+
+test("transactions rows show only the transaction date and hide source and review labels", async ({ page }) => {
+  await loginWithSeedAccount(page);
+
+  const merchant = `PW Minimal Row ${Date.now()}`;
+  const transactionDate = "2026-02-14";
+  await createManualTransaction(page, {
+    merchant,
+    transactionDate,
+    amount: "19.75"
+  });
+
+  const row = page.locator('[data-testid="txn-table"] tr', { hasText: merchant }).first();
+  const rowCells = row.locator("td");
+  const dateCell = rowCells.nth(1);
+  const detailsCell = rowCells.nth(2);
+  const categoryCell = rowCells.nth(3);
+
+  await expect(row).toBeVisible();
+  await expect(dateCell).toHaveText(transactionDate);
+  await expect(detailsCell).not.toContainText("manual");
+  await expect(categoryCell).not.toContainText("Reviewed");
+});

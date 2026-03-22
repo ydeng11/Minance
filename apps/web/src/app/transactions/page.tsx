@@ -1162,12 +1162,6 @@ export default function TransactionsPage() {
                       </td>
                       <td className="px-5 py-5 text-neutral-300">
                         <div className="font-medium text-neutral-100">{txn.transaction_date}</div>
-                        <div className="mt-1 text-xs text-neutral-500">
-                          Post {txn.post_date || "n/a"}
-                        </div>
-                        <div className="mt-2 text-[11px] uppercase tracking-[0.18em] text-neutral-600">
-                          {txn.created_at.slice(0, 10)}
-                        </div>
                       </td>
 
                       <td className="px-5 py-5">
@@ -1185,9 +1179,6 @@ export default function TransactionsPage() {
                                 #{txn.tags.join(" #")}
                               </span>
                             ) : null}
-                            <span className="rounded-full border border-neutral-800 px-2 py-1 uppercase tracking-[0.18em]">
-                              {txn.source_type}
-                            </span>
                           </div>
                         </div>
                       </td>
@@ -1199,9 +1190,6 @@ export default function TransactionsPage() {
                               ? `${txn.category_coarse_emoji || ""} ${txn.category_coarse || txn.category_final}`
                               : `${txn.category_emoji || ""} ${txn.category_final}`).trim()}
                           </span>
-                        </div>
-                        <div className="mt-2 text-[11px] text-neutral-500">
-                          {txn.review_status === "needs_review" ? "Needs review" : "Reviewed"}
                         </div>
                       </td>
 
