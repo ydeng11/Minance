@@ -11,7 +11,6 @@ interface TransactionsCommandBarProps {
   activeFilterCount: number;
   onChange: (updates: Partial<TransactionsFilterState>) => void;
   onApply: () => void;
-  onClear: () => void;
   onOpenAdvancedFilters: () => void;
 }
 
@@ -20,7 +19,6 @@ export function TransactionsCommandBar({
   activeFilterCount,
   onChange,
   onApply,
-  onClear,
   onOpenAdvancedFilters
 }: TransactionsCommandBarProps) {
   return (
@@ -29,7 +27,7 @@ export function TransactionsCommandBar({
       data-testid="txn-command-bar"
     >
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-        <label className="relative block flex-1">
+        <label className="relative block w-full xl:w-[24rem] xl:flex-none">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
           <input
             id="txn-query-input"
@@ -83,14 +81,6 @@ export function TransactionsCommandBar({
                 {activeFilterCount}
               </span>
             ) : null}
-          </button>
-
-          <button
-            type="button"
-            onClick={onClear}
-            className="inline-flex h-11 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-sm font-medium text-neutral-300 transition hover:bg-neutral-900"
-          >
-            Clear
           </button>
         </div>
       </div>

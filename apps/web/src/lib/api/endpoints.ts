@@ -395,6 +395,7 @@ export const analyticsApi = {
       direction?: "outflow" | "inflow";
       transaction_type?: Array<"expense" | "income" | "transfer">;
       tag?: string;
+      recurring_rule_id?: string;
       review_status?: "reviewed" | "needs_review";
       min_amount?: number;
       max_amount?: number;

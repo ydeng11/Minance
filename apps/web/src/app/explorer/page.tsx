@@ -66,7 +66,8 @@ export default function ExplorerPage() {
         query: next.query,
         tag: next.tag,
         transactionTypes: next.transactionTypes,
-        categoryView: next.categoryView
+        categoryView: next.categoryView,
+        recurring: next.recurring
       });
 
       const nextSearchParams = buildExplorerFilterSearchParams(next);
@@ -95,7 +96,8 @@ export default function ExplorerPage() {
         query: shared.query,
         tag: shared.tag,
         transactionTypes: shared.transactionTypes as ExplorerTransactionType[],
-        categoryView: shared.categoryView
+        categoryView: shared.categoryView,
+        recurring: shared.recurring
       });
       setFilters(merged);
       const nextSearchParams = buildExplorerFilterSearchParams(merged);
@@ -220,6 +222,7 @@ export default function ExplorerPage() {
         categoryView: filters.categoryView,
         transactionTypes: transactionTypeValue ? [transactionTypeValue] : [],
         tag: overrides.tag ?? filters.tag,
+        recurring: filters.recurring,
         page: 1
       });
       const nextSearchParams = buildTransactionsFilterSearchParams(transactionFilters);
@@ -341,6 +344,13 @@ export default function ExplorerPage() {
         key: "tag",
         label: `Tag: ${filters.tag}`,
         clear: () => updateFilters({ tag: "" })
+      });
+    }
+    if (filters.recurring) {
+      items.push({
+        key: "recurring",
+        label: "Recurring only",
+        clear: () => updateFilters({ recurring: false })
       });
     }
     if (filters.merchant) {

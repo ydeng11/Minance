@@ -2,6 +2,7 @@ import { loadStore } from "./store.ts";
 import { normalizeText, toDecimal } from "./utils.ts";
 
 const TAG_MAX_LENGTH = 40;
+const RECURRING_RULE_ID_MAX_LENGTH = 120;
 const TRANSACTION_TYPE_ALIASES = new Map(
   Object.entries({
     expense: "expense",
@@ -84,6 +85,22 @@ function normalizeTagFilter(rawTag) {
     return null;
   }
   return normalizeTagValue(rawTag);
+}
+
+function normalizeRecurringRuleFilter(rawValue) {
+  if (rawValue == null || String(rawValue).trim() === "") {
+    return null;
+  }
+
+  const value = String(rawValue).trim();
+  if (value === "true") {
+    return value;
+  }
+  if (value.length > RECURRING_RULE_ID_MAX_LENGTH || !/^[A-Za-z0-9._:-]+$/.test(value)) {
+    throw new Error("Invalid recurring rule id");
+  }
+
+  return value;
 }
 
 function normalizeExistingTags(rawTags) {
@@ -229,6 +246,16 @@ export function applySharedTransactionFilters(transactions, filters = {}) {
   const tagFilter = normalizeTagFilter(filters.tag);
   if (tagFilter) {
     txns = txns.filter((entry) => normalizeExistingTags(entry?.tags).includes(tagFilter));
+  }
+
+  const recurringRuleFilter = normalizeRecurringRuleFilter(
+    filters.recurring_rule_id ?? filters.recurringRuleId ?? (filters.recurring === true ? "true" : null)
+  );
+  if (recurringRuleFilter) {
+    txns = txns.filter((entry) => {
+      const recurringRuleId = String(entry?.recurring_rule_id || "").trim();
+      return recurringRuleFilter === "true" ? Boolean(recurringRuleId) : recurringRuleId === recurringRuleFilter;
+    });
   }
 
   const minAmountFilter = normalizeAmountFilter(filters.min_amount ?? filters.minAmount, "min amount");

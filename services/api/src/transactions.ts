@@ -578,11 +578,6 @@ export function listTransactions(userId, filters = {}) {
 
   txns = txns.map((entry) => normalizeTransactionRecord(entry, store));
 
-  if (effectiveFilters.recurring_rule_id) {
-    const recurringRuleIdFilter = normalizeRecurringRuleId(effectiveFilters.recurring_rule_id, null);
-    txns = txns.filter((entry) => entry.recurring_rule_id === recurringRuleIdFilter);
-  }
-
   txns = [...txns].sort((a, b) => {
     const byTransactionDate = String(b.transaction_date || "").localeCompare(String(a.transaction_date || ""));
     if (byTransactionDate !== 0) {

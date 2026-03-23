@@ -28,6 +28,7 @@ export interface ExplorerFilterState {
   transactionTypes: ExplorerTransactionType[];
   direction: ExplorerDirectionFilter;
   tag: string;
+  recurring: boolean;
 
   // Amount Range
   minAmount: string;
@@ -46,6 +47,7 @@ export interface ExplorerAnalyticsApiParams {
   transaction_type?: ExplorerTransactionType[];
   direction?: "outflow" | "inflow";
   tag?: string;
+  recurring_rule_id?: string;
 }
 
 const RANGE_VALUES = new Set([...RANGE_OPTIONS.map((option) => option.value), "custom"]);
@@ -125,6 +127,7 @@ export function createDefaultExplorerFilterState(): ExplorerFilterState {
     transactionTypes: [],
     direction: "all",
     tag: "",
+    recurring: false,
     minAmount: "",
     maxAmount: ""
   };
@@ -138,6 +141,7 @@ export function parseExplorerFilterState(searchParams: SearchParamsLike): Explor
   const direction = cleanValue(searchParams.get("direction"));
   const perspective = cleanValue(searchParams.get("perspective"));
   const compare = cleanValue(searchParams.get("compare"));
+  const recurring = searchParams.get("recurring");
 
   return {
     perspective: readEnumValue(perspective, PERSPECTIVE_VALUES, defaults.perspective),
@@ -153,6 +157,7 @@ export function parseExplorerFilterState(searchParams: SearchParamsLike): Explor
     transactionTypes: cleanTransactionTypeList(searchParams.getAll("type")),
     direction: readEnumValue(direction, DIRECTION_VALUES, defaults.direction),
     tag: cleanValue(searchParams.get("tag")),
+    recurring: recurring === "true",
     minAmount: cleanValue(searchParams.get("min_amount")),
     maxAmount: cleanValue(searchParams.get("max_amount"))
   };
@@ -184,6 +189,9 @@ export function toExplorerAnalyticsApiParams(
   }
   if (filters.tag) {
     params.tag = filters.tag;
+  }
+  if (filters.recurring) {
+    params.recurring_rule_id = "true";
   }
 
   if (filters.range === "custom") {
@@ -224,6 +232,9 @@ export function buildExplorerFilterSearchParams(filters: ExplorerFilterState): U
   }
   if (filters.tag) {
     searchParams.set("tag", filters.tag);
+  }
+  if (filters.recurring) {
+    searchParams.set("recurring", "true");
   }
 
   if (filters.range !== defaults.range) {
@@ -273,6 +284,7 @@ export function toValidExplorerFilterState(filters: ExplorerFilterState): Explor
     end: cleanIsoDate(filters.end),
     transactionTypes: cleanTransactionTypeList(filters.transactionTypes),
     tag: cleanValue(filters.tag),
+    recurring: Boolean(filters.recurring),
     minAmount: cleanValue(filters.minAmount),
     maxAmount: cleanValue(filters.maxAmount)
   };
@@ -316,6 +328,7 @@ export function savedExplorerFiltersToState(
     transactionTypes: readStringArray(source.transactionTypes) as ExplorerTransactionType[],
     direction: readSavedString(source.direction, defaults.direction),
     tag: readSavedString(source.tag, defaults.tag),
+    recurring: source.recurring === true,
     minAmount: readSavedString(source.minAmount, defaults.minAmount),
     maxAmount: readSavedString(source.maxAmount, defaults.maxAmount)
   });

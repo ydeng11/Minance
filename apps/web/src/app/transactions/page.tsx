@@ -289,7 +289,8 @@ export default function TransactionsPage() {
         query: shared.query,
         tag: shared.tag,
         transactionTypes: shared.transactionTypes as TransactionTypeFilter[],
-        categoryView: shared.categoryView
+        categoryView: shared.categoryView,
+        recurring: shared.recurring
       });
       setFilters(merged);
       filtersRef.current = merged;
@@ -429,7 +430,8 @@ export default function TransactionsPage() {
       query: nextFilters.query,
       tag: nextFilters.tag,
       transactionTypes: nextFilters.transactionTypes,
-      categoryView: nextFilters.categoryView
+      categoryView: nextFilters.categoryView,
+      recurring: nextFilters.recurring
     });
   }
 
@@ -460,11 +462,6 @@ export default function TransactionsPage() {
       ...filtersRef.current,
       page: 1
     }));
-  }
-
-  function clearFilters() {
-    setShowAdvancedFilters(false);
-    commitFiltersWithSelectionReset(createDefaultTransactionsFilterState());
   }
 
   function applyAdvancedFilters() {
@@ -913,7 +910,6 @@ export default function TransactionsPage() {
         activeFilterCount={activeFilterCount}
         onChange={updateFilterDraft}
         onApply={applyFilters}
-        onClear={clearFilters}
         onOpenAdvancedFilters={() => setShowAdvancedFilters(true)}
       />
 

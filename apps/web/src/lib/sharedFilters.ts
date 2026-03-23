@@ -13,6 +13,7 @@ export interface SharedFilterState {
   tag: string;
   transactionTypes: TransactionTypeFilter[];
   categoryView: "granular" | "coarse";
+  recurring: boolean;
 }
 
 const SHARED_FILTERS_KEY = "minance:shared-filters";
@@ -31,7 +32,8 @@ export function createDefaultSharedFilterState(): SharedFilterState {
     query: "",
     tag: "",
     transactionTypes: [],
-    categoryView: "granular"
+    categoryView: "granular",
+    recurring: false
   };
 }
 
@@ -60,7 +62,8 @@ export function getSharedFilters(): SharedFilterState {
       transactionTypes: Array.isArray(parsed.transactionTypes)
         ? parsed.transactionTypes.filter((t): t is TransactionTypeFilter => TRANSACTION_TYPE_VALUES.has(t))
         : [],
-      categoryView: CATEGORY_VIEW_VALUES.has(parsed.categoryView as typeof CATEGORY_VIEW_VALUES extends Set<infer T> ? T : never) ? parsed.categoryView! : defaults.categoryView
+      categoryView: CATEGORY_VIEW_VALUES.has(parsed.categoryView as typeof CATEGORY_VIEW_VALUES extends Set<infer T> ? T : never) ? parsed.categoryView! : defaults.categoryView,
+      recurring: parsed.recurring === true
     };
   } catch {
     return createDefaultSharedFilterState();

@@ -6,6 +6,7 @@ import {
   createDefaultExplorerFilterState,
   parseExplorerFilterState,
   savedExplorerFiltersToState,
+  toExplorerAnalyticsApiParams,
   toValidExplorerFilterState
 } from "./filters";
 
@@ -53,6 +54,30 @@ test("buildExplorerFilterSearchParams writes repeated category and type params",
 
   assert.deepEqual(params.getAll("category"), ["Food", "Travel"]);
   assert.deepEqual(params.getAll("type"), ["expense", "transfer"]);
+});
+
+test("parseExplorerFilterState reads recurring parameter", () => {
+  const state = parseExplorerFilterState(new URLSearchParams("recurring=true"));
+
+  assert.equal(state.recurring, true);
+});
+
+test("buildExplorerFilterSearchParams includes recurring when true", () => {
+  const params = buildExplorerFilterSearchParams({
+    ...createDefaultExplorerFilterState(),
+    recurring: true
+  });
+
+  assert.equal(params.get("recurring"), "true");
+});
+
+test("toExplorerAnalyticsApiParams sends recurring-only sentinel when enabled", () => {
+  const params = toExplorerAnalyticsApiParams({
+    ...createDefaultExplorerFilterState(),
+    recurring: true
+  });
+
+  assert.equal(params.recurring_rule_id, "true");
 });
 
 test("toValidExplorerFilterState trims and deduplicates array filters", () => {

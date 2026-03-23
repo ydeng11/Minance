@@ -25,7 +25,7 @@ interface ExplorerAdvancedFiltersProps {
 
 type AdvancedFilterDraft = Pick<
   ExplorerFilterState,
-  "categories" | "transactionTypes" | "direction" | "tag" | "minAmount" | "maxAmount" | "categoryView"
+  "categories" | "transactionTypes" | "direction" | "tag" | "recurring" | "minAmount" | "maxAmount" | "categoryView"
 >;
 type OpenMultiSelectField = "category" | "transactionType";
 
@@ -41,6 +41,7 @@ function createDraft(filters: ExplorerFilterState): AdvancedFilterDraft {
     transactionTypes: [...filters.transactionTypes],
     direction: filters.direction,
     tag: filters.tag,
+    recurring: filters.recurring,
     minAmount: filters.minAmount,
     maxAmount: filters.maxAmount,
     categoryView: filters.categoryView
@@ -194,6 +195,20 @@ export function ExplorerAdvancedFilters({
                 testIdPrefix="explorer"
                 inputClassName="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-500"
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="inline-flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={draft.recurring}
+                  onChange={(event) => updateDraft({ recurring: event.target.checked })}
+                  data-testid="explorer-recurring-filter"
+                  aria-label="Show only recurring transactions"
+                  className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-400 focus:ring-emerald-400"
+                />
+                <span className="text-sm text-neutral-300">Recurring only</span>
+              </label>
             </div>
 
             <label className="grid gap-1 text-sm text-neutral-300 sm:col-span-2">

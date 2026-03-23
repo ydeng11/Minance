@@ -216,6 +216,53 @@ test("analytics transaction filtering honors account, query, tag, review, type, 
   assert.equal(transactions[0]?.id, "txn_match");
 });
 
+test("analytics transaction filtering honors recurring-only sentinel", () => {
+  const store = structuredClone(baseStore);
+  store.transactions = [
+    {
+      id: "txn_recurring",
+      user_id: "user_1",
+      transaction_date: "2026-01-10",
+      merchant_normalized: "netflix",
+      merchant_raw: "Netflix",
+      description: "Netflix subscription",
+      amount: 15,
+      direction: "debit",
+      category_final: "Entertainment",
+      recurring_rule_id: "rule_netflix",
+      dedupe_fingerprint: "recurring"
+    },
+    {
+      id: "txn_one_off",
+      user_id: "user_1",
+      transaction_date: "2026-01-11",
+      merchant_normalized: "movie theater",
+      merchant_raw: "Movie Theater",
+      description: "Weekend movie",
+      amount: 24,
+      direction: "debit",
+      category_final: "Entertainment",
+      dedupe_fingerprint: "one-off"
+    }
+  ];
+
+  resetStoreForTests(store);
+
+  const filtered = filterUserTransactions("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    recurring_rule_id: "true"
+  });
+  const explorer = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    recurring_rule_id: "true"
+  });
+
+  assert.deepEqual(filtered.map((entry) => entry.id), ["txn_recurring"]);
+  assert.equal(explorer.summary.current.totalSpend, 15);
+});
+
 test("getExplorerAnalytics returns comparison data and account rollups", () => {
   const store = structuredClone(baseStore);
   store.accounts = [

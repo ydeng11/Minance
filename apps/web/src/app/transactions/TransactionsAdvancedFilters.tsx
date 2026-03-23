@@ -211,7 +211,7 @@ export function TransactionsAdvancedFilters({
               onClick={onReset}
               className="inline-flex h-11 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-sm font-medium text-neutral-300 transition hover:bg-neutral-900"
             >
-              Reset draft
+              Rest
             </button>
             <div className="flex items-center gap-3">
               <button
