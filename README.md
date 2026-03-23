@@ -104,10 +104,11 @@ Set these values in `.env.selfhost` before launching:
 - `AI_CREDENTIAL_SECRET=<strong-random-secret>`
 - `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`
 
-Then build and start the stack:
+Then pull and start the stock nightly image:
 
 ```bash
-docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d --build
+docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost pull
+docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 ```
 
 ## Notes
@@ -117,14 +118,15 @@ docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d --b
   - `MINANCE_SQLITE_FILE` selects the SQLite file path (default `services/api/data/minance.sqlite`)
   - `MINANCE_SQLITE_SCHEMA_FILE` selects the schema file (default `services/api/sql/schema.sql`)
   - `MINANCE_SQLITE_AUTO_INIT=false` disables startup schema initialization
-- The stock `docker-compose.selfhost.yml` stack already sets the API container's internal SQLite paths. Only add `MINANCE_SQLITE_FILE` or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize that compose file or run the API outside the stock stack.
-- `MINANCE_RUNTIME_DATA_SOURCE` controls how `/var/lib/minance` is mounted in the API container:
+- The stock `docker-compose.selfhost.yml` stack already sets the combined app container's internal SQLite paths. Only add `MINANCE_SQLITE_FILE` or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize that compose file or run Minance outside the stock stack.
+- The stock self-host stack runs the published Docker image `ydeng11/minance:nightly`.
+- `MINANCE_RUNTIME_DATA_SOURCE` controls how `/var/lib/minance` is mounted in the app container:
   - unset: Docker-managed named volume `minance_data`
   - `./services/api/data`: bind-mount the repo runtime data directory and reuse the existing `services/api/data/minance.sqlite`
 - The backup and restore scripts already target `services/api/data` by default, so no script changes are required when using `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`.
 - Authenticated storage status can be inspected via `GET /v1/system/storage`.
 - Authenticated metrics snapshot can be inspected via `GET /v1/system/metrics`.
-- Health/readiness probes are available at `GET /healthz` and `GET /readyz`.
+- The stock self-host compose stack publishes only `MINANCE_WEB_PORT`. Docker container health uses the internal API readiness probe, while `/v1/system/storage` and `/v1/system/metrics` remain reachable through the published web origin.
 - E2E runs use isolated storage via `MINANCE_SQLITE_FILE_TEST=services/api/tmp/e2e-minance.sqlite`.
 - API reads `.env.local` for non-test local development and `.env.test` for `NODE_ENV=test`.
 - Test-mode storage uses isolated SQLite files under `services/api/tmp/` unless a suite overrides `MINANCE_SQLITE_FILE_TEST`.

@@ -7,7 +7,7 @@ Use this checklist before exposing Minance Next outside a trusted local network.
 - [ ] Set a strong `AI_CREDENTIAL_SECRET` (32+ random bytes).
 - [ ] Disable dev seed account in production (`MINANCE_SEED_TEST_ACCOUNT=false`).
 - [ ] Enforce strong user passwords through deployment policy.
-- [ ] Restrict API port (`MINANCE_API_PORT`) to trusted network/admin access only.
+- [ ] Keep the stock self-host layout with only `MINANCE_WEB_PORT` published; do not expose the internal API port unless you intentionally add a trusted admin-only path.
 - [ ] Rotate provider API keys every 90 days and after incidents.
 
 ## 2. CORS and Browser Boundary Controls

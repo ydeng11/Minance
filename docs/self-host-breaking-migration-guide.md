@@ -15,7 +15,7 @@ Companion docs:
 
 ## 2. Preconditions
 
-- Current deployment is healthy (`/healthz` and `/readyz` pass).
+- Current deployment is healthy (`docker compose ... ps` shows `app` healthy and `GET /` succeeds).
 - Operator has shell access to deployment host.
 - `sqlite3` CLI is installed on the host.
 - `.env.selfhost` is present and includes a valid `AI_CREDENTIAL_SECRET`.
@@ -25,8 +25,8 @@ Companion docs:
 
 1. Capture current version/commit and deployment timestamp.
 2. Verify runtime health:
-   - `curl -fsS http://<host>/healthz`
-   - `curl -fsS http://<host>/readyz`
+   - `docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost ps`
+   - `curl -I -fsS http://<host>/`
 3. Confirm `sqlite3` exists:
    - `sqlite3 --version`
 4. Confirm backup path is writable (`MINANCE_BACKUP_ROOT` or `./backups`).
@@ -58,7 +58,7 @@ Validation must complete without mismatched totals/counts before cutover.
 
 ## 6. Runtime Config for Breaking Release
 
-For the stock `docker-compose.selfhost.yml` stack, the API container already sets:
+For the stock `docker-compose.selfhost.yml` stack, the published image `ydeng11/minance:nightly` already runs with:
 
 - `MINANCE_STORE_BACKEND=sqlite`
 - `MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite`
@@ -69,9 +69,9 @@ In `.env.selfhost`, normally set or confirm:
 
 - `AI_CREDENTIAL_SECRET=<strong-random-secret>`
 - `MINANCE_WEB_PORT=<host-port>`
-- `MINANCE_API_PORT=<host-port>`
+- `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data` if you want to reuse the repo's existing runtime data directory
 
-Add `MINANCE_SQLITE_FILE`, `MINANCE_SQLITE_SCHEMA_FILE`, or `MINANCE_SQLITE_AUTO_INIT` to `.env.selfhost` only if you customize the compose file or run the API outside the stock stack. Use `MINANCE_DATA_FILE` only for explicit JSON fixture-import workflows.
+Add `MINANCE_SQLITE_FILE`, `MINANCE_SQLITE_SCHEMA_FILE`, or `MINANCE_SQLITE_AUTO_INIT` to `.env.selfhost` only if you customize the compose file or run Minance outside the stock stack. Use `MINANCE_DATA_FILE` only for explicit JSON fixture-import workflows.
 
 Keep secrets out of git and lock file permissions:
 
@@ -82,17 +82,19 @@ chmod 600 .env.selfhost
 ## 7. Deploy and Cut Over
 
 1. Pull the target release tag/commit.
-2. Rebuild/restart:
+2. Pull and restart:
 
 ```bash
-docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d --build
+docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost pull
+docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 ```
 
 3. Verify startup:
    - `docker compose -f docker-compose.selfhost.yml ps`
-   - `docker compose -f docker-compose.selfhost.yml logs --tail=100 api web`
+   - `docker compose -f docker-compose.selfhost.yml logs --tail=100 app`
 4. Confirm readiness and storage mode:
-   - `GET /readyz` returns `200`
+   - `docker compose -f docker-compose.selfhost.yml ps` reports `app` healthy
+   - `GET /` returns `200`
    - `GET /v1/system/storage` reports SQLite as active backend
 
 ## 8. Post-Migration Smoke Checks

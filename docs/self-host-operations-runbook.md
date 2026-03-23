@@ -10,8 +10,8 @@ Security baseline companion checklist:
 
 ### Files
 - Compose stack: `docker-compose.selfhost.yml`
-- API image Dockerfile: `deploy/docker/Dockerfile.api`
-- Web image Dockerfile: `deploy/docker/Dockerfile.web`
+- Published app image: `ydeng11/minance:nightly`
+- Image source Dockerfile: `deploy/docker/Dockerfile.combined`
 - Env template: `.env.selfhost.example`
 
 ### Quick start
@@ -19,31 +19,34 @@ Security baseline companion checklist:
 2. Set `AI_CREDENTIAL_SECRET` in `.env.selfhost` to a strong random secret.
 3. If you want Docker to reuse the repo's current SQLite/runtime data directory, set `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data` in `.env.selfhost`. Leave it unset to use the Docker-managed named volume `minance_data`.
 4. Treat `.env.selfhost` as the Docker self-host env file only. Local `pnpm dev` should use `.env.local`.
-5. Build and launch:
+5. Pull and launch:
 
 ```bash
-docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d --build
+docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost pull
+docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 ```
 
 6. Verify services:
 
 ```bash
 docker compose -f docker-compose.selfhost.yml ps
-docker compose -f docker-compose.selfhost.yml logs --tail=100 api web
+docker compose -f docker-compose.selfhost.yml logs --tail=100 app
+curl -I -fsS http://localhost:${MINANCE_WEB_PORT:-3000}
+curl -i -sS http://localhost:${MINANCE_WEB_PORT:-3000}/v1/system/storage | sed -n '1,20p'
 ```
 
 ### Required environment values
 - `AI_CREDENTIAL_SECRET` (required): encrypts provider keys at rest.
 - `MINANCE_WEB_PORT` (recommended): host port for web.
-- `MINANCE_API_PORT` (recommended): host port for API (debug/admin use).
 - `MINANCE_RUNTIME_DATA_SOURCE` (optional): mount source for `/var/lib/minance`; set to `./services/api/data` to reuse the repo runtime directory, otherwise leave unset for the `minance_data` named volume.
 
 ### Compose defaults and advanced overrides
-- The stock `docker-compose.selfhost.yml` stack already sets `MINANCE_STORE_BACKEND=sqlite`, `MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite`, `MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql`, and `MINANCE_SQLITE_AUTO_INIT=true` inside the API container.
-- The API volume source is controlled by `MINANCE_RUNTIME_DATA_SOURCE`:
+- The stock `docker-compose.selfhost.yml` stack runs the published image `ydeng11/minance:nightly`.
+- The stock stack already sets `MINANCE_STORE_BACKEND=sqlite`, `MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite`, `MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql`, and `MINANCE_SQLITE_AUTO_INIT=true` inside the combined app container.
+- The app volume source is controlled by `MINANCE_RUNTIME_DATA_SOURCE`:
   - unset: `minance_data` named volume
   - `./services/api/data`: bind-mounted host directory that reuses the existing `services/api/data/minance.sqlite`
-- Only add `MINANCE_SQLITE_FILE` or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize the compose file or run the API outside the stock stack. Use `MINANCE_DATA_FILE` only when you intentionally run a JSON fixture-import flow.
+- Only add `MINANCE_SQLITE_FILE` or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize the compose file or run Minance outside the stock stack. Use `MINANCE_DATA_FILE` only when you intentionally run a JSON fixture-import flow.
 - The env template also includes commented optional runtime flags supported by the current codebase, including `AI_LLM_CATEGORIZATION_ENABLED`, `AI_LLM_ASSISTANT_SYNTHESIS_ENABLED`, `IMPORT_PROCESSED_EDITOR_ENABLED`, `IMPORT_PROCESSING_LOGS_ENABLED`, `IMPORT_DIRECTION_INFERENCE_ENABLED`, `IMPORT_DIRECTION_LLM_ENABLED`, `AI_CREW_ANALYSIS_ENABLED`, `CREWAI_PYTHON_BIN`, `AI_CREW_ANALYSIS_TIMEOUT_MS`, `AI_LLM_TIMEOUT_MS`, and `MINANCE_TRAINING_DB_PATH`.
 
 ### Upgrade-safe practices
@@ -123,13 +126,13 @@ scripts/selfhost-restore.sh --backup ./backups/<stamp> --apply
 
 ## 4. Observability Baseline
 
-### API health/readiness probes
-- Liveness: `GET /healthz` returns `200` when the API process is running.
-- Readiness: `GET /readyz` returns:
-  - `200` when active storage backend checks pass.
-  - `503` when required dependencies are not ready (for example SQLite foundation issues).
+### Container health and public probes
+- The stock compose stack uses Docker container health to track the internal API readiness probe at `http://127.0.0.1:3001/readyz`.
+- `docker compose -f docker-compose.selfhost.yml ps` should report `app` as `healthy` once SQLite foundation is ready.
+- Public web verification should use `GET /` on the published web port.
 - Storage visibility (authenticated): `GET /v1/system/storage`.
 - Metrics snapshot (authenticated): `GET /v1/system/metrics`.
+- Internal API liveness/readiness endpoints still exist inside the container for debugging, but the stock compose stack does not publish them directly on the host.
 
 ### Structured request logs
 - API emits JSON log lines for every request with:
@@ -140,8 +143,8 @@ scripts/selfhost-restore.sh --backup ./backups/<stamp> --apply
 
 ### Minimum alert policy
 - Availability:
-  - Alert when `/healthz` fails for 2 consecutive probe windows.
-  - Alert when `/readyz` is `503` for more than 5 minutes.
+  - Alert when the `app` container health becomes `unhealthy` for 2 consecutive probe windows.
+  - Alert when `GET /` fails on the published web origin for more than 5 minutes.
 - Error rate:
   - Alert when `5xx` ratio exceeds 2% over a rolling 10-minute window.
 - Latency:
@@ -151,9 +154,9 @@ scripts/selfhost-restore.sh --backup ./backups/<stamp> --apply
 
 ## 5. Operational Verification Checklist
 
-- [ ] `docker compose ... ps` shows healthy `api` and `web`.
+- [ ] `docker compose ... ps` shows healthy `app`.
 - [ ] Login works with expected user account(s).
-- [ ] `/healthz` returns `200` and `/readyz` returns expected state.
+- [ ] `GET /` returns `200` on the published web port.
 - [ ] `/v1/system/storage` responds and reports expected backend.
 - [ ] `/v1/system/metrics` is reachable for operator diagnostics.
 - [ ] Backup artifact for current release exists and has checksums.

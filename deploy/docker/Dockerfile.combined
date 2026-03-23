@@ -1,0 +1,47 @@
+FROM node:20-bookworm-slim AS deps
+WORKDIR /app
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/package.json
+COPY services/api/package.json services/api/package.json
+COPY packages/domain/package.json packages/domain/package.json
+RUN pnpm install --frozen-lockfile
+
+FROM deps AS build
+WORKDIR /app
+COPY . .
+ARG MINANCE_API_ORIGIN=http://127.0.0.1:3001
+ENV MINANCE_API_ORIGIN=${MINANCE_API_ORIGIN}
+RUN pnpm build:web
+
+FROM node:20-bookworm-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ENV MINANCE_NEXT_DIST_DIR=.next
+ENV MINANCE_STORE_BACKEND=sqlite
+ENV MINANCE_DATA_FILE=/var/lib/minance/store.json
+ENV MINANCE_API_ORIGIN=http://127.0.0.1:3001
+ENV MINANCE_INTERNAL_API_PORT=3001
+ENV MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite
+ENV MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql
+ENV MINANCE_SQLITE_AUTO_INIT=true
+ENV MINANCE_SEED_TEST_ACCOUNT=false
+RUN corepack enable
+RUN apt-get update && apt-get install -y --no-install-recommends sqlite3 && rm -rf /var/lib/apt/lists/*
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps ./apps
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+COPY packages ./packages
+COPY scripts ./scripts
+COPY services ./services
+COPY --from=build /app/apps/web/.next ./apps/web/.next
+COPY deploy/docker/start-combined.sh /app/start-combined.sh
+
+RUN chmod +x /app/start-combined.sh
+
+EXPOSE 3000
+HEALTHCHECK --interval=20s --timeout=5s --retries=5 --start-period=20s CMD node -e "fetch('http://127.0.0.1:3001/readyz').then((r)=>process.exit(r.status === 200 ? 0 : 1)).catch(()=>process.exit(1))"
+CMD ["/app/start-combined.sh"]
