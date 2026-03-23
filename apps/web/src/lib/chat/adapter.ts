@@ -21,13 +21,11 @@ function toShortStringList(value: unknown, limit = 4): string[] {
 }
 
 export function assistantQueryToMessage(query: AssistantQuery): AssistantMessageCard {
-  return {
+  const message: AssistantMessageCard = {
     id: query.id,
     question: query.question,
     answer: query.result.answer,
-    summary: typeof query.result.summary === "string" ? query.result.summary : undefined,
     keyPoints: toShortStringList(query.result.keyPoints),
-    followUp: typeof query.result.followUp === "string" ? query.result.followUp : undefined,
     highlights: Array.isArray(query.result.highlights) ? query.result.highlights : [],
     provider: query.result.provider,
     model: query.result.model,
@@ -35,4 +33,14 @@ export function assistantQueryToMessage(query: AssistantQuery): AssistantMessage
     createdAt: query.createdAt,
     state: "complete"
   };
+
+  if (typeof query.result.summary === "string") {
+    message.summary = query.result.summary;
+  }
+
+  if (typeof query.result.followUp === "string") {
+    message.followUp = query.result.followUp;
+  }
+
+  return message;
 }

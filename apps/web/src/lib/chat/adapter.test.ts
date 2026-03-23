@@ -86,3 +86,33 @@ test("assistantQueryToMessage maps structured assistant sections when present", 
   assert.equal(output.followUp, "I can break that target down into weekly limits if you'd like.");
   assert.equal(output.answer, "Fallback plain answer.");
 });
+
+test("assistantQueryToMessage omits optional sections when the backend does not provide them", () => {
+  const input: AssistantQuery = {
+    id: "asst_3",
+    userId: "user_1",
+    question: "What changed?",
+    plan: {
+      intent: "overview",
+      filters: {}
+    },
+    result: {
+      answer: "Spending increased.",
+      highlights: [],
+      confidence: 0.9,
+      numbers: {},
+      filters: {},
+      details: [],
+      drillDownUrl: "/transactions?range=30d",
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      synthesisStatus: "applied"
+    },
+    createdAt: "2026-01-31T12:00:00.000Z"
+  };
+
+  const output = assistantQueryToMessage(input);
+
+  assert.equal("summary" in output, false);
+  assert.equal("followUp" in output, false);
+});
