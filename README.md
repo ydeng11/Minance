@@ -93,6 +93,23 @@ Reference deployment and operations profile:
 
 `.env.selfhost.example` is for the Docker self-host stack. Local `pnpm dev` uses `.env.local`. Test runs use `.env.test`.
 
+Quick start for reusing the current runtime data directory and SQLite file:
+
+```bash
+cp .env.selfhost.example .env.selfhost
+chmod 600 .env.selfhost
+```
+
+Set these values in `.env.selfhost` before launching:
+- `AI_CREDENTIAL_SECRET=<strong-random-secret>`
+- `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`
+
+Then build and start the stack:
+
+```bash
+docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d --build
+```
+
 ## Notes
 - Runtime data uses SQLite at `services/api/data/minance.sqlite`.
 - SQLite foundation bootstrap is active at startup:
@@ -101,6 +118,10 @@ Reference deployment and operations profile:
   - `MINANCE_SQLITE_SCHEMA_FILE` selects the schema file (default `services/api/sql/schema.sql`)
   - `MINANCE_SQLITE_AUTO_INIT=false` disables startup schema initialization
 - The stock `docker-compose.selfhost.yml` stack already sets the API container's internal SQLite paths. Only add `MINANCE_SQLITE_FILE` or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize that compose file or run the API outside the stock stack.
+- `MINANCE_RUNTIME_DATA_SOURCE` controls how `/var/lib/minance` is mounted in the API container:
+  - unset: Docker-managed named volume `minance_data`
+  - `./services/api/data`: bind-mount the repo runtime data directory and reuse the existing `services/api/data/minance.sqlite`
+- The backup and restore scripts already target `services/api/data` by default, so no script changes are required when using `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`.
 - Authenticated storage status can be inspected via `GET /v1/system/storage`.
 - Authenticated metrics snapshot can be inspected via `GET /v1/system/metrics`.
 - Health/readiness probes are available at `GET /healthz` and `GET /readyz`.

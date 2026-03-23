@@ -17,14 +17,15 @@ Security baseline companion checklist:
 ### Quick start
 1. Copy `.env.selfhost.example` to `.env.selfhost`.
 2. Set `AI_CREDENTIAL_SECRET` in `.env.selfhost` to a strong random secret.
-3. Treat `.env.selfhost` as the Docker self-host env file only. Local `pnpm dev` should use `.env.local`.
-4. Build and launch:
+3. If you want Docker to reuse the repo's current SQLite/runtime data directory, set `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data` in `.env.selfhost`. Leave it unset to use the Docker-managed named volume `minance_data`.
+4. Treat `.env.selfhost` as the Docker self-host env file only. Local `pnpm dev` should use `.env.local`.
+5. Build and launch:
 
 ```bash
 docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d --build
 ```
 
-4. Verify services:
+6. Verify services:
 
 ```bash
 docker compose -f docker-compose.selfhost.yml ps
@@ -35,16 +36,20 @@ docker compose -f docker-compose.selfhost.yml logs --tail=100 api web
 - `AI_CREDENTIAL_SECRET` (required): encrypts provider keys at rest.
 - `MINANCE_WEB_PORT` (recommended): host port for web.
 - `MINANCE_API_PORT` (recommended): host port for API (debug/admin use).
+- `MINANCE_RUNTIME_DATA_SOURCE` (optional): mount source for `/var/lib/minance`; set to `./services/api/data` to reuse the repo runtime directory, otherwise leave unset for the `minance_data` named volume.
 
 ### Compose defaults and advanced overrides
 - The stock `docker-compose.selfhost.yml` stack already sets `MINANCE_STORE_BACKEND=sqlite`, `MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite`, `MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql`, and `MINANCE_SQLITE_AUTO_INIT=true` inside the API container.
+- The API volume source is controlled by `MINANCE_RUNTIME_DATA_SOURCE`:
+  - unset: `minance_data` named volume
+  - `./services/api/data`: bind-mounted host directory that reuses the existing `services/api/data/minance.sqlite`
 - Only add `MINANCE_SQLITE_FILE` or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize the compose file or run the API outside the stock stack. Use `MINANCE_DATA_FILE` only when you intentionally run a JSON fixture-import flow.
 - The env template also includes commented optional runtime flags supported by the current codebase, including `AI_LLM_CATEGORIZATION_ENABLED`, `AI_LLM_ASSISTANT_SYNTHESIS_ENABLED`, `IMPORT_PROCESSED_EDITOR_ENABLED`, `IMPORT_PROCESSING_LOGS_ENABLED`, `IMPORT_DIRECTION_INFERENCE_ENABLED`, `IMPORT_DIRECTION_LLM_ENABLED`, `AI_CREW_ANALYSIS_ENABLED`, `CREWAI_PYTHON_BIN`, `AI_CREW_ANALYSIS_TIMEOUT_MS`, `AI_LLM_TIMEOUT_MS`, and `MINANCE_TRAINING_DB_PATH`.
 
 ### Upgrade-safe practices
 1. Pin deployments to a git tag/commit before building.
 2. Keep `.env.selfhost` out of git and source control.
-3. Use named volume `minance_data` as persistent runtime data.
+3. Keep runtime data persistent either with the default `minance_data` named volume or with an explicit bind mount such as `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`.
 4. Run backup script before every deploy and migration.
 5. After deploy, verify healthcheck status and login flow before traffic cutover.
 
@@ -52,6 +57,8 @@ docker compose -f docker-compose.selfhost.yml logs --tail=100 api web
 
 ### Backups
 The backup script captures the runtime SQLite database, optional JSON fixture/input file if present, and the uploads archive with checksums.
+
+When `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`, the backup/restore defaults already point at the same host directory used by Docker, so no script overrides are required.
 
 ```bash
 scripts/selfhost-backup.sh

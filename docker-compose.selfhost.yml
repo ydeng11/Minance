@@ -17,7 +17,7 @@ services:
       MINANCE_SQLITE_AUTO_INIT: "true"
       MINANCE_SEED_TEST_ACCOUNT: "false"
     volumes:
-      - minance_data:/var/lib/minance
+      - ${MINANCE_RUNTIME_DATA_SOURCE:-minance_data}:/var/lib/minance
     ports:
       - "${MINANCE_API_PORT:-3001}:3001"
     healthcheck:
