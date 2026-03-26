@@ -2,8 +2,6 @@ services:
   app:
     image: ydeng11/minance:nightly
     restart: unless-stopped
-    env_file:
-      - .env.selfhost
     environment:
       NODE_ENV: production
       PORT: 3000
