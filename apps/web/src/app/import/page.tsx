@@ -29,9 +29,11 @@ import {
   resolveTemplateMapping
 } from "@/lib/import/mappingTemplates";
 import {
+  buildImportAccountOptions,
   collectRowIdsByAccountKey,
   collectVisibleSelectedRowIds,
   getReconciliationActionMode,
+  resolveImportAccountValue,
   runReprocessRowsFlow
 } from "./accountAssignment";
 import { money } from "@/lib/utils";
@@ -65,6 +67,13 @@ export default function ImportPage() {
   const accountOptions = useMemo(
     () => accounts.slice().sort((left, right) => left.displayName.localeCompare(right.displayName)),
     [accounts]
+  );
+  const accountAssignmentOptions = useMemo(
+    () => accountOptions.map((account) => ({
+      id: account.id,
+      label: account.displayIdentifier || account.displayName
+    })),
+    [accountOptions]
   );
   const visibleRows = useMemo(
     () => state.processedRows?.items || [],
@@ -468,7 +477,11 @@ export default function ImportPage() {
       );
     }
 
-    return data.items.map((row) => (
+    return data.items.map((row) => {
+      const accountOptionsForRow = buildImportAccountOptions(accountOptions, row.normalized.account_name);
+      const selectedAccountValue = resolveImportAccountValue(accountOptions, row.normalized.account_name);
+
+      return (
       <tr key={row.rowId} className="border-b border-neutral-900 align-top">
         <td className="px-2 py-2">
           <input
@@ -553,12 +566,18 @@ export default function ImportPage() {
           </select>
         </td>
         <td className="px-2 py-2">
-          <input
-            defaultValue={row.normalized.account_name}
-            className={`w-32 ${processedFieldClass}`}
+          <select
+            defaultValue={selectedAccountValue}
+            className={`w-44 ${processedFieldClass}`}
             aria-label={`Account for row ${row.rowId}`}
-            onBlur={(event) => void updateProcessedRow(row.rowId, { account_name: event.target.value })}
-          />
+            onChange={(event) => void updateProcessedRow(row.rowId, { account_name: event.target.value })}
+          >
+            {accountOptionsForRow.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </td>
         <td className="px-2 py-2">
           <input
@@ -571,7 +590,8 @@ export default function ImportPage() {
         </td>
         <td className="px-2 py-2 text-[11px] text-neutral-400">{row.issues.join("; ")}</td>
       </tr>
-    ));
+      );
+    });
   }
 
   return (
@@ -855,9 +875,9 @@ export default function ImportPage() {
                 className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
               >
                 <option value="">Select account</option>
-                {accountOptions.map((entry) => (
+                {accountAssignmentOptions.map((entry) => (
                   <option key={entry.id} value={entry.id}>
-                    {entry.displayName}
+                    {entry.label}
                   </option>
                 ))}
               </select>
@@ -984,9 +1004,9 @@ export default function ImportPage() {
                                     className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
                                   >
                                     <option value="">Select account</option>
-                                    {accountOptions.map((account) => (
+                                    {accountAssignmentOptions.map((account) => (
                                       <option key={account.id} value={account.id}>
-                                        {account.displayName}
+                                        {account.label}
                                       </option>
                                     ))}
                                   </select>

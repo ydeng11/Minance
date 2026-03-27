@@ -1,4 +1,4 @@
-import type { Category, Transaction } from "@/lib/api/types";
+import type { Account, Category, Transaction } from "@/lib/api/types";
 import { localDateYmd, toInputDate } from "@/lib/utils";
 
 const TAG_PATTERN = /^[a-z0-9]+(?:[ _-][a-z0-9]+)*$/;
@@ -47,6 +47,11 @@ export interface TransactionFormValidationResult {
   payload: TransactionFormPayload | null;
 }
 
+export interface TransactionAccountOption {
+  value: string;
+  label: string;
+}
+
 export function createInitialTransactionDraft(options: { category?: string; today?: string } = {}): TransactionFormDraft {
   return {
     id: "",
@@ -63,10 +68,36 @@ export function createInitialTransactionDraft(options: { category?: string; toda
   };
 }
 
-export function buildDraftFromTransaction(transaction: Transaction): TransactionFormDraft {
+function normalizeAccountIdentity(value: string) {
+  return String(value || "")
+    .normalize("NFKD")
+    .replace(/[^a-zA-Z0-9 ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function findAccountByIdentity(accounts: Account[], value: string) {
+  const normalized = normalizeAccountIdentity(value);
+  if (!normalized) {
+    return null;
+  }
+
+  return accounts.find((account) => (
+    normalizeAccountIdentity(account.displayName) === normalized ||
+    normalizeAccountIdentity(account.normalizedKey) === normalized
+  )) || null;
+}
+
+export function buildDraftFromTransaction(transaction: Transaction, accounts: Account[] = []): TransactionFormDraft {
   const normalizedAmount = Number.isFinite(Number(transaction.amount))
     ? Math.abs(Number(transaction.amount))
     : 0;
+  const normalizedFromId = transaction.account_id
+    ? accounts.find((account) => account.id === transaction.account_id) || null
+    : null;
+  const fallbackAccount = findAccountByIdentity(accounts, transaction.account_key || "");
+  const accountName = normalizedFromId?.displayName || fallbackAccount?.displayName || transaction.account_key || "Manual Account";
 
   return {
     id: transaction.id,
@@ -76,7 +107,7 @@ export function buildDraftFromTransaction(transaction: Transaction): Transaction
     amount: String(normalizedAmount),
     direction: transaction.direction === "inflow" ? "inflow" : "outflow",
     category_final: transaction.category_final || "",
-    account_name: transaction.account_key || "Manual Account",
+    account_name: accountName,
     memo: transaction.memo || "",
     tags: Array.isArray(transaction.tags) ? transaction.tags.join(", ") : "",
     transaction_type:
@@ -85,7 +116,47 @@ export function buildDraftFromTransaction(transaction: Transaction): Transaction
       transaction.transaction_type === "transfer"
         ? transaction.transaction_type
         : ""
+    };
+}
+
+export function reconcileDraftAccountName(
+  draft: TransactionFormDraft,
+  accounts: Account[] = []
+): TransactionFormDraft {
+  if (!draft.id || accounts.length === 0) {
+    return draft;
+  }
+
+  const matchingAccount = findAccountByIdentity(accounts, draft.account_name);
+  if (!matchingAccount || matchingAccount.displayName === draft.account_name) {
+    return draft;
+  }
+
+  return {
+    ...draft,
+    account_name: matchingAccount.displayName
   };
+}
+
+export function buildTransactionAccountOptions(
+  accounts: Account[],
+  currentAccountName = ""
+): TransactionAccountOption[] {
+  const options = accounts
+    .map((account) => ({
+      value: account.displayName,
+      label: account.displayIdentifier || account.displayName
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+
+  const currentRaw = String(currentAccountName || "").trim();
+  const matchingAccount = findAccountByIdentity(accounts, currentRaw);
+  const current = matchingAccount?.displayName || currentRaw;
+  if (!current || options.some((option) => option.value === current)) {
+    return options;
+  }
+
+  return [{ value: current, label: current }, ...options];
 }
 
 function normalizeComparable(value: string) {

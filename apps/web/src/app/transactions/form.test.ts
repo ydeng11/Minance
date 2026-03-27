@@ -1,10 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import type { Category, Transaction } from "@/lib/api/types";
+import type { Account, Category, Transaction } from "@/lib/api/types";
 import {
+  buildTransactionAccountOptions,
   buildDraftFromTransaction,
   createInitialTransactionDraft,
   parseTagListInput,
+  reconcileDraftAccountName,
   validateTransactionDraft
 } from "./form";
 
@@ -38,6 +40,29 @@ function createCategory(overrides: Partial<Category> = {}): Category {
     type: "expense",
     budget: null,
     isSystem: false,
+    createdAt: "2026-03-01T00:00:00.000Z",
+    updatedAt: "2026-03-01T00:00:00.000Z",
+    ...overrides
+  };
+}
+
+function createAccount(overrides: Partial<Account> = {}): Account {
+  return {
+    id: "acct_001",
+    userId: "user_001",
+    displayName: "Primary Checking",
+    displayIdentifier: "Primary Checking (Manual | Checking)",
+    sourceInstitution: null,
+    accountType: "checking",
+    currency: "USD",
+    initialBalance: 0,
+    version: 1,
+    status: "active",
+    includeInCharts: true,
+    hidden: false,
+    closed: false,
+    closedAt: null,
+    normalizedKey: "primary checking",
     createdAt: "2026-03-01T00:00:00.000Z",
     updatedAt: "2026-03-01T00:00:00.000Z",
     ...overrides
@@ -91,13 +116,25 @@ test("createInitialTransactionDraft returns default create state", () => {
 });
 
 test("buildDraftFromTransaction maps existing transaction into editable draft", () => {
-  const draft = buildDraftFromTransaction(createTransaction());
+  const draft = buildDraftFromTransaction(createTransaction(), [createAccount()]);
   assert.equal(draft.id, "txn_001");
   assert.equal(draft.transaction_date, "2026-03-01");
   assert.equal(draft.tags, "lunch, weekday");
-  assert.equal(draft.account_name, "primary-checking");
+  assert.equal(draft.account_name, "Primary Checking");
   assert.deepEqual(sortedKeys(draft), EXPECTED_DRAFT_KEYS);
   assert.equal(draft.transaction_type, "expense");
+});
+
+test("buildDraftFromTransaction falls back to transaction account_key when no matching account exists", () => {
+  const draft = buildDraftFromTransaction(createTransaction(), []);
+  assert.equal(draft.account_name, "primary-checking");
+});
+
+test("reconcileDraftAccountName maps editing drafts to the loaded account display name", () => {
+  const draft = buildDraftFromTransaction(createTransaction(), []);
+  const reconciled = reconcileDraftAccountName(draft, [createAccount()]);
+
+  assert.equal(reconciled.account_name, "Primary Checking");
 });
 
 test("buildDraftFromTransaction normalizes negative persisted amount into positive edit value", () => {
@@ -202,4 +239,22 @@ test("validateTransactionDraft builds normalized payload for valid input", () =>
     transaction_type: "expense"
   });
   assert.deepEqual(sortedKeys(result.payload), EXPECTED_PAYLOAD_KEYS);
+});
+
+test("buildTransactionAccountOptions uses displayIdentifier labels and keeps current unknown value", () => {
+  const options = buildTransactionAccountOptions(
+    [
+      createAccount({
+        id: "acct_1",
+        displayName: "Main Checking",
+        displayIdentifier: "Main Checking (Bank A | Checking)"
+      })
+    ],
+    "Legacy Account"
+  );
+
+  assert.deepEqual(options, [
+    { value: "Legacy Account", label: "Legacy Account" },
+    { value: "Main Checking", label: "Main Checking (Bank A | Checking)" }
+  ]);
 });

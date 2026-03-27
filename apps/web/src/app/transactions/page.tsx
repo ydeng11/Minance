@@ -9,10 +9,12 @@ import { money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
 import type { Account, Category, Transaction, TransactionsResponse } from "@/lib/api/types";
 import {
+  buildTransactionAccountOptions,
   buildDraftFromTransaction,
   createInitialTransactionDraft,
-  validateTransactionDraft,
   parseTagListInput,
+  reconcileDraftAccountName,
+  validateTransactionDraft,
   type TransactionFormDraft,
   type TransactionFormErrors
 } from "./form";
@@ -191,6 +193,10 @@ export default function TransactionsPage() {
     () => categoryFilterOptions.map((value) => ({ value, label: value })),
     [categoryFilterOptions]
   );
+  const transactionAccountOptions = useMemo(
+    () => buildTransactionAccountOptions(accounts, form.account_name),
+    [accounts, form.account_name]
+  );
 
   const totalPages = Math.max(1, Math.ceil(totalTransactions / TRANSACTIONS_PAGE_SIZE));
   const currentPage = Math.min(Math.max(1, filters.page), totalPages);
@@ -228,6 +234,20 @@ export default function TransactionsPage() {
     try {
       const accountData = await api.accounts.list();
       setAccounts(accountData.accounts);
+      setForm((previous) => {
+        if (previous.id) {
+          return reconcileDraftAccountName(previous, accountData.accounts);
+        }
+
+        if (previous.account_name !== "Manual Account" || accountData.accounts.length === 0) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          account_name: accountData.accounts[0].displayName
+        };
+      });
     } catch {
       // Account filters remain optional; keep page usable when this call fails.
     }
@@ -585,7 +605,7 @@ export default function TransactionsPage() {
     setDeleteConfirmId(null);
     clearSelectedTransactions();
     setIsCreateDialogOpen(false);
-    setForm(buildDraftFromTransaction(transaction));
+    setForm(buildDraftFromTransaction(transaction, accounts));
     setFormErrors({});
     setMessage("");
   }
@@ -1269,6 +1289,7 @@ export default function TransactionsPage() {
                           <form onSubmit={submitForm} className="grid gap-4" data-testid={`txn-inline-form-${txn.id}`}>
                             <input type="hidden" value={form.id} readOnly />
                             <TransactionEditorFields
+                              accountOptions={transactionAccountOptions}
                               categories={categories}
                               errors={formErrors}
                               form={form}
@@ -1376,6 +1397,7 @@ export default function TransactionsPage() {
 
             <form onSubmit={submitForm} className="mt-6 grid gap-4" data-testid="txn-form">
               <TransactionEditorFields
+                accountOptions={transactionAccountOptions}
                 categories={categories}
                 errors={formErrors}
                 form={form}

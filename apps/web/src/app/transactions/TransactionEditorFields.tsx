@@ -1,7 +1,8 @@
 import type { Category } from "@/lib/api/types";
-import type { TransactionFormDraft, TransactionFormErrors } from "./form";
+import type { TransactionAccountOption, TransactionFormDraft, TransactionFormErrors } from "./form";
 
 interface TransactionEditorFieldsProps {
+  accountOptions: TransactionAccountOption[];
   categories: Category[];
   errors: TransactionFormErrors;
   form: TransactionFormDraft;
@@ -13,6 +14,7 @@ const controlClassName =
   "rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-200 outline-none transition focus:border-emerald-500";
 
 export function TransactionEditorFields({
+  accountOptions,
   categories,
   errors,
   form,
@@ -113,13 +115,19 @@ export function TransactionEditorFields({
 
         <label className="grid gap-1 text-sm text-neutral-300" htmlFor={`${idPrefix}-account`}>
           Account
-          <input
+          <select
             id={`${idPrefix}-account`}
             name="account_name"
             value={form.account_name}
             onChange={(event) => onFieldChange("account_name", event.target.value)}
             className={controlClassName}
-          />
+          >
+            {accountOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="grid gap-1 text-sm text-neutral-300" htmlFor={`${idPrefix}-type`}>

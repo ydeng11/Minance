@@ -1,10 +1,15 @@
-import type { ImportReconciliationAccount, ProcessedRow, ProcessedSummary } from "@/lib/api/types";
+import type { Account, ImportReconciliationAccount, ProcessedRow, ProcessedSummary } from "@/lib/api/types";
 
 interface ReprocessRowsFlowDependencies {
   reprocess: (importId: string) => Promise<{ total: number; summary: ProcessedSummary }>;
   refreshProcessedRows: (importId: string) => Promise<void>;
   refreshImports: () => Promise<void>;
   publishNotice: (notice: string) => void;
+}
+
+export interface ImportAccountOption {
+  value: string;
+  label: string;
 }
 
 export function normalizeAccountKey(value: string | null | undefined): string {
@@ -59,4 +64,47 @@ export async function runReprocessRowsFlow(
   await dependencies.refreshProcessedRows(importId);
   await dependencies.refreshImports();
   dependencies.publishNotice(buildReprocessNotice(reprocessed.total, reprocessed.summary));
+}
+
+function findImportAccountByIdentity(accounts: Account[], accountName: string) {
+  const normalizedTarget = normalizeAccountKey(accountName);
+  if (!normalizedTarget) {
+    return null;
+  }
+
+  return accounts.find((account) => (
+    normalizeAccountKey(account.displayName) === normalizedTarget ||
+    normalizeAccountKey(account.normalizedKey) === normalizedTarget
+  )) || null;
+}
+
+export function resolveImportAccountValue(accounts: Account[], currentAccountName = ""): string {
+  const current = String(currentAccountName || "").trim();
+  if (!current) {
+    return "";
+  }
+
+  const match = findImportAccountByIdentity(accounts, current);
+  return match?.displayName || current;
+}
+
+export function buildImportAccountOptions(accounts: Account[], currentAccountName = ""): ImportAccountOption[] {
+  const options = accounts
+    .map((account) => ({
+      value: account.displayName,
+      label: account.displayIdentifier || account.displayName
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label));
+
+  const current = String(currentAccountName || "").trim();
+  if (!current) {
+    return options;
+  }
+
+  const selectedValue = resolveImportAccountValue(accounts, current);
+  if (selectedValue !== current || options.some((option) => option.value === current)) {
+    return options;
+  }
+
+  return [{ value: current, label: current }, ...options];
 }
