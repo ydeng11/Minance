@@ -456,6 +456,7 @@ export function getAvailableTools() {
           start: { type: "string", description: "Start date (YYYY-MM-DD)" },
           end: { type: "string", description: "End date (YYYY-MM-DD)" },
           range: { type: "string", description: "Predefined range (e.g., '30d', '90d', 'this_month')" },
+          account: { type: "string", description: "Filter by account name, normalized account key, or account ID" },
           category_view: { type: "string", enum: ["granular", "coarse"] }
         },
         required: []
@@ -470,6 +471,7 @@ export function getAvailableTools() {
           start: { type: "string", description: "Start date (YYYY-MM-DD)" },
           end: { type: "string", description: "End date (YYYY-MM-DD)" },
           range: { type: "string", description: "Predefined range" },
+          account: { type: "string", description: "Filter by account name, normalized account key, or account ID" },
           category_view: { type: "string", enum: ["granular", "coarse"] }
         },
         required: []
@@ -483,7 +485,8 @@ export function getAvailableTools() {
         properties: {
           start: { type: "string", description: "Start date (YYYY-MM-DD)" },
           end: { type: "string", description: "End date (YYYY-MM-DD)" },
-          range: { type: "string", description: "Predefined range" }
+          range: { type: "string", description: "Predefined range" },
+          account: { type: "string", description: "Filter by account name, normalized account key, or account ID" }
         },
         required: []
       }
@@ -496,7 +499,8 @@ export function getAvailableTools() {
         properties: {
           start: { type: "string", description: "Start date (YYYY-MM-DD)" },
           end: { type: "string", description: "End date (YYYY-MM-DD)" },
-          range: { type: "string", description: "Predefined range" }
+          range: { type: "string", description: "Predefined range" },
+          account: { type: "string", description: "Filter by account name, normalized account key, or account ID" }
         },
         required: []
       }
@@ -512,6 +516,7 @@ export function getAvailableTools() {
           range: { type: "string", description: "Predefined range" },
           category: { type: "string", description: "Filter by category" },
           merchant: { type: "string", description: "Filter by merchant" },
+          account: { type: "string", description: "Filter by account name, normalized account key, or account ID" },
           limit: { type: "number", description: "Max results (default 100)" },
           offset: { type: "number", description: "Pagination offset" }
         },

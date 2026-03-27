@@ -27,6 +27,7 @@ export const QA_TOOLS: ToolDefinition[] = [
           range: { type: "string", enum: ["30d", "90d", "365d", "ytd", "all"], description: "Preset date range" },
           category: { type: "string", description: "Filter by category name" },
           merchant: { type: "string", description: "Filter by merchant name" },
+          account: { type: "string", description: "Filter by account name, normalized account key, or account ID" },
           direction: { type: "string", enum: ["inflow", "outflow"], description: "Filter by direction" }
         },
         required: []
@@ -44,6 +45,7 @@ export const QA_TOOLS: ToolDefinition[] = [
           start: { type: "string", format: "date" },
           end: { type: "string", format: "date" },
           range: { type: "string", enum: ["30d", "90d", "365d", "ytd", "all"] },
+          account: { type: "string", description: "Filter by account name, normalized account key, or account ID" },
           direction: { type: "string", enum: ["inflow", "outflow"] }
         },
         required: []
@@ -61,6 +63,7 @@ export const QA_TOOLS: ToolDefinition[] = [
           start: { type: "string", format: "date" },
           end: { type: "string", format: "date" },
           range: { type: "string", enum: ["30d", "90d", "365d", "ytd", "all"] },
+          account: { type: "string", description: "Filter by account name, normalized account key, or account ID" },
           category: { type: "string" }
         },
         required: []
@@ -77,7 +80,8 @@ export const QA_TOOLS: ToolDefinition[] = [
         properties: {
           start: { type: "string", format: "date" },
           end: { type: "string", format: "date" },
-          range: { type: "string", enum: ["30d", "90d", "365d", "ytd", "all"] }
+          range: { type: "string", enum: ["30d", "90d", "365d", "ytd", "all"] },
+          account: { type: "string", description: "Filter by account name, normalized account key, or account ID" }
         },
         required: []
       }
@@ -96,6 +100,7 @@ export const QA_TOOLS: ToolDefinition[] = [
           range: { type: "string", enum: ["30d", "90d", "365d", "ytd", "all"] },
           category: { type: "string" },
           merchant: { type: "string" },
+          account: { type: "string", description: "Filter by account name, normalized account key, or account ID" },
           direction: { type: "string", enum: ["inflow", "outflow"] },
           limit: { type: "number", description: "Max transactions to return (default 20, max 100)" }
         },

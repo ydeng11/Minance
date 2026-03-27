@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 
 import { resetStoreForTests } from "../../src/store.ts";
 import { executeTool, getAvailableTools } from "../../src/llm/tool-executor.ts";
+import { QA_TOOLS } from "../../src/llm/tools.ts";
 
 const baseStore = {
   users: [{ id: "user_1", email: "user@example.com", createdAt: "2026-01-01", updatedAt: "2026-01-01" }],
@@ -109,6 +110,41 @@ const baseStore = {
   migrationRuns: [],
   auditEvents: []
 };
+
+const ACCOUNT_SCOPED_QA_TOOL_NAMES = [
+  "get_overview",
+  "get_category_breakdown",
+  "get_merchant_breakdown",
+  "get_anomalies",
+  "list_transactions"
+];
+
+function createAccountScopedStore() {
+  const store = structuredClone(baseStore);
+  store.transactions[0].account_key = "account hyatt";
+  store.transactions[0].account_id = "acct_hyatt";
+  store.transactions[1].account_key = "household checking";
+  store.transactions[1].account_id = "acct_household";
+  store.transactions[2].account_key = "payroll checking";
+  store.transactions[2].account_id = "acct_payroll";
+  return store;
+}
+
+function createScopedTransaction(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "txn_scoped",
+    user_id: "user_1",
+    transaction_date: "2026-01-16",
+    merchant_normalized: "merchant",
+    merchant_raw: "Merchant",
+    description: "Scoped transaction",
+    amount: 10,
+    direction: "outflow",
+    category_final: "Dining",
+    dedupe_fingerprint: "scoped",
+    ...overrides
+  };
+}
 
 test("executeTool returns error for unknown tool", async () => {
   resetStoreForTests(structuredClone(baseStore));
@@ -312,6 +348,170 @@ test("list_transactions enforces user isolation", async () => {
   }
 });
 
+test("list_transactions supports account-scoped filtering", async () => {
+  const store = createAccountScopedStore();
+
+  resetStoreForTests(store);
+
+  const byName = await executeTool(
+    "list_transactions",
+    { account: "Account Hyatt", range: "all" },
+    { userId: "user_1" }
+  );
+  assert.equal(byName.success, true);
+  assert.equal(byName.data?.total, 1);
+  assert.equal(byName.data?.items?.[0]?.merchant_raw, "Coffee Shop");
+
+  const byId = await executeTool(
+    "list_transactions",
+    { account: "acct_hyatt", range: "all" },
+    { userId: "user_1" }
+  );
+  assert.equal(byId.success, true);
+  assert.equal(byId.data?.total, 1);
+  assert.equal(byId.data?.items?.[0]?.merchant_raw, "Coffee Shop");
+});
+
+test("get_overview supports account-scoped filtering", async () => {
+  resetStoreForTests(createAccountScopedStore());
+
+  const result = await executeTool(
+    "get_overview",
+    { account: "Account Hyatt", range: "all" },
+    { userId: "user_1" }
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.summary?.totalSpend, 15);
+  assert.equal(result.data?.summary?.totalIncome, 0);
+  assert.equal(result.data?.summary?.transactionCount, 1);
+  assert.equal(result.data?.topMerchants?.[0]?.merchant, "coffee shop");
+});
+
+test("get_category_breakdown supports account-scoped filtering", async () => {
+  resetStoreForTests(createAccountScopedStore());
+
+  const result = await executeTool(
+    "get_category_breakdown",
+    { account: "acct_household", range: "all" },
+    { userId: "user_1" }
+  );
+
+  assert.equal(result.success, true);
+  assert.deepEqual(
+    result.data?.map((entry: { category: string; amount: number }) => ({
+      category: entry.category,
+      amount: entry.amount
+    })),
+    [{ category: "Groceries", amount: 150 }]
+  );
+});
+
+test("get_merchant_breakdown supports account-scoped filtering", async () => {
+  resetStoreForTests(createAccountScopedStore());
+
+  const result = await executeTool(
+    "get_merchant_breakdown",
+    { account: "Account Hyatt", range: "all" },
+    { userId: "user_1" }
+  );
+
+  assert.equal(result.success, true);
+  assert.deepEqual(
+    result.data?.map((entry: { merchant: string; amount: number }) => ({
+      merchant: entry.merchant,
+      amount: entry.amount
+    })),
+    [{ merchant: "coffee shop", amount: 15 }]
+  );
+});
+
+test("get_anomalies supports account-scoped filtering", async () => {
+  const store = createAccountScopedStore();
+  store.transactions.push(
+    createScopedTransaction({
+      id: "txn_hyatt_2",
+      merchant_normalized: "lunch spot",
+      merchant_raw: "Lunch Spot",
+      description: "Lunch",
+      amount: 20,
+      account_key: "account hyatt",
+      account_id: "acct_hyatt",
+      dedupe_fingerprint: "hyatt-2"
+    }),
+    createScopedTransaction({
+      id: "txn_hyatt_3",
+      transaction_date: "2026-01-17",
+      merchant_normalized: "tea shop",
+      merchant_raw: "Tea Shop",
+      description: "Tea",
+      amount: 25,
+      account_key: "account hyatt",
+      account_id: "acct_hyatt",
+      dedupe_fingerprint: "hyatt-3"
+    }),
+    createScopedTransaction({
+      id: "txn_hyatt_4",
+      transaction_date: "2026-01-18",
+      merchant_normalized: "bakery",
+      merchant_raw: "Bakery",
+      description: "Bakery",
+      amount: 30,
+      account_key: "account hyatt",
+      account_id: "acct_hyatt",
+      dedupe_fingerprint: "hyatt-4"
+    }),
+    createScopedTransaction({
+      id: "txn_hyatt_5",
+      transaction_date: "2026-01-19",
+      merchant_normalized: "book store",
+      merchant_raw: "Book Store",
+      description: "Books",
+      amount: 35,
+      category_final: "Shopping",
+      account_key: "account hyatt",
+      account_id: "acct_hyatt",
+      dedupe_fingerprint: "hyatt-5"
+    }),
+    createScopedTransaction({
+      id: "txn_hyatt_big",
+      transaction_date: "2026-01-20",
+      merchant_normalized: "electronics store",
+      merchant_raw: "Electronics Store",
+      description: "Laptop",
+      amount: 2000,
+      category_final: "Shopping",
+      account_key: "account hyatt",
+      account_id: "acct_hyatt",
+      dedupe_fingerprint: "hyatt-big"
+    }),
+    createScopedTransaction({
+      id: "txn_household_big",
+      transaction_date: "2026-01-21",
+      merchant_normalized: "appliance store",
+      merchant_raw: "Appliance Store",
+      description: "Fridge",
+      amount: 1800,
+      category_final: "Shopping",
+      account_key: "household checking",
+      account_id: "acct_household",
+      dedupe_fingerprint: "household-big"
+    })
+  );
+
+  resetStoreForTests(store);
+
+  const result = await executeTool(
+    "get_anomalies",
+    { account: "acct_hyatt", range: "all" },
+    { userId: "user_1" }
+  );
+
+  assert.equal(result.success, true);
+  assert.ok(result.data?.some((entry: { transactionId: string }) => entry.transactionId === "txn_hyatt_big"));
+  assert.ok(!result.data?.some((entry: { transactionId: string }) => entry.transactionId === "txn_household_big"));
+});
+
 test("get_categories returns user's categories", async () => {
   resetStoreForTests(structuredClone(baseStore));
 
@@ -464,6 +664,32 @@ test("getAvailableTools returns all tool definitions", () => {
   assert.ok(toolNames.includes("get_merchant_transactions_6_months"));
   assert.ok(toolNames.includes("reference_previous"));
   assert.ok(toolNames.includes("ask_clarification"));
+});
+
+test("qa tool definitions expose account filter for account-scoped questions", () => {
+  const qaToolsByName = new Map(QA_TOOLS.map((tool) => [tool.function.name, tool]));
+
+  for (const toolName of ACCOUNT_SCOPED_QA_TOOL_NAMES) {
+    const tool = qaToolsByName.get(toolName);
+    assert.ok(tool, `${toolName} should exist in QA_TOOLS`);
+    assert.ok(
+      Object.hasOwn(tool!.function.parameters.properties, "account"),
+      `${toolName} should include an account filter`
+    );
+  }
+});
+
+test("getAvailableTools includes account filter for scoped analytics tools", () => {
+  const availableByName = new Map(getAvailableTools().map((tool) => [tool.name, tool]));
+
+  for (const toolName of ACCOUNT_SCOPED_QA_TOOL_NAMES) {
+    const tool = availableByName.get(toolName);
+    assert.ok(tool, `${toolName} should exist in getAvailableTools`);
+    assert.ok(
+      Object.hasOwn(tool!.parameters.properties, "account"),
+      `${toolName} should include account in metadata`
+    );
+  }
 });
 
 test("tool results include execution metadata", async () => {
