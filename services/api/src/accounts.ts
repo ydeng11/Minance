@@ -1,5 +1,6 @@
 import { loadStore, saveStore, addAuditEvent } from "./store.ts";
 import { createId, nowIso, normalizeText, parseDate, toDecimal } from "./utils.ts";
+import { formatAccountDisplayIdentifier } from "../../../packages/domain/src/accounts.ts";
 
 const DEFAULT_ACCOUNT_TYPE = "checking";
 const DEFAULT_CURRENCY = "USD";
@@ -207,6 +208,7 @@ function normalizeStoredClosedAt(rawValue, fallbackValue = null) {
 function toAccountResponse(entry) {
   const status = normalizeStoredAccountStatus(entry.status);
   const includeInCharts = coerceStoredBoolean(entry.includeInCharts, true);
+  const accountType = entry.accountType || DEFAULT_ACCOUNT_TYPE;
   const closedAt = status === "closed"
     ? normalizeStoredClosedAt(entry.closedAt, parseDate(entry.updatedAt || entry.createdAt || nowIso()))
     : null;
@@ -215,8 +217,9 @@ function toAccountResponse(entry) {
     id: entry.id,
     userId: entry.userId,
     displayName: entry.displayName,
+    displayIdentifier: formatAccountDisplayIdentifier(entry.displayName, entry.sourceInstitution, accountType),
     sourceInstitution: entry.sourceInstitution || null,
-    accountType: entry.accountType || DEFAULT_ACCOUNT_TYPE,
+    accountType,
     currency: entry.currency || DEFAULT_CURRENCY,
     initialBalance: Number(entry.initialBalance || 0),
     version: Number(entry.version || 1),

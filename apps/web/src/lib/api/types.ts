@@ -27,6 +27,7 @@ export interface Account {
   id: string;
   userId: string;
   displayName: string;
+  displayIdentifier?: string;
   sourceInstitution: string | null;
   accountType: string;
   currency: string;

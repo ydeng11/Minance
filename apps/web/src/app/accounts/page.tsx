@@ -13,6 +13,7 @@ import {
   type ManualAccountDraft,
   type ManualAccountErrors
 } from "./wizard";
+import { formatAccountTypeLabel, getAccountIdentifier } from "./accountFormatting";
 
 type MessageTone = "info" | "error";
 
@@ -59,13 +60,6 @@ function statusClasses(status: string) {
     return "bg-amber-500/10 text-amber-300";
   }
   return "bg-emerald-500/10 text-emerald-300";
-}
-
-function formatAccountTypeLabel(accountType: string) {
-  return accountType
-    .split("_")
-    .map((entry) => entry.charAt(0).toUpperCase() + entry.slice(1))
-    .join(" ");
 }
 
 function formatBalance(amount: number, currency: string) {
@@ -479,7 +473,7 @@ export default function AccountsPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-base font-medium text-neutral-100">{entry.displayName}</p>
-                      <p className="text-xs uppercase tracking-wide text-neutral-400">{entry.sourceInstitution || "Manual"}</p>
+                      <p className="text-xs text-neutral-400">{getAccountIdentifier(entry)}</p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <span className={`rounded-full px-2 py-1 text-xs ${statusClasses(entry.status)}`}>{entry.status}</span>

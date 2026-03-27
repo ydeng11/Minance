@@ -7,6 +7,30 @@ import {
   shouldConfirmWizardCancellation,
   validateManualAccountDraft
 } from "./wizard";
+import { formatAccountTypeLabel, getAccountIdentifier } from "./accountFormatting";
+import type { Account } from "@/lib/api/types";
+
+function createAccount(overrides: Partial<Account> = {}): Account {
+  return {
+    id: "account-1",
+    userId: "user-1",
+    displayName: "Travel Fund",
+    sourceInstitution: "Manual",
+    accountType: "high_yield_savings",
+    currency: "USD",
+    initialBalance: 0,
+    version: 1,
+    status: "active",
+    includeInCharts: true,
+    hidden: false,
+    closed: false,
+    closedAt: null,
+    normalizedKey: "travel_fund",
+    createdAt: "2026-03-25T00:00:00.000Z",
+    updatedAt: "2026-03-25T00:00:00.000Z",
+    ...overrides
+  };
+}
 
 test("createDefaultManualAccountDraft returns manual defaults", () => {
   assert.deepEqual(createDefaultManualAccountDraft(), {
@@ -120,5 +144,33 @@ test("shouldConfirmWizardCancellation only prompts for modified or progressed wi
       attemptedProviderLink: false
     }),
     true
+  );
+});
+
+test("formatAccountTypeLabel title-cases snake case account types", () => {
+  assert.equal(formatAccountTypeLabel("high_yield_savings"), "High Yield Savings");
+});
+
+test("getAccountIdentifier prefers API-provided display identifiers", () => {
+  assert.equal(
+    getAccountIdentifier(
+      createAccount({
+        displayIdentifier: "Custom Account Label"
+      })
+    ),
+    "Custom Account Label"
+  );
+});
+
+test("getAccountIdentifier falls back to the shared display identifier contract", () => {
+  assert.equal(
+    getAccountIdentifier(
+      createAccount({
+        displayIdentifier: undefined,
+        sourceInstitution: "",
+        accountType: "checking"
+      })
+    ),
+    "Travel Fund (Manual | Checking)"
   );
 });

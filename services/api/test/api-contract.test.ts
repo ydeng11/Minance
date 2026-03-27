@@ -1196,6 +1196,10 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(createAsset.payload?.account?.includeInCharts, true);
     assert.equal(createAsset.payload?.account?.hidden, false);
     assert.equal(createAsset.payload?.account?.closed, false);
+    assert.equal(
+      createAsset.payload?.account?.displayIdentifier,
+      "Accounts Suite Checking (Manual | Checking)"
+    );
     assert.equal(Number.isInteger(createAsset.payload?.account?.version), true);
 
     const createLiability = await apiRequest(context, "POST", "/v1/accounts", {
@@ -1216,7 +1220,8 @@ test("api parity contract suite for categories/transactions/settings and missing
       expectedStatus: 400,
       body: {
         displayName: "Accounts Suite Checking",
-        accountType: "checking",
+        sourceInstitution: "Different Institution",
+        accountType: "savings",
         currency: "USD",
         initialBalance: 10
       }
@@ -1247,6 +1252,10 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(updated.payload?.account?.accountType, "savings");
     assert.equal(updated.payload?.account?.currency, "EUR");
     assert.equal(updated.payload?.account?.initialBalance, 111);
+    assert.equal(
+      updated.payload?.account?.displayIdentifier,
+      "Accounts Suite Checking (Manual | Savings)"
+    );
     let currentVersion = updated.payload?.account?.version;
     assert.equal(Number.isInteger(currentVersion), true);
 
