@@ -2,12 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildReprocessNotice,
   collectRowIdsByAccountKey,
   collectVisibleSelectedRowIds,
   getReconciliationActionMode,
-  normalizeAccountKey
+  normalizeAccountKey,
+  runReprocessRowsFlow
 } from "./accountAssignment";
-import type { ImportReconciliationAccount, ProcessedRow } from "@/lib/api/types";
+import type { ImportReconciliationAccount, ProcessedRow, ProcessedSummary } from "@/lib/api/types";
 
 function createReconciliationEntry(overrides: Partial<ImportReconciliationAccount> = {}): ImportReconciliationAccount {
   return {
@@ -80,6 +82,18 @@ function createProcessedRow(rowId: string, accountName: string): ProcessedRow {
   };
 }
 
+function createProcessedSummary(overrides: Partial<ProcessedSummary> = {}): ProcessedSummary {
+  return {
+    all: 4,
+    valid: 3,
+    invalid: 1,
+    duplicate: 0,
+    excluded: 2,
+    included: 2,
+    ...overrides
+  };
+}
+
 test("normalizeAccountKey mirrors backend normalization rules", () => {
   assert.equal(normalizeAccountKey("  BOA Checking #123  "), "boa checking 123");
   assert.equal(normalizeAccountKey(""), "");
@@ -125,4 +139,43 @@ test("collectRowIdsByAccountKey matches account names with normalization", () =>
   ];
 
   assert.deepEqual(collectRowIdsByAccountKey(rows, "boa 123"), ["row_1", "row_2"]);
+});
+
+test("buildReprocessNotice describes updated processed-row totals", () => {
+  const message = buildReprocessNotice(4, createProcessedSummary());
+
+  assert.equal(message, "Reprocessed 4 rows (included: 2, excluded: 2, invalid: 1).");
+});
+
+test("runReprocessRowsFlow refreshes rows and imports before publishing the notice", async () => {
+  const calls: string[] = [];
+  let publishedNotice = "";
+
+  await runReprocessRowsFlow("imp_1", {
+    reprocess: async (importId) => {
+      calls.push(`reprocess:${importId}`);
+      return {
+        total: 4,
+        summary: createProcessedSummary()
+      };
+    },
+    refreshProcessedRows: async (importId) => {
+      calls.push(`refreshProcessedRows:${importId}`);
+    },
+    refreshImports: async () => {
+      calls.push("refreshImports");
+    },
+    publishNotice: (notice) => {
+      calls.push("publishNotice");
+      publishedNotice = notice;
+    }
+  });
+
+  assert.deepEqual(calls, [
+    "reprocess:imp_1",
+    "refreshProcessedRows:imp_1",
+    "refreshImports",
+    "publishNotice"
+  ]);
+  assert.equal(publishedNotice, "Reprocessed 4 rows (included: 2, excluded: 2, invalid: 1).");
 });

@@ -31,7 +31,8 @@ import {
 import {
   collectRowIdsByAccountKey,
   collectVisibleSelectedRowIds,
-  getReconciliationActionMode
+  getReconciliationActionMode,
+  runReprocessRowsFlow
 } from "./accountAssignment";
 import { money } from "@/lib/utils";
 
@@ -400,8 +401,12 @@ export default function ImportPage() {
     }
 
     try {
-      await api.imports.reprocess(currentImportId);
-      await refreshProcessedRows(currentImportId);
+      await runReprocessRowsFlow(currentImportId, {
+        reprocess: api.imports.reprocess,
+        refreshProcessedRows,
+        refreshImports,
+        publishNotice: setReconciliationNotice
+      });
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Failed to reprocess rows.";
       dispatch({ type: "error", message });
