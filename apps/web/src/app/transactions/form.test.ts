@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { Account, Category, Transaction } from "@/lib/api/types";
+import * as formModule from "./form";
 import {
   buildTransactionAccountOptions,
   buildDraftFromTransaction,
@@ -137,6 +138,30 @@ test("reconcileDraftAccountName maps editing drafts to the loaded account displa
   assert.equal(reconciled.account_name, "Primary Checking");
 });
 
+test("reconcileDraftAccountName matches account display identifiers used by other account pickers", () => {
+  const draft = {
+    ...createInitialTransactionDraft({ today: "2026-03-02" }),
+    id: "txn_002",
+    account_name: "Hyatt (Chase | Credit)"
+  };
+
+  const reconciled = reconcileDraftAccountName(
+    draft,
+    [
+      createAccount({
+        id: "acct_hyatt",
+        displayName: "Hyatt",
+        displayIdentifier: "Hyatt (Chase | Credit)",
+        normalizedKey: "chase hyatt",
+        sourceInstitution: "Chase",
+        accountType: "credit"
+      })
+    ]
+  );
+
+  assert.equal(reconciled.account_name, "Hyatt");
+});
+
 test("buildDraftFromTransaction normalizes negative persisted amount into positive edit value", () => {
   const draft = buildDraftFromTransaction(createTransaction({ amount: -24.5, direction: "outflow" }));
   assert.equal(draft.amount, "24.5");
@@ -256,5 +281,35 @@ test("buildTransactionAccountOptions uses displayIdentifier labels and keeps cur
   assert.deepEqual(options, [
     { value: "Legacy Account", label: "Legacy Account" },
     { value: "Main Checking", label: "Main Checking (Bank A | Checking)" }
+  ]);
+});
+
+test("buildTransactionFilterAccountOptions preserves display identifiers for normalized account keys", () => {
+  const builder = (formModule as {
+    buildTransactionFilterAccountOptions?: (
+      accounts: Account[],
+      transactionAccountKeys?: Array<string | null | undefined>
+    ) => Array<{ value: string; label: string }>;
+  }).buildTransactionFilterAccountOptions;
+
+  assert.equal(typeof builder, "function");
+
+  const options = builder?.(
+    [
+      createAccount({
+        id: "acct_1",
+        displayName: "Travel Card",
+        displayIdentifier: "Travel Card (Bank B | Credit)",
+        normalizedKey: "travel-card",
+        sourceInstitution: "Bank B",
+        accountType: "credit"
+      })
+    ],
+    ["legacy-account"]
+  );
+
+  assert.deepEqual(options, [
+    { value: "legacy-account", label: "legacy-account" },
+    { value: "travel-card", label: "Travel Card (Bank B | Credit)" }
   ]);
 });

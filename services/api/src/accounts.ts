@@ -1,8 +1,10 @@
 import { loadStore, saveStore, addAuditEvent } from "./store.ts";
 import { createId, nowIso, normalizeText, parseDate, toDecimal } from "./utils.ts";
-import { formatAccountDisplayIdentifier } from "../../../packages/domain/src/accounts.ts";
-
-const DEFAULT_ACCOUNT_TYPE = "checking";
+import {
+  DEFAULT_ACCOUNT_TYPE,
+  formatAccountDisplayIdentifier,
+  getSupportedAccountTypes as getCanonicalSupportedAccountTypes
+} from "../../../packages/domain/src/accounts.ts";
 const DEFAULT_CURRENCY = "USD";
 const DEFAULT_ACCOUNT_STATUS = "active";
 
@@ -331,7 +333,7 @@ function updateLinkedTransactionKeys(store, userId, accountId, normalizedKey, up
 }
 
 export function getSupportedAccountTypes() {
-  return Array.from(new Set(ACCOUNT_TYPE_ALIASES.values())).sort((a, b) => a.localeCompare(b));
+  return getCanonicalSupportedAccountTypes();
 }
 
 export function listAccounts(userId) {

@@ -239,6 +239,10 @@ test("importsApi exposes reconciliation query and resolution mutation contracts"
   assert.equal(calls[1].options?.method, "POST");
 });
 
+test("importsApi no longer exposes a manual reprocess endpoint helper in the web client", () => {
+  assert.equal("reprocess" in importsApi, false);
+});
+
 test("assistantApi exposes conversation creation and scoped query contracts", async () => {
   const { calls, request } = createRecorder();
 

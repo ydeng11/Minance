@@ -1,3 +1,5 @@
+import { getSupportedAccountTypes } from "../../../../../packages/domain/src/accounts";
+
 export type AddAccountPath = "provider" | "manual";
 
 export interface ManualAccountDraft {
@@ -89,7 +91,10 @@ export function shouldConfirmWizardCancellation(params: {
   return false;
 }
 
-export function validateManualAccountDraft(draft: ManualAccountDraft): ManualAccountValidationResult {
+export function validateManualAccountDraft(
+  draft: ManualAccountDraft,
+  supportedAccountTypes: string[] = getSupportedAccountTypes()
+): ManualAccountValidationResult {
   const sourceInstitution = String(draft.sourceInstitution || "").trim();
   const displayName = String(draft.displayName || "").trim();
   const accountType = String(draft.accountType || "").trim();
@@ -106,6 +111,8 @@ export function validateManualAccountDraft(draft: ManualAccountDraft): ManualAcc
   }
   if (!accountType) {
     errors.accountType = "Account type is required.";
+  } else if (supportedAccountTypes.length > 0 && !supportedAccountTypes.includes(accountType)) {
+    errors.accountType = "Account type is invalid.";
   }
   if (!/^[A-Z]{3}$/.test(currency)) {
     errors.currency = "Currency must be a 3-letter code.";

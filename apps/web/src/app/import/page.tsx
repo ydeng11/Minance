@@ -33,9 +33,9 @@ import {
   collectRowIdsByAccountKey,
   collectVisibleSelectedRowIds,
   getReconciliationActionMode,
-  resolveImportAccountValue,
-  runReprocessRowsFlow
+  resolveImportAccountValue
 } from "./accountAssignment";
+import { ProcessedRecordsToolbar } from "./ProcessedRecordsToolbar";
 import { money } from "@/lib/utils";
 
 export default function ImportPage() {
@@ -404,24 +404,6 @@ export default function ImportPage() {
     }
   }
 
-  async function reprocessRows() {
-    if (!currentImportId) {
-      return;
-    }
-
-    try {
-      await runReprocessRowsFlow(currentImportId, {
-        reprocess: api.imports.reprocess,
-        refreshProcessedRows,
-        refreshImports,
-        publishNotice: setReconciliationNotice
-      });
-    } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to reprocess rows.";
-      dispatch({ type: "error", message });
-    }
-  }
-
   async function commitImport() {
     if (!currentImportId) {
       return;
@@ -437,6 +419,13 @@ export default function ImportPage() {
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Failed to commit import.";
       dispatch({ type: "error", message });
+    }
+  }
+
+  function handleProcessedStatusChange(nextStatus: string) {
+    setStatusFilter(nextStatus);
+    if (currentImportId) {
+      void openImport(currentImportId, nextStatus);
     }
   }
 
@@ -814,38 +803,10 @@ export default function ImportPage() {
           <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4" data-testid="processed-panel">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-medium text-neutral-300">Processed Records Editor</h3>
-              <div className="flex items-center gap-2">
-                <label htmlFor="processed-status-filter" className="sr-only">
-                  Processed rows status
-                </label>
-                <select
-                  id="processed-status-filter"
-                  value={statusFilter}
-                  onChange={(event) => {
-                    const nextStatus = event.target.value;
-                    setStatusFilter(nextStatus);
-                    if (currentImportId) {
-                      void openImport(currentImportId, nextStatus);
-                    }
-                  }}
-                  data-testid="processed-status-filter"
-                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
-                >
-                  <option value="">All statuses</option>
-                  <option value="valid">Valid</option>
-                  <option value="invalid">Invalid</option>
-                  <option value="duplicate">Duplicate</option>
-                  <option value="excluded">Excluded</option>
-                </select>
-                <button
-                  type="button"
-                  onClick={() => void reprocessRows()}
-                  className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800"
-                >
-                  <RefreshCcw className="h-3.5 w-3.5" />
-                  Reprocess
-                </button>
-              </div>
+              <ProcessedRecordsToolbar
+                statusFilter={statusFilter}
+                onStatusFilterChange={handleProcessedStatusChange}
+              />
             </div>
 
             <p className="mt-2 text-xs text-neutral-400" data-testid="processed-summary">

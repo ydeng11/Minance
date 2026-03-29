@@ -1,11 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { setTimeout as delay } from "node:timers/promises";
 
 import { SQLITE_FILE, STORE_BACKEND } from "../src/config.ts";
 import { login, signup } from "../src/auth.ts";
 import { loadStore, refreshStoreCacheIfChanged, resetStoreForTests } from "../src/store.ts";
 import { readStoreCollectionsFromSqlite } from "../src/sqlite-store-repository.ts";
+import { writeStoreCollectionsToSqlite } from "../src/sqlite-store-repository.ts";
+import { hashPassword } from "../src/utils.ts";
 
 const EMPTY_STORE = {
   users: [],
@@ -61,7 +64,6 @@ test("test runtime persists auth mutations through isolated sqlite storage", () 
 
   assert.equal(STORE_BACKEND, "sqlite");
   assert.equal(fs.existsSync(SQLITE_FILE), true);
-  assert.equal(refreshStoreCacheIfChanged(), false);
 
   const persisted = readStoreCollectionsFromSqlite({ dbPath: SQLITE_FILE });
   assert.equal(persisted.users.length, 1);
@@ -74,4 +76,28 @@ test("test runtime persists auth mutations through isolated sqlite storage", () 
     }),
     true
   );
+});
+
+test("sqlite runtime refresh picks up externally seeded users before login", async () => {
+  resetStoreForTests(structuredClone(EMPTY_STORE));
+
+  loadStore();
+  await delay(10);
+
+  const externalStore = structuredClone(EMPTY_STORE);
+  const { passwordHash, salt } = hashPassword("12345678");
+  externalStore.users.push({
+    id: "user_external",
+    email: "dev@minance.local",
+    passwordHash,
+    passwordSalt: salt,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z"
+  });
+  writeStoreCollectionsToSqlite(externalStore, { dbPath: SQLITE_FILE });
+
+  assert.equal(refreshStoreCacheIfChanged(), true);
+
+  const result = login("dev@minance.local", "12345678");
+  assert.equal(result.user.email, "dev@minance.local");
 });

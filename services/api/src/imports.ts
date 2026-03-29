@@ -24,6 +24,8 @@ import {
 } from "./import-direction.ts";
 import { detectRecurringSuggestions } from "./recurring-suggestions.ts";
 import { incrementUserScanCounter } from "./recurring-scan.ts";
+import { ensureAccountIdentity, resolveAccountIdentity, resolveCanonicalAccountKey } from "./account-identity.ts";
+import { buildTransactionFingerprint } from "./transaction-fingerprint.ts";
 
 const EDITABLE_ROW_FIELDS = [
   "transaction_date",
@@ -97,39 +99,15 @@ function getMapped(row, mapping, key) {
   return row[sourceKey] ?? "";
 }
 
-function computeFingerprint({ userId, accountName, merchantNormalized, amount, direction, transactionDate, memo }) {
-  const signedAmount = direction === "inflow" ? amount : -amount;
-  return stableHash(
-    [
-      userId,
-      normalizeText(accountName),
-      merchantNormalized,
-      Math.abs(signedAmount).toFixed(2),
-      transactionDate,
-      memo ? stableHash(memo) : ""
-    ].join("|")
-  );
-}
-
-function ensureAccount(store, userId, accountName) {
-  const normalized = normalizeText(accountName || "Imported Account");
-  let account = store.accounts.find((entry) => entry.userId === userId && entry.normalizedKey === normalized);
-
-  if (!account) {
-    account = {
-      id: createId("acct"),
-      userId,
-      normalizedKey: normalized,
-      displayName: accountName || "Imported Account",
-      sourceInstitution: null,
-      accountType: "checking",
-      createdAt: nowIso(),
-      updatedAt: nowIso()
-    };
-    store.accounts.push(account);
-  }
-
-  return account;
+function computeFingerprint({ userId, accountKey, merchantNormalized, amount, transactionDate, memo }) {
+  return buildTransactionFingerprint({
+    userId,
+    accountKey,
+    merchantNormalized,
+    amount,
+    transactionDate,
+    memo
+  });
 }
 
 function summarizeProcessedRows(rows = []) {
@@ -169,6 +147,7 @@ function normalizeDirection(value, fallbackAmount = null, signConvention = "nega
 }
 
 function normalizeStagedRow({
+  store,
   row,
   mapping,
   userId,
@@ -274,12 +253,15 @@ function normalizeStagedRow({
   }
 
   const merchantNormalized = normalizeMerchant(merchantRaw);
+  const canonicalAccountKey = resolveCanonicalAccountKey(store, userId, {
+    accountKey: accountName,
+    accountName
+  });
   const dedupeFingerprint = computeFingerprint({
     userId,
-    accountName,
+    accountKey: canonicalAccountKey,
     merchantNormalized,
     amount,
-    direction,
     transactionDate,
     memo
   });
@@ -333,6 +315,7 @@ function buildProcessedRows(store, userId, importJob, mapping, previousProcessed
     const previous = previousByRowIndex.get(rowEntry.rowIndex) || null;
     const overrides = previous?.overrides || {};
     const staged = normalizeStagedRow({
+      store,
       row: rowEntry.row,
       mapping,
       userId,
@@ -892,12 +875,23 @@ function getImportProcessedRowsForReconciliation(store, userId, importJob) {
 }
 
 function findMatchingAccount(store, userId, accountKey) {
-  return store.accounts.find((entry) => entry.userId === userId && entry.normalizedKey === accountKey) || null;
+  return resolveAccountIdentity(store, userId, {
+    accountKey,
+    accountName: accountKey
+  });
 }
 
-function listAccountWindowTransactions(store, userId, accountKey, start, end) {
+function listAccountWindowTransactions(store, userId, account, accountKey, start, end) {
   return store.transactions.filter((entry) => {
-    if (entry.user_id !== userId || entry.account_key !== accountKey || entry.deleted_at) {
+    if (entry.user_id !== userId || entry.deleted_at) {
+      return false;
+    }
+    const matchesAccount = account
+      ? entry.account_id === account.id
+        || entry.account_key === account.normalizedKey
+        || entry.account_key === accountKey
+      : entry.account_key === accountKey;
+    if (!matchesAccount) {
       return false;
     }
     const transactionDate = parseDate(entry.transaction_date) || parseDate(entry.created_at) || null;
@@ -1054,6 +1048,7 @@ export function getImportReconciliation(userId, importId) {
     const windowTransactions = listAccountWindowTransactions(
       store,
       userId,
+      account,
       bucket.accountKey,
       bucket.dateStart,
       bucket.dateEnd
@@ -1301,12 +1296,29 @@ export async function commitImport(userId, importId) {
 
     const normalized = rowEntry.normalized;
     const signedAmount = normalized.direction === "outflow" ? -normalized.amount : normalized.amount;
-    if (existingFingerprints.has(normalized.dedupe_fingerprint)) {
+    const matchedAccount = resolveAccountIdentity(store, userId, {
+      accountKey: normalized.account_name,
+      accountName: normalized.account_name
+    });
+    const dedupeFingerprint = computeFingerprint({
+      userId,
+      accountKey: matchedAccount?.normalizedKey || normalizeText(normalized.account_name),
+      merchantNormalized: normalized.merchant_normalized,
+      amount: normalized.amount,
+      transactionDate: normalized.transaction_date,
+      memo: normalized.memo
+    });
+
+    if (existingFingerprints.has(dedupeFingerprint)) {
       summary.duplicatesSkipped += 1;
       continue;
     }
 
-    const account = ensureAccount(store, userId, normalized.account_name);
+    const account = matchedAccount || ensureAccountIdentity(store, userId, {
+      accountKey: normalized.account_name,
+      accountName: normalized.account_name,
+      fallbackName: normalized.account_name
+    });
 
     const tx = {
       id: createId("txn"),
@@ -1331,7 +1343,7 @@ export async function commitImport(userId, importId) {
       category_strategy: normalized.category_strategy || null,
       needs_category_review: false,
       memo: normalized.memo,
-      dedupe_fingerprint: normalized.dedupe_fingerprint,
+      dedupe_fingerprint: dedupeFingerprint,
       created_at: nowIso(),
       updated_at: nowIso()
     };

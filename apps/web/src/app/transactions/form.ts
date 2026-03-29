@@ -85,6 +85,7 @@ function findAccountByIdentity(accounts: Account[], value: string) {
 
   return accounts.find((account) => (
     normalizeAccountIdentity(account.displayName) === normalized ||
+    normalizeAccountIdentity(account.displayIdentifier || "") === normalized ||
     normalizeAccountIdentity(account.normalizedKey) === normalized
   )) || null;
 }
@@ -157,6 +158,34 @@ export function buildTransactionAccountOptions(
   }
 
   return [{ value: current, label: current }, ...options];
+}
+
+export function buildTransactionFilterAccountOptions(
+  accounts: Account[],
+  transactionAccountKeys: Array<string | null | undefined> = []
+): TransactionAccountOption[] {
+  const options = new Map<string, string>();
+
+  for (const account of accounts) {
+    if (!account.normalizedKey) {
+      continue;
+    }
+
+    options.set(account.normalizedKey, account.displayIdentifier || account.displayName || account.normalizedKey);
+  }
+
+  for (const rawKey of transactionAccountKeys) {
+    const key = String(rawKey || "").trim();
+    if (!key || options.has(key)) {
+      continue;
+    }
+
+    options.set(key, key);
+  }
+
+  return Array.from(options.entries())
+    .map(([value, label]) => ({ value, label }))
+    .sort((left, right) => left.label.localeCompare(right.label));
 }
 
 function normalizeComparable(value: string) {

@@ -126,6 +126,7 @@ docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 - The backup and restore scripts already target `services/api/data` by default, so no script changes are required when using `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`.
 - Authenticated storage status can be inspected via `GET /v1/system/storage`.
 - Authenticated metrics snapshot can be inspected via `GET /v1/system/metrics`.
+- Generated import API reference lives at `docs/api/imports.md`.
 - The stock self-host compose stack publishes only `MINANCE_WEB_PORT`. Docker container health uses the internal API readiness probe, while `/v1/system/storage` and `/v1/system/metrics` remain reachable through the published web origin.
 - E2E runs use isolated storage via `MINANCE_SQLITE_FILE_TEST=services/api/tmp/e2e-minance.sqlite`.
 - API reads `.env.local` for non-test local development and `.env.test` for `NODE_ENV=test`.

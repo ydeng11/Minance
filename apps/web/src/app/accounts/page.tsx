@@ -14,6 +14,7 @@ import {
   type ManualAccountErrors
 } from "./wizard";
 import { formatAccountTypeLabel, getAccountIdentifier } from "./accountFormatting";
+import { getSupportedAccountTypes as getCanonicalSupportedAccountTypes } from "../../../../../packages/domain/src/accounts";
 
 type MessageTone = "info" | "error";
 
@@ -146,6 +147,10 @@ function hasSettingsDraftChanges(account: Account, draft: AccountSettingsDraft) 
   );
 }
 
+export function resolveSupportedAccountTypes(accountTypes: string[]) {
+  return accountTypes.length ? accountTypes : getCanonicalSupportedAccountTypes();
+}
+
 export default function AccountsPage() {
   const api = useApi();
 
@@ -169,7 +174,7 @@ export default function AccountsPage() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const supportedAccountTypes = useMemo(
-    () => accountTypes.length ? accountTypes : ["checking", "savings", "credit", "loan", "investment", "cash"],
+    () => resolveSupportedAccountTypes(accountTypes),
     [accountTypes]
   );
   const knownInstitutions = useMemo(
@@ -245,7 +250,7 @@ export default function AccountsPage() {
   async function submitManualAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    const validation = validateManualAccountDraft(manualDraft);
+    const validation = validateManualAccountDraft(manualDraft, supportedAccountTypes);
     setManualErrors(validation.errors);
     if (!validation.normalized) {
       return;

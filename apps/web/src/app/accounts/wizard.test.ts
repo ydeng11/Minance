@@ -84,6 +84,27 @@ test("validateManualAccountDraft trims and normalizes valid payloads", () => {
   });
 });
 
+test("validateManualAccountDraft rejects unsupported account types against the shared supported list", () => {
+  const validate = validateManualAccountDraft as (
+    draft: Parameters<typeof validateManualAccountDraft>[0],
+    supportedAccountTypes?: string[]
+  ) => ReturnType<typeof validateManualAccountDraft>;
+
+  const result = validate(
+    {
+      sourceInstitution: "Manual",
+      displayName: "Rainy Day",
+      accountType: "high_yield_savings",
+      currency: "USD",
+      initialBalance: "25"
+    },
+    ["checking", "depository", "credit"]
+  );
+
+  assert.equal(result.normalized, null);
+  assert.equal(result.errors.accountType, "Account type is invalid.");
+});
+
 test("hasManualDraftChanges tracks non-default edits", () => {
   const draft = createDefaultManualAccountDraft();
   assert.equal(hasManualDraftChanges(draft), false);

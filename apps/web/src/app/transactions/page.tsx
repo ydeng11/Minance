@@ -10,6 +10,7 @@ import { useApi } from "@/hooks/useApi";
 import type { Account, Category, Transaction, TransactionsResponse } from "@/lib/api/types";
 import {
   buildTransactionAccountOptions,
+  buildTransactionFilterAccountOptions,
   buildDraftFromTransaction,
   createInitialTransactionDraft,
   parseTagListInput,
@@ -168,26 +169,10 @@ export default function TransactionsPage() {
   }, [categories, filters.categoryView, ledgerTransactions]);
 
   const accountFilterOptions = useMemo(() => {
-    const options = new Map<string, string>();
-
-    for (const account of accounts) {
-      if (!account.normalizedKey) {
-        continue;
-      }
-      options.set(account.normalizedKey, account.displayName || account.normalizedKey);
-    }
-
-    for (const transaction of ledgerTransactions) {
-      const key = String(transaction.account_key || "").trim();
-      if (!key || options.has(key)) {
-        continue;
-      }
-      options.set(key, key);
-    }
-
-    return Array.from(options.entries())
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+    return buildTransactionFilterAccountOptions(
+      accounts,
+      ledgerTransactions.map((transaction) => transaction.account_key)
+    );
   }, [accounts, ledgerTransactions]);
   const categoryMultiSelectOptions = useMemo(
     () => categoryFilterOptions.map((value) => ({ value, label: value })),

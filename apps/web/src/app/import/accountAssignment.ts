@@ -1,11 +1,4 @@
-import type { Account, ImportReconciliationAccount, ProcessedRow, ProcessedSummary } from "@/lib/api/types";
-
-interface ReprocessRowsFlowDependencies {
-  reprocess: (importId: string) => Promise<{ total: number; summary: ProcessedSummary }>;
-  refreshProcessedRows: (importId: string) => Promise<void>;
-  refreshImports: () => Promise<void>;
-  publishNotice: (notice: string) => void;
-}
+import type { Account, ImportReconciliationAccount, ProcessedRow } from "@/lib/api/types";
 
 export interface ImportAccountOption {
   value: string;
@@ -52,20 +45,6 @@ export function collectRowIdsByAccountKey(rows: ProcessedRow[], accountKey: stri
     .map((row) => row.rowId);
 }
 
-export function buildReprocessNotice(total: number, summary: ProcessedSummary): string {
-  return `Reprocessed ${total} rows (included: ${summary.included}, excluded: ${summary.excluded}, invalid: ${summary.invalid}).`;
-}
-
-export async function runReprocessRowsFlow(
-  importId: string,
-  dependencies: ReprocessRowsFlowDependencies
-): Promise<void> {
-  const reprocessed = await dependencies.reprocess(importId);
-  await dependencies.refreshProcessedRows(importId);
-  await dependencies.refreshImports();
-  dependencies.publishNotice(buildReprocessNotice(reprocessed.total, reprocessed.summary));
-}
-
 function findImportAccountByIdentity(accounts: Account[], accountName: string) {
   const normalizedTarget = normalizeAccountKey(accountName);
   if (!normalizedTarget) {
@@ -74,6 +53,7 @@ function findImportAccountByIdentity(accounts: Account[], accountName: string) {
 
   return accounts.find((account) => (
     normalizeAccountKey(account.displayName) === normalizedTarget ||
+    normalizeAccountKey(account.displayIdentifier) === normalizedTarget ||
     normalizeAccountKey(account.normalizedKey) === normalizedTarget
   )) || null;
 }

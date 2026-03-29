@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { loadStore, resetStoreForTests, saveStore } from "../src/store.ts";
+import { stableHash } from "../src/utils.ts";
 import {
   createImportJob,
   listImportProcessedRows,
@@ -266,5 +267,55 @@ test("reconciliation compares staged import rows and applies safe manual adjustm
   assert.equal(
     history.items.some((entry) => entry.kind === "manual_adjustment" && entry.delta === 90),
     true
+  );
+});
+
+test("import reconciliation and commit reuse legacy accounts whose normalized keys drift from display names", async () => {
+  resetStoreForTests(structuredClone(EMPTY_STORE));
+
+  const account = createAccount("user_1", {
+    displayName: "Hyatt",
+    sourceInstitution: "Chase",
+    accountType: "credit",
+    currency: "USD",
+    initialBalance: 0
+  });
+
+  const store = loadStore();
+  store.accounts[0].normalizedKey = "chase hyatt";
+  saveStore(store);
+
+  const created = await createImportJob({
+    userId: "user_1",
+    fileName: "chase.csv",
+    csvText: [
+      "date,merchant,description,amount,account",
+      "2026-03-25,AUTOMATIC PAYMENT - THANK,AUTOMATIC PAYMENT - THANK,-29.99,Hyatt"
+    ].join("\n")
+  });
+
+  const reconciliation = getImportReconciliation("user_1", created.importJob.id);
+  assert.equal(reconciliation.accounts.length, 1);
+  assert.equal(reconciliation.accounts[0].accountId, account.id);
+
+  const committed = await commitImport("user_1", created.importJob.id);
+  assert.equal(committed.summary.imported, 1);
+
+  const storeAfterCommit = loadStore();
+  assert.equal(storeAfterCommit.accounts.length, 1);
+  assert.equal(storeAfterCommit.transactions.length, 1);
+  const importedTransaction = storeAfterCommit.transactions[0];
+  assert.equal(importedTransaction.account_id, account.id);
+  assert.equal(importedTransaction.account_key, "chase hyatt");
+  assert.equal(
+    importedTransaction.dedupe_fingerprint,
+    stableHash([
+      "user_1",
+      importedTransaction.account_key,
+      importedTransaction.merchant_normalized,
+      importedTransaction.amount.toFixed(2),
+      importedTransaction.transaction_date,
+      ""
+    ].join("|"))
   );
 });

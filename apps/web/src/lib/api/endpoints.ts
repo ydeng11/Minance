@@ -132,8 +132,6 @@ export const importsApi = {
       method: "PATCH",
       body
     }),
-  reprocess: (request: ApiRequest, id: string) =>
-    request<{ total: number; summary: ProcessedSummary }>(`/v1/imports/${id}/reprocess`, { method: "POST" }),
   getReconciliation: (request: ApiRequest, id: string) =>
     request<ImportReconciliationResponse>(`/v1/imports/${id}/reconciliation`),
   resolveReconciliation: (

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { DATA_FILE, STORE_BACKEND } from "./config.ts";
+import { DATA_FILE, SQLITE_FILE, STORE_BACKEND } from "./config.ts";
 import { nowIso, createId } from "./utils.ts";
 import { ensureSqliteFoundation } from "./sqlite-foundation.ts";
 import {
@@ -64,11 +64,25 @@ function getDataFileMtimeMs() {
   return fs.statSync(DATA_FILE).mtimeMs;
 }
 
+function getStoreFileMtimeMs(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return fs.statSync(filePath).mtimeMs;
+}
+
 function loadJsonStoreIntoCache() {
   ensureDataFile();
   const raw = fs.readFileSync(DATA_FILE, "utf8");
   cache = normalizeStore(JSON.parse(raw));
   cacheFileMtimeMs = getDataFileMtimeMs();
+  return cache;
+}
+
+function loadSqliteStoreIntoCache() {
+  ensureSqliteStoreReady();
+  cache = normalizeStore(readStoreCollectionsFromSqlite());
+  cacheFileMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
   return cache;
 }
 
@@ -107,15 +121,29 @@ export function loadStore() {
   }
 
   if (STORE_BACKEND === "sqlite") {
-    ensureSqliteStoreReady();
-    cache = normalizeStore(readStoreCollectionsFromSqlite());
-    return cache;
+    return loadSqliteStoreIntoCache();
   }
 
   return loadJsonStoreIntoCache();
 }
 
 export function refreshStoreCacheIfChanged() {
+  if (STORE_BACKEND === "sqlite") {
+    if (!cache) {
+      loadSqliteStoreIntoCache();
+      return true;
+    }
+
+    ensureSqliteStoreReady();
+    const currentMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
+    if (cacheFileMtimeMs != null && currentMtimeMs === cacheFileMtimeMs) {
+      return false;
+    }
+
+    loadSqliteStoreIntoCache();
+    return true;
+  }
+
   if (STORE_BACKEND !== "json") {
     return false;
   }
@@ -147,6 +175,7 @@ export function saveStore(nextStore = null) {
   if (STORE_BACKEND === "sqlite") {
     ensureSqliteStoreReady();
     writeStoreCollectionsToSqlite(cache);
+    cacheFileMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
     return;
   }
 
