@@ -59,6 +59,10 @@ e2e-headed:
 e2e-a11y:
     pnpm e2e:a11y
 
+# Generate API documentation
+docs-api:
+    pnpm docs:api
+
 # Migrate JSON data into SQLite
 migrate-sqlite:
     pnpm migrate:sqlite
