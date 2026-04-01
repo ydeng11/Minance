@@ -1,0 +1,3 @@
+date,merchant,description,amount,currency,memo
+2026-02-10,Quiet opening deposit,Quiet opening deposit,50.00,USD,opening credit
+2026-02-11,Quiet opening withdrawal,Quiet opening withdrawal,-50.00,USD,offset debit

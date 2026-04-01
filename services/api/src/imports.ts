@@ -919,7 +919,6 @@ function describeReconciliationStatus(entry) {
     entry.invalidRows > 0
     || entry.duplicateRows > 0
     || entry.lowDirectionConfidenceRows > 0
-    || Math.abs(entry.discrepancyAmount) >= 0.01
   ) {
     return "needs_review";
   }
@@ -961,14 +960,6 @@ function buildReconciliationRecommendations(entry) {
     recommendations.push({
       type: "review_direction_confidence",
       message: `${entry.lowDirectionConfidenceRows} row(s) have low direction confidence.`
-    });
-  }
-
-  if (entry.accountId && Math.abs(entry.discrepancyAmount) >= 0.01) {
-    recommendations.push({
-      type: "create_manual_adjustment",
-      amountDelta: entry.discrepancyAmount,
-      message: `Create a manual adjustment of ${entry.discrepancyAmount.toFixed(2)} to reconcile this account window.`
     });
   }
 

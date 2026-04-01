@@ -241,16 +241,11 @@ test("reconciliation compares staged import rows and applies safe manual adjustm
   const reconciliation = getImportReconciliation("user_1", created.importJob.id);
   assert.equal(reconciliation.accounts.length, 1);
   assert.equal(reconciliation.accounts[0].accountId, account.id);
-  assert.equal(reconciliation.accounts[0].status, "needs_review");
+  assert.equal(reconciliation.accounts[0].status, "balanced");
   assert.equal(reconciliation.accounts[0].importedNet, 50);
   assert.equal(reconciliation.accounts[0].existingWindowNet, -40);
   assert.equal(reconciliation.accounts[0].discrepancyAmount, 90);
-
-  const createAdjustmentRecommendation = reconciliation.accounts[0].recommendations.find(
-    (entry) => entry.type === "create_manual_adjustment"
-  );
-  assert.equal(Boolean(createAdjustmentRecommendation), true);
-  assert.equal(createAdjustmentRecommendation.amountDelta, 90);
+  assert.equal(reconciliation.accounts[0].recommendations.length, 0);
 
   const resolved = resolveImportReconciliation("user_1", created.importJob.id, {
     action: "create_manual_adjustment",

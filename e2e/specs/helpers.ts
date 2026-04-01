@@ -74,6 +74,34 @@ export async function appApi(page, routePath, options = {}) {
   return result.payload;
 }
 
+export async function ensureAccount(page, account) {
+  const accountsPayload = await appApi(page, "/v1/accounts");
+  const accounts = Array.isArray(accountsPayload?.accounts) ? accountsPayload.accounts : [];
+  const existingAccount = accounts.find((entry) => (
+    entry?.displayName === account.displayName
+    && entry?.sourceInstitution === account.sourceInstitution
+    && entry?.accountType === account.accountType
+    && entry?.currency === account.currency
+  ));
+
+  if (existingAccount) {
+    return existingAccount;
+  }
+
+  const createdPayload = await appApi(page, "/v1/accounts", {
+    method: "POST",
+    body: {
+      displayName: account.displayName,
+      sourceInstitution: account.sourceInstitution,
+      accountType: account.accountType,
+      currency: account.currency,
+      initialBalance: account.initialBalance ?? 0
+    }
+  });
+
+  return createdPayload.account;
+}
+
 export function getLocalDateYmd(date = new Date()) {
   const yyyy = String(date.getFullYear());
   const mm = String(date.getMonth() + 1).padStart(2, "0");

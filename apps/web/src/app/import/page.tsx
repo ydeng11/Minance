@@ -29,13 +29,16 @@ import {
   resolveTemplateMapping
 } from "@/lib/import/mappingTemplates";
 import {
+  buildImportAccountReviewState,
   buildImportAccountOptions,
+  buildImportIssueVisibilitySummary,
   collectRowIdsByAccountKey,
-  collectVisibleSelectedRowIds,
   getReconciliationActionMode,
-  resolveImportAccountValue
+  resolveImportAccountValue,
+  shouldShowReconciliationSummary,
+  runReprocessRowsFlow
 } from "./accountAssignment";
-import { ProcessedRecordsToolbar } from "./ProcessedRecordsToolbar";
+import { ImportAccountSelector, ImportIssuesSummaryPanel, ProcessedRowAccountSelect } from "./pageComponents";
 import { money } from "@/lib/utils";
 
 export default function ImportPage() {
@@ -52,12 +55,13 @@ export default function ImportPage() {
   const [mappingTemplateNotice, setMappingTemplateNotice] = useState("");
   const [reconciliation, setReconciliation] = useState<ImportReconciliationResponse | null>(null);
   const [isReconciliationLoading, setIsReconciliationLoading] = useState(false);
-  const [isResolvingReconciliation, setIsResolvingReconciliation] = useState(false);
   const [isAssigningAccount, setIsAssigningAccount] = useState(false);
-  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
-  const [batchAccountId, setBatchAccountId] = useState("");
   const [reconciliationAssignments, setReconciliationAssignments] = useState<Record<string, string>>({});
   const [reconciliationNotice, setReconciliationNotice] = useState("");
+  const [allProcessedRows, setAllProcessedRows] = useState<ProcessedRow[]>([]);
+  const [importAccountId, setImportAccountId] = useState("");
+  const [importDefaultRowIds, setImportDefaultRowIds] = useState<string[]>([]);
+  const [hasInitializedImportAccountState, setHasInitializedImportAccountState] = useState(false);
   const [state, dispatch] = useReducer(importWorkflowReducer, initialImportWorkflowState);
   const mappingTemplates = useMemo(() => getImportMappingTemplates(), []);
 
@@ -75,15 +79,22 @@ export default function ImportPage() {
     })),
     [accountOptions]
   );
-  const visibleRows = useMemo(
-    () => state.processedRows?.items || [],
-    [state.processedRows?.items]
+  const importAccountReviewState = useMemo(
+    () => buildImportAccountReviewState(allProcessedRows, accountOptions),
+    [accountOptions, allProcessedRows]
   );
-  const selectedVisibleRowIds = useMemo(
-    () => collectVisibleSelectedRowIds(visibleRows, selectedRowIds),
-    [visibleRows, selectedRowIds]
+  const importAccountOptions = useMemo(
+    () => accountAssignmentOptions.map((account) => ({
+      value: account.id,
+      label: account.label
+    })),
+    [accountAssignmentOptions]
   );
-  const allVisibleRowsSelected = visibleRows.length > 0 && selectedVisibleRowIds.length === visibleRows.length;
+  const importIssueSummary = useMemo(
+    () => buildImportIssueVisibilitySummary(allProcessedRows, reconciliation),
+    [allProcessedRows, reconciliation]
+  );
+  const isReconciliationVisible = shouldShowReconciliationSummary(importIssueSummary);
 
   const commitSummaryJson = useMemo(() => {
     if (!state.commitResult) {
@@ -118,14 +129,17 @@ export default function ImportPage() {
   async function loadImportContext(importId: string, nextStatusFilter = statusFilter) {
     setIsReconciliationLoading(true);
     try {
-      const [details, processedRows, nextReconciliation] = await Promise.all([
+      const allRowsPromise = listAllProcessedRows(importId);
+      const [details, processedRows, nextReconciliation, allRows] = await Promise.all([
         api.imports.getById(importId),
         api.imports.listProcessedRows(importId, {
           limit: 200,
           status: nextStatusFilter || undefined
         }),
-        api.imports.getReconciliation(importId)
+        api.imports.getReconciliation(importId),
+        allRowsPromise
       ]);
+      setAllProcessedRows(allRows);
       setReconciliation(nextReconciliation);
       return { details, processedRows };
     } finally {
@@ -171,26 +185,37 @@ export default function ImportPage() {
   }, [state.details]);
 
   useEffect(() => {
-    if (!state.processedRows?.items?.length) {
-      setSelectedRowIds(new Set());
+    setReconciliationAssignments({});
+    setImportAccountId("");
+    setImportDefaultRowIds([]);
+    setHasInitializedImportAccountState(false);
+    if (!currentImportId) {
+      setAllProcessedRows([]);
+    }
+  }, [currentImportId]);
+
+  useEffect(() => {
+    if (!currentImportId || hasInitializedImportAccountState) {
       return;
     }
 
-    const visibleIds = new Set(state.processedRows.items.map((entry) => entry.rowId));
-    setSelectedRowIds((previous) => {
-      const next = new Set(Array.from(previous).filter((rowId) => visibleIds.has(rowId)));
-      if (next.size === previous.size && Array.from(next).every((rowId) => previous.has(rowId))) {
-        return previous;
-      }
-      return next;
-    });
-  }, [state.processedRows]);
+    const rowsReady = allProcessedRows.length > 0 || state.processedRows?.summary.all === 0;
+    if (!rowsReady || (allProcessedRows.length > 0 && accountOptions.length === 0)) {
+      return;
+    }
 
-  useEffect(() => {
-    setSelectedRowIds(new Set());
-    setBatchAccountId("");
-    setReconciliationAssignments({});
-  }, [currentImportId]);
+    setImportAccountId(importAccountReviewState.selectedAccountId);
+    setImportDefaultRowIds(importAccountReviewState.defaultRowIds);
+    setHasInitializedImportAccountState(true);
+  }, [
+    accountOptions.length,
+    allProcessedRows.length,
+    currentImportId,
+    hasInitializedImportAccountState,
+    importAccountReviewState.defaultRowIds,
+    importAccountReviewState.selectedAccountId,
+    state.processedRows?.summary.all
+  ]);
 
   function applyMappingTemplate() {
     if (!state.details) {
@@ -286,36 +311,13 @@ export default function ImportPage() {
     try {
       await api.imports.updateProcessedRow(currentImportId, rowId, payload);
       await refreshProcessedRows(currentImportId);
+      if (Object.prototype.hasOwnProperty.call(payload, "account_name")) {
+        setImportDefaultRowIds((previous) => previous.filter((candidateRowId) => candidateRowId !== rowId));
+      }
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Failed to update row.";
       dispatch({ type: "error", message });
     }
-  }
-
-  function selectVisibleRows(nextSelected: boolean) {
-    setSelectedRowIds((previous) => {
-      const next = new Set(previous);
-      for (const row of visibleRows) {
-        if (nextSelected) {
-          next.add(row.rowId);
-        } else {
-          next.delete(row.rowId);
-        }
-      }
-      return next;
-    });
-  }
-
-  function selectSingleRow(rowId: string, nextSelected: boolean) {
-    setSelectedRowIds((previous) => {
-      const next = new Set(previous);
-      if (nextSelected) {
-        next.add(rowId);
-      } else {
-        next.delete(rowId);
-      }
-      return next;
-    });
   }
 
   async function listAllProcessedRows(importId: string): Promise<ProcessedRow[]> {
@@ -338,15 +340,45 @@ export default function ImportPage() {
     return rows;
   }
 
-  async function applyAccountToRows(rowIds: string[], accountId: string, successPrefix: string) {
-    if (!currentImportId || !rowIds.length) {
+  async function applyImportAccountSelection(nextAccountId: string) {
+    if (!currentImportId || !nextAccountId) {
       return;
+    }
+
+    const selectedAccount = accountOptions.find((entry) => entry.id === nextAccountId);
+    if (!selectedAccount) {
+      dispatch({ type: "error", message: "Select a valid account before assigning." });
+      return;
+    }
+
+    setIsAssigningAccount(true);
+    try {
+      const didApply = importDefaultRowIds.length > 0
+        ? await applyAccountToRows(importDefaultRowIds, selectedAccount.id, "Applied import account")
+        : true;
+      if (didApply) {
+        setImportAccountId(nextAccountId);
+      }
+      if (importDefaultRowIds.length === 0) {
+        setReconciliationNotice(`Import account set to ${selectedAccount.displayName}.`);
+      }
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Failed to assign import account.";
+      dispatch({ type: "error", message });
+    } finally {
+      setIsAssigningAccount(false);
+    }
+  }
+
+  async function applyAccountToRows(rowIds: string[], accountId: string, successPrefix: string): Promise<boolean> {
+    if (!currentImportId || !rowIds.length) {
+      return false;
     }
 
     const account = accountOptions.find((entry) => entry.id === accountId);
     if (!account) {
       dispatch({ type: "error", message: "Select a valid account before assigning." });
-      return;
+      return false;
     }
 
     setIsAssigningAccount(true);
@@ -356,21 +388,14 @@ export default function ImportPage() {
       );
       await refreshProcessedRows(currentImportId);
       setReconciliationNotice(`${successPrefix}: ${account.displayName} (${rowIds.length} row${rowIds.length === 1 ? "" : "s"}).`);
+      return true;
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Failed to assign account to rows.";
       dispatch({ type: "error", message });
+      return false;
     } finally {
       setIsAssigningAccount(false);
     }
-  }
-
-  async function assignAccountToSelectedRows() {
-    const rowIds = collectVisibleSelectedRowIds(visibleRows, selectedRowIds);
-    if (!rowIds.length || !batchAccountId) {
-      return;
-    }
-    await applyAccountToRows(rowIds, batchAccountId, "Assigned selected rows");
-    setSelectedRowIds(new Set());
   }
 
   async function assignReconciliationAccount(entry: ImportReconciliationAccount) {
@@ -392,7 +417,11 @@ export default function ImportPage() {
         return;
       }
 
-      await applyAccountToRows(rowIds, assignedAccountId, `Mapped ${entry.accountName}`);
+      const didApply = await applyAccountToRows(rowIds, assignedAccountId, `Mapped ${entry.accountName}`);
+      if (didApply) {
+        const assignedRowIds = new Set(rowIds);
+        setImportDefaultRowIds((previous) => previous.filter((rowId) => !assignedRowIds.has(rowId)));
+      }
       setReconciliationAssignments((previous) => {
         const next = { ...previous };
         delete next[entry.accountKey];
@@ -400,6 +429,24 @@ export default function ImportPage() {
       });
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Failed to map reconciliation account.";
+      dispatch({ type: "error", message });
+    }
+  }
+
+  async function reprocessRows() {
+    if (!currentImportId) {
+      return;
+    }
+
+    try {
+      await runReprocessRowsFlow(currentImportId, {
+        reprocess: api.imports.reprocess,
+        refreshProcessedRows,
+        refreshImports,
+        publishNotice: setReconciliationNotice
+      });
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : "Failed to reprocess rows.";
       dispatch({ type: "error", message });
     }
   }
@@ -422,36 +469,6 @@ export default function ImportPage() {
     }
   }
 
-  function handleProcessedStatusChange(nextStatus: string) {
-    setStatusFilter(nextStatus);
-    if (currentImportId) {
-      void openImport(currentImportId, nextStatus);
-    }
-  }
-
-  async function resolveReconciliationDiscrepancy(entry: ImportReconciliationAccount) {
-    if (!currentImportId || !entry.accountId || Math.abs(entry.discrepancyAmount) < 0.01) {
-      return;
-    }
-
-    setIsResolvingReconciliation(true);
-    try {
-      await api.imports.resolveReconciliation(currentImportId, {
-        action: "create_manual_adjustment",
-        accountId: entry.accountId,
-        amountDelta: entry.discrepancyAmount,
-        reason: `Import reconciliation adjustment for ${entry.accountName}`
-      });
-      await Promise.all([refreshImports(), refreshProcessedRows(currentImportId)]);
-      setReconciliationNotice(`Manual adjustment created for ${entry.accountName}.`);
-    } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to resolve discrepancy.";
-      dispatch({ type: "error", message });
-    } finally {
-      setIsResolvingReconciliation(false);
-    }
-  }
-
   function renderProcessedRowsTable(data: ImportProcessedRowsResponse | null) {
     const processedFieldClass =
       "rounded border border-neutral-500 bg-neutral-900 px-2 py-1 text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40";
@@ -459,7 +476,7 @@ export default function ImportPage() {
     if (!data || !data.items.length) {
       return (
         <tr>
-          <td colSpan={12} className="px-3 py-6 text-center text-xs text-neutral-400">
+          <td colSpan={11} className="px-3 py-6 text-center text-xs text-neutral-400">
             No rows found for the selected filter.
           </td>
         </tr>
@@ -468,117 +485,101 @@ export default function ImportPage() {
 
     return data.items.map((row) => {
       const accountOptionsForRow = buildImportAccountOptions(accountOptions, row.normalized.account_name);
-      const selectedAccountValue = resolveImportAccountValue(accountOptions, row.normalized.account_name);
 
       return (
-      <tr key={row.rowId} className="border-b border-neutral-900 align-top">
-        <td className="px-2 py-2">
-          <input
-            type="checkbox"
-            data-testid={`processed-select-${row.rowId}`}
-            checked={selectedRowIds.has(row.rowId)}
-            aria-label={`Select row ${row.rowId}`}
-            onChange={(event) => selectSingleRow(row.rowId, event.target.checked)}
-          />
-        </td>
-        <td className="px-2 py-2">
-          <input
-            type="checkbox"
-            data-testid={`processed-include-${row.rowId}`}
-            defaultChecked={row.include}
-            aria-label={`Include row ${row.rowId}`}
-            onChange={(event) => void updateProcessedRow(row.rowId, { include: event.target.checked })}
-          />
-        </td>
-        <td className="px-2 py-2 text-xs">
-          <span className="rounded-full bg-neutral-800 px-2 py-0.5 text-neutral-200">{row.status}</span>
-        </td>
-        <td className="px-2 py-2">
-          <input
-            defaultValue={row.normalized.transaction_date || ""}
-            type="date"
-            className={`w-28 ${processedFieldClass}`}
-            aria-label={`Date for row ${row.rowId}`}
-            onBlur={(event) => void updateProcessedRow(row.rowId, { transaction_date: event.target.value })}
-          />
-        </td>
-        <td className="px-2 py-2">
-          <input
-            defaultValue={row.normalized.merchant_raw}
-            className={`w-40 ${processedFieldClass}`}
-            aria-label={`Merchant for row ${row.rowId}`}
-            onBlur={(event) => void updateProcessedRow(row.rowId, { merchant_raw: event.target.value })}
-          />
-        </td>
-        <td className="px-2 py-2">
-          <input
-            defaultValue={row.normalized.description}
-            className={`w-44 ${processedFieldClass}`}
-            aria-label={`Description for row ${row.rowId}`}
-            onBlur={(event) => void updateProcessedRow(row.rowId, { description: event.target.value })}
-          />
-        </td>
-        <td className="px-2 py-2">
-          <input
-            defaultValue={row.normalized.amount == null ? "" : String(row.normalized.amount)}
-            type="number"
-            step="0.01"
-            className={`w-24 ${processedFieldClass}`}
-            aria-label={`Amount for row ${row.rowId}`}
-            onBlur={(event) => void updateProcessedRow(row.rowId, { amount: Number(event.target.value) })}
-          />
-        </td>
-        <td className="px-2 py-2">
-          <select
-            defaultValue={row.normalized.direction}
-            className={`w-20 ${processedFieldClass}`}
-            aria-label={`Direction for row ${row.rowId}`}
-            onChange={(event) => void updateProcessedRow(row.rowId, { direction: event.target.value as "outflow" | "inflow" })}
-          >
-            <option value="outflow">outflow</option>
-            <option value="inflow">inflow</option>
-          </select>
-        </td>
-        <td className="px-2 py-2">
-          <select
-            defaultValue={row.normalized.category_final || ""}
-            className={`w-36 ${processedFieldClass}`}
-            aria-label={`Category for row ${row.rowId}`}
-            onChange={(event) => void updateProcessedRow(row.rowId, { category_final: event.target.value || null })}
-          >
-            <option value="">(auto)</option>
-            {categories.map((entry) => (
-              <option key={entry.id} value={entry.name}>
-                {entry.emoji ? `${entry.emoji} ` : ""}{entry.name}
-              </option>
-            ))}
-          </select>
-        </td>
-        <td className="px-2 py-2">
-          <select
-            defaultValue={selectedAccountValue}
-            className={`w-44 ${processedFieldClass}`}
-            aria-label={`Account for row ${row.rowId}`}
-            onChange={(event) => void updateProcessedRow(row.rowId, { account_name: event.target.value })}
-          >
-            {accountOptionsForRow.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </td>
-        <td className="px-2 py-2">
-          <input
-            defaultValue={row.normalized.memo || ""}
-            data-testid={`processed-memo-${row.rowId}`}
-            className={`w-32 ${processedFieldClass}`}
-            aria-label={`Memo for row ${row.rowId}`}
-            onBlur={(event) => void updateProcessedRow(row.rowId, { memo: event.target.value || null })}
-          />
-        </td>
-        <td className="px-2 py-2 text-[11px] text-neutral-400">{row.issues.join("; ")}</td>
-      </tr>
+        <tr key={row.rowId} className="border-b border-neutral-900 align-top">
+          <td className="px-2 py-2">
+            <input
+              type="checkbox"
+              data-testid={`processed-include-${row.rowId}`}
+              defaultChecked={row.include}
+              aria-label={`Include row ${row.rowId}`}
+              onChange={(event) => void updateProcessedRow(row.rowId, { include: event.target.checked })}
+            />
+          </td>
+          <td className="px-2 py-2 text-xs">
+            <span className="rounded-full bg-neutral-800 px-2 py-0.5 text-neutral-200">{row.status}</span>
+          </td>
+          <td className="px-2 py-2">
+            <input
+              defaultValue={row.normalized.transaction_date || ""}
+              type="date"
+              className={`w-28 ${processedFieldClass}`}
+              aria-label={`Date for row ${row.rowId}`}
+              onBlur={(event) => void updateProcessedRow(row.rowId, { transaction_date: event.target.value })}
+            />
+          </td>
+          <td className="px-2 py-2">
+            <input
+              defaultValue={row.normalized.merchant_raw}
+              className={`w-40 ${processedFieldClass}`}
+              aria-label={`Merchant for row ${row.rowId}`}
+              onBlur={(event) => void updateProcessedRow(row.rowId, { merchant_raw: event.target.value })}
+            />
+          </td>
+          <td className="px-2 py-2">
+            <input
+              defaultValue={row.normalized.description}
+              className={`w-44 ${processedFieldClass}`}
+              aria-label={`Description for row ${row.rowId}`}
+              onBlur={(event) => void updateProcessedRow(row.rowId, { description: event.target.value })}
+            />
+          </td>
+          <td className="px-2 py-2">
+            <input
+              defaultValue={row.normalized.amount == null ? "" : String(row.normalized.amount)}
+              type="number"
+              step="0.01"
+              className={`w-24 ${processedFieldClass}`}
+              aria-label={`Amount for row ${row.rowId}`}
+              onBlur={(event) => void updateProcessedRow(row.rowId, { amount: Number(event.target.value) })}
+            />
+          </td>
+          <td className="px-2 py-2">
+            <select
+              defaultValue={row.normalized.direction}
+              className={`w-20 ${processedFieldClass}`}
+              aria-label={`Direction for row ${row.rowId}`}
+              onChange={(event) => void updateProcessedRow(row.rowId, { direction: event.target.value as "outflow" | "inflow" })}
+            >
+              <option value="outflow">outflow</option>
+              <option value="inflow">inflow</option>
+            </select>
+          </td>
+          <td className="px-2 py-2">
+            <select
+              defaultValue={row.normalized.category_final || ""}
+              className={`w-36 ${processedFieldClass}`}
+              aria-label={`Category for row ${row.rowId}`}
+              onChange={(event) => void updateProcessedRow(row.rowId, { category_final: event.target.value || null })}
+            >
+              <option value="">(auto)</option>
+              {categories.map((entry) => (
+                <option key={entry.id} value={entry.name}>
+                  {entry.emoji ? `${entry.emoji} ` : ""}{entry.name}
+                </option>
+              ))}
+            </select>
+          </td>
+          <td className="px-2 py-2">
+            <ProcessedRowAccountSelect
+              rowId={row.rowId}
+              accountOptions={accountOptionsForRow}
+              value={resolveImportAccountValue(accountOptions, row.normalized.account_name)}
+              onChange={(value) => void updateProcessedRow(row.rowId, { account_name: value })}
+            />
+          </td>
+          <td className="px-2 py-2">
+            <input
+              defaultValue={row.normalized.memo || ""}
+              data-testid={`processed-memo-${row.rowId}`}
+              className={`w-32 ${processedFieldClass}`}
+              aria-label={`Memo for row ${row.rowId}`}
+              onBlur={(event) => void updateProcessedRow(row.rowId, { memo: event.target.value || null })}
+            />
+          </td>
+          <td className="px-2 py-2 text-[11px] text-neutral-400">{row.issues.join("; ")}</td>
+        </tr>
       );
     });
   }
@@ -803,9 +804,47 @@ export default function ImportPage() {
           <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4" data-testid="processed-panel">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-medium text-neutral-300">Processed Records Editor</h3>
-              <ProcessedRecordsToolbar
-                statusFilter={statusFilter}
-                onStatusFilterChange={handleProcessedStatusChange}
+              <div className="flex items-center gap-2">
+                <label htmlFor="processed-status-filter" className="sr-only">
+                  Processed rows status
+                </label>
+                <select
+                  id="processed-status-filter"
+                  value={statusFilter}
+                  onChange={(event) => {
+                    const nextStatus = event.target.value;
+                    setStatusFilter(nextStatus);
+                    if (currentImportId) {
+                      void openImport(currentImportId, nextStatus);
+                    }
+                  }}
+                  data-testid="processed-status-filter"
+                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+                >
+                  <option value="">All statuses</option>
+                  <option value="valid">Valid</option>
+                  <option value="invalid">Invalid</option>
+                  <option value="duplicate">Duplicate</option>
+                  <option value="excluded">Excluded</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => void reprocessRows()}
+                  className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800"
+                >
+                  <RefreshCcw className="h-3.5 w-3.5" />
+                  Reprocess
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <ImportAccountSelector
+                accountOptions={importAccountOptions}
+                value={importAccountId}
+                isApplying={isAssigningAccount}
+                disabled={!currentImportId || !hasInitializedImportAccountState}
+                onChange={(value) => void applyImportAccountSelection(value)}
               />
             </div>
 
@@ -814,45 +853,6 @@ export default function ImportPage() {
                 ? `Total: ${state.processedRows.summary.all} · Included: ${state.processedRows.summary.included} · Valid: ${state.processedRows.summary.valid} · Invalid: ${state.processedRows.summary.invalid} · Duplicate: ${state.processedRows.summary.duplicate} · Excluded: ${state.processedRows.summary.excluded}`
                 : "No processed rows loaded yet."}
             </p>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-900 bg-neutral-900/50 px-3 py-2">
-              <button
-                type="button"
-                onClick={() => selectVisibleRows(!allVisibleRowsSelected)}
-                disabled={!visibleRows.length}
-                data-testid="processed-select-visible"
-                className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {allVisibleRowsSelected ? "Clear visible" : "Select visible"}
-              </button>
-              <label htmlFor="processed-batch-account" className="text-xs text-neutral-300">
-                Assign account:
-              </label>
-              <select
-                id="processed-batch-account"
-                value={batchAccountId}
-                onChange={(event) => setBatchAccountId(event.target.value)}
-                data-testid="processed-batch-account"
-                className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
-              >
-                <option value="">Select account</option>
-                {accountAssignmentOptions.map((entry) => (
-                  <option key={entry.id} value={entry.id}>
-                    {entry.label}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => void assignAccountToSelectedRows()}
-                disabled={isAssigningAccount || !batchAccountId || selectedVisibleRowIds.length === 0}
-                data-testid="processed-assign-account"
-                className="inline-flex items-center gap-1 rounded-lg border border-emerald-600/70 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isAssigningAccount ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                Assign to {selectedVisibleRowIds.length} selected
-              </button>
-            </div>
 
             <div
               className="mt-3 overflow-auto"
@@ -863,14 +863,6 @@ export default function ImportPage() {
                 <caption className="sr-only">Processed row editor table</caption>
                 <thead>
                   <tr className="border-b border-neutral-900 text-left text-neutral-300">
-                    <th scope="col" className="px-2 py-2">
-                      <input
-                        type="checkbox"
-                        checked={allVisibleRowsSelected}
-                        aria-label="Select visible rows"
-                        onChange={(event) => selectVisibleRows(event.target.checked)}
-                      />
-                    </th>
                     <th scope="col" className="px-2 py-2">Include</th>
                     <th scope="col" className="px-2 py-2">Status</th>
                     <th scope="col" className="px-2 py-2">Date</th>
@@ -889,7 +881,10 @@ export default function ImportPage() {
             </div>
           </section>
 
-          <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4" data-testid="reconciliation-panel">
+          <ImportIssuesSummaryPanel summary={importIssueSummary} />
+
+          {isReconciliationVisible ? (
+            <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4" data-testid="reconciliation-panel">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-medium text-neutral-300">Reconciliation</h3>
               <button
@@ -981,16 +976,6 @@ export default function ImportPage() {
                                     {isAssigningAccount ? "Assigning..." : "Assign account"}
                                   </button>
                                 </div>
-                              ) : actionMode === "create_adjustment" ? (
-                                <button
-                                  type="button"
-                                  onClick={() => void resolveReconciliationDiscrepancy(entry)}
-                                  disabled={isResolvingReconciliation || isAssigningAccount || Math.abs(entry.discrepancyAmount) < 0.01}
-                                  data-testid={`reconcile-adjust-${entry.accountKey}`}
-                                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  {isResolvingReconciliation ? "Applying..." : "Create Adjustment"}
-                                </button>
                               ) : (
                                 <span className="text-[11px] text-neutral-500">No action</span>
                               )}
@@ -1005,7 +990,8 @@ export default function ImportPage() {
             ) : (
               <p className="mt-2 text-xs text-neutral-400">No reconciliation data loaded yet.</p>
             )}
-          </section>
+            </section>
+          ) : null}
 
           <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
             <h3 className="text-sm font-medium text-neutral-300">Recent Imports</h3>

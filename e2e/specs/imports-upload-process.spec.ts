@@ -20,4 +20,7 @@ test("@core imports upload and process actions are reliable", async ({ page }) =
   await page.getByTestId("import-file").setInputFiles(CSV_FIXTURE_PATH);
   await processButton.click();
   await expect(page.getByTestId("global-message")).toContainText("Import analyzed.");
+  await expect(page.getByTestId("issues-panel")).toBeVisible();
+  await expect(page.getByTestId("reconciliation-panel")).toBeVisible();
+  await expect(page.getByTestId("reconciliation-summary")).toContainText("Accounts: 2");
 });

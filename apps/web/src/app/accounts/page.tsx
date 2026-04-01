@@ -14,7 +14,7 @@ import {
   type ManualAccountErrors
 } from "./wizard";
 import { formatAccountTypeLabel, getAccountIdentifier } from "./accountFormatting";
-import { getSupportedAccountTypes as getCanonicalSupportedAccountTypes } from "../../../../../packages/domain/src/accounts";
+import { resolveSupportedAccountTypes } from "./accountTypes";
 
 type MessageTone = "info" | "error";
 
@@ -145,10 +145,6 @@ function hasSettingsDraftChanges(account: Account, draft: AccountSettingsDraft) 
     account.status !== draft.status ||
     account.includeInCharts !== draft.includeInCharts
   );
-}
-
-export function resolveSupportedAccountTypes(accountTypes: string[]) {
-  return accountTypes.length ? accountTypes : getCanonicalSupportedAccountTypes();
 }
 
 export default function AccountsPage() {
