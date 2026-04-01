@@ -44,6 +44,10 @@ export interface ImportAccountReviewState {
 
 const BLANK_ACCOUNT_IDENTITY = "__blank__";
 
+function hasExplicitAccountOverride(row: ProcessedRow): boolean {
+  return Object.hasOwn(row.overrides, "account_name");
+}
+
 export function normalizeAccountKey(value: string | null | undefined): string {
   return String(value || "")
     .normalize("NFKD")
@@ -82,12 +86,12 @@ export function collectRowIdsByAccountKey(rows: ProcessedRow[], accountKey: stri
 
 export function collectRowsWithoutExplicitAccountOverride(rows: ProcessedRow[]): string[] {
   return rows
-    .filter((row) => !Object.prototype.hasOwnProperty.call(row.overrides, "account_name"))
+    .filter((row) => !hasExplicitAccountOverride(row))
     .map((row) => row.rowId);
 }
 
 export function resolveImportAccountSelectionId(rows: ProcessedRow[], accounts: Account[]): string {
-  const inheritedRows = rows.filter((row) => !Object.prototype.hasOwnProperty.call(row.overrides, "account_name"));
+  const inheritedRows = rows.filter((row) => !hasExplicitAccountOverride(row));
   const candidateRows = inheritedRows.length > 0 ? inheritedRows : rows;
   if (!candidateRows.length) {
     return "";
@@ -122,10 +126,6 @@ export function buildImportAccountReviewState(rows: ProcessedRow[], accounts: Ac
   };
 }
 
-function resolveRowAccountKey(row: Pick<ProcessedRow, "normalized">): string {
-  return normalizeAccountKey(row.normalized.account_name);
-}
-
 export function summarizeImportAccountUsage(rows: ProcessedRow[], importAccountName: string): ImportAccountUsageSummary {
   const normalizedImportAccountName = normalizeAccountKey(importAccountName);
   const resolvedAccountKeys = new Set<string>();
@@ -133,10 +133,10 @@ export function summarizeImportAccountUsage(rows: ProcessedRow[], importAccountN
   const exceptionRowIds: string[] = [];
 
   for (const row of rows) {
-    const rowAccountKey = resolveRowAccountKey(row);
-    const hasExplicitAccountOverride = Object.prototype.hasOwnProperty.call(row.overrides, "account_name");
+    const rowAccountKey = normalizeAccountKey(row.normalized.account_name);
+    const hasOverride = hasExplicitAccountOverride(row);
     const isDefaultInheritedRow =
-      !hasExplicitAccountOverride &&
+      !hasOverride &&
       !!normalizedImportAccountName &&
       (!rowAccountKey || rowAccountKey === normalizedImportAccountName);
 
@@ -183,16 +183,23 @@ export function buildImportIssueVisibilitySummary(
   rows: ProcessedRow[],
   reconciliation: ImportReconciliationResponse | null | undefined
 ): ImportIssueVisibilitySummary {
-  const distinctAccountGroups = new Set(
-    rows
-      .map((row) => normalizeAccountKey(row.normalized.account_name))
-      .filter((value) => value.length > 0)
-  );
+  let invalidRows = 0;
+  let duplicateRows = 0;
+  let lowDirectionConfidenceRows = 0;
+  const distinctAccountGroups = new Set<string>();
+
+  for (const row of rows) {
+    if (row.status === "invalid") invalidRows++;
+    else if (row.status === "duplicate") duplicateRows++;
+    if (row.normalized.needs_direction_review) lowDirectionConfidenceRows++;
+    const accountKey = normalizeAccountKey(row.normalized.account_name);
+    if (accountKey) distinctAccountGroups.add(accountKey);
+  }
 
   return {
-    invalidRows: rows.filter((row) => row.status === "invalid").length,
-    duplicateRows: rows.filter((row) => row.status === "duplicate").length,
-    lowDirectionConfidenceRows: rows.filter((row) => row.normalized.needs_direction_review).length,
+    invalidRows,
+    duplicateRows,
+    lowDirectionConfidenceRows,
     multipleAccountGroups: distinctAccountGroups.size > 1,
     hasMissingAccount: Number(reconciliation?.summary.missingAccounts || 0) > 0,
     hasDiscrepancy: reconciliation?.accounts.some((entry) => Math.abs(Number(entry.discrepancyAmount || 0)) >= 0.01) || false

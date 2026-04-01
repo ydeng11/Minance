@@ -410,8 +410,7 @@ export default function ImportPage() {
     }
 
     try {
-      const allRows = await listAllProcessedRows(currentImportId);
-      const rowIds = collectRowIdsByAccountKey(allRows, entry.accountKey);
+      const rowIds = collectRowIdsByAccountKey(allProcessedRows, entry.accountKey);
       if (!rowIds.length) {
         dispatch({ type: "error", message: `No processed rows found for ${entry.accountName}.` });
         return;
