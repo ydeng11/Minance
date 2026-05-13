@@ -42,8 +42,6 @@
   --warning: oklch(0.82 0.12 78);
   --warning-soft: oklch(0.32 0.07 78);
   --focus-ring: oklch(0.8 0.11 160);
-  --gradient-panel: linear-gradient(180deg, oklch(0.23 0.018 196 / 0.98), oklch(0.18 0.012 196 / 0.94));
-  --gradient-shell: linear-gradient(180deg, oklch(0.22 0.016 196 / 0.96), oklch(0.18 0.012 196 / 0.92));
   --shadow-panel: 0 18px 48px rgb(0 0 0 / 0.24);
   --shadow-dialog: 0 30px 80px rgb(0 0 0 / 0.45);
   color-scheme: dark;
@@ -66,8 +64,6 @@
   --warning: oklch(0.58 0.13 75);
   --warning-soft: oklch(0.92 0.06 80);
   --focus-ring: oklch(0.62 0.13 160);
-  --gradient-panel: linear-gradient(180deg, oklch(1 0.004 95 / 0.98), oklch(0.95 0.008 95 / 0.94));
-  --gradient-shell: linear-gradient(180deg, oklch(0.98 0.004 95 / 0.96), oklch(0.94 0.008 95 / 0.92));
   --shadow-panel: 0 18px 48px rgb(15 23 42 / 0.08);
   --shadow-dialog: 0 30px 80px rgb(15 23 42 / 0.12);
   color-scheme: light;

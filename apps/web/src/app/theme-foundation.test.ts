@@ -142,7 +142,7 @@ test("globals css defines semantic theme tokens for surfaces, text, borders, acc
   assert.match(globalsSource, /--accent-soft:/);
   assert.match(globalsSource, /--danger-soft:/);
   assert.match(globalsSource, /--warning-soft:/);
-  assert.match(globalsSource, /--gradient-panel:/);
+  assert.doesNotMatch(globalsSource, /--gradient-panel:/);
 });
 
 test("layout uses a hydration-safe data-theme contract instead of forcing a dark class directly", () => {
