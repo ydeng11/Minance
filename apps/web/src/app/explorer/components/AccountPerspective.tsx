@@ -21,6 +21,22 @@ interface AccountPerspectiveProps {
   loading?: boolean;
 }
 
+const FOCUS_RING_CLASS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const HEADER_ACTION_CLASS =
+  `inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border-subtle bg-surface-field px-4 text-sm font-medium text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary ${FOCUS_RING_CLASS}`;
+const ACCOUNT_SKELETON_CLASS = "h-16 animate-pulse rounded-2xl bg-surface-field";
+const ACCOUNT_BUTTON_CLASS =
+  `flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left transition ${FOCUS_RING_CLASS}`;
+const ACCOUNT_BUTTON_ACTIVE_CLASS = "border-accent/35 bg-accent-soft";
+const ACCOUNT_BUTTON_INACTIVE_CLASS = "border-border-subtle bg-surface-panel/70 hover:border-border-strong hover:bg-surface-elevated";
+const ACCOUNT_ICON_CLASS =
+  "flex h-11 w-11 items-center justify-center rounded-2xl border border-border-subtle bg-surface-field text-text-secondary";
+const ACCOUNT_TITLE_CLASS = "text-sm font-semibold text-text-primary";
+const ACCOUNT_META_CLASS = "mt-1 text-xs uppercase tracking-[0.18em] text-text-muted";
+const ACCOUNT_AMOUNT_CLASS = "text-base font-semibold text-text-primary";
+const ACCOUNT_SHARE_CLASS = "mt-1 text-sm text-text-secondary";
+
 export function AccountPerspective({
   overview,
   trend,
@@ -52,7 +68,7 @@ export function AccountPerspective({
             type="button"
             onClick={onOpenTransactions}
             data-testid="explorer-open-transactions"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 text-sm font-medium text-neutral-200 transition hover:bg-neutral-900"
+            className={HEADER_ACTION_CLASS}
           >
             Transactions
             <ArrowRight className="h-4 w-4" />
@@ -63,7 +79,7 @@ export function AccountPerspective({
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-16 animate-pulse rounded-2xl bg-neutral-900" />
+              <div key={index} className={ACCOUNT_SKELETON_CLASS} />
             ))}
           </div>
         ) : (
@@ -74,28 +90,28 @@ export function AccountPerspective({
                 type="button"
                 onClick={() => onAccountClick(entry.accountId || entry.accountKey || entry.accountName)}
                 className={cn(
-                  "flex w-full items-center justify-between rounded-2xl border px-4 py-4 text-left transition",
+                  ACCOUNT_BUTTON_CLASS,
                   selectedAccount === entry.accountId ||
                     selectedAccount === entry.accountKey ||
                     selectedAccount === entry.accountName
-                    ? "border-emerald-400/30 bg-emerald-400/10"
-                    : "border-neutral-900 bg-neutral-950/70 hover:border-neutral-800 hover:bg-neutral-900/80"
+                    ? ACCOUNT_BUTTON_ACTIVE_CLASS
+                    : ACCOUNT_BUTTON_INACTIVE_CLASS
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-neutral-800 bg-neutral-900 text-neutral-300">
+                  <div className={ACCOUNT_ICON_CLASS}>
                     <Landmark className="h-5 w-5" />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-neutral-100">{entry.accountName}</div>
-                    <div className="mt-1 text-xs uppercase tracking-[0.18em] text-neutral-500">
+                    <div className={ACCOUNT_TITLE_CLASS}>{entry.accountName}</div>
+                    <div className={ACCOUNT_META_CLASS}>
                       {entry.sourceInstitution || "Manual"} · {entry.transactionCount} transactions
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-base font-semibold text-neutral-50">{money(entry.outflow)}</div>
-                  <div className="mt-1 text-sm text-neutral-400">{entry.share.toFixed(1)}% of outflow</div>
+                  <div className={ACCOUNT_AMOUNT_CLASS}>{money(entry.outflow)}</div>
+                  <div className={ACCOUNT_SHARE_CLASS}>{entry.share.toFixed(1)}% of outflow</div>
                 </div>
               </button>
             ))}

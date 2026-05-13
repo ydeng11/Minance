@@ -83,7 +83,7 @@ test("strategy update persists emoji and coarse mapping changes", () => {
   assert.equal(dining?.coarseKey, "essential");
 });
 
-test("default strategy covers categories found in backup training db", (t) => {
+test("default strategy covers categories found in the legacy backup db", (t) => {
   const sqliteAvailable = spawnSync("sqlite3", ["-version"], { encoding: "utf8" });
   if (sqliteAvailable.status !== 0) {
     t.skip("sqlite3 is unavailable in test environment");

@@ -120,7 +120,6 @@ git commit -m "feat: add canonical taxonomy groups and category parents"
 - Modify: `services/api/src/categorization.ts`
 - Modify: `services/api/src/llm/categorize.ts`
 - Modify: `services/api/src/llm/prompts.ts`
-- Modify: `services/api/src/training.ts`
 - Modify: `services/api/test/categorization.test.ts`
 - Create: `services/api/test/taxonomy-fallback.test.ts`
 - Test: `services/api/test/categorization.test.ts`
@@ -151,7 +150,7 @@ Update categorization flow to:
 - derive group from taxonomy first
 - only ask AI for group when taxonomy lookup is missing
 - treat low-confidence group fallback as `Unassigned`
-- extend prompt/training context to include canonical group names and accepted fallback examples
+- extend prompt context to include canonical group names and accepted fallback examples
 
 **Step 4: Run tests to verify they pass**
 
@@ -164,7 +163,7 @@ pnpm exec tsx --test services/api/test/categorization.test.ts services/api/test/
 **Step 5: Commit**
 
 ```bash
-git add services/api/src/categorization.ts services/api/src/llm/categorize.ts services/api/src/llm/prompts.ts services/api/src/training.ts services/api/test/categorization.test.ts services/api/test/taxonomy-fallback.test.ts
+git add services/api/src/categorization.ts services/api/src/llm/categorize.ts services/api/src/llm/prompts.ts services/api/test/categorization.test.ts services/api/test/taxonomy-fallback.test.ts
 git commit -m "feat: add taxonomy-first categorization fallback"
 ```
 

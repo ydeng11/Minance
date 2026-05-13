@@ -164,6 +164,103 @@ test("recurring evaluation links matching transactions and detaches stale links"
   assert.equal(deleted.deleted, true);
 });
 
+test("recurring evaluation matches merchant punctuation variants", () => {
+  const baseTransaction = {
+    user_id: USER_ID,
+    account_id: ACCOUNT_ID,
+    direction: "outflow",
+    category_final: "Bills & Utilities",
+    recurring_rule_id: null,
+    created_at: "2026-01-12T00:00:00.000Z",
+    updated_at: "2026-01-12T00:00:00.000Z"
+  };
+
+  resetForRecurrings({
+    transactions: [
+      {
+        ...baseTransaction,
+        id: "txn_att_001",
+        transaction_date: "2026-01-12",
+        merchant_raw: "ATT*BILL PAYMENT",
+        description: "Wireless bill",
+        amount: -258.41
+      },
+      {
+        ...baseTransaction,
+        id: "txn_att_002",
+        transaction_date: "2026-02-12",
+        merchant_raw: "ATT*BILL PAYMENT",
+        description: "Wireless bill",
+        amount: -239.9,
+        created_at: "2026-02-12T00:00:00.000Z",
+        updated_at: "2026-02-12T00:00:00.000Z"
+      },
+      {
+        ...baseTransaction,
+        id: "txn_card_payment",
+        transaction_date: "2026-02-15",
+        merchant_raw: "CITI AUTOPAY PAYMENT",
+        description: "Credit card payment",
+        amount: -248,
+        created_at: "2026-02-15T00:00:00.000Z",
+        updated_at: "2026-02-15T00:00:00.000Z"
+      }
+    ]
+  });
+
+  const recurring = createRecurringRule(USER_ID, {
+    name: "Phone bill",
+    cadence: "monthly",
+    amount: 250,
+    direction: "outflow",
+    category_final: "Bills & Utilities",
+    merchant_pattern: "AT&T"
+  });
+
+  const evaluation = evaluateRecurringRule(USER_ID, recurring.id);
+
+  assert.equal(evaluation.match_count, 2);
+  assert.deepEqual(
+    evaluation.matches.map((entry) => entry.id),
+    ["txn_att_001", "txn_att_002"]
+  );
+});
+
+test("recurring evaluation matches html-escaped merchant names", () => {
+  resetForRecurrings({
+    transactions: [
+      {
+        id: "txn_att_internet_001",
+        user_id: USER_ID,
+        account_id: ACCOUNT_ID,
+        transaction_date: "2026-01-30",
+        merchant_raw: "AT&amp;T   *PAYMENT",
+        description: "AT&amp;T   *PAYMENT",
+        amount: -70.28,
+        direction: "outflow",
+        category_final: "Bills & Utilities",
+        recurring_rule_id: null,
+        created_at: "2026-01-30T00:00:00.000Z",
+        updated_at: "2026-01-30T00:00:00.000Z"
+      }
+    ]
+  });
+
+  const recurring = createRecurringRule(USER_ID, {
+    name: "Internet",
+    cadence: "monthly",
+    amount: 70.28,
+    direction: "outflow",
+    category_final: "Bills & Utilities",
+    merchant_pattern: "AT&T *PAYMENT"
+  });
+
+  const evaluation = evaluateRecurringRule(USER_ID, recurring.id);
+
+  assert.equal(evaluation.match_count, 1);
+  assert.equal(evaluation.matches[0].id, "txn_att_internet_001");
+});
+
 test("transactionMatchesRule uses 5% tolerance with $0.10 floor", () => {
   const baseTransaction = {
     id: "txn_test",

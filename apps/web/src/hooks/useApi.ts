@@ -24,7 +24,6 @@ export function useApi() {
       ai: {
         providers: () => aiApi.providers(request),
         credentials: () => aiApi.credentials(request),
-        trainingStatus: () => aiApi.trainingStatus(request),
         addCredential: aiApi.addCredential.bind(null, request),
         rotateCredential: aiApi.rotateCredential.bind(null, request),
         deleteCredential: aiApi.deleteCredential.bind(null, request),
@@ -82,7 +81,8 @@ export function useApi() {
         create: transactionsApi.create.bind(null, request),
         bulkUpdate: transactionsApi.bulkUpdate.bind(null, request),
         update: transactionsApi.update.bind(null, request),
-        remove: transactionsApi.remove.bind(null, request)
+        remove: transactionsApi.remove.bind(null, request),
+        restore: transactionsApi.restore.bind(null, request)
       },
       investments: {
         overview: investmentsApi.overview.bind(null, request),

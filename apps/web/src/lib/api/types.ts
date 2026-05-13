@@ -107,14 +107,6 @@ export interface ProviderPreferences {
   updatedAt: string | null;
 }
 
-export interface AiTrainingStatus {
-  enabled: boolean;
-  reason: string | null;
-  dbPath: string | null;
-  rawCategoryMappings: number;
-  merchantExemplars: number;
-}
-
 export interface ImportJob {
   id: string;
   userId: string;

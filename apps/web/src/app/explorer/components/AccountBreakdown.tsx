@@ -10,6 +10,15 @@ interface AccountBreakdownProps {
   loading?: boolean;
 }
 
+const CARD_CLASS = "rounded-2xl border border-border-subtle bg-surface-panel/85 p-6 shadow-panel";
+const TITLE_CLASS = "text-sm font-medium text-text-primary";
+const SKELETON_ROW_CLASS = "h-10 animate-pulse rounded-md bg-surface-field";
+const EMPTY_TEXT_CLASS = "mt-8 text-sm text-text-secondary";
+const ROW_BUTTON_CLASS =
+  "flex w-full items-center gap-3 rounded-md border border-border-subtle bg-surface-field px-3 py-2 text-left transition hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const TRACK_CLASS = "h-2 w-16 overflow-hidden rounded-full bg-surface-elevated";
+const BAR_CLASS = "h-full rounded-full bg-accent";
+
 // Mock account data based on trend data - in a real implementation,
 // this would come from the API. For now we derive from the trend.
 export function AccountBreakdown({ overview, onAccountClick, loading }: AccountBreakdownProps) {
@@ -24,11 +33,11 @@ export function AccountBreakdown({ overview, onAccountClick, loading }: AccountB
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-6">
-        <h3 className="text-sm font-medium text-neutral-300">Accounts</h3>
+      <div className={CARD_CLASS}>
+        <h3 className={TITLE_CLASS}>Accounts</h3>
         <div className="mt-4 space-y-2">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-10 animate-pulse rounded-md bg-neutral-900" />
+            <div key={index} className={SKELETON_ROW_CLASS} />
           ))}
         </div>
       </div>
@@ -37,9 +46,9 @@ export function AccountBreakdown({ overview, onAccountClick, loading }: AccountB
 
   if (accountData.length === 0) {
     return (
-      <div className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-6">
-        <h3 className="text-sm font-medium text-neutral-300">Accounts</h3>
-        <p className="mt-8 text-sm text-neutral-400">
+      <div className={CARD_CLASS}>
+        <h3 className={TITLE_CLASS}>Accounts</h3>
+        <p className={EMPTY_TEXT_CLASS}>
           Account breakdown coming soon.
         </p>
       </div>
@@ -47,8 +56,8 @@ export function AccountBreakdown({ overview, onAccountClick, loading }: AccountB
   }
 
   return (
-    <div className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-6">
-      <h3 className="text-sm font-medium text-neutral-300">Accounts</h3>
+    <div className={CARD_CLASS}>
+      <h3 className={TITLE_CLASS}>Accounts</h3>
       <div className="mt-4 space-y-2">
         {accountData.map((entry) => {
           const barWidth = `${Math.max(5, (entry.amount / maxAmount) * 100)}%`;
@@ -57,17 +66,17 @@ export function AccountBreakdown({ overview, onAccountClick, loading }: AccountB
               type="button"
               key={entry.account}
               onClick={() => onAccountClick?.(entry.account)}
-              className="flex w-full items-center gap-3 rounded-md bg-neutral-900 px-3 py-2 text-left transition hover:bg-neutral-800"
+              className={ROW_BUTTON_CLASS}
             >
-              <span className="flex-1 truncate text-sm text-neutral-300">{entry.account}</span>
+              <span className="flex-1 truncate text-sm text-text-secondary">{entry.account}</span>
               <div className="flex items-center gap-2">
-                <div className="h-2 w-16 overflow-hidden rounded-full bg-neutral-800">
+                <div className={TRACK_CLASS}>
                   <div
-                    className="h-full rounded-full bg-emerald-500"
+                    className={BAR_CLASS}
                     style={{ width: barWidth }}
                   />
                 </div>
-                <strong className="w-20 text-right text-sm text-neutral-100">
+                <strong className="w-20 text-right text-sm text-text-primary">
                   {money(entry.amount)}
                 </strong>
               </div>

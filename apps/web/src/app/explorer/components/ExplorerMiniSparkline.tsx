@@ -8,7 +8,7 @@ interface ExplorerMiniSparklineProps {
 
 export function ExplorerMiniSparkline({
   data,
-  strokeClassName = "stroke-emerald-400",
+  strokeClassName = "stroke-accent",
   testId
 }: ExplorerMiniSparklineProps) {
   const values = data.length > 1 ? data : [0, 0];
@@ -28,13 +28,13 @@ export function ExplorerMiniSparkline({
     <svg
       viewBox="0 0 100 36"
       preserveAspectRatio="none"
-      className="h-10 w-full"
+      className="h-10 w-full opacity-85"
       data-testid={testId}
       aria-hidden="true"
     >
       <polyline
         fill="none"
-        strokeWidth="2.5"
+        strokeWidth="2.25"
         strokeLinecap="round"
         strokeLinejoin="round"
         points={points}

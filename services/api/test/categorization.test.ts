@@ -116,11 +116,13 @@ test("categorizeTransactionWithAgent prioritizes merchant memory over agent", as
 });
 
 test("categorizeTransactionWithAgent calls agent when rules and memory do not match", async () => {
+  let agentCalled = false;
   const transaction = {
     merchant_normalized: "unknown_merchant",
     description: "Unknown Store",
     memo: "",
     direction: "debit",
+    category_raw: "Food & Drink",
     amount: 50
   };
 
@@ -130,14 +132,18 @@ test("categorizeTransactionWithAgent calls agent when rules and memory do not ma
     merchantMemory: {},
     userId: "user-1",
     _testAgentEnabled: true,
-    _testAgentFn: async () => ({
-      ok: true,
-      category: "Shopping",
-      confidence: 0.85,
-      source: "inferred"
-    })
+    _testAgentFn: async () => {
+      agentCalled = true;
+      return {
+        ok: true,
+        category: "Shopping",
+        confidence: 0.85,
+        source: "inferred"
+      };
+    }
   });
 
+  assert.equal(agentCalled, true);
   assert.equal(result.category, "Shopping");
   assert.equal(result.strategy, "agent_inferred");
 });

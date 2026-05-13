@@ -12,7 +12,7 @@ test("@core imports infer positive_is_outflow for positive expense files", async
 
   await page.getByTestId("import-file").setInputFiles(POSITIVE_EXPENSE_FIXTURE_PATH);
   await page.getByTestId("import-process").click();
-  await expect(page.getByTestId("global-message")).toContainText("Import analyzed.");
+  await expect(page.getByText(/^Analyzed \d+ rows in /)).toBeVisible({ timeout: 30_000 });
 
   const importsList = await appApi(page, "/v1/imports");
   const latestImport = importsList.imports?.[0];

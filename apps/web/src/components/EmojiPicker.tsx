@@ -20,6 +20,13 @@ interface PickerPosition {
   left: number;
 }
 
+const TRIGGER_CLASS_NAME =
+  "inline-flex items-center justify-between gap-2 rounded-lg border border-border-strong bg-surface-field px-3 py-2 text-left text-sm text-text-primary outline-none transition hover:border-accent/40 focus:border-accent focus:ring-1 focus:ring-focus-ring disabled:cursor-not-allowed disabled:opacity-60";
+const OPTION_BASE_CLASS = "mb-3 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition";
+const OPTION_SELECTED_CLASS = "border-accent/50 bg-accent-soft text-accent";
+const OPTION_UNSELECTED_CLASS =
+  "border-border-subtle bg-surface-field text-text-secondary hover:border-border-strong hover:bg-surface-elevated";
+
 function normalizeEmoji(value: string) {
   return String(value || "").trim();
 }
@@ -118,28 +125,28 @@ export function EmojiPicker({
           }
           setIsOpen((previous) => !previous);
         }}
-        className={`inline-flex items-center justify-between gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-left text-sm text-neutral-100 outline-none transition hover:border-emerald-500/40 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${triggerClassName}`}
+        className={`${TRIGGER_CLASS_NAME} ${triggerClassName}`}
       >
         <span className="min-w-0 truncate">{triggerLabel}</span>
-        <ChevronDown className="h-4 w-4 shrink-0 text-neutral-400" />
+        <ChevronDown className="h-4 w-4 shrink-0 text-text-secondary" />
       </button>
       {typeof document !== "undefined" && isOpen ? createPortal(
         <div
           ref={panelRef}
           data-testid="emoji-picker"
-          className="fixed z-[120] w-[min(24rem,calc(100vw-1.5rem))] rounded-2xl border border-neutral-800 bg-neutral-950 p-3 shadow-2xl"
+          className="fixed z-[120] w-[min(24rem,calc(100vw-1.5rem))] rounded-2xl border border-border-subtle bg-surface-panel p-3 shadow-dialog"
           style={{ top: position.top, left: position.left }}
         >
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-neutral-100">Select emoji</p>
-              <p className="text-xs text-neutral-400">Search the full emoji catalog for categories and taxonomy groups.</p>
+              <p className="text-sm font-medium text-text-primary">Select emoji</p>
+              <p className="text-xs text-text-secondary">Search the full emoji catalog for categories and taxonomy groups.</p>
             </div>
             <button
               type="button"
               aria-label="Close emoji picker"
               onClick={() => setIsOpen(false)}
-              className="rounded-md border border-neutral-800 bg-neutral-900 p-1.5 text-neutral-300 transition hover:bg-neutral-800"
+              className="rounded-md border border-border-subtle bg-surface-field p-1.5 text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary"
             >
               <X className="h-4 w-4" />
             </button>
@@ -151,11 +158,7 @@ export function EmojiPicker({
               onChange("");
               setIsOpen(false);
             }}
-            className={`mb-3 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition ${
-              !normalizedValue
-                ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-200"
-                : "border-neutral-800 bg-neutral-900 text-neutral-300 hover:border-neutral-700 hover:bg-neutral-800"
-            }`}
+            className={`${OPTION_BASE_CLASS} ${!normalizedValue ? OPTION_SELECTED_CLASS : OPTION_UNSELECTED_CLASS}`}
           >
             <span>No emoji</span>
             {!normalizedValue ? <span className="text-xs uppercase tracking-wide">Selected</span> : null}
@@ -175,11 +178,11 @@ export function EmojiPicker({
                 autoFocus
                 data-testid="emoji-picker-search"
                 placeholder="Search emoji"
-                className="h-10 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+                className="h-10 w-full rounded-lg border border-border-strong bg-surface-field px-3 text-sm text-text-primary placeholder:text-text-secondary outline-none focus:border-accent focus:ring-1 focus:ring-focus-ring"
                 hideIcon
               />
             </RichEmojiPicker.Header>
-            <RichEmojiPicker.Group className="rounded-xl border border-neutral-800 bg-neutral-950/60">
+            <RichEmojiPicker.Group className="rounded-xl border border-border-subtle bg-surface-field/60">
               <RichEmojiPicker.List containerHeight={320} hideStickyHeader />
             </RichEmojiPicker.Group>
           </RichEmojiPicker>

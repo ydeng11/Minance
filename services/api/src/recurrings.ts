@@ -17,6 +17,32 @@ function amountMatchesRule(transactionAmount, ruleAmount) {
   return Math.abs(transactionAmount - ruleAmount) <= tolerance + EPSILON;
 }
 
+function normalizeMerchantMatchText(value) {
+  return String(value || "")
+    .normalize("NFKD")
+    .replace(/&amp;/gi, "&")
+    .replace(/\band\b/gi, "")
+    .replace(/&/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "")
+    .toLowerCase();
+}
+
+function merchantMatchesPattern(transaction, pattern) {
+  const haystack = `${transaction.merchant_raw || ""} ${transaction.description || ""}`;
+  const normalizedPattern = normalizeText(String(pattern || "").replace(/&amp;/gi, "&"));
+  const normalizedHaystack = normalizeText(haystack.replace(/&amp;/gi, "&"));
+  if (normalizedHaystack.includes(normalizedPattern)) {
+    return true;
+  }
+
+  const compactPattern = normalizeMerchantMatchText(pattern);
+  if (compactPattern.length < 3) {
+    return false;
+  }
+
+  return normalizeMerchantMatchText(haystack).includes(compactPattern);
+}
+
 function hasOwnField(payload, key) {
   return Boolean(payload && typeof payload === "object" && Object.hasOwn(payload, key));
 }
@@ -331,9 +357,7 @@ export function transactionMatchesRule(transaction, rule) {
   }
 
   if (rule.merchant_pattern) {
-    const pattern = normalizeText(rule.merchant_pattern);
-    const haystack = normalizeText(`${transaction.merchant_raw || ""} ${transaction.description || ""}`);
-    if (!haystack.includes(pattern)) {
+    if (!merchantMatchesPattern(transaction, rule.merchant_pattern)) {
       return false;
     }
   }

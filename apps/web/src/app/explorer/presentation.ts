@@ -1,3 +1,5 @@
+import type { ExplorerSummarySparklinePoint } from "@/lib/api/types";
+
 export interface MerchantPresentation {
   displayName: string;
   caption: string;
@@ -8,6 +10,12 @@ export interface SummarySecondaryStateInput {
   comparisonEnabled: boolean;
   deltaLabel: string;
   sparkline: number[];
+}
+
+export interface SummarySparklineSeries {
+  spend: number[];
+  income: number[];
+  net: number[];
 }
 
 export type SummarySecondaryState =
@@ -106,6 +114,24 @@ export function buildSummarySecondaryState(
     mode: "delta",
     label: input.deltaLabel
   };
+}
+
+export function buildSummarySparklineSeries(
+  sparkline: ExplorerSummarySparklinePoint[] | null | undefined
+): SummarySparklineSeries {
+  const series: SummarySparklineSeries = {
+    spend: [],
+    income: [],
+    net: []
+  };
+
+  for (const point of sparkline ?? []) {
+    series.spend.push(point.spend);
+    series.income.push(point.income);
+    series.net.push(point.net);
+  }
+
+  return series;
 }
 
 export function getSummaryValueClassName(value: string) {

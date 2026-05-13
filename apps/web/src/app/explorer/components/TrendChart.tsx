@@ -13,6 +13,43 @@ interface TrendChartProps {
   loading?: boolean;
 }
 
+const FOCUS_RING_CLASS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const BOARD_CLASS =
+  "rounded-[32px] border border-border-subtle bg-surface-panel/85 p-6 shadow-panel";
+const LOADING_TITLE_CLASS = "text-sm font-medium text-text-secondary";
+const SKELETON_BAR_CLASS = "h-28 flex-1 animate-pulse rounded-2xl bg-surface-field";
+const EYEBROW_CLASS = "text-[11px] font-semibold uppercase tracking-[0.24em] text-text-muted";
+const TITLE_CLASS = "mt-2 font-display text-3xl font-semibold tracking-tight text-text-primary";
+const DESCRIPTION_CLASS = "mt-2 text-sm text-text-secondary";
+const RANGE_PILL_CLASS =
+  "rounded-full border border-border-subtle bg-surface-field px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-text-secondary";
+const MONTH_BUTTON_CLASS =
+  `group flex min-w-[72px] flex-1 basis-0 flex-col items-center gap-3 rounded-[26px] ${FOCUS_RING_CLASS}`;
+const MONTH_BARS_BASE_CLASS = "flex w-full items-end gap-1 rounded-[24px] border px-3 pb-3 pt-5 transition";
+const MONTH_BARS_SELECTED_CLASS = "border-accent/35 bg-accent-soft";
+const MONTH_BARS_IDLE_CLASS = "border-border-subtle bg-surface-field/70 hover:border-border-strong hover:bg-surface-elevated";
+const SPEND_BAR_BASE_CLASS = "w-1/2 rounded-t-[14px] transition";
+const SPEND_BAR_SELECTED_CLASS = "bg-accent";
+const SPEND_BAR_IDLE_CLASS = "bg-accent/55 group-hover:bg-accent/70";
+const INCOME_BAR_BASE_CLASS = "w-1/2 rounded-t-[14px] transition";
+const INCOME_BAR_SELECTED_CLASS = "bg-text-primary";
+const INCOME_BAR_IDLE_CLASS = "bg-text-muted group-hover:bg-text-secondary";
+const MONTH_LABEL_CLASS = "text-[11px] font-medium uppercase tracking-[0.18em] group-hover:text-text-secondary";
+const DETAIL_PANEL_CLASS = "mt-6 rounded-[24px] border border-border-subtle bg-surface-panel/70 p-5";
+const DETAIL_EYEBROW_CLASS = "text-xs uppercase tracking-[0.18em] text-text-muted";
+const DETAIL_TITLE_CLASS = "mt-2 font-display text-2xl font-semibold tracking-tight text-text-primary";
+const APPLY_BUTTON_CLASS =
+  `inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border-subtle bg-surface-field px-4 text-sm font-medium text-text-primary transition hover:bg-surface-elevated ${FOCUS_RING_CLASS}`;
+const METRIC_CARD_CLASS = "rounded-2xl border border-border-subtle bg-surface-field px-4 py-3";
+const METRIC_LABEL_CLASS = "text-xs uppercase tracking-[0.18em] text-text-muted";
+const METRIC_VALUE_CLASS = "mt-2 text-xl font-semibold text-text-primary";
+const COMPOSITION_CARD_CLASS = "rounded-2xl border border-border-subtle bg-surface-field px-4 py-4";
+const COMPOSITION_TITLE_CLASS = "text-sm font-medium text-text-primary";
+const COMPOSITION_CATEGORY_CLASS = "truncate text-text-secondary";
+const COMPOSITION_AMOUNT_CLASS = "text-right text-text-primary";
+const EMPTY_COMPOSITION_CLASS = "text-sm text-text-muted";
+
 function formatMonthLabel(month: string, includeYear: boolean) {
   const [year, monthNumber] = month.split("-").map(Number);
   const date = new Date(Date.UTC(year, monthNumber - 1, 1));
@@ -54,6 +91,7 @@ export function TrendChart({
       ...entry,
       label: formatMonthLabel(entry.month, includeYear),
       detailLabel: formatMonthDetailLabel(entry.month),
+      ariaLabel: `${formatMonthDetailLabel(entry.month)} trend summary: spend ${money(entry.spend)}, income ${money(entry.income)}, net ${money(entry.net)}`,
       spendComposition: "spendComposition" in entry && Array.isArray(entry.spendComposition) ? entry.spendComposition : [],
       incomeComposition: "incomeComposition" in entry && Array.isArray(entry.incomeComposition) ? entry.incomeComposition : [],
       spendHeight: Math.max(24, Math.round((entry.spend / maxSpend) * 220)),
@@ -85,11 +123,11 @@ export function TrendChart({
 
   if (loading) {
     return (
-      <div className="rounded-[28px] border border-neutral-900 bg-neutral-950/75 p-6">
-        <h3 className="text-sm font-medium text-neutral-300">Spending Trend</h3>
+      <div className={BOARD_CLASS} data-testid="explorer-trend-board">
+        <h3 className={LOADING_TITLE_CLASS}>Spending Trend</h3>
         <div className="mt-4 flex h-64 items-end gap-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="h-28 flex-1 animate-pulse rounded-2xl bg-neutral-900" />
+            <div key={index} className={SKELETON_BAR_CLASS} />
           ))}
         </div>
       </div>
@@ -98,83 +136,87 @@ export function TrendChart({
 
   if (trendBars.length === 0) {
     return (
-      <div className="rounded-[28px] border border-neutral-900 bg-neutral-950/75 p-6">
-        <h3 className="text-sm font-medium text-neutral-300">Spending Trend</h3>
-        <p className="mt-8 text-sm text-neutral-400">No trend data available.</p>
+      <div className={BOARD_CLASS} data-testid="explorer-trend-board">
+        <h3 className={LOADING_TITLE_CLASS}>Spending Trend</h3>
+        <p className="mt-8 text-sm text-text-secondary">No trend data available.</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-[28px] border border-neutral-900 bg-neutral-950/75 p-6">
+    <div className={BOARD_CLASS} data-testid="explorer-trend-board">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h3 className="text-sm font-medium text-neutral-300">Spending Trend</h3>
-          <p className="mt-2 text-sm text-neutral-500">
+          <div className={EYEBROW_CLASS}>Trend board</div>
+          <h3 className={TITLE_CLASS}>Spending Trend</h3>
+          <p className={DESCRIPTION_CLASS}>
             Follow spend and income momentum across the selected range.
           </p>
         </div>
-        <div className="rounded-full border border-neutral-800 bg-neutral-900 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-neutral-400">
+        <div className={RANGE_PILL_CLASS}>
           {rangeLabel}
         </div>
       </div>
       <div className="mt-8 overflow-x-auto pb-2">
         <div className="flex min-h-[260px] min-w-full items-end gap-4">
-          {trendBars.map((item) => (
-            <button
-              key={item.month}
-              type="button"
-              onClick={() => setSelectedMonth(item.month)}
-              data-testid={`explorer-trend-month-${item.month}`}
-              className="group flex min-w-[72px] flex-1 basis-0 flex-col items-center gap-3"
-            >
-              <div
-                className={cn(
-                  "flex w-full items-end gap-1 rounded-[24px] border px-3 pb-3 pt-5 transition",
-                  selectedTrend?.month === item.month
-                    ? "border-emerald-400/40 bg-emerald-400/10"
-                    : "border-neutral-900 bg-neutral-900/70"
-                )}
+          {trendBars.map((item) => {
+            const isSelected = selectedTrend?.month === item.month;
+
+            return (
+              <button
+                key={item.month}
+                type="button"
+                onClick={() => setSelectedMonth(item.month)}
+                data-testid={`explorer-trend-month-${item.month}`}
+                aria-label={item.ariaLabel}
+                className={MONTH_BUTTON_CLASS}
               >
                 <div
                   className={cn(
-                    "w-1/2 rounded-t-[14px] transition",
-                    selectedTrend?.month === item.month ? "bg-emerald-400" : "bg-emerald-500/85 hover:bg-emerald-400"
+                    MONTH_BARS_BASE_CLASS,
+                    isSelected ? MONTH_BARS_SELECTED_CLASS : MONTH_BARS_IDLE_CLASS
                   )}
-                  style={{ height: item.spendHeight }}
-                  title={`Spend: ${money(item.spend)}`}
-                />
+                >
+                  <div
+                    className={cn(
+                      SPEND_BAR_BASE_CLASS,
+                      isSelected ? SPEND_BAR_SELECTED_CLASS : SPEND_BAR_IDLE_CLASS
+                    )}
+                    style={{ height: item.spendHeight }}
+                    title={`Spend: ${money(item.spend)}`}
+                  />
+                  <div
+                    className={cn(
+                      INCOME_BAR_BASE_CLASS,
+                      isSelected ? INCOME_BAR_SELECTED_CLASS : INCOME_BAR_IDLE_CLASS
+                    )}
+                    style={{ height: item.incomeHeight }}
+                    title={`Income: ${money(item.income)}`}
+                  />
+                </div>
                 <div
                   className={cn(
-                    "w-1/2 rounded-t-[14px] transition",
-                    selectedTrend?.month === item.month ? "bg-sky-300" : "bg-sky-400/75 hover:bg-sky-300"
+                    MONTH_LABEL_CLASS,
+                    isSelected ? "text-text-primary" : "text-text-muted"
                   )}
-                  style={{ height: item.incomeHeight }}
-                  title={`Income: ${money(item.income)}`}
-                />
-              </div>
-              <div
-                className={cn(
-                  "text-[11px] font-medium uppercase tracking-[0.18em] group-hover:text-neutral-300",
-                  selectedTrend?.month === item.month ? "text-neutral-200" : "text-neutral-500"
-                )}
-              >
-                {item.label}
-              </div>
-            </button>
-          ))}
+                >
+                  {item.label}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
       {selectedTrend ? (
         <div
-          className="mt-6 rounded-[24px] border border-neutral-800 bg-neutral-900/70 p-5"
+          className={DETAIL_PANEL_CLASS}
           data-testid="explorer-trend-detail"
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="text-xs uppercase tracking-[0.18em] text-neutral-500">Month detail</div>
-              <h4 className="mt-2 text-xl font-semibold text-neutral-50">{selectedTrend.detailLabel}</h4>
-              <p className="mt-2 text-sm text-neutral-400">
+              <div className={DETAIL_EYEBROW_CLASS}>Month detail</div>
+              <h4 className={DETAIL_TITLE_CLASS}>{selectedTrend.detailLabel}</h4>
+              <p className={DESCRIPTION_CLASS}>
                 Click a month to inspect its spend and income composition before drilling down.
               </p>
             </div>
@@ -183,7 +225,7 @@ export function TrendChart({
                 type="button"
                 onClick={() => onApplyMonthFilter(selectedTrend.month)}
                 data-testid="explorer-trend-apply-month"
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-neutral-700 bg-neutral-950 px-4 text-sm font-medium text-neutral-100 transition hover:bg-neutral-900"
+                className={APPLY_BUTTON_CLASS}
               >
                 Filter Explorer to {selectedTrend.label}
                 <ArrowRight className="h-4 w-4" />
@@ -192,54 +234,54 @@ export function TrendChart({
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3">
-              <div className="text-xs uppercase tracking-[0.18em] text-neutral-500">Spend</div>
-              <div className="mt-2 text-xl font-semibold text-neutral-50">{money(selectedTrend.spend)}</div>
+            <div className={METRIC_CARD_CLASS}>
+              <div className={METRIC_LABEL_CLASS}>Spend</div>
+              <div className={METRIC_VALUE_CLASS}>{money(selectedTrend.spend)}</div>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3">
-              <div className="text-xs uppercase tracking-[0.18em] text-neutral-500">Income</div>
-              <div className="mt-2 text-xl font-semibold text-neutral-50">{money(selectedTrend.income)}</div>
+            <div className={METRIC_CARD_CLASS}>
+              <div className={METRIC_LABEL_CLASS}>Income</div>
+              <div className={METRIC_VALUE_CLASS}>{money(selectedTrend.income)}</div>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-3">
-              <div className="text-xs uppercase tracking-[0.18em] text-neutral-500">Net</div>
-              <div className="mt-2 text-xl font-semibold text-neutral-50">{money(selectedTrend.net)}</div>
+            <div className={METRIC_CARD_CLASS}>
+              <div className={METRIC_LABEL_CLASS}>Net</div>
+              <div className={METRIC_VALUE_CLASS}>{money(selectedTrend.net)}</div>
             </div>
           </div>
 
           <div className="mt-5 grid gap-4 xl:grid-cols-2">
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-4">
-              <div className="text-sm font-medium text-neutral-200">Spend composition</div>
+            <div className={COMPOSITION_CARD_CLASS}>
+              <div className={COMPOSITION_TITLE_CLASS}>Spend composition</div>
               <div className="mt-3 space-y-2">
                 {selectedTrend.spendComposition.length ? selectedTrend.spendComposition.map((entry) => (
                   <div key={`spend-${entry.category}`} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="truncate text-neutral-300">
+                    <span className={COMPOSITION_CATEGORY_CLASS}>
                       {entry.emoji ? `${entry.emoji} ` : ""}
                       {entry.category}
                     </span>
-                    <span className="text-right text-neutral-100">
+                    <span className={COMPOSITION_AMOUNT_CLASS}>
                       {money(entry.amount)} · {entry.share.toFixed(1)}%
                     </span>
                   </div>
                 )) : (
-                  <p className="text-sm text-neutral-500">No spend in this month.</p>
+                  <p className={EMPTY_COMPOSITION_CLASS}>No spend in this month.</p>
                 )}
               </div>
             </div>
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-4">
-              <div className="text-sm font-medium text-neutral-200">Income composition</div>
+            <div className={COMPOSITION_CARD_CLASS}>
+              <div className={COMPOSITION_TITLE_CLASS}>Income composition</div>
               <div className="mt-3 space-y-2">
                 {selectedTrend.incomeComposition.length ? selectedTrend.incomeComposition.map((entry) => (
                   <div key={`income-${entry.category}`} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="truncate text-neutral-300">
+                    <span className={COMPOSITION_CATEGORY_CLASS}>
                       {entry.emoji ? `${entry.emoji} ` : ""}
                       {entry.category}
                     </span>
-                    <span className="text-right text-neutral-100">
+                    <span className={COMPOSITION_AMOUNT_CLASS}>
                       {money(entry.amount)} · {entry.share.toFixed(1)}%
                     </span>
                   </div>
                 )) : (
-                  <p className="text-sm text-neutral-500">No income in this month.</p>
+                  <p className={EMPTY_COMPOSITION_CLASS}>No income in this month.</p>
                 )}
               </div>
             </div>

@@ -9,8 +9,10 @@ export function AppGate({ children }: { children: React.ReactNode }) {
 
   if (status === "loading") {
     return (
-      <main className="grid min-h-screen place-items-center bg-neutral-950">
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-4 py-3 text-sm text-neutral-300">Loading session...</div>
+      <main className="grid min-h-screen place-items-center bg-app-bg text-text-primary">
+        <div className="rounded-lg border border-border-subtle bg-surface-panel/85 px-4 py-3 text-sm text-text-secondary shadow-panel">
+          Loading session...
+        </div>
       </main>
     );
   }

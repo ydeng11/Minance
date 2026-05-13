@@ -44,7 +44,7 @@ export interface TransactionsOverviewApiParams {
   category_view: TransactionCategoryView;
 }
 
-const RANGE_VALUES = new Set([...RANGE_OPTIONS.map((option) => option.value), "custom"]);
+const RANGE_VALUES: Set<string> = new Set(RANGE_OPTIONS.map((option) => option.value));
 const CATEGORY_VIEW_VALUES = new Set(["granular", "coarse"]);
 const TRANSACTION_TYPE_VALUES = new Set<TransactionTypeFilter>(["expense", "income", "transfer"]);
 export const TRANSACTIONS_PAGE_SIZE = 50;

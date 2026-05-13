@@ -10,7 +10,6 @@ import type {
   CategoryStrategy,
   CommitImportResponse,
   Credential,
-  AiTrainingStatus,
   ExplorerAnalyticsResponse,
   HeatmapItem,
   ImportDetailsResponse,
@@ -93,8 +92,6 @@ export const aiApi = {
   providers: (request: ApiRequest) => request<{ providers: Provider[] }>("/v1/ai/providers"),
   credentials: (request: ApiRequest) =>
     request<{ credentials: Credential[]; preferences: ProviderPreferences }>("/v1/ai/credentials"),
-  trainingStatus: (request: ApiRequest) =>
-    request<{ training: AiTrainingStatus }>("/v1/ai/training-status"),
   addCredential: (request: ApiRequest, body: { provider: string; label: string; apiKey: string }) =>
     request<{ credential: Credential }>("/v1/ai/credentials", { method: "POST", body }),
   rotateCredential: (request: ApiRequest, id: string, body: { apiKey: string }) =>
@@ -239,7 +236,9 @@ export const transactionsApi = {
   update: (request: ApiRequest, id: string, body: Partial<Transaction>) =>
     request<{ transaction: Transaction }>(`/v1/transactions/${id}`, { method: "PUT", body }),
   remove: (request: ApiRequest, id: string) =>
-    request<null>(`/v1/transactions/${id}`, { method: "DELETE" })
+    request<null>(`/v1/transactions/${id}`, { method: "DELETE" }),
+  restore: (request: ApiRequest, id: string) =>
+    request<{ transaction: Transaction }>(`/v1/transactions/${id}/restore`, { method: "POST", body: {} })
 };
 
 export const investmentsApi = {

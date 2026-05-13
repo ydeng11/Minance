@@ -1,12 +1,15 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Download, SlidersHorizontal, X } from "lucide-react";
+import { toast } from "sonner";
 import { ApiError } from "@/lib/api/client";
 import { RANGE_OPTIONS } from "@/lib/constants";
+import { trapDialogTabKey } from "@/lib/dialogFocus";
 import { money } from "@/lib/utils";
 import { useApi } from "@/hooks/useApi";
+import { useViewController } from "@/components/view/ViewController";
 import type { Account, Category, Transaction, TransactionsResponse } from "@/lib/api/types";
 import {
   buildTransactionAccountOptions,
@@ -15,6 +18,7 @@ import {
   createInitialTransactionDraft,
   parseTagListInput,
   reconcileDraftAccountName,
+  TRANSACTION_FORM_FIELD_ERROR_KEYS,
   validateTransactionDraft,
   type TransactionFormDraft,
   type TransactionFormErrors
@@ -41,8 +45,7 @@ import {
   toggleTransactionSelection
 } from "./selection";
 import { TransactionEditorFields } from "./TransactionEditorFields";
-import { TransactionsAdvancedFilters } from "./TransactionsAdvancedFilters";
-import { TransactionsCommandBar } from "./TransactionsCommandBar";
+import { TransactionsViewContent } from "./TransactionsViewContent";
 
 function formatTransactionTypeLabel(type: Transaction["transaction_type"]) {
   switch (type) {
@@ -65,6 +68,12 @@ function formatPresetRangeLabel(range: string) {
   }
 
   return RANGE_OPTIONS.find((option) => option.value === range)?.label || range;
+}
+
+function formatCategoryBadgeLabel(txn: Transaction, categoryView: TransactionsFilterState["categoryView"]) {
+  return (categoryView === "coarse"
+    ? `${txn.category_coarse_emoji || ""} ${txn.category_coarse || txn.category_final}`
+    : `${txn.category_emoji || ""} ${txn.category_final}`).trim();
 }
 
 function calculateActiveFilterCount(filters: TransactionsFilterState) {
@@ -98,6 +107,97 @@ function getRequestErrorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback;
 }
 
+const BULK_DANGER_BUTTON_CLASS =
+  "min-h-11 rounded-xl border border-danger/35 bg-danger-soft px-3 py-2 text-sm font-medium text-danger transition hover:bg-danger-soft/80";
+const ROW_DANGER_CONFIRM_BUTTON_CLASS =
+  "min-h-11 rounded-lg border border-danger/40 bg-danger-soft px-2 py-1 text-[11px] text-danger transition hover:bg-danger-soft/80 disabled:opacity-60 md:text-xs";
+const BULK_DANGER_CONFIRM_BUTTON_CLASS =
+  "min-h-11 rounded-xl border border-danger/35 bg-danger px-4 py-2 text-sm font-semibold text-app-bg transition hover:bg-danger/90 disabled:cursor-not-allowed disabled:opacity-70";
+const TRANSACTION_DIALOG_BACKDROP_CLASS =
+  "fixed inset-0 z-50 flex items-start justify-center bg-app-bg/80 px-4 py-10 backdrop-blur-sm";
+const TRANSACTION_DIALOG_PANEL_CLASS =
+  "w-full rounded-[28px] border border-border-subtle bg-surface-panel p-5 shadow-dialog";
+const TRANSACTION_DIALOG_CLOSE_BUTTON_CLASS =
+  "min-h-11 min-w-11 rounded-full border border-border-subtle bg-surface-field p-2 text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary";
+const TRANSACTION_SECONDARY_ACTION_BUTTON_CLASS =
+  "min-h-11 rounded-xl border border-border-strong bg-surface-field px-4 py-2 text-sm text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary";
+const TRANSACTION_PRIMARY_ACTION_BUTTON_CLASS =
+  "min-h-11 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-app-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-70";
+const TRANSACTION_INLINE_EDITOR_CELL_CLASS =
+  "border-t border-border-subtle bg-surface-panel/70 px-5 py-5";
+const TRANSACTION_HERO_SECTION_CLASS =
+  "rounded-[28px] border border-border-subtle bg-surface-panel p-6 shadow-panel";
+const TRANSACTION_HERO_EYEBROW_CLASS =
+  "inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent-soft px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-accent";
+const TRANSACTION_HERO_COUNT_BADGE_CLASS =
+  "inline-flex items-center rounded-full border border-border-subtle bg-surface-field px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-text-muted";
+const TRANSACTION_HERO_NOTE_CLASS =
+  "rounded-[24px] border border-border-subtle bg-surface-field px-4 py-3 text-sm text-text-secondary";
+const TRANSACTION_HERO_PRIMARY_BUTTON_CLASS =
+  "rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-app-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60";
+const TRANSACTION_HERO_SECONDARY_BUTTON_CLASS =
+  "inline-flex items-center gap-2 rounded-2xl border border-border-strong bg-surface-field px-4 py-3 text-sm font-medium text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60";
+const TRANSACTION_ACTIVE_FILTER_CHIP_CLASS =
+  "inline-flex items-center gap-2 rounded-full border border-border-subtle bg-surface-field px-3 py-1.5 text-sm text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary";
+const TRANSACTION_ACTIVE_FILTER_ICON_CLASS = "h-3.5 w-3.5 text-text-muted";
+const TRANSACTION_ACTIVE_FILTER_EMPTY_CLASS =
+  "rounded-full border border-border-subtle bg-surface-field px-3 py-1.5 text-sm text-text-muted";
+const TRANSACTION_LEDGER_SHELL_CLASS =
+  "overflow-hidden rounded-[30px] border border-border-subtle bg-surface-panel shadow-panel";
+const TRANSACTION_BULK_BAR_CLASS =
+  "relative flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle bg-surface-elevated/70 px-5 py-3.5";
+const TRANSACTION_BULK_BAR_TEXT_CLASS = "text-sm text-text-secondary";
+const TRANSACTION_BULK_BAR_COUNT_CLASS = "font-semibold text-text-primary";
+const TRANSACTION_BULK_ACTION_BUTTON_CLASS =
+  "min-h-11 rounded-xl border border-border-strong bg-surface-field px-3 py-2 text-sm text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary disabled:opacity-60";
+const TRANSACTION_BULK_DROPDOWN_PANEL_CLASS =
+  "absolute top-full left-0 mt-1 z-10 rounded-lg border border-border-subtle bg-surface-panel p-3 shadow-dialog";
+const TRANSACTION_BULK_FIELD_CLASS =
+  "w-full rounded-md border border-border-subtle bg-surface-field px-3 py-2 text-sm text-text-primary";
+const TRANSACTION_BULK_APPLY_BUTTON_CLASS =
+  "mt-2 min-h-11 w-full rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-sm text-accent disabled:opacity-60";
+const TRANSACTION_BULK_REVIEW_OPTION_CLASS =
+  "block min-h-11 w-full rounded-md px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface-elevated hover:text-text-primary";
+const TRANSACTION_BULK_HELP_TEXT_CLASS = "mt-1 text-xs text-text-muted";
+const TRANSACTION_TABLE_SCROLL_CLASS =
+  "overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const TRANSACTION_TABLE_CLASS =
+  "w-full min-w-full text-left text-sm text-text-secondary lg:min-w-[1160px]";
+const TRANSACTION_TABLE_HEAD_CLASS =
+  "sticky top-0 z-10 bg-surface-elevated/90 text-text-secondary shadow-panel backdrop-blur";
+const TRANSACTION_TABLE_BODY_CLASS = "divide-y divide-border-subtle";
+const TRANSACTION_SELECTION_CHECKBOX_CLASS =
+  "h-4 w-4 rounded border border-border-strong bg-surface-field text-accent focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const TRANSACTION_TABLE_SKELETON_ROW_CLASS = "animate-pulse";
+const TRANSACTION_TABLE_SKELETON_LINE_CLASS = "rounded bg-surface-field";
+const TRANSACTION_TABLE_SKELETON_PILL_CLASS = "rounded-xl bg-surface-field";
+const TRANSACTION_ROW_ACTION_BUTTON_CLASS =
+  "min-h-11 rounded-xl border border-border-strong bg-surface-field px-2.5 py-1.5 text-[11px] font-medium text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary disabled:opacity-60 md:px-3 md:py-2 md:text-xs";
+const TRANSACTION_ROW_CANCEL_BUTTON_CLASS =
+  "min-h-11 rounded-lg border border-border-strong bg-surface-field px-2 py-1 text-[11px] text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary disabled:opacity-60 md:text-xs";
+const TRANSACTION_PAGINATION_BAR_CLASS =
+  "flex flex-wrap items-center justify-between gap-3 border-t border-border-subtle bg-surface-elevated/70 px-5 py-3.5";
+const TRANSACTION_PAGINATION_SUMMARY_CLASS = "text-xs text-text-muted";
+const TRANSACTION_PAGINATION_BUTTON_CLASS =
+  "min-h-11 rounded-md border border-border-strong bg-surface-field px-2 py-1 text-xs text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60";
+const TRANSACTION_PAGINATION_INDICATOR_CLASS = "text-xs text-text-secondary";
+const TRANSACTION_ROW_CLASS = "align-top transition hover:bg-surface-field/50";
+const TRANSACTION_ROW_SECONDARY_CELL_CLASS = "hidden px-5 py-5 text-text-secondary lg:table-cell";
+const TRANSACTION_ROW_PRIMARY_TEXT_CLASS = "font-medium text-text-primary";
+const TRANSACTION_ROW_MUTED_TEXT_CLASS = "text-xs text-text-muted";
+const TRANSACTION_ROW_DESCRIPTION_CLASS = "mt-1 text-sm text-text-secondary";
+const TRANSACTION_ROW_METADATA_CHIP_CLASS =
+  "rounded-full border border-border-subtle bg-surface-field/70 px-2 py-1";
+const TRANSACTION_ROW_CATEGORY_BADGE_CLASS =
+  "inline-flex items-center gap-2 rounded-xl border border-border-subtle bg-surface-field px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] text-text-secondary";
+const TRANSACTION_AMOUNT_INFLOW_CLASS = "text-accent";
+const TRANSACTION_RECURRING_BADGE_CLASS =
+  "ml-2 inline-flex items-center rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent";
+const TRANSACTION_EMPTY_TITLE_CLASS = "font-medium text-text-primary";
+const TRANSACTION_EMPTY_COPY_CLASS = "mt-2 text-sm text-text-muted";
+const TRANSACTION_EMPTY_ACTION_CLASS =
+  "mt-3 rounded-md text-sm text-accent transition hover:text-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+
 function getFilterValidationMessage(filters: TransactionsFilterState) {
   if (filters.range === "custom" && filters.start && filters.end && filters.start > filters.end) {
     return "Custom date range is invalid: start date must be before end date.";
@@ -112,6 +212,7 @@ function getFilterValidationMessage(filters: TransactionsFilterState) {
 
 export default function TransactionsPage() {
   const api = useApi();
+  const { registerView } = useViewController();
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchParamKey = searchParams.toString();
@@ -129,6 +230,7 @@ export default function TransactionsPage() {
   const [filters, setFilters] = useState<TransactionsFilterState>(createDefaultTransactionsFilterState);
   const filtersRef = useRef<TransactionsFilterState>(createDefaultTransactionsFilterState());
   const lastAppliedQueryRef = useRef<string | null>(null);
+  const isApplyingSharedFiltersRef = useRef(false);
   const [form, setForm] = useState<TransactionFormDraft>(() => createInitialTransactionDraft());
   const [formErrors, setFormErrors] = useState<TransactionFormErrors>({});
   const [selectedTransactionIds, setSelectedTransactionIds] = useState<Set<string>>(() => new Set());
@@ -142,20 +244,19 @@ export default function TransactionsPage() {
   const [bulkApplying, setBulkApplying] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [message, setMessage] = useState("");
+  const createDialogRef = useRef<HTMLElement | null>(null);
+  const bulkDeleteDialogRef = useRef<HTMLElement | null>(null);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
 
   const ledgerTransactions = useMemo(() => sortTransactionsForLedger(transactions), [transactions]);
   const amountBounds = useMemo(
     () => getLedgerAmountBounds(transactionsMeta, ledgerTransactions),
     [ledgerTransactions, transactionsMeta]
   );
-  const amountBoundMin = Math.floor(amountBounds.min);
-  const amountBoundMax = Math.max(amountBoundMin, Math.ceil(amountBounds.max));
   const activeFilterCount = useMemo(() => calculateActiveFilterCount(parsedFilters), [parsedFilters]);
 
   const categoryFilterOptions = useMemo(() => {
@@ -196,6 +297,51 @@ export default function TransactionsPage() {
   const allVisibleSelected = visibleTransactionIds.length > 0 && selectedVisibleCount === visibleTransactionIds.length;
   const selectionInputDisabled = loading || saving || bulkDeleting;
   const selectedTransactionLabel = formatTransactionCountLabel(selectedVisibleCount);
+  const createDialogDefaultCategory = categories[0]?.name || "";
+
+  const applyTransactionViewFilters = useCallback(
+    (nextFilters: TransactionsFilterState) => {
+      return commitValidatedFilters(toValidFilterState({
+        ...nextFilters,
+        page: 1
+      }));
+    },
+    // commitValidatedFilters only relies on stable state setters, refs, and router helpers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const transactionViewContent = useMemo(
+    () => (
+      <TransactionsViewContent
+        filters={filters}
+        categoryOptions={categoryMultiSelectOptions}
+        accountOptions={accountFilterOptions}
+        availableTags={transactionsMeta?.availableTags || []}
+        amountBounds={transactionsMeta?.amountBounds || amountBounds}
+        onApply={applyTransactionViewFilters}
+      />
+    ),
+    [
+      accountFilterOptions,
+      applyTransactionViewFilters,
+      amountBounds,
+      categoryMultiSelectOptions,
+      filters,
+      transactionsMeta?.amountBounds,
+      transactionsMeta?.availableTags
+    ]
+  );
+
+  useEffect(() => {
+    registerView({
+      title: "Transaction filters",
+      description: "Adjust the ledger view from the shell without leaving the page.",
+      content: transactionViewContent
+    });
+
+    return () => registerView(null);
+  }, [registerView, transactionViewContent]);
 
   async function loadCategories() {
     try {
@@ -238,14 +384,8 @@ export default function TransactionsPage() {
     }
   }
 
-  async function loadTransactions(
-    nextFilters: TransactionsFilterState,
-    options: { preserveMessage?: boolean } = {}
-  ) {
+  async function loadTransactions(nextFilters: TransactionsFilterState) {
     setLoading(true);
-    if (!options.preserveMessage) {
-      setMessage("");
-    }
 
     try {
       const transactionData = await api.transactions.list(toTransactionsListApiParams(nextFilters));
@@ -254,21 +394,18 @@ export default function TransactionsPage() {
       setTotalTransactions(transactionData.total);
       return transactionData;
     } catch (error) {
-      setMessage(getRequestErrorMessage(error, "Failed to load transactions."));
+      toast.error(getRequestErrorMessage(error, "Failed to load transactions."));
       return null;
     } finally {
       setLoading(false);
     }
   }
 
-  async function refreshTransactionsView(
-    nextFilters: TransactionsFilterState,
-    options: { preserveMessage?: boolean } = { preserveMessage: true }
-  ) {
+  async function refreshTransactionsView(nextFilters: TransactionsFilterState) {
     const [, , transactionData] = await Promise.all([
       loadCategories(),
       loadAccounts(),
-      loadTransactions(nextFilters, options)
+      loadTransactions(nextFilters)
     ]);
 
     return transactionData;
@@ -283,6 +420,8 @@ export default function TransactionsPage() {
   useEffect(() => {
     const hasUrlParams = searchParams.toString().length > 0;
     if (!hasUrlParams) {
+      isApplyingSharedFiltersRef.current = true;
+
       const shared = getSharedFilters();
       const merged = toValidFilterState({
         ...createDefaultTransactionsFilterState(),
@@ -299,17 +438,34 @@ export default function TransactionsPage() {
       });
       setFilters(merged);
       filtersRef.current = merged;
+
+      void loadTransactions(merged);
+
       const nextSearchParams = buildTransactionsFilterSearchParams(merged);
+      lastAppliedQueryRef.current = nextSearchParams.toString();
       router.replace(nextSearchParams.toString() ? `/transactions?${nextSearchParams.toString()}` : "/transactions");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (lastAppliedQueryRef.current !== searchParamKey) {
+    // On first render, skip if shared filters are being applied in the mount effect
+    // This prevents the race condition where searchParamKey is empty but shared filters exist
+    if (isApplyingSharedFiltersRef.current) {
+      isApplyingSharedFiltersRef.current = false;
+      return;
+    }
+
+    // Skip data load if URL change is from our own shared filter application
+    // (Data was already loaded in the mount effect with correct filters)
+    if (lastAppliedQueryRef.current === searchParamKey) {
       setFilters(parsedFilters);
       filtersRef.current = parsedFilters;
+      return;
     }
+
+    setFilters(parsedFilters);
+    filtersRef.current = parsedFilters;
     void loadTransactions(parsedFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParamKey]);
@@ -380,6 +536,74 @@ export default function TransactionsPage() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [bulkCategoryOpen, bulkTagsOpen, bulkReviewOpen]);
 
+  useEffect(() => {
+    if (!isCreateDialogOpen) {
+      return;
+    }
+
+    previousFocusedElementRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    requestAnimationFrame(() => {
+      createDialogRef.current?.focus();
+    });
+
+    function closeDialog() {
+      setIsCreateDialogOpen(false);
+      setForm(createInitialTransactionDraft({ category: createDialogDefaultCategory }));
+      setFormErrors({});
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDialog();
+        return;
+      }
+
+      trapDialogTabKey(event, createDialogRef.current);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      requestAnimationFrame(() => {
+        previousFocusedElementRef.current?.focus();
+      });
+    };
+  }, [createDialogDefaultCategory, isCreateDialogOpen]);
+
+  useEffect(() => {
+    if (!isBulkDeleteDialogOpen) {
+      return;
+    }
+
+    previousFocusedElementRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    requestAnimationFrame(() => {
+      bulkDeleteDialogRef.current?.focus();
+    });
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsBulkDeleteDialogOpen(false);
+        return;
+      }
+
+      trapDialogTabKey(event, bulkDeleteDialogRef.current);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      requestAnimationFrame(() => {
+        previousFocusedElementRef.current?.focus();
+      });
+    };
+  }, [isBulkDeleteDialogOpen]);
+
   function clearSelectedTransactions() {
     setSelectedTransactionIds(new Set());
     setIsBulkDeleteDialogOpen(false);
@@ -421,9 +645,29 @@ export default function TransactionsPage() {
     setForm((previous) => ({ ...previous, [field]: value }));
   }
 
+  function handleTransactionFieldBlur(field: keyof TransactionFormDraft) {
+    const errorKey = TRANSACTION_FORM_FIELD_ERROR_KEYS[field];
+    if (!errorKey) {
+      return;
+    }
+
+    const { errors } = validateTransactionDraft(form, categories);
+    const message = errors[errorKey];
+    setFormErrors((previous) => {
+      const next = { ...previous };
+      if (message) {
+        next[errorKey] = message;
+      } else {
+        delete next[errorKey];
+      }
+      return next;
+    });
+  }
+
   function commitFilters(nextFilters: TransactionsFilterState) {
     updateFilters(nextFilters);
     syncFiltersToUrl(nextFilters);
+    void loadTransactions(nextFilters);
 
     // Update shared filters for cross-page sync
     setSharedFilters({
@@ -445,47 +689,19 @@ export default function TransactionsPage() {
     commitFilters(nextFilters);
   }
 
-  function commitValidatedFilters(
-    nextFilters: TransactionsFilterState,
-    options: { closeAdvancedFilters?: boolean } = {}
-  ) {
+  function commitValidatedFilters(nextFilters: TransactionsFilterState) {
     const validationMessage = getFilterValidationMessage(nextFilters);
     if (validationMessage) {
-      setMessage(validationMessage);
+      toast.error(validationMessage);
       return false;
     }
 
-    if (options.closeAdvancedFilters) {
-      setShowAdvancedFilters(false);
-    }
     commitFiltersWithSelectionReset(nextFilters);
     return true;
   }
 
-  function applyFilters() {
-    return commitValidatedFilters(toValidFilterState({
-      ...filtersRef.current,
-      page: 1
-    }));
-  }
-
-  function applyAdvancedFilters() {
-    return commitValidatedFilters(toValidFilterState({
-      ...filtersRef.current,
-      page: 1
-    }), { closeAdvancedFilters: true });
-  }
-
-  function updateFilterDraft(updates: Partial<TransactionsFilterState>) {
-    updateFilters((previous) => ({
-      ...previous,
-      ...updates
-    }));
-  }
-
-  function resetFilterDraft() {
-    updateFilters(createDefaultTransactionsFilterState());
-    setMessage("");
+  function clearAllFiltersAndApply() {
+    return commitValidatedFilters(toValidFilterState(createDefaultTransactionsFilterState()));
   }
 
   function clearAppliedFilter(updates: Partial<TransactionsFilterState>) {
@@ -517,12 +733,11 @@ export default function TransactionsPage() {
 
   function openCreateDialog() {
     if (form.id) {
-      setMessage("Finish the inline edit before creating a new transaction.");
+      toast.warning("Finish the inline edit before creating a new transaction.");
       return;
     }
     clearSelectedTransactions();
     resetManualForm();
-    setMessage("");
     setIsCreateDialogOpen(true);
   }
 
@@ -578,9 +793,9 @@ export default function TransactionsPage() {
       a.click();
       URL.revokeObjectURL(url);
 
-      setMessage(`Exported ${allTransactions.length} transactions.`);
+      toast.success(`Exported ${allTransactions.length} transactions.`);
     } catch (error) {
-      setMessage(getRequestErrorMessage(error, "Failed to export transactions."));
+      toast.error(getRequestErrorMessage(error, "Failed to export transactions."));
     } finally {
       setIsExporting(false);
     }
@@ -592,22 +807,69 @@ export default function TransactionsPage() {
     setIsCreateDialogOpen(false);
     setForm(buildDraftFromTransaction(transaction, accounts));
     setFormErrors({});
-    setMessage("");
   }
 
   function cancelEdit() {
     resetManualForm();
-    setMessage("Edit canceled.");
+    toast.message("Edit canceled.");
+  }
+
+  async function undoSingleTransactionDelete(transactionId: string) {
+    try {
+      await api.transactions.restore(transactionId);
+      await loadTransactions(filtersRef.current);
+      toast.success("Transaction restored.");
+    } catch (error) {
+      toast.error(getRequestErrorMessage(error, "Failed to restore transaction."));
+    }
+  }
+
+  async function undoBulkTransactionDelete(transactionIds: string[]) {
+    try {
+      await Promise.all(transactionIds.map((id) => api.transactions.restore(id)));
+      await loadTransactions(filtersRef.current);
+      toast.success("Transactions restored.");
+    } catch (error) {
+      toast.error(getRequestErrorMessage(error, "Failed to restore transactions."));
+    }
   }
 
   async function removeTransaction(transactionId: string) {
+    const snapshot = transactions.find((entry) => entry.id === transactionId);
+    if (!snapshot) {
+      return;
+    }
+
+    const wasEditing = form.id === transactionId;
+    const previousTransactions = transactions;
+    const previousTotal = totalTransactions;
+
+    clearSelectedTransactions();
+    setDeleteConfirmId(null);
+    if (wasEditing) {
+      resetManualForm();
+    }
+
+    setTransactions((previous) => sortTransactionsForLedger(previous.filter((entry) => entry.id !== transactionId)));
+    setTotalTransactions((previous) => Math.max(0, previous - 1));
+
     try {
-      clearSelectedTransactions();
       await api.transactions.remove(transactionId);
-      setMessage("Transaction deleted.");
-      await loadTransactions(filtersRef.current, { preserveMessage: true });
+      toast.success("Transaction deleted.", {
+        duration: 5000,
+        action: {
+          label: "Undo",
+          onClick: () => void undoSingleTransactionDelete(transactionId)
+        }
+      });
     } catch (error) {
-      setMessage(getRequestErrorMessage(error, "Failed to delete transaction."));
+      setTransactions(previousTransactions);
+      setTotalTransactions(previousTotal);
+      if (wasEditing) {
+        setForm(buildDraftFromTransaction(snapshot, accounts));
+        setFormErrors({});
+      }
+      toast.error(getRequestErrorMessage(error, "Failed to delete transaction."));
     }
   }
 
@@ -619,19 +881,49 @@ export default function TransactionsPage() {
       return;
     }
 
+    const editingSnapshot =
+      form.id && selectedIds.includes(form.id)
+        ? transactions.find((entry) => entry.id === form.id) ?? null
+        : null;
+
+    const previousTransactions = transactions;
+    const previousTotal = totalTransactions;
+    const previousSelection = new Set(selectedTransactionIds);
+
+    closeBulkDeleteDialog();
+    if (editingSnapshot) {
+      resetManualForm();
+    }
+
+    setTransactions((previous) =>
+      sortTransactionsForLedger(previous.filter((entry) => !selectedIds.includes(entry.id)))
+    );
+    setTotalTransactions((previous) => Math.max(0, previous - deletedCount));
+    clearSelectedTransactions();
+
     setBulkDeleting(true);
-    setMessage("");
 
     try {
       await api.transactions.bulkUpdate({
         transaction_ids: selectedIds,
         operation: "delete"
       });
-      clearSelectedTransactions();
-      await refreshTransactionsView(filtersRef.current, { preserveMessage: true });
-      setMessage(`${formatTransactionCountLabel(deletedCount)} deleted.`);
+      toast.success(`${formatTransactionCountLabel(deletedCount)} deleted.`, {
+        duration: 5000,
+        action: {
+          label: "Undo",
+          onClick: () => void undoBulkTransactionDelete(selectedIds)
+        }
+      });
     } catch (error) {
-      setMessage(getRequestErrorMessage(error, "Failed to delete selected transactions."));
+      setTransactions(previousTransactions);
+      setTotalTransactions(previousTotal);
+      setSelectedTransactionIds(previousSelection);
+      if (editingSnapshot) {
+        setForm(buildDraftFromTransaction(editingSnapshot, accounts));
+        setFormErrors({});
+      }
+      toast.error(getRequestErrorMessage(error, "Failed to delete selected transactions."));
     } finally {
       setBulkDeleting(false);
     }
@@ -647,13 +939,13 @@ export default function TransactionsPage() {
         operation: "update",
         category_final: bulkCategoryValue
       });
-      setMessage(`${formatTransactionCountLabel(selectedVisibleCount)} updated.`);
+      toast.success(`${formatTransactionCountLabel(selectedVisibleCount)} updated.`);
       setBulkCategoryOpen(false);
       setBulkCategoryValue("");
       setSelectedTransactionIds(new Set());
-      await refreshTransactionsView(filtersRef.current, { preserveMessage: true });
+      await refreshTransactionsView(filtersRef.current);
     } catch (error) {
-      setMessage(getRequestErrorMessage(error, "Failed to update categories."));
+      toast.error(getRequestErrorMessage(error, "Failed to update categories."));
     } finally {
       setBulkApplying(false);
     }
@@ -676,13 +968,13 @@ export default function TransactionsPage() {
         operation: "update",
         tags: parsed.tags
       });
-      setMessage(`${formatTransactionCountLabel(selectedVisibleCount)} tagged.`);
+      toast.success(`${formatTransactionCountLabel(selectedVisibleCount)} tagged.`);
       setBulkTagsOpen(false);
       setBulkTagsValue("");
       setSelectedTransactionIds(new Set());
-      await refreshTransactionsView(filtersRef.current, { preserveMessage: true });
+      await refreshTransactionsView(filtersRef.current);
     } catch (error) {
-      setMessage(getRequestErrorMessage(error, "Failed to update tags."));
+      toast.error(getRequestErrorMessage(error, "Failed to update tags."));
     } finally {
       setBulkApplying(false);
     }
@@ -697,12 +989,14 @@ export default function TransactionsPage() {
         operation: "update",
         review_status: status
       });
-      setMessage(`${formatTransactionCountLabel(selectedVisibleCount)} marked as ${status === "reviewed" ? "reviewed" : "needing review"}.`);
+      toast.success(
+        `${formatTransactionCountLabel(selectedVisibleCount)} marked as ${status === "reviewed" ? "reviewed" : "needing review"}.`
+      );
       setBulkReviewOpen(false);
       setSelectedTransactionIds(new Set());
-      await refreshTransactionsView(filtersRef.current, { preserveMessage: true });
+      await refreshTransactionsView(filtersRef.current);
     } catch (error) {
-      setMessage(getRequestErrorMessage(error, "Failed to update review status."));
+      toast.error(getRequestErrorMessage(error, "Failed to update review status."));
     } finally {
       setBulkApplying(false);
     }
@@ -710,12 +1004,11 @@ export default function TransactionsPage() {
 
   async function submitForm(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage("");
 
     const validation = validateTransactionDraft(form, categories);
     if (!validation.payload) {
       setFormErrors(validation.errors);
-      setMessage("Fix form errors before saving.");
+      toast.error("Fix form errors before saving.");
       return;
     }
 
@@ -726,7 +1019,7 @@ export default function TransactionsPage() {
       if (form.id) {
         clearSelectedTransactions();
         await api.transactions.update(form.id, validation.payload);
-        setMessage("Transaction updated.");
+        toast.success("Transaction updated.");
         resetManualForm();
         await refreshTransactionsView(filtersRef.current);
       } else {
@@ -742,16 +1035,16 @@ export default function TransactionsPage() {
 
         const transactionData = await refreshTransactionsView(nextFilters);
 
-        setMessage(buildCreateResultMessage(created.transaction.id, transactionData?.items || []));
+        toast.success(buildCreateResultMessage(created.transaction.id, transactionData?.items || []));
       }
     } catch (error) {
-      setMessage(getRequestErrorMessage(error, "Failed to save transaction."));
+      toast.error(getRequestErrorMessage(error, "Failed to save transaction."));
     } finally {
       setSaving(false);
     }
   }
 
-  const activeFilterChips = useMemo(() => {
+  const activeFilterChips = (() => {
     const accountLabels = new Map(accountFilterOptions.map((option) => [option.value, option.label]));
     const items: Array<{
       key: string;
@@ -840,35 +1133,35 @@ export default function TransactionsPage() {
     }
 
     return items;
-  }, [accountFilterOptions, parsedFilters]);
+  })();
 
   return (
     <div className="space-y-6" data-testid="transactions-page">
       <header
         data-testid="txn-workspace-header"
-        className="rounded-[28px] border border-neutral-900 bg-[linear-gradient(135deg,rgba(12,16,18,0.95),rgba(7,11,13,0.82))] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.35)]"
+        className={TRANSACTION_HERO_SECTION_CLASS}
       >
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.24em] text-emerald-300">
+            <div className={TRANSACTION_HERO_EYEBROW_CLASS}>
               <SlidersHorizontal className="h-3.5 w-3.5" />
-              Ledger filters
+              Ledger
             </div>
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
-                <h2 className="text-3xl font-semibold tracking-tight text-neutral-50">Transactions</h2>
-                <span className="inline-flex items-center rounded-full border border-neutral-800 bg-neutral-950/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-neutral-400">
+                <h2 className="text-3xl font-semibold tracking-tight text-text-primary">Transactions</h2>
+                <span className={TRANSACTION_HERO_COUNT_BADGE_CLASS}>
                   {activeFilterCount} active
                 </span>
               </div>
-              <p className="max-w-3xl text-sm leading-6 text-neutral-400">
+              <p className="max-w-3xl text-sm leading-6 text-text-secondary">
                 Review the ledger, filter it like a sheet, and create new manual transactions from the top of the page.
               </p>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-            <div className="rounded-[24px] border border-neutral-800 bg-neutral-950/80 px-4 py-3 text-sm text-neutral-300">
+            <div className={TRANSACTION_HERO_NOTE_CLASS}>
               {totalTransactions === 0
                 ? "No rows in the current view"
                 : `Showing ${pageStart}-${pageEnd} of ${totalTransactions} rows`}
@@ -877,7 +1170,7 @@ export default function TransactionsPage() {
               type="button"
               onClick={openCreateDialog}
               data-testid="txn-create-open"
-              className="rounded-2xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className={TRANSACTION_HERO_PRIMARY_BUTTON_CLASS}
               disabled={saving}
             >
               New transaction
@@ -887,7 +1180,7 @@ export default function TransactionsPage() {
               onClick={() => void exportTransactionsToCsv()}
               disabled={isExporting || totalTransactions === 0}
               data-testid="txn-export-csv"
-              className="inline-flex items-center gap-2 rounded-2xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className={TRANSACTION_HERO_SECONDARY_BUTTON_CLASS}
             >
               <Download className="h-4 w-4" />
               {isExporting ? "Exporting..." : "Export CSV"}
@@ -896,28 +1189,6 @@ export default function TransactionsPage() {
         </div>
       </header>
 
-      {showAdvancedFilters ? (
-        <TransactionsAdvancedFilters
-          filters={filters}
-          categoryOptions={categoryMultiSelectOptions}
-          accountOptions={accountFilterOptions}
-          amountBoundMin={amountBoundMin}
-          amountBoundMax={amountBoundMax}
-          onChange={updateFilterDraft}
-          onApply={applyAdvancedFilters}
-          onClose={() => setShowAdvancedFilters(false)}
-          onReset={resetFilterDraft}
-        />
-      ) : null}
-
-      <TransactionsCommandBar
-        filters={filters}
-        activeFilterCount={activeFilterCount}
-        onChange={updateFilterDraft}
-        onApply={applyFilters}
-        onOpenAdvancedFilters={() => setShowAdvancedFilters(true)}
-      />
-
       <div className="flex flex-wrap items-center gap-2" data-testid="txn-active-filters">
         {activeFilterChips.length ? (
           activeFilterChips.map((filter) => (
@@ -925,43 +1196,37 @@ export default function TransactionsPage() {
               key={filter.key}
               type="button"
               onClick={filter.clear}
-              className="inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-sm text-neutral-200 transition hover:bg-neutral-900"
+              className={TRANSACTION_ACTIVE_FILTER_CHIP_CLASS}
             >
               {filter.label}
-              <X className="h-3.5 w-3.5 text-neutral-500" />
+              <X className={TRANSACTION_ACTIVE_FILTER_ICON_CLASS} />
             </button>
           ))
         ) : (
-          <div className="rounded-full border border-neutral-900 bg-neutral-950/80 px-3 py-1.5 text-sm text-neutral-500">
+          <div className={TRANSACTION_ACTIVE_FILTER_EMPTY_CLASS}>
             All transactions in view
           </div>
         )}
       </div>
 
-      {message ? (
-        <p className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300" data-testid="global-message">
-          {message}
-        </p>
-      ) : null}
-
       <section
         data-testid="txn-ledger-shell"
-        className="overflow-hidden rounded-[30px] border border-neutral-900 bg-neutral-950/80 shadow-[0_20px_80px_rgba(0,0,0,0.25)]"
+        className={TRANSACTION_LEDGER_SHELL_CLASS}
       >
         {hasVisibleSelection ? (
           <div
             data-testid="txn-bulk-bar"
-            className="relative flex flex-wrap items-center justify-between gap-3 border-b border-neutral-900 bg-neutral-900/60 px-5 py-3.5"
+            className={TRANSACTION_BULK_BAR_CLASS}
           >
-            <div className="text-sm text-neutral-200">
-              <span className="font-semibold text-neutral-50">{selectedVisibleCount}</span> selected on this page
+            <div className={TRANSACTION_BULK_BAR_TEXT_CLASS}>
+              <span className={TRANSACTION_BULK_BAR_COUNT_CLASS}>{selectedVisibleCount}</span> selected on this page
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={clearSelectedTransactions}
                 data-testid="txn-bulk-clear"
-                className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+                className={TRANSACTION_BULK_ACTION_BUTTON_CLASS}
               >
                 Clear selection
               </button>
@@ -976,18 +1241,19 @@ export default function TransactionsPage() {
                     setBulkReviewOpen(false);
                   }}
                   disabled={bulkApplying}
-                  className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                  className={TRANSACTION_BULK_ACTION_BUTTON_CLASS}
                   data-testid="txn-bulk-category-btn"
                 >
                   Category
                 </button>
                 {bulkCategoryOpen && (
-                  <div data-bulk-dropdown className="absolute top-full left-0 mt-1 z-10 w-56 rounded-lg border border-neutral-800 bg-neutral-950 p-3 shadow-xl">
+                  <div data-bulk-dropdown className={`${TRANSACTION_BULK_DROPDOWN_PANEL_CLASS} w-56`}>
                     <select
                       value={bulkCategoryValue}
                       onChange={(e) => setBulkCategoryValue(e.target.value)}
-                      className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200"
+                      className={TRANSACTION_BULK_FIELD_CLASS}
                       data-testid="txn-bulk-category-select"
+                      aria-label="Bulk category"
                     >
                       <option value="">Select category</option>
                       {categories.map((c) => (
@@ -1000,7 +1266,7 @@ export default function TransactionsPage() {
                       type="button"
                       onClick={() => void applyBulkCategory()}
                       disabled={!bulkCategoryValue || bulkApplying}
-                      className="mt-2 w-full rounded-md border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300 disabled:opacity-60"
+                      className={TRANSACTION_BULK_APPLY_BUTTON_CLASS}
                       data-testid="txn-bulk-category-apply"
                     >
                       {bulkApplying ? "Applying..." : `Apply to ${selectedVisibleCount}`}
@@ -1019,30 +1285,31 @@ export default function TransactionsPage() {
                     setBulkReviewOpen(false);
                   }}
                   disabled={bulkApplying}
-                  className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                  className={TRANSACTION_BULK_ACTION_BUTTON_CLASS}
                   data-testid="txn-bulk-tags-btn"
                 >
                   Tags
                 </button>
                 {bulkTagsOpen && (
-                  <div data-bulk-dropdown className="absolute top-full left-0 mt-1 z-10 w-64 rounded-lg border border-neutral-800 bg-neutral-950 p-3 shadow-xl">
+                  <div data-bulk-dropdown className={`${TRANSACTION_BULK_DROPDOWN_PANEL_CLASS} w-64`}>
                     <input
                       type="text"
                       value={bulkTagsValue}
                       onChange={(e) => setBulkTagsValue(e.target.value)}
                       placeholder="Enter tags (comma-separated)"
-                      className="w-full rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200"
+                      className={TRANSACTION_BULK_FIELD_CLASS}
                       data-testid="txn-bulk-tags-input"
+                      aria-label="Bulk tags"
                     />
-                    <p className="mt-1 text-xs text-neutral-500">e.g. &quot;monthly, recurring&quot;</p>
+                    <p className={TRANSACTION_BULK_HELP_TEXT_CLASS}>e.g. &quot;monthly, recurring&quot;</p>
                     {bulkTagsError ? (
-                      <p className="mt-1 text-xs text-rose-300" data-testid="txn-bulk-tags-error">{bulkTagsError}</p>
+                      <p className="mt-1 text-xs text-danger" data-testid="txn-bulk-tags-error">{bulkTagsError}</p>
                     ) : null}
                     <button
                       type="button"
                       onClick={() => void applyBulkTags()}
                       disabled={!bulkTagsValue.trim() || bulkApplying}
-                      className="mt-2 w-full rounded-md border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300 disabled:opacity-60"
+                      className={TRANSACTION_BULK_APPLY_BUTTON_CLASS}
                       data-testid="txn-bulk-tags-apply"
                     >
                       {bulkApplying ? "Applying..." : `Apply to ${selectedVisibleCount}`}
@@ -1061,18 +1328,18 @@ export default function TransactionsPage() {
                     setBulkTagsOpen(false);
                   }}
                   disabled={bulkApplying}
-                  className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                  className={TRANSACTION_BULK_ACTION_BUTTON_CLASS}
                   data-testid="txn-bulk-review-btn"
                 >
                   Review
                 </button>
                 {bulkReviewOpen && (
-                  <div data-bulk-dropdown className="absolute top-full left-0 mt-1 z-10 w-48 rounded-lg border border-neutral-800 bg-neutral-950 p-2 shadow-xl">
+                  <div data-bulk-dropdown className={`${TRANSACTION_BULK_DROPDOWN_PANEL_CLASS} w-48 p-2`}>
                     <button
                       type="button"
                       onClick={() => void applyBulkReview("reviewed")}
                       disabled={bulkApplying}
-                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-neutral-200 hover:bg-neutral-800"
+                      className={TRANSACTION_BULK_REVIEW_OPTION_CLASS}
                       data-testid="txn-bulk-review-mark-reviewed"
                     >
                       Mark as reviewed
@@ -1081,7 +1348,7 @@ export default function TransactionsPage() {
                       type="button"
                       onClick={() => void applyBulkReview("needs_review")}
                       disabled={bulkApplying}
-                      className="block w-full rounded-md px-3 py-2 text-left text-sm text-neutral-200 hover:bg-neutral-800"
+                      className={TRANSACTION_BULK_REVIEW_OPTION_CLASS}
                       data-testid="txn-bulk-review-mark-needs-review"
                     >
                       Mark as needs review
@@ -1094,7 +1361,7 @@ export default function TransactionsPage() {
                 type="button"
                 onClick={openBulkDeleteDialog}
                 data-testid="txn-bulk-delete-open"
-                className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-100 transition hover:bg-rose-500/20"
+                className={BULK_DANGER_BUTTON_CLASS}
               >
                 Delete selected
               </button>
@@ -1107,9 +1374,9 @@ export default function TransactionsPage() {
           role="region"
           aria-label="Transactions ledger"
           tabIndex={0}
-          className="overflow-x-auto focus:outline-none focus:ring-2 focus:ring-emerald-400/70 focus:ring-offset-2 focus:ring-offset-neutral-950"
+          className={TRANSACTION_TABLE_SCROLL_CLASS}
         >
-          <table className="min-w-[1160px] w-full text-left text-sm text-neutral-200" data-testid="txn-table">
+          <table className={TRANSACTION_TABLE_CLASS} data-testid="txn-table">
             <caption className="sr-only">Detailed transaction ledger with inline edit and row actions</caption>
             <colgroup>
               <col className="w-[56px]" />
@@ -1121,7 +1388,7 @@ export default function TransactionsPage() {
               <col className="w-[130px]" />
               <col className="w-[144px]" />
             </colgroup>
-            <thead className="bg-neutral-900/60 text-neutral-300">
+            <thead className={TRANSACTION_TABLE_HEAD_CLASS}>
               <tr>
                 <th scope="col" className="px-5 py-3.5 font-medium">
                   <input
@@ -1131,26 +1398,71 @@ export default function TransactionsPage() {
                     data-testid="txn-select-all-visible"
                     aria-label="Select all visible transactions"
                     disabled={selectionInputDisabled || !hasVisibleTransactions}
-                    className="h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-400 focus:ring-emerald-400"
+                    className={TRANSACTION_SELECTION_CHECKBOX_CLASS}
                   />
                 </th>
-                <th scope="col" className="px-5 py-3.5 font-medium">Dates</th>
-                <th scope="col" className="px-5 py-3.5 font-medium">Details</th>
-                <th scope="col" className="px-5 py-3.5 font-medium">Category</th>
-                <th scope="col" className="px-5 py-3.5 font-medium">Account</th>
-                <th scope="col" className="px-5 py-3.5 font-medium">Type</th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-right">Amount</th>
-                <th scope="col" className="px-5 py-3.5 font-medium text-right">Actions</th>
+                <th scope="col" className="hidden px-5 py-3.5 font-medium lg:table-cell">Dates</th>
+                <th scope="col" className="px-3 py-3.5 font-medium lg:px-5">Details</th>
+                <th scope="col" className="hidden px-5 py-3.5 font-medium lg:table-cell">Category</th>
+                <th scope="col" className="hidden px-5 py-3.5 font-medium lg:table-cell">Account</th>
+                <th scope="col" className="hidden px-5 py-3.5 font-medium lg:table-cell">Type</th>
+                <th scope="col" className="px-3 py-3.5 font-medium text-right lg:px-5">Amount</th>
+                <th scope="col" className="px-3 py-3.5 font-medium text-right lg:px-5">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-900/80">
-              {ledgerTransactions.map((txn) => {
+            <tbody className={TRANSACTION_TABLE_BODY_CLASS}>
+              {loading ? (
+                <>
+                  {[...Array(5)].map((_, i) => (
+                    <tr key={`skeleton-${i}`} className={TRANSACTION_TABLE_SKELETON_ROW_CLASS}>
+                      <td className="px-5 py-5">
+                        <div className={`h-4 w-4 ${TRANSACTION_TABLE_SKELETON_LINE_CLASS}`} />
+                      </td>
+                      <td className="px-5 py-5">
+                        <div className={`h-4 w-20 ${TRANSACTION_TABLE_SKELETON_LINE_CLASS}`} />
+                      </td>
+                      <td className="px-5 py-5">
+                        <div className="space-y-2">
+                          <div className={`h-4 w-32 ${TRANSACTION_TABLE_SKELETON_LINE_CLASS}`} />
+                          <div className={`h-3 w-48 ${TRANSACTION_TABLE_SKELETON_LINE_CLASS}`} />
+                        </div>
+                      </td>
+                      <td className="px-5 py-5">
+                        <div className={`h-6 w-20 ${TRANSACTION_TABLE_SKELETON_PILL_CLASS}`} />
+                      </td>
+                      <td className="px-5 py-5">
+                        <div className="space-y-1">
+                          <div className={`h-4 w-24 ${TRANSACTION_TABLE_SKELETON_LINE_CLASS}`} />
+                          <div className={`h-3 w-16 ${TRANSACTION_TABLE_SKELETON_LINE_CLASS}`} />
+                        </div>
+                      </td>
+                      <td className="px-5 py-5">
+                        <div className="space-y-1">
+                          <div className={`h-4 w-16 ${TRANSACTION_TABLE_SKELETON_LINE_CLASS}`} />
+                          <div className={`h-3 w-12 ${TRANSACTION_TABLE_SKELETON_LINE_CLASS}`} />
+                        </div>
+                      </td>
+                      <td className="px-5 py-5 text-right">
+                        <div className={`h-4 w-20 ${TRANSACTION_TABLE_SKELETON_LINE_CLASS}`} />
+                      </td>
+                      <td className="px-5 py-5 text-right">
+                        <div className="flex justify-end gap-2">
+                          <div className={`h-8 w-14 ${TRANSACTION_TABLE_SKELETON_PILL_CLASS}`} />
+                          <div className={`h-8 w-16 ${TRANSACTION_TABLE_SKELETON_PILL_CLASS}`} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              ) : null}
+              {!loading
+                ? ledgerTransactions.map((txn) => {
                 const isEditing = form.id === txn.id;
                 const isSelected = selectedTransactionIds.has(txn.id);
                 return (
                   <Fragment key={txn.id}>
-                    <tr className="align-top transition hover:bg-neutral-900/30">
-                      <td className="px-5 py-5 align-top">
+                    <tr className={TRANSACTION_ROW_CLASS}>
+                      <td className="px-3 py-4 align-top md:px-5 md:py-5">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -1158,25 +1470,39 @@ export default function TransactionsPage() {
                           data-testid={`txn-select-row-${txn.id}`}
                           aria-label={`Select transaction ${txn.merchant_raw}`}
                           disabled={selectionInputDisabled || isEditing}
-                          className="mt-1 h-4 w-4 rounded border-neutral-700 bg-neutral-900 text-emerald-400 focus:ring-emerald-400"
+                          className={`mt-1 ${TRANSACTION_SELECTION_CHECKBOX_CLASS}`}
                         />
                       </td>
-                      <td className="px-5 py-5 text-neutral-300">
-                        <div className="font-medium text-neutral-100">{txn.transaction_date}</div>
+                      <td className={TRANSACTION_ROW_SECONDARY_CELL_CLASS}>
+                        <div className={TRANSACTION_ROW_PRIMARY_TEXT_CLASS}>{txn.transaction_date}</div>
                       </td>
 
-                      <td className="px-5 py-5">
+                      <td className="px-3 py-4 md:px-5 md:py-5">
                         <div className="min-w-0">
-                          <div className="font-medium text-neutral-100">{txn.merchant_raw}</div>
-                          <div className="mt-1 text-sm text-neutral-400">{txn.description}</div>
-                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-neutral-500">
+                          <div className="flex flex-wrap items-start justify-between gap-2 lg:block">
+                            <div className={TRANSACTION_ROW_PRIMARY_TEXT_CLASS}>{txn.merchant_raw}</div>
+                            <div className={`${TRANSACTION_ROW_MUTED_TEXT_CLASS} lg:hidden`}>{txn.transaction_date}</div>
+                          </div>
+                          <div className={TRANSACTION_ROW_DESCRIPTION_CLASS}>{txn.description}</div>
+                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-text-muted lg:hidden">
+                            <span className={TRANSACTION_ROW_METADATA_CHIP_CLASS}>
+                              {formatCategoryBadgeLabel(txn, filters.categoryView)}
+                            </span>
+                            <span className={TRANSACTION_ROW_METADATA_CHIP_CLASS}>
+                              {txn.account_key || "Manual Account"}
+                            </span>
+                            <span className={TRANSACTION_ROW_METADATA_CHIP_CLASS}>
+                              {formatTransactionTypeLabel(txn.transaction_type)} · {txn.direction}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-text-muted">
                             {txn.memo ? (
-                              <span className="rounded-full border border-neutral-800 px-2 py-1">
+                              <span className={TRANSACTION_ROW_METADATA_CHIP_CLASS}>
                                 Note: {txn.memo}
                               </span>
                             ) : null}
                             {Array.isArray(txn.tags) && txn.tags.length ? (
-                              <span className="rounded-full border border-neutral-800 px-2 py-1">
+                              <span className={TRANSACTION_ROW_METADATA_CHIP_CLASS}>
                                 #{txn.tags.join(" #")}
                               </span>
                             ) : null}
@@ -1184,34 +1510,32 @@ export default function TransactionsPage() {
                         </div>
                       </td>
 
-                      <td className="px-5 py-5">
-                        <div className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/90 px-3 py-2 text-xs font-medium uppercase tracking-[0.18em] text-neutral-200">
+                      <td className="hidden px-5 py-5 lg:table-cell">
+                        <div className={TRANSACTION_ROW_CATEGORY_BADGE_CLASS}>
                           <span>
-                            {(filters.categoryView === "coarse"
-                              ? `${txn.category_coarse_emoji || ""} ${txn.category_coarse || txn.category_final}`
-                              : `${txn.category_emoji || ""} ${txn.category_final}`).trim()}
+                            {formatCategoryBadgeLabel(txn, filters.categoryView)}
                           </span>
                         </div>
                       </td>
 
-                      <td className="px-5 py-5 text-neutral-300">
-                        <div className="font-medium text-neutral-100">{txn.account_key || "Manual Account"}</div>
-                        <div className="mt-1 text-xs text-neutral-500">{txn.account_id || "No linked account id"}</div>
+                      <td className={TRANSACTION_ROW_SECONDARY_CELL_CLASS}>
+                        <div className={TRANSACTION_ROW_PRIMARY_TEXT_CLASS}>{txn.account_key || "Manual Account"}</div>
+                        <div className={`mt-1 ${TRANSACTION_ROW_MUTED_TEXT_CLASS}`}>{txn.account_id || "No linked account id"}</div>
                       </td>
 
-                      <td className="px-5 py-5 text-neutral-300">
-                        <div className="font-medium text-neutral-100">{formatTransactionTypeLabel(txn.transaction_type)}</div>
-                        <div className="mt-1 text-xs text-neutral-500">{txn.direction}</div>
+                      <td className={TRANSACTION_ROW_SECONDARY_CELL_CLASS}>
+                        <div className={TRANSACTION_ROW_PRIMARY_TEXT_CLASS}>{formatTransactionTypeLabel(txn.transaction_type)}</div>
+                        <div className={`mt-1 ${TRANSACTION_ROW_MUTED_TEXT_CLASS}`}>{txn.direction}</div>
                       </td>
 
-                      <td className="px-5 py-5 text-right font-medium">
-                        <span className={txn.direction === "inflow" ? "text-emerald-400" : "text-neutral-100"}>
+                      <td className="px-3 py-4 text-right font-medium md:px-5 md:py-5">
+                        <span className={txn.direction === "inflow" ? TRANSACTION_AMOUNT_INFLOW_CLASS : "text-danger"}>
                           {txn.direction === "inflow" ? "+" : "-"}
                           {money(Math.abs(txn.amount))}
                         </span>
                         {txn.recurring_rule_id && (
                           <span
-                            className="ml-2 inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-300"
+                            className={TRANSACTION_RECURRING_BADGE_CLASS}
                             title="Linked to recurring rule"
                             data-testid={`tx-recurring-badge-${txn.id}`}
                           >
@@ -1220,24 +1544,24 @@ export default function TransactionsPage() {
                         )}
                       </td>
 
-                      <td className="px-5 py-5 text-right">
-                        <div className="inline-flex flex-wrap justify-end gap-2">
+                      <td className="px-3 py-4 text-right md:px-5 md:py-5">
+                        <div className="flex flex-col items-stretch gap-2 sm:inline-flex sm:flex-row sm:flex-wrap sm:justify-end">
                           <button
                             type="button"
                             onClick={() => startEdit(txn)}
                             data-testid={`txn-edit-${txn.id}`}
                             aria-label={`Edit transaction ${txn.merchant_raw}`}
-                            className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                            className={TRANSACTION_ROW_ACTION_BUTTON_CLASS}
                           >
                             Edit
                           </button>
                           {deleteConfirmId === txn.id ? (
-                          <div className="flex gap-1">
+                          <div className="flex flex-col gap-1 sm:flex-row">
                             <button
                               type="button"
                               onClick={() => void removeTransaction(txn.id)}
                               disabled={saving}
-                              className="rounded-lg border border-rose-600 bg-rose-950/60 px-2 py-1 text-xs text-rose-200 transition hover:bg-rose-900/40 disabled:opacity-60"
+                              className={ROW_DANGER_CONFIRM_BUTTON_CLASS}
                               data-testid={`txn-delete-confirm-${txn.id}`}
                             >
                               Confirm?
@@ -1246,7 +1570,7 @@ export default function TransactionsPage() {
                               type="button"
                               onClick={() => setDeleteConfirmId(null)}
                               disabled={saving}
-                              className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-300 transition hover:bg-neutral-800 disabled:opacity-60"
+                              className={TRANSACTION_ROW_CANCEL_BUTTON_CLASS}
                               data-testid={`txn-delete-cancel-${txn.id}`}
                             >
                               Cancel
@@ -1257,7 +1581,7 @@ export default function TransactionsPage() {
                             type="button"
                             onClick={() => setDeleteConfirmId(txn.id)}
                             disabled={saving || isEditing}
-                            className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                            className={TRANSACTION_ROW_ACTION_BUTTON_CLASS}
                             data-testid={`txn-delete-${txn.id}`}
                             aria-label={`Delete transaction ${txn.merchant_raw}`}
                           >
@@ -1270,7 +1594,7 @@ export default function TransactionsPage() {
 
                     {isEditing ? (
                       <tr data-testid={`txn-inline-edit-row-${txn.id}`}>
-                        <td colSpan={8} className="bg-neutral-950/70 px-5 py-5">
+                        <td colSpan={8} className={TRANSACTION_INLINE_EDITOR_CELL_CLASS}>
                           <form onSubmit={submitForm} className="grid gap-4" data-testid={`txn-inline-form-${txn.id}`}>
                             <input type="hidden" value={form.id} readOnly />
                             <TransactionEditorFields
@@ -1279,6 +1603,7 @@ export default function TransactionsPage() {
                               errors={formErrors}
                               form={form}
                               idPrefix={`txn-inline-${txn.id}`}
+                              onFieldBlur={handleTransactionFieldBlur}
                               onFieldChange={setFormField}
                             />
 
@@ -1286,7 +1611,7 @@ export default function TransactionsPage() {
                               <button
                                 type="submit"
                                 disabled={saving}
-                                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+                                className={TRANSACTION_PRIMARY_ACTION_BUTTON_CLASS}
                               >
                                 {saving ? "Updating..." : "Update"}
                               </button>
@@ -1294,7 +1619,7 @@ export default function TransactionsPage() {
                                 type="button"
                                 onClick={cancelEdit}
                                 data-testid={`txn-inline-cancel-${txn.id}`}
-                                className="rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+                                className={TRANSACTION_SECONDARY_ACTION_BUTTON_CLASS}
                               >
                                 Cancel
                               </button>
@@ -1305,12 +1630,27 @@ export default function TransactionsPage() {
                     ) : null}
                   </Fragment>
                 );
-              })}
+              })
+                : null}
 
               {!loading && ledgerTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center text-sm text-neutral-400">
-                    No transactions found.
+                  <td colSpan={8} className="px-5 py-10 text-center">
+                    <div className={TRANSACTION_EMPTY_TITLE_CLASS}>No transactions found</div>
+                    <div className={TRANSACTION_EMPTY_COPY_CLASS}>
+                      Try adjusting your filters or add a new transaction
+                    </div>
+                    {activeFilterCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void clearAllFiltersAndApply();
+                        }}
+                        className={TRANSACTION_EMPTY_ACTION_CLASS}
+                      >
+                        Clear filters
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ) : null}
@@ -1318,8 +1658,8 @@ export default function TransactionsPage() {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-900 bg-neutral-900/40 px-5 py-3.5">
-          <p className="text-xs text-neutral-400" data-testid="txn-pagination-summary">
+        <div className={TRANSACTION_PAGINATION_BAR_CLASS}>
+          <p className={TRANSACTION_PAGINATION_SUMMARY_CLASS} data-testid="txn-pagination-summary">
             {totalTransactions === 0
               ? "Showing 0 of 0 transactions"
               : `Showing ${pageStart}-${pageEnd} of ${totalTransactions} transactions`}
@@ -1330,11 +1670,11 @@ export default function TransactionsPage() {
               onClick={() => navigateToPage(currentPage - 1)}
               disabled={currentPage <= 1 || loading || saving}
               data-testid="txn-page-prev"
-              className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+              className={TRANSACTION_PAGINATION_BUTTON_CLASS}
             >
               Previous
             </button>
-            <span className="text-xs text-neutral-300" data-testid="txn-page-indicator">
+            <span className={TRANSACTION_PAGINATION_INDICATOR_CLASS} data-testid="txn-page-indicator">
               Page {currentPage} of {totalPages}
             </span>
             <button
@@ -1342,7 +1682,7 @@ export default function TransactionsPage() {
               onClick={() => navigateToPage(currentPage + 1)}
               disabled={currentPage >= totalPages || loading || saving}
               data-testid="txn-page-next"
-              className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+              className={TRANSACTION_PAGINATION_BUTTON_CLASS}
             >
               Next
             </button>
@@ -1351,21 +1691,23 @@ export default function TransactionsPage() {
       </section>
 
       {isCreateDialogOpen ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-neutral-950/80 px-4 py-10 backdrop-blur-sm">
-          <div
+        <div className={TRANSACTION_DIALOG_BACKDROP_CLASS}>
+          <section
+            ref={createDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="txn-create-dialog-title"
             data-testid="txn-create-dialog"
-            className="w-full max-w-4xl rounded-[28px] border border-neutral-800 bg-neutral-950 p-5 shadow-[0_30px_120px_rgba(0,0,0,0.45)]"
+            tabIndex={-1}
+            className={`${TRANSACTION_DIALOG_PANEL_CLASS} max-w-4xl`}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-emerald-300">New transaction</div>
-                <h3 id="txn-create-dialog-title" className="mt-2 text-2xl font-semibold text-neutral-50">
+                <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-accent">New transaction</div>
+                <h3 id="txn-create-dialog-title" className="mt-2 text-2xl font-semibold text-text-primary">
                   Add a manual transaction
                 </h3>
-                <p className="mt-2 text-sm text-neutral-400">
+                <p className="mt-2 text-sm text-text-secondary">
                   Create a new row from the top of the ledger, with an optional person emoji for faster scanning.
                 </p>
               </div>
@@ -1374,7 +1716,7 @@ export default function TransactionsPage() {
                 type="button"
                 onClick={closeCreateDialog}
                 aria-label="Close new transaction dialog"
-                className="rounded-full border border-neutral-800 bg-neutral-900 p-2 text-neutral-300 transition hover:bg-neutral-800"
+                className={TRANSACTION_DIALOG_CLOSE_BUTTON_CLASS}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1387,6 +1729,7 @@ export default function TransactionsPage() {
                 errors={formErrors}
                 form={form}
                 idPrefix="txn-create"
+                onFieldBlur={handleTransactionFieldBlur}
                 onFieldChange={setFormField}
               />
 
@@ -1394,39 +1737,41 @@ export default function TransactionsPage() {
                 <button
                   type="button"
                   onClick={closeCreateDialog}
-                  className="rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+                  className={TRANSACTION_SECONDARY_ACTION_BUTTON_CLASS}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+                  className={TRANSACTION_PRIMARY_ACTION_BUTTON_CLASS}
                 >
                   {saving ? "Saving..." : "Save transaction"}
                 </button>
               </div>
             </form>
-          </div>
+          </section>
         </div>
       ) : null}
 
       {isBulkDeleteDialogOpen ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-neutral-950/80 px-4 py-10 backdrop-blur-sm">
-          <div
+        <div className={TRANSACTION_DIALOG_BACKDROP_CLASS}>
+          <section
+            ref={bulkDeleteDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="txn-bulk-delete-dialog-title"
             data-testid="txn-bulk-delete-dialog"
-            className="w-full max-w-lg rounded-[28px] border border-neutral-800 bg-neutral-950 p-5 shadow-[0_30px_120px_rgba(0,0,0,0.45)]"
+            tabIndex={-1}
+            className={`${TRANSACTION_DIALOG_PANEL_CLASS} max-w-lg`}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-rose-300">Bulk delete</div>
-                <h3 id="txn-bulk-delete-dialog-title" className="mt-2 text-2xl font-semibold text-neutral-50">
+                <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-danger">Bulk delete</div>
+                <h3 id="txn-bulk-delete-dialog-title" className="mt-2 text-2xl font-semibold text-text-primary">
                   Delete {selectedTransactionLabel}
                 </h3>
-                <p className="mt-2 text-sm text-neutral-400">
+                <p className="mt-2 text-sm text-text-secondary">
                   This removes only the transactions currently selected on this visible page. Selection clears after delete.
                 </p>
               </div>
@@ -1435,7 +1780,7 @@ export default function TransactionsPage() {
                 type="button"
                 onClick={closeBulkDeleteDialog}
                 aria-label="Close bulk delete dialog"
-                className="rounded-full border border-neutral-800 bg-neutral-900 p-2 text-neutral-300 transition hover:bg-neutral-800"
+                className={TRANSACTION_DIALOG_CLOSE_BUTTON_CLASS}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1446,7 +1791,7 @@ export default function TransactionsPage() {
                 type="button"
                 onClick={closeBulkDeleteDialog}
                 data-testid="txn-bulk-delete-cancel"
-                className="rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+                className={TRANSACTION_SECONDARY_ACTION_BUTTON_CLASS}
               >
                 Cancel
               </button>
@@ -1455,12 +1800,12 @@ export default function TransactionsPage() {
                 onClick={() => void removeSelectedTransactions()}
                 data-testid="txn-bulk-delete-confirm"
                 disabled={bulkDeleting}
-                className="rounded-xl border border-rose-500/40 bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-70"
+                className={BULK_DANGER_CONFIRM_BUTTON_CLASS}
               >
                 {bulkDeleting ? "Deleting..." : "Delete selected"}
               </button>
             </div>
-          </div>
+          </section>
         </div>
       ) : null}
     </div>

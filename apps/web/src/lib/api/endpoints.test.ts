@@ -61,6 +61,16 @@ test("transactionsApi.bulkUpdate targets bulk mutation contract", async () => {
   });
 });
 
+test("transactionsApi.restore posts to restore contract", async () => {
+  const { calls, request } = createRecorder();
+  await transactionsApi.restore(request, "txn_restore_1");
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].path, "/v1/transactions/txn_restore_1/restore");
+  assert.equal(calls[0].options?.method, "POST");
+  assert.deepEqual(calls[0].options?.body, {});
+});
+
 test("analyticsApi.overview includes category_view query param", async () => {
   const { calls, request } = createRecorder();
   await analyticsApi.overview(request, {

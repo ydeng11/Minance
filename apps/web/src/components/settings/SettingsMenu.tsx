@@ -25,7 +25,7 @@ export function SettingsMenu() {
 
   return (
     <nav
-      className="flex flex-wrap gap-2 rounded-2xl border border-neutral-900 bg-neutral-950/70 p-2"
+      className="flex flex-wrap gap-2 rounded-2xl border border-border-subtle bg-surface-panel/85 p-2 shadow-panel"
       data-testid="settings-menu"
       aria-label="Settings sections"
     >
@@ -39,10 +39,10 @@ export function SettingsMenu() {
             data-testid={item.testId}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
+              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg",
               isActive
-                ? "bg-emerald-500/15 text-emerald-300"
-                : "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100"
+                ? "bg-accent-soft text-accent"
+                : "text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
             )}
           >
             <item.icon className="h-4 w-4" aria-hidden="true" />

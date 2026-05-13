@@ -20,6 +20,22 @@ test("computeDateRange uses UTC day boundaries", () => {
   assert.equal(range.end, utcDateYmd());
 });
 
+test("computeDateRange this_month starts on first day of UTC month", () => {
+  const now = new Date();
+  const expectedStart = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+  const range = computeDateRange("this_month");
+  assert.equal(range.start, expectedStart);
+  assert.equal(range.end, utcDateYmd());
+});
+
+test("computeDateRange this_year matches year-to-start through today", () => {
+  const now = new Date();
+  const expectedStart = `${now.getUTCFullYear()}-01-01`;
+  const range = computeDateRange("this_year");
+  assert.equal(range.start, expectedStart);
+  assert.equal(range.end, utcDateYmd());
+});
+
 test("parseDate keeps YYYY-MM-DD from ISO timestamps", () => {
   assert.equal(parseDate("2026-02-14T00:00:00.000Z"), "2026-02-14");
 });

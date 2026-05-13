@@ -1,14 +1,14 @@
 ---
 # minance2-deab
 title: Remove legacy Quarkus app and old frontend
-status: todo
+status: completed
 type: feature
 priority: high
 tags:
     - cleanup
     - legacy-removal
 created_at: 2026-03-10T01:55:14Z
-updated_at: 2026-03-21T21:49:29Z
+updated_at: 2026-04-13T03:58:34Z
 blocked_by:
     - minance2-tbbk
 ---
@@ -31,3 +31,9 @@ Legacy Quarkus removal plan for the repo.
 ## Notes
 
 Audit on 2026-03-21 confirmed the legacy Quarkus/frontend removal work itself is already finished on latest `origin/main`. The remaining open item is repo-wide Playwright verification, tracked in `minance2-tbbk`, before this feature can be cleanly closed.
+
+## Summary of Changes
+
+- Confirmed the legacy Quarkus app, old frontend, and associated Maven/Quarkus automation remain removed from the active repository.
+- Verified the remaining cleanup follow-up (`minance2-4wbi`) is now green on the current checkout, including `CI=1 pnpm e2e:ci` with `50 passed, 1 skipped`.
+- Reconfirmed that remaining Quarkus references are limited to intentional historical documentation, so this cleanup feature can be closed.

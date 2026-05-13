@@ -70,32 +70,18 @@ test("@core categories search and group filter controls align to the same top ed
   expect(Math.abs(searchTop - groupFilterTop)).toBeLessThanOrEqual(1);
 });
 
-test("@core settings taxonomy emoji fields use searchable picker", async ({ page }) => {
-  const categoryName = `Settings Emoji ${Date.now()}`;
-
+test("@core settings no longer exposes taxonomy editing controls", async ({ page }) => {
   await loginWithSeedAccount(page);
   await gotoView(page, "settings");
 
-  await page.getByTestId("settings-new-category-emoji-trigger").click();
-  await expect(page.getByTestId("emoji-picker")).toBeVisible();
-  await page.getByTestId("emoji-picker-search").fill("rocket");
-  await page.getByTestId("emoji-picker-search").press("Enter");
-  await expect(page.getByTestId("settings-new-category-emoji-trigger")).toContainText("🚀");
-  await page.getByTestId("new-category").fill(categoryName);
-  await page.getByTestId("add-category").click();
-  await expect(page.getByTestId("global-message")).toContainText("Category added.");
+  await expect(page.getByTestId("settings-page")).toBeVisible();
+  await expect(page.getByTestId("settings-section-map")).toBeVisible();
+  await expect(page.getByTestId("settings-data-controls")).toBeVisible();
+  await expect(page.getByTestId("settings-integrations")).toBeVisible();
+  await expect(page.getByTestId("settings-ai-settings-link")).toBeVisible();
+  await expect(page.getByTestId("settings-import-open")).toBeVisible();
 
-  await page.getByTestId("settings-strategy-coarse-emoji-trigger-essential").click();
-  await expect(page.getByTestId("emoji-picker")).toBeVisible();
-  await page.getByTestId("emoji-picker-search").fill("brain");
-  await page.getByTestId("emoji-picker-search").press("Enter");
-  await expect(page.getByTestId("settings-strategy-coarse-emoji-trigger-essential")).toContainText("🧠");
-
-  await page.getByTestId("settings-strategy-granular-emoji-trigger-dining").click();
-  await expect(page.getByTestId("emoji-picker")).toBeVisible();
-  await page.getByTestId("emoji-picker-search").fill("dragon face");
-  await page.getByTestId("emoji-picker-search").press("Enter");
-  await expect(page.getByTestId("settings-strategy-granular-emoji-trigger-dining")).toContainText("🐲");
-  await page.getByTestId("save-category-strategy").click();
-  await expect(page.getByTestId("global-message")).toContainText("Category strategy saved.");
+  await expect(page.getByTestId("settings-page")).not.toContainText("Category taxonomy saved.");
+  await expect(page.getByTestId("settings-page")).not.toContainText("Add a category");
+  await expect(page.getByTestId("settings-page")).not.toContainText("Grouping & taxonomy management");
 });

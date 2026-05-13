@@ -21,6 +21,15 @@ test("buildExplorerFilterSearchParams persists perspective and compare mode", ()
   assert.equal(params.toString(), "account=acct_card&perspective=account&compare=previous");
 });
 
+test("buildExplorerFilterSearchParams persists merchant drill-down state", () => {
+  const params = buildExplorerFilterSearchParams({
+    ...createDefaultExplorerFilterState(),
+    merchant: "Sunset Grocer"
+  });
+
+  assert.equal(params.get("merchant"), "Sunset Grocer");
+});
+
 test("parseExplorerFilterState ignores legacy review search params", () => {
   const state = parseExplorerFilterState(
     new URLSearchParams("range=30d&review=reviewed&category=Groceries&category=Travel")
@@ -29,6 +38,12 @@ test("parseExplorerFilterState ignores legacy review search params", () => {
   assert.equal(state.range, "30d");
   assert.deepEqual(state.categories, ["Groceries", "Travel"]);
   assert.equal("review" in state, false);
+});
+
+test("parseExplorerFilterState reads merchant drill-down state", () => {
+  const state = parseExplorerFilterState(new URLSearchParams("merchant=Sunset%20Grocer"));
+
+  assert.equal(state.merchant, "Sunset Grocer");
 });
 
 test("savedExplorerFiltersToState ignores legacy review values", () => {
@@ -78,6 +93,15 @@ test("toExplorerAnalyticsApiParams sends recurring-only sentinel when enabled", 
   });
 
   assert.equal(params.recurring_rule_id, "true");
+});
+
+test("toExplorerAnalyticsApiParams forwards merchant drill-down state", () => {
+  const params = toExplorerAnalyticsApiParams({
+    ...createDefaultExplorerFilterState(),
+    merchant: "Sunset Grocer"
+  });
+
+  assert.equal(params.merchant, "Sunset Grocer");
 });
 
 test("toValidExplorerFilterState trims and deduplicates array filters", () => {

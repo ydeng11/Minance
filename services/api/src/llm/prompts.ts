@@ -1,5 +1,4 @@
 import { DEFAULT_CATEGORIES } from "../../../../packages/domain/src/constants.ts";
-import { getTrainingPromptContext } from "../training.ts";
 import { IMPORT_DIRECTION_FEW_SHOT_EXAMPLES } from "./import-direction-examples.ts";
 
 const CATEGORY_GUIDANCE = [
@@ -39,11 +38,6 @@ export function buildCategorizationPrompt({
   userRules = [],
   exemplars = []
 }) {
-  const trainingContext = getTrainingPromptContext({
-    maxRawCategoryMappings: 60,
-    maxMerchantExemplars: 60
-  });
-
   const systemPrompt = [
     "You classify personal-finance transactions into one allowed category.",
     "Return JSON only. Do not add markdown or prose outside JSON.",
@@ -67,16 +61,6 @@ export function buildCategorizationPrompt({
     "",
     "User historical merchant exemplars (same user only):",
     safeJson(exemplars.slice(0, 40)),
-    "",
-    "Global training context from historical backup data (cross-user priors, lower priority than user rules/history):",
-    safeJson(
-      trainingContext.enabled
-        ? {
-            raw_category_mappings: trainingContext.rawCategoryMappings,
-            merchant_exemplars: trainingContext.merchantExemplars
-          }
-        : { status: "unavailable" }
-    ),
     "",
     "Transaction to classify:",
     safeJson(transaction)

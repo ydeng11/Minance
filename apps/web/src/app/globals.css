@@ -1,6 +1,82 @@
 @import "tailwindcss";
 @source "../../node_modules/@ferrucc-io/emoji-picker";
 
-:root {
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-display: var(--font-editorial);
+  --color-app-bg: var(--app-bg);
+  --color-surface-panel: var(--surface-panel);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-field: var(--surface-field);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-focus-ring: var(--focus-ring);
+  --shadow-panel: var(--shadow-panel);
+  --shadow-dialog: var(--shadow-dialog);
+}
+
+:root,
+:root[data-theme="dark"] {
+  --app-bg: oklch(0.17 0.014 196);
+  --surface-panel: oklch(0.2 0.014 196);
+  --surface-elevated: oklch(0.23 0.016 196);
+  --surface-field: oklch(0.19 0.012 196);
+  --text-primary: oklch(0.95 0.01 196);
+  --text-secondary: oklch(0.82 0.012 196);
+  --text-muted: oklch(0.65 0.012 196);
+  --border-subtle: oklch(0.31 0.014 196);
+  --border-strong: oklch(0.38 0.018 196);
+  --accent: oklch(0.78 0.13 160);
+  --accent-soft: oklch(0.31 0.065 160);
+  --danger: oklch(0.74 0.14 25);
+  --danger-soft: oklch(0.3 0.07 25);
+  --warning: oklch(0.82 0.12 78);
+  --warning-soft: oklch(0.32 0.07 78);
+  --focus-ring: oklch(0.8 0.11 160);
+  --gradient-panel: linear-gradient(180deg, oklch(0.23 0.018 196 / 0.98), oklch(0.18 0.012 196 / 0.94));
+  --gradient-shell: linear-gradient(180deg, oklch(0.22 0.016 196 / 0.96), oklch(0.18 0.012 196 / 0.92));
+  --shadow-panel: 0 18px 48px rgb(0 0 0 / 0.24);
+  --shadow-dialog: 0 30px 80px rgb(0 0 0 / 0.45);
   color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --app-bg: oklch(0.98 0.008 95);
+  --surface-panel: oklch(1 0.004 95);
+  --surface-elevated: oklch(0.96 0.01 95);
+  --surface-field: oklch(0.93 0.01 95);
+  --text-primary: oklch(0.24 0.015 196);
+  --text-secondary: oklch(0.38 0.015 196);
+  --text-muted: oklch(0.52 0.015 196);
+  --border-subtle: oklch(0.86 0.01 95);
+  --border-strong: oklch(0.78 0.012 95);
+  --accent: oklch(0.62 0.13 160);
+  --accent-soft: oklch(0.9 0.04 160);
+  --danger: oklch(0.55 0.16 25);
+  --danger-soft: oklch(0.92 0.05 25);
+  --warning: oklch(0.58 0.13 75);
+  --warning-soft: oklch(0.92 0.06 80);
+  --focus-ring: oklch(0.62 0.13 160);
+  --gradient-panel: linear-gradient(180deg, oklch(1 0.004 95 / 0.98), oklch(0.95 0.008 95 / 0.94));
+  --gradient-shell: linear-gradient(180deg, oklch(0.98 0.004 95 / 0.96), oklch(0.94 0.008 95 / 0.92));
+  --shadow-panel: 0 18px 48px rgb(15 23 42 / 0.08);
+  --shadow-dialog: 0 30px 80px rgb(15 23 42 / 0.12);
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-bounce,
+  .animate-pulse,
+  .animate-spin {
+    animation: none !important;
+  }
 }

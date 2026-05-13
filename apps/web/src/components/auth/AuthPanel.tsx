@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 import { ApiError } from "@/lib/api/client";
+import { StatusMessage } from "@/components/feedback/StatusMessage";
 import { useSession } from "@/lib/session";
+
+const AUTH_TAB_BASE_CLASS = "rounded-full border px-4 py-2 text-sm font-medium transition";
+const AUTH_TAB_ACTIVE_CLASS = "border-accent/35 bg-accent-soft text-accent";
+const AUTH_TAB_INACTIVE_CLASS = "border-border-subtle bg-surface-field text-text-secondary hover:bg-surface-elevated hover:text-text-primary";
+const AUTH_INPUT_CLASS =
+  "w-full rounded-xl border border-border-subtle bg-surface-field px-3 py-2 text-text-primary outline-none transition focus:border-accent focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+
+function getAuthTabClass(isSelected: boolean) {
+  return `${AUTH_TAB_BASE_CLASS} ${isSelected ? AUTH_TAB_ACTIVE_CLASS : AUTH_TAB_INACTIVE_CLASS}`;
+}
 
 export function AuthPanel() {
   const { login, signup } = useSession();
@@ -35,21 +46,20 @@ export function AuthPanel() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-neutral-950 p-4">
-      <section className="w-full max-w-md rounded-3xl border border-neutral-900 bg-neutral-950/80 p-8 shadow-2xl shadow-emerald-950/10" data-testid="auth-panel">
-        <h1 className="text-3xl font-semibold tracking-tight text-neutral-100">Minance</h1>
-        <p className="mt-2 text-sm text-neutral-400">Privacy-first money intelligence without bank linking.</p>
+    <main className="grid min-h-screen place-items-center bg-app-bg p-4 text-text-primary">
+      <section
+        className="w-full max-w-md rounded-3xl border border-border-subtle bg-surface-panel/90 p-8 shadow-dialog"
+        data-testid="auth-panel"
+      >
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-text-primary">Minance</h1>
+        <p className="mt-2 text-sm text-text-secondary">Privacy-first money intelligence without bank linking.</p>
 
         <div className="mt-6 flex gap-2">
           <button
             type="button"
             onClick={() => setMode("login")}
             data-testid="auth-tab-login"
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-              mode === "login"
-                ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-100"
-                : "border-neutral-800 bg-neutral-900 text-neutral-300 hover:bg-neutral-800"
-            }`}
+            className={getAuthTabClass(mode === "login")}
           >
             Login
           </button>
@@ -57,30 +67,26 @@ export function AuthPanel() {
             type="button"
             onClick={() => setMode("signup")}
             data-testid="auth-tab-signup"
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-              mode === "signup"
-                ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-100"
-                : "border-neutral-800 bg-neutral-900 text-neutral-300 hover:bg-neutral-800"
-            }`}
+            className={getAuthTabClass(mode === "signup")}
           >
             Sign up
           </button>
         </div>
 
         <form onSubmit={onSubmit} className="mt-5 grid gap-3" data-testid={mode === "login" ? "login-form" : "signup-form"}>
-          <label className="grid gap-1 text-sm text-neutral-300">
+          <label className="grid gap-1 text-sm text-text-secondary">
             Email
             <input
               data-testid="auth-email"
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              className={AUTH_INPUT_CLASS}
               required
             />
           </label>
 
-          <label className="grid gap-1 text-sm text-neutral-300">
+          <label className="grid gap-1 text-sm text-text-secondary">
             Password
             <input
               data-testid="auth-password"
@@ -88,7 +94,7 @@ export function AuthPanel() {
               minLength={8}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-neutral-100 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              className={AUTH_INPUT_CLASS}
               required
             />
           </label>
@@ -97,13 +103,19 @@ export function AuthPanel() {
             type="submit"
             data-testid="auth-submit"
             disabled={isSubmitting}
-            className="mt-1 rounded-full border border-emerald-500/50 bg-gradient-to-r from-emerald-500 to-emerald-400 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:from-emerald-400 hover:to-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-1 rounded-full border border-accent/35 bg-accent px-4 py-2 text-sm font-semibold text-app-bg transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "Working..." : mode === "login" ? "Login" : "Create account"}
           </button>
         </form>
 
-        <p className="mt-3 min-h-5 text-sm text-red-400" data-testid="auth-message">{message}</p>
+        <div className="mt-3 min-h-5" data-testid="auth-message">
+          {message ? (
+            <StatusMessage tone="error">
+              {message}
+            </StatusMessage>
+          ) : null}
+        </div>
       </section>
     </main>
   );

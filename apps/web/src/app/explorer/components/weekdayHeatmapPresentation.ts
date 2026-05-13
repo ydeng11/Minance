@@ -1,10 +1,10 @@
 export const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-const TONE_CLASS_NAMES = [
-  "bg-neutral-900 ring-1 ring-inset ring-neutral-800",
-  "bg-emerald-950 ring-1 ring-inset ring-emerald-900/80",
-  "bg-emerald-800 ring-1 ring-inset ring-emerald-700/80",
-  "bg-emerald-700 ring-1 ring-inset ring-emerald-600/80"
+export const WEEKDAY_HEAT_TONE_CLASS_NAMES = [
+  "bg-surface-field ring-1 ring-inset ring-border-subtle",
+  "bg-accent-soft/35 ring-1 ring-inset ring-accent/20",
+  "bg-accent-soft/70 ring-1 ring-inset ring-accent/35",
+  "bg-accent-soft ring-1 ring-inset ring-accent/55"
 ] as const;
 
 function getWeekdayHeatToneIndex(amount: number, maxAmount: number) {
@@ -25,5 +25,5 @@ function getWeekdayHeatToneIndex(amount: number, maxAmount: number) {
 }
 
 export function getWeekdayHeatToneClassName(amount: number, maxAmount: number) {
-  return TONE_CLASS_NAMES[getWeekdayHeatToneIndex(amount, maxAmount)];
+  return WEEKDAY_HEAT_TONE_CLASS_NAMES[getWeekdayHeatToneIndex(amount, maxAmount)];
 }

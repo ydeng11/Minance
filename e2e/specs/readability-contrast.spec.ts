@@ -241,23 +241,34 @@ test("@core major tab text and input contrast meets dark-theme thresholds", asyn
     minRatio: CONTRAST_TARGETS.body
   });
 
-  const queryInput = page.getByTestId("txn-query");
-  await expectContrast(queryInput, {
-    label: "transactions search input text",
+  const rangeSelect = page.getByTestId("txn-range");
+  await expectContrast(rangeSelect, {
+    label: "transactions range select text",
     minRatio: CONTRAST_TARGETS.emphasizedText
   });
 
-  await queryInput.fill("");
-  await expectContrast(queryInput, {
-    label: "transactions search input placeholder",
+  await page.getByTestId("txn-open-advanced-filters").click();
+  const tagInput = page.getByTestId("txn-tag-filter");
+  await expect(tagInput).toBeVisible();
+
+  await expectContrast(tagInput, {
+    label: "transactions tag input text",
+    minRatio: CONTRAST_TARGETS.emphasizedText
+  });
+
+  await tagInput.fill("");
+  await expectContrast(tagInput, {
+    label: "transactions tag input placeholder",
     minRatio: CONTRAST_TARGETS.placeholder,
     pseudo: "::placeholder"
   });
 
+  await page.getByTestId("txn-advanced-apply").click();
+
   await gotoView(page, "imports");
   await page.getByTestId("import-file").setInputFiles(CSV_FIXTURE_PATH);
   await page.getByTestId("import-process").click();
-  await expect(page.getByTestId("global-message")).toContainText("Import analyzed.");
+  await expect(page.getByText(/^Analyzed \d+ rows in /)).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("processed-panel")).toBeVisible();
 
   const processedMemo = page.locator('[data-testid^="processed-memo-"]').first();

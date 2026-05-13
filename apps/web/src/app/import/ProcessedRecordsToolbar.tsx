@@ -1,3 +1,5 @@
+import React from "react";
+
 export function ProcessedRecordsToolbar(props: {
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
@@ -14,7 +16,7 @@ export function ProcessedRecordsToolbar(props: {
         value={statusFilter}
         onChange={(event) => onStatusFilterChange(event.target.value)}
         data-testid="processed-status-filter"
-        className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+        className="rounded-lg border border-border-subtle bg-surface-field px-2 py-1 text-xs text-text-primary"
       >
         <option value="">All statuses</option>
         <option value="valid">Valid</option>

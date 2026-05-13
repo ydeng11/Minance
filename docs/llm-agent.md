@@ -31,9 +31,8 @@ History-first approach for assigning categories to transactions.
 **Flow:**
 1. Check user rules first
 2. Check merchant memory
-3. Check training data
-4. If no match, use agent to infer
-5. Fallback to keyword model on failure
+3. If no match, use agent to infer
+4. Fallback to keyword model on failure
 
 ### Recurring Mode
 Detects subscription patterns with pre-filter heuristics.

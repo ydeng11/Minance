@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LineChart, X } from "lucide-react";
+import { LineChart } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import type { Account, Category, ExplorerAnalyticsResponse, OverviewResponse, SavedView } from "@/lib/api/types";
@@ -11,6 +11,7 @@ import {
   createDefaultTransactionsFilterState,
   toValidFilterState as toValidTransactionsFilterState
 } from "../transactions/filters";
+import { StatusMessage } from "@/components/feedback/StatusMessage";
 import {
   buildExplorerFilterSearchParams,
   parseExplorerFilterState,
@@ -20,20 +21,35 @@ import {
   type ExplorerTransactionType
 } from "./filters";
 import { getSharedFilters, setSharedFilters, type TransactionTypeFilter } from "@/lib/sharedFilters";
+import { RANGE_OPTIONS } from "@/lib/constants";
 import { AccountPerspective } from "./components/AccountPerspective";
-import { ExplorerAdvancedFilters } from "./components/ExplorerAdvancedFilters";
-import { ExplorerCommandBar } from "./components/ExplorerCommandBar";
 import { CategoryPerspective } from "./components/CategoryPerspective";
 import { ExplorerPerspectiveTabs } from "./components/ExplorerPerspectiveTabs";
 import { ExplorerSummaryBand } from "./components/ExplorerSummaryBand";
 import { OverviewPerspective } from "./components/OverviewPerspective";
 import { SavedViews } from "./components/SavedViews";
+import { ExplorerViewContent } from "./components/ExplorerViewContent";
 import { VisualizationGrid } from "./components/VisualizationGrid";
+import { useViewController } from "@/components/view/ViewController";
+
+const FOCUS_RING_CLASS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const HEADER_ICON_CLASS =
+  "flex h-12 w-12 items-center justify-center rounded-[18px] border border-accent/30 bg-accent-soft text-accent";
+const HEADER_EYEBROW_CLASS = "text-[11px] font-medium uppercase tracking-[0.28em] text-accent";
+const HEADER_TITLE_CLASS = "mt-2 text-3xl font-semibold tracking-tight text-text-primary sm:text-4xl";
+const HEADER_COPY_CLASS = "mt-2 max-w-2xl text-text-secondary";
+const ACTIVE_FILTERS_PANEL_CLASS =
+  "rounded-2xl border border-border-subtle bg-surface-panel/80 p-4 shadow-panel";
+const ACTIVE_FILTER_BUTTON_CLASS =
+  `inline-flex items-center gap-2 rounded-full border border-border-subtle bg-surface-field px-3 py-1.5 text-sm text-text-primary transition hover:bg-surface-elevated ${FOCUS_RING_CLASS}`;
+const ACTIVE_FILTER_REMOVE_ICON_CLASS = "text-text-muted";
 
 export default function ExplorerPage() {
   const api = useApi();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { registerView } = useViewController();
 
   // Parse and validate filters from URL
   const parsedFilters = useMemo(
@@ -49,7 +65,6 @@ export default function ExplorerPage() {
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const syncFilters = useCallback(
     (nextFilters: typeof filters) => {
@@ -272,14 +287,8 @@ export default function ExplorerPage() {
     if (filters.range === "custom" && filters.start && filters.end) {
       return `${filters.start} to ${filters.end}`;
     }
-    const rangeLabels: Record<string, string> = {
-      all: "All time",
-      "30d": "Last 30 days",
-      "90d": "Last 90 days",
-      "365d": "Last 12 months",
-      ytd: "Year to date"
-    };
-    return rangeLabels[filters.range] || filters.range;
+    const preset = RANGE_OPTIONS.find((option) => option.value === filters.range);
+    return preset?.label ?? filters.range;
   }, [filters.range, filters.start, filters.end]);
 
   const overview = useMemo<OverviewResponse | null>(() => {
@@ -353,6 +362,24 @@ export default function ExplorerPage() {
         clear: () => updateFilters({ recurring: false })
       });
     }
+    if (filters.categoryView !== "granular") {
+      items.push({
+        key: "categoryView",
+        label: `View: ${filters.categoryView === "coarse" ? "Coarse" : "Granular"}`,
+        clear: () => updateFilters({ categoryView: "granular" })
+      });
+    }
+    if (filters.range !== "90d") {
+      const preset = RANGE_OPTIONS.find((option) => option.value === filters.range);
+      items.push({
+        key: "range",
+        label:
+          filters.range === "custom" && filters.start && filters.end
+            ? `Range: ${filters.start} to ${filters.end}`
+            : `Range: ${preset?.label || filters.range}`,
+        clear: () => updateFilters({ range: "90d", start: "", end: "" })
+      });
+    }
     if (filters.merchant) {
       items.push({
         key: "merchant",
@@ -371,22 +398,46 @@ export default function ExplorerPage() {
     return items;
   }, [accounts, filters, updateFilters]);
 
+  const viewContent = useMemo(
+    () => (
+      <ExplorerViewContent
+        filters={filters}
+        accounts={accounts}
+        categories={categories}
+        availableTags={explorer?.meta?.availableTags || []}
+        amountBounds={explorer?.meta?.amountBounds || null}
+        onApply={syncFilters}
+      />
+    ),
+    [accounts, categories, explorer?.meta?.amountBounds, explorer?.meta?.availableTags, filters, syncFilters]
+  );
+
+  useEffect(() => {
+    registerView({
+      title: "Explorer filters",
+      description: "Adjust the analysis view from the shell without leaving the page.",
+      content: viewContent
+    });
+
+    return () => registerView(null);
+  }, [registerView, viewContent]);
+
   return (
     <div className="space-y-8" data-testid="explorer-page">
       {/* Header */}
       <header className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-emerald-500/30 bg-emerald-500/10">
-            <LineChart className="h-6 w-6 text-emerald-300" />
+          <div className={HEADER_ICON_CLASS}>
+            <LineChart className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-emerald-300/80">
+            <p className={HEADER_EYEBROW_CLASS}>
               Analytics workspace
             </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-neutral-50 sm:text-4xl">
+            <h2 className={HEADER_TITLE_CLASS}>
               Explorer
             </h2>
-            <p className="mt-2 max-w-2xl text-neutral-400">
+            <p className={HEADER_COPY_CLASS}>
               Rich account and category analysis across {dateRangeDisplay.toLowerCase()}.
             </p>
           </div>
@@ -394,56 +445,33 @@ export default function ExplorerPage() {
       </header>
 
       {message && (
-        <p
-          className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300"
-          data-testid="explorer-message"
-        >
+        <StatusMessage data-testid="explorer-message">
           {message}
-        </p>
+        </StatusMessage>
       )}
 
-      {showAdvancedFilters ? (
-        <ExplorerAdvancedFilters
-          filters={filters}
-          categories={categories}
-          availableTags={explorer?.meta?.availableTags || []}
-          amountBounds={explorer?.meta?.amountBounds || null}
-          onApply={(updates) => {
-            updateFilters(updates);
-            setShowAdvancedFilters(false);
-          }}
-          onClose={() => setShowAdvancedFilters(false)}
-        />
-      ) : null}
-
-      <main className="min-w-0 space-y-6">
-        <ExplorerCommandBar
-          filters={filters}
-          accounts={accounts}
-          onChange={updateFilters}
-          onOpenAdvancedFilters={() => setShowAdvancedFilters(true)}
-        />
-
-        <div className="flex flex-wrap items-center gap-2" data-testid="explorer-active-filters">
-          {activeFilters.length ? (
-            activeFilters.map((filter) => (
+      {activeFilters.length ? (
+        <section
+          className={ACTIVE_FILTERS_PANEL_CLASS}
+          data-testid="explorer-active-filters"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            {activeFilters.map((filter) => (
               <button
                 key={filter.key}
                 type="button"
                 onClick={filter.clear}
-                className="inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-sm text-neutral-200 transition hover:bg-neutral-900"
+                className={ACTIVE_FILTER_BUTTON_CLASS}
               >
                 {filter.label}
-                <X className="h-3.5 w-3.5 text-neutral-500" />
+                <span className={ACTIVE_FILTER_REMOVE_ICON_CLASS}>×</span>
               </button>
-            ))
-          ) : (
-            <div className="rounded-full border border-neutral-900 bg-neutral-950/80 px-3 py-1.5 text-sm text-neutral-500">
-              All transactions in view
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
+      <main className="min-w-0 space-y-6">
         <ExplorerSummaryBand
           summary={explorer?.summary || null}
           comparison={explorer?.comparison || null}

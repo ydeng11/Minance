@@ -81,7 +81,7 @@ test("import workflow reducer handles analyze and commit transitions", () => {
   });
 
   assert.equal(analyzed.isAnalyzing, false);
-  assert.equal(analyzed.notice, "Import analyzed.");
+  assert.equal(analyzed.notice, null);
 
   const committing = importWorkflowReducer(analyzed, { type: "commit_started" });
   assert.equal(committing.isCommitting, true);
@@ -133,6 +133,6 @@ test("import workflow reducer handles analyze and commit transitions", () => {
   });
 
   assert.equal(committed.isCommitting, false);
-  assert.equal(committed.notice, "Import committed.");
+  assert.equal(committed.notice, null);
   assert.equal(committed.commitResult?.importId, "imp_1");
 });

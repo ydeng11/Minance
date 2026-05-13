@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
-  AlertCircle,
   CheckCircle2,
   FileText,
   Loader2,
@@ -10,9 +9,11 @@ import {
   Save,
   UploadCloud
 } from "lucide-react";
-import { ApiError } from "@/lib/api/client";
+import { toast } from "sonner";
 import { useApi } from "@/hooks/useApi";
+import { getRequestFeedbackMessage } from "@/lib/feedback/requestFeedback";
 import { importWorkflowReducer, initialImportWorkflowState } from "@/lib/import/reducer";
+import { StatusMessage } from "@/components/feedback/StatusMessage";
 import type {
   Account,
   Category,
@@ -35,11 +36,99 @@ import {
   collectRowIdsByAccountKey,
   getReconciliationActionMode,
   resolveImportAccountValue,
-  shouldShowReconciliationSummary,
-  runReprocessRowsFlow
+  shouldShowReconciliationSummary
 } from "./accountAssignment";
 import { ImportAccountSelector, ImportIssuesSummaryPanel, ProcessedRowAccountSelect } from "./pageComponents";
 import { money } from "@/lib/utils";
+
+const IMPORT_ANALYZED_SUCCESS_MESSAGE = "Import analyzed. Review the preview before saving mapping.";
+const MAPPING_SAVED_SUCCESS_MESSAGE = "Mapping saved. Continue to account review.";
+const IMPORT_ACCOUNT_ASSIGNED_SUCCESS_MESSAGE = "Import account assigned. Review any remaining unmatched rows.";
+const RECONCILIATION_ACCOUNT_MAPPED_SUCCESS_MESSAGE =
+  "Reconciliation account mapped. Check the remaining issues before commit.";
+const IMPORT_COMMITTED_SUCCESS_MESSAGE = "Import committed. Review imported transactions if anything looks off.";
+
+const LOAD_IMPORT_DETAILS_ERROR_MESSAGE =
+  "Import details couldn't be loaded. Nothing changed. Reopen the import and try again.";
+const LOAD_IMPORT_DATA_ERROR_MESSAGE =
+  "Import data couldn't be loaded. Nothing changed. Refresh the page and try again.";
+const IMPORT_ANALYSIS_ERROR_MESSAGE =
+  "Import analysis couldn't finish. Nothing changed. Check the file format and try again.";
+const MAPPING_SAVE_ERROR_MESSAGE =
+  "Mapping couldn't be saved. Nothing changed. Review required columns and try again.";
+const ROW_UPDATE_ERROR_MESSAGE =
+  "Row changes couldn't be saved. Nothing changed. Review the row values and try again.";
+const IMPORT_ACCOUNT_ASSIGNMENT_ERROR_MESSAGE =
+  "Import account couldn't be assigned. Nothing changed. Choose an account and try again.";
+const ROW_ACCOUNT_ASSIGNMENT_ERROR_MESSAGE =
+  "Account assignment couldn't be applied. Nothing changed. Choose an account and try again.";
+const RECONCILIATION_ACCOUNT_MAPPING_ERROR_MESSAGE =
+  "Reconciliation account couldn't be mapped. Nothing changed. Choose an account and try again.";
+const IMPORT_COMMIT_ERROR_MESSAGE =
+  "Import commit couldn't be completed. Nothing changed. Review the remaining issues, then commit again.";
+const IMPORT_UPLOAD_SECTION_CLASS =
+  "rounded-2xl border border-dashed border-border-strong bg-surface-panel/80 p-10 text-center shadow-panel";
+const IMPORT_UPLOAD_STATE_PANEL_CLASS = "rounded-xl border border-border-subtle bg-surface-field/70 p-10";
+const IMPORT_UPLOAD_ICON_CLASS = "rounded-full border border-border-subtle bg-surface-field p-4";
+const IMPORT_SELECTED_ICON_CLASS = "rounded-full border border-accent/25 bg-accent-soft p-4";
+const IMPORT_SECONDARY_ACTION_CLASS =
+  "mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border-subtle bg-surface-field px-4 py-3 font-medium text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const IMPORT_PRIMARY_ACTION_CLASS =
+  "mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-accent/35 bg-accent px-4 py-3 font-semibold text-app-bg transition hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg disabled:cursor-not-allowed disabled:opacity-60";
+const IMPORT_PREVIEW_TABLE_WRAP_CLASS = "mt-3 overflow-hidden rounded-lg border border-border-subtle";
+const IMPORT_PREVIEW_TABLE_HEAD_CLASS = "bg-surface-elevated/70 text-text-secondary";
+const IMPORT_PREVIEW_TABLE_BODY_CLASS = "divide-y divide-border-subtle";
+const IMPORT_PREVIEW_TABLE_CELL_CLASS = "px-3 py-2 text-text-secondary";
+const IMPORT_PREVIEW_TABLE_STRONG_CELL_CLASS = "px-3 py-2 text-text-primary";
+const IMPORT_ADVANCED_DETAILS_CLASS = "rounded-2xl border border-border-subtle bg-surface-panel/80";
+const IMPORT_ADVANCED_SUMMARY_CLASS = "cursor-pointer px-4 py-3 text-sm font-medium text-text-secondary";
+const IMPORT_SECTION_PANEL_CLASS = "rounded-xl border border-border-subtle bg-surface-panel/80 p-4 shadow-panel";
+const IMPORT_SECTION_TITLE_CLASS = "text-sm font-medium text-text-secondary";
+const IMPORT_MAPPING_TEMPLATE_CARD_CLASS =
+  "md:col-span-2 lg:col-span-4 rounded-lg border border-border-subtle bg-surface-field/60 p-3";
+const IMPORT_FIELD_LABEL_CLASS = "grid gap-1 text-xs text-text-secondary";
+const IMPORT_TEMPLATE_LABEL_CLASS = "grid min-w-48 flex-1 gap-1 text-xs text-text-secondary";
+const IMPORT_SELECT_FIELD_CLASS =
+  "min-h-11 rounded-lg border border-border-subtle bg-surface-field px-2 py-1.5 text-text-primary outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring";
+const IMPORT_SMALL_SECONDARY_ACTION_CLASS =
+  "inline-flex min-h-11 items-center gap-2 rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-xs text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-60";
+const IMPORT_SMALL_PRIMARY_ACTION_CLASS =
+  "inline-flex min-h-11 items-center gap-2 rounded-lg border border-accent/35 bg-accent px-3 py-2 text-sm font-semibold text-app-bg transition hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-60";
+const IMPORT_HELPER_TEXT_CLASS = "mt-2 text-xs text-text-muted";
+const IMPORT_NOTICE_TEXT_CLASS = "mt-2 text-xs text-accent";
+const IMPORT_COMMIT_JSON_CLASS =
+  "mt-3 max-h-52 overflow-auto rounded-lg border border-border-subtle bg-surface-field p-2 text-xs text-text-primary";
+const IMPORT_PROCESSED_FIELD_CLASS =
+  "min-h-11 rounded border border-focus-ring bg-surface-field px-2 py-1 text-text-primary placeholder:text-text-muted outline-none transition focus:ring-2 focus:ring-focus-ring focus-visible:ring-2 focus-visible:ring-focus-ring";
+const IMPORT_PROCESSED_EMPTY_CLASS =
+  "rounded-xl border border-border-subtle bg-surface-field/70 px-4 py-5 text-sm text-text-muted";
+const IMPORT_PROCESSED_CARD_CLASS = "rounded-xl border border-border-subtle bg-surface-panel/80 p-4 shadow-panel";
+const IMPORT_PROCESSED_LABEL_CLASS = "grid gap-1 text-xs text-text-secondary";
+const IMPORT_PROCESSED_STATUS_CLASS =
+  "rounded-full border border-border-subtle bg-surface-field px-2 py-0.5 text-text-secondary";
+const IMPORT_PROCESSED_META_CLASS = "mt-3 flex flex-wrap items-center gap-2 text-[11px] text-text-muted";
+const IMPORT_TABLE_HEAD_ROW_CLASS = "border-b border-border-subtle text-left text-text-secondary";
+const IMPORT_TABLE_ROW_CLASS = "border-b border-border-subtle align-top";
+const IMPORT_TABLE_EMPTY_CLASS = "px-3 py-6 text-center text-xs text-text-muted";
+const IMPORT_TABLE_MUTED_CELL_CLASS = "px-2 py-2 text-[11px] text-text-muted";
+const IMPORT_TABLE_PRIMARY_CELL_CLASS = "px-2 py-2 text-text-primary";
+const IMPORT_TABLE_SECONDARY_CELL_CLASS = "px-2 py-2 text-text-secondary";
+const IMPORT_RECONCILIATION_EMPTY_CLASS =
+  "rounded-xl border border-border-subtle bg-surface-field/70 px-4 py-5 text-sm text-text-muted";
+const IMPORT_RECONCILIATION_CARD_CLASS = "rounded-xl border border-border-subtle bg-surface-panel/80 p-4 shadow-panel";
+const IMPORT_RECONCILIATION_BADGE_CLASS =
+  "rounded-full border border-border-subtle bg-surface-field px-2 py-1 text-[11px] text-text-secondary";
+const IMPORT_RECONCILIATION_TERM_CLASS = "text-xs uppercase tracking-[0.16em] text-text-muted";
+const IMPORT_RECONCILIATION_VALUE_CLASS = "mt-1 text-text-primary";
+const IMPORT_RECONCILIATION_MUTED_VALUE_CLASS = "mt-1 text-text-secondary";
+const IMPORT_RECONCILIATION_NO_ACTION_CLASS = "text-sm text-text-secondary";
+const IMPORT_RECONCILIATION_SMALL_NO_ACTION_CLASS = "text-[11px] text-text-secondary";
+const IMPORT_RECONCILIATION_REFRESH_ACTION_CLASS =
+  "inline-flex min-h-11 items-center gap-1 rounded-lg border border-border-subtle bg-surface-field px-2 py-1 text-xs text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:cursor-not-allowed disabled:opacity-60";
+const IMPORT_RECENT_IMPORT_ROW_CLASS =
+  "flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-subtle bg-surface-field/70 px-3 py-2 text-sm";
+const IMPORT_RECENT_IMPORT_ACTION_CLASS =
+  "inline-flex min-h-11 items-center rounded-lg border border-border-subtle bg-surface-field px-3 py-1 text-xs text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
 
 export default function ImportPage() {
   const api = useApi();
@@ -57,7 +146,7 @@ export default function ImportPage() {
   const [isReconciliationLoading, setIsReconciliationLoading] = useState(false);
   const [isAssigningAccount, setIsAssigningAccount] = useState(false);
   const [reconciliationAssignments, setReconciliationAssignments] = useState<Record<string, string>>({});
-  const [reconciliationNotice, setReconciliationNotice] = useState("");
+  const [workflowGuidance, setWorkflowGuidance] = useState("");
   const [allProcessedRows, setAllProcessedRows] = useState<ProcessedRow[]>([]);
   const [importAccountId, setImportAccountId] = useState("");
   const [importDefaultRowIds, setImportDefaultRowIds] = useState<string[]>([]);
@@ -65,7 +154,7 @@ export default function ImportPage() {
   const [state, dispatch] = useReducer(importWorkflowReducer, initialImportWorkflowState);
   const mappingTemplates = useMemo(() => getImportMappingTemplates(), []);
 
-  const globalMessage = state.error || reconciliationNotice || state.notice || "";
+  const globalMessage = state.error || workflowGuidance || "";
 
   const currentImportId = state.currentImport?.id || null;
   const accountOptions = useMemo(
@@ -95,6 +184,8 @@ export default function ImportPage() {
     [allProcessedRows, reconciliation]
   );
   const isReconciliationVisible = shouldShowReconciliationSummary(importIssueSummary);
+  const reconciliationWarningActionClass =
+    "min-h-11 rounded-lg border border-warning/45 bg-warning-soft text-warning transition hover:bg-warning-soft/80 disabled:cursor-not-allowed disabled:opacity-60";
 
   const commitSummaryJson = useMemo(() => {
     if (!state.commitResult) {
@@ -124,6 +215,14 @@ export default function ImportPage() {
   async function refreshAccounts() {
     const data = await api.accounts.list();
     setAccounts(data.accounts);
+  }
+
+  function publishInlineError(error: unknown, fallback: string) {
+    setWorkflowGuidance("");
+    dispatch({
+      type: "error",
+      message: getRequestFeedbackMessage(error, fallback)
+    });
   }
 
   async function loadImportContext(importId: string, nextStatusFilter = statusFilter) {
@@ -156,10 +255,9 @@ export default function ImportPage() {
         details,
         processedRows
       });
-      setReconciliationNotice("");
+      setWorkflowGuidance("");
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to load import details.";
-      dispatch({ type: "error", message });
+      publishInlineError(error, LOAD_IMPORT_DETAILS_ERROR_MESSAGE);
     }
   }
 
@@ -167,8 +265,7 @@ export default function ImportPage() {
     try {
       await Promise.all([refreshImports(), refreshCategories(), refreshAccounts()]);
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to load import data.";
-      dispatch({ type: "error", message });
+      publishInlineError(error, LOAD_IMPORT_DATA_ERROR_MESSAGE);
     }
   }
 
@@ -249,6 +346,7 @@ export default function ImportPage() {
 
   async function processFile() {
     if (!file) {
+      setWorkflowGuidance("");
       dispatch({ type: "error", message: "Select a CSV file first." });
       return;
     }
@@ -267,10 +365,11 @@ export default function ImportPage() {
         details,
         processedRows
       });
+      setWorkflowGuidance("");
+      toast.success(IMPORT_ANALYZED_SUCCESS_MESSAGE);
       await refreshImports();
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Import analysis failed.";
-      dispatch({ type: "error", message });
+      publishInlineError(error, IMPORT_ANALYSIS_ERROR_MESSAGE);
     }
   }
 
@@ -290,10 +389,11 @@ export default function ImportPage() {
       const { details, processedRows } = await loadImportContext(currentImportId, statusFilter);
 
       dispatch({ type: "mapping_save_succeeded", details, processedRows });
+      setWorkflowGuidance("");
+      toast.success(MAPPING_SAVED_SUCCESS_MESSAGE);
       await refreshImports();
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to save mapping.";
-      dispatch({ type: "error", message });
+      publishInlineError(error, MAPPING_SAVE_ERROR_MESSAGE);
     }
   }
 
@@ -315,8 +415,7 @@ export default function ImportPage() {
         setImportDefaultRowIds((previous) => previous.filter((candidateRowId) => candidateRowId !== rowId));
       }
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to update row.";
-      dispatch({ type: "error", message });
+      publishInlineError(error, ROW_UPDATE_ERROR_MESSAGE);
     }
   }
 
@@ -347,6 +446,7 @@ export default function ImportPage() {
 
     const selectedAccount = accountOptions.find((entry) => entry.id === nextAccountId);
     if (!selectedAccount) {
+      setWorkflowGuidance("");
       dispatch({ type: "error", message: "Select a valid account before assigning." });
       return;
     }
@@ -354,29 +454,28 @@ export default function ImportPage() {
     setIsAssigningAccount(true);
     try {
       const didApply = importDefaultRowIds.length > 0
-        ? await applyAccountToRows(importDefaultRowIds, selectedAccount.id, "Applied import account")
+        ? await applyAccountToRows(importDefaultRowIds, selectedAccount.id)
         : true;
       if (didApply) {
         setImportAccountId(nextAccountId);
-      }
-      if (importDefaultRowIds.length === 0) {
-        setReconciliationNotice(`Import account set to ${selectedAccount.displayName}.`);
+        setWorkflowGuidance("Review the processed rows below before commit.");
+        toast.success(IMPORT_ACCOUNT_ASSIGNED_SUCCESS_MESSAGE);
       }
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to assign import account.";
-      dispatch({ type: "error", message });
+      publishInlineError(error, IMPORT_ACCOUNT_ASSIGNMENT_ERROR_MESSAGE);
     } finally {
       setIsAssigningAccount(false);
     }
   }
 
-  async function applyAccountToRows(rowIds: string[], accountId: string, successPrefix: string): Promise<boolean> {
+  async function applyAccountToRows(rowIds: string[], accountId: string): Promise<boolean> {
     if (!currentImportId || !rowIds.length) {
       return false;
     }
 
     const account = accountOptions.find((entry) => entry.id === accountId);
     if (!account) {
+      setWorkflowGuidance("");
       dispatch({ type: "error", message: "Select a valid account before assigning." });
       return false;
     }
@@ -387,11 +486,9 @@ export default function ImportPage() {
         rowIds.map((rowId) => api.imports.updateProcessedRow(currentImportId, rowId, { account_name: account.displayName }))
       );
       await refreshProcessedRows(currentImportId);
-      setReconciliationNotice(`${successPrefix}: ${account.displayName} (${rowIds.length} row${rowIds.length === 1 ? "" : "s"}).`);
       return true;
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to assign account to rows.";
-      dispatch({ type: "error", message });
+      publishInlineError(error, ROW_ACCOUNT_ASSIGNMENT_ERROR_MESSAGE);
       return false;
     } finally {
       setIsAssigningAccount(false);
@@ -405,6 +502,7 @@ export default function ImportPage() {
 
     const assignedAccountId = reconciliationAssignments[entry.accountKey];
     if (!assignedAccountId) {
+      setWorkflowGuidance("");
       dispatch({ type: "error", message: `Select an account to map ${entry.accountName}.` });
       return;
     }
@@ -412,14 +510,17 @@ export default function ImportPage() {
     try {
       const rowIds = collectRowIdsByAccountKey(allProcessedRows, entry.accountKey);
       if (!rowIds.length) {
+        setWorkflowGuidance("");
         dispatch({ type: "error", message: `No processed rows found for ${entry.accountName}.` });
         return;
       }
 
-      const didApply = await applyAccountToRows(rowIds, assignedAccountId, `Mapped ${entry.accountName}`);
+      const didApply = await applyAccountToRows(rowIds, assignedAccountId);
       if (didApply) {
         const assignedRowIds = new Set(rowIds);
         setImportDefaultRowIds((previous) => previous.filter((rowId) => !assignedRowIds.has(rowId)));
+        setWorkflowGuidance("Check the remaining issues before commit.");
+        toast.success(RECONCILIATION_ACCOUNT_MAPPED_SUCCESS_MESSAGE);
       }
       setReconciliationAssignments((previous) => {
         const next = { ...previous };
@@ -427,26 +528,7 @@ export default function ImportPage() {
         return next;
       });
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to map reconciliation account.";
-      dispatch({ type: "error", message });
-    }
-  }
-
-  async function reprocessRows() {
-    if (!currentImportId) {
-      return;
-    }
-
-    try {
-      await runReprocessRowsFlow(currentImportId, {
-        reprocess: api.imports.reprocess,
-        refreshProcessedRows,
-        refreshImports,
-        publishNotice: setReconciliationNotice
-      });
-    } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to reprocess rows.";
-      dispatch({ type: "error", message });
+      publishInlineError(error, RECONCILIATION_ACCOUNT_MAPPING_ERROR_MESSAGE);
     }
   }
 
@@ -460,22 +542,19 @@ export default function ImportPage() {
     try {
       const result = await api.imports.commit(currentImportId);
       dispatch({ type: "commit_succeeded", result });
+      setWorkflowGuidance("");
+      toast.success(IMPORT_COMMITTED_SUCCESS_MESSAGE);
       await Promise.all([refreshImports(), refreshProcessedRows(currentImportId)]);
-      setReconciliationNotice("");
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : "Failed to commit import.";
-      dispatch({ type: "error", message });
+      publishInlineError(error, IMPORT_COMMIT_ERROR_MESSAGE);
     }
   }
 
   function renderProcessedRowsTable(data: ImportProcessedRowsResponse | null) {
-    const processedFieldClass =
-      "rounded border border-neutral-500 bg-neutral-900 px-2 py-1 text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40";
-
     if (!data || !data.items.length) {
       return (
         <tr>
-          <td colSpan={11} className="px-3 py-6 text-center text-xs text-neutral-400">
+          <td colSpan={11} className={IMPORT_TABLE_EMPTY_CLASS}>
             No rows found for the selected filter.
           </td>
         </tr>
@@ -486,7 +565,7 @@ export default function ImportPage() {
       const accountOptionsForRow = buildImportAccountOptions(accountOptions, row.normalized.account_name);
 
       return (
-        <tr key={row.rowId} className="border-b border-neutral-900 align-top">
+        <tr key={row.rowId} className={IMPORT_TABLE_ROW_CLASS}>
           <td className="px-2 py-2">
             <input
               type="checkbox"
@@ -497,13 +576,13 @@ export default function ImportPage() {
             />
           </td>
           <td className="px-2 py-2 text-xs">
-            <span className="rounded-full bg-neutral-800 px-2 py-0.5 text-neutral-200">{row.status}</span>
+            <span className={IMPORT_PROCESSED_STATUS_CLASS}>{row.status}</span>
           </td>
           <td className="px-2 py-2">
             <input
               defaultValue={row.normalized.transaction_date || ""}
               type="date"
-              className={`w-28 ${processedFieldClass}`}
+              className={`w-28 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Date for row ${row.rowId}`}
               onBlur={(event) => void updateProcessedRow(row.rowId, { transaction_date: event.target.value })}
             />
@@ -511,7 +590,7 @@ export default function ImportPage() {
           <td className="px-2 py-2">
             <input
               defaultValue={row.normalized.merchant_raw}
-              className={`w-40 ${processedFieldClass}`}
+              className={`w-40 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Merchant for row ${row.rowId}`}
               onBlur={(event) => void updateProcessedRow(row.rowId, { merchant_raw: event.target.value })}
             />
@@ -519,7 +598,7 @@ export default function ImportPage() {
           <td className="px-2 py-2">
             <input
               defaultValue={row.normalized.description}
-              className={`w-44 ${processedFieldClass}`}
+              className={`w-44 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Description for row ${row.rowId}`}
               onBlur={(event) => void updateProcessedRow(row.rowId, { description: event.target.value })}
             />
@@ -529,7 +608,7 @@ export default function ImportPage() {
               defaultValue={row.normalized.amount == null ? "" : String(row.normalized.amount)}
               type="number"
               step="0.01"
-              className={`w-24 ${processedFieldClass}`}
+              className={`w-24 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Amount for row ${row.rowId}`}
               onBlur={(event) => void updateProcessedRow(row.rowId, { amount: Number(event.target.value) })}
             />
@@ -537,7 +616,7 @@ export default function ImportPage() {
           <td className="px-2 py-2">
             <select
               defaultValue={row.normalized.direction}
-              className={`w-20 ${processedFieldClass}`}
+              className={`w-20 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Direction for row ${row.rowId}`}
               onChange={(event) => void updateProcessedRow(row.rowId, { direction: event.target.value as "outflow" | "inflow" })}
             >
@@ -548,7 +627,7 @@ export default function ImportPage() {
           <td className="px-2 py-2">
             <select
               defaultValue={row.normalized.category_final || ""}
-              className={`w-36 ${processedFieldClass}`}
+              className={`w-36 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Category for row ${row.rowId}`}
               onChange={(event) => void updateProcessedRow(row.rowId, { category_final: event.target.value || null })}
             >
@@ -572,31 +651,265 @@ export default function ImportPage() {
             <input
               defaultValue={row.normalized.memo || ""}
               data-testid={`processed-memo-${row.rowId}`}
-              className={`w-32 ${processedFieldClass}`}
+              className={`w-32 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Memo for row ${row.rowId}`}
               onBlur={(event) => void updateProcessedRow(row.rowId, { memo: event.target.value || null })}
             />
           </td>
-          <td className="px-2 py-2 text-[11px] text-neutral-400">{row.issues.join("; ")}</td>
+          <td className={IMPORT_TABLE_MUTED_CELL_CLASS}>{row.issues.join("; ")}</td>
         </tr>
       );
     });
+  }
+
+  function renderProcessedRowsMobileCards(data: ImportProcessedRowsResponse | null) {
+    if (!data || !data.items.length) {
+      return (
+        <div className={IMPORT_PROCESSED_EMPTY_CLASS}>
+          No rows found for the selected filter.
+        </div>
+      );
+    }
+
+    return data.items.map((row) => {
+      const accountOptionsForRow = buildImportAccountOptions(accountOptions, row.normalized.account_name);
+      const issueSummary = row.issues.length ? row.issues.join("; ") : "No issues";
+
+      return (
+        <article
+          key={row.rowId}
+          className={IMPORT_PROCESSED_CARD_CLASS}
+          data-testid={`processed-mobile-card-${row.rowId}`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-text-muted">Processed row</p>
+              <p className="mt-1 text-sm font-medium text-text-primary">{row.normalized.merchant_raw || "Untitled row"}</p>
+            </div>
+            <label className="flex min-h-11 items-center gap-2 rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-xs text-text-secondary">
+              <input
+                type="checkbox"
+                data-testid={`processed-mobile-include-${row.rowId}`}
+                defaultChecked={row.include}
+                aria-label={`Include row ${row.rowId}`}
+                onChange={(event) => void updateProcessedRow(row.rowId, { include: event.target.checked })}
+                className="h-4 w-4 rounded border-border-strong bg-surface-field text-accent focus-visible:ring-2 focus-visible:ring-focus-ring"
+              />
+              Include
+            </label>
+          </div>
+
+          <div className={IMPORT_PROCESSED_META_CLASS}>
+            <span className={IMPORT_PROCESSED_STATUS_CLASS}>{row.status}</span>
+            <span>{issueSummary}</span>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className={IMPORT_PROCESSED_LABEL_CLASS}>
+              Date
+              <input
+                defaultValue={row.normalized.transaction_date || ""}
+                type="date"
+                className={`w-full ${IMPORT_PROCESSED_FIELD_CLASS}`}
+                aria-label={`Date for row ${row.rowId}`}
+                onBlur={(event) => void updateProcessedRow(row.rowId, { transaction_date: event.target.value })}
+              />
+            </label>
+            <label className={IMPORT_PROCESSED_LABEL_CLASS}>
+              Amount
+              <input
+                defaultValue={row.normalized.amount == null ? "" : String(row.normalized.amount)}
+                type="number"
+                step="0.01"
+                className={`w-full ${IMPORT_PROCESSED_FIELD_CLASS}`}
+                aria-label={`Amount for row ${row.rowId}`}
+                onBlur={(event) => void updateProcessedRow(row.rowId, { amount: Number(event.target.value) })}
+              />
+            </label>
+            <label className={IMPORT_PROCESSED_LABEL_CLASS}>
+              Merchant
+              <input
+                defaultValue={row.normalized.merchant_raw}
+                className={`w-full ${IMPORT_PROCESSED_FIELD_CLASS}`}
+                aria-label={`Merchant for row ${row.rowId}`}
+                onBlur={(event) => void updateProcessedRow(row.rowId, { merchant_raw: event.target.value })}
+              />
+            </label>
+            <label className={IMPORT_PROCESSED_LABEL_CLASS}>
+              Direction
+              <select
+                defaultValue={row.normalized.direction}
+                className={`w-full ${IMPORT_PROCESSED_FIELD_CLASS}`}
+                aria-label={`Direction for row ${row.rowId}`}
+                onChange={(event) => void updateProcessedRow(row.rowId, { direction: event.target.value as "outflow" | "inflow" })}
+              >
+                <option value="outflow">outflow</option>
+                <option value="inflow">inflow</option>
+              </select>
+            </label>
+          </div>
+
+          <label className={`mt-3 ${IMPORT_PROCESSED_LABEL_CLASS}`}>
+            Description
+            <input
+              defaultValue={row.normalized.description}
+              className={`w-full ${IMPORT_PROCESSED_FIELD_CLASS}`}
+              aria-label={`Description for row ${row.rowId}`}
+              onBlur={(event) => void updateProcessedRow(row.rowId, { description: event.target.value })}
+            />
+          </label>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className={IMPORT_PROCESSED_LABEL_CLASS}>
+              Category
+              <select
+                defaultValue={row.normalized.category_final || ""}
+                className={`w-full ${IMPORT_PROCESSED_FIELD_CLASS}`}
+                aria-label={`Category for row ${row.rowId}`}
+                onChange={(event) => void updateProcessedRow(row.rowId, { category_final: event.target.value || null })}
+              >
+                <option value="">(auto)</option>
+                {categories.map((entry) => (
+                  <option key={entry.id} value={entry.name}>
+                    {entry.emoji ? `${entry.emoji} ` : ""}{entry.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={IMPORT_PROCESSED_LABEL_CLASS}>
+              Account
+              <ProcessedRowAccountSelect
+                rowId={row.rowId}
+                accountOptions={accountOptionsForRow}
+                testIdPrefix="processed-mobile-account"
+                value={resolveImportAccountValue(accountOptions, row.normalized.account_name)}
+                onChange={(value) => void updateProcessedRow(row.rowId, { account_name: value })}
+              />
+            </label>
+          </div>
+
+          <label className={`mt-3 ${IMPORT_PROCESSED_LABEL_CLASS}`}>
+            Memo
+            <input
+              defaultValue={row.normalized.memo || ""}
+              data-testid={`processed-mobile-memo-${row.rowId}`}
+              className={`w-full ${IMPORT_PROCESSED_FIELD_CLASS}`}
+              aria-label={`Memo for row ${row.rowId}`}
+              onBlur={(event) => void updateProcessedRow(row.rowId, { memo: event.target.value || null })}
+            />
+          </label>
+        </article>
+      );
+    });
+  }
+
+  function renderReconciliationMobileCards() {
+    if (!reconciliation) {
+      return (
+        <div className={IMPORT_RECONCILIATION_EMPTY_CLASS}>
+          No reconciliation data loaded yet.
+        </div>
+      );
+    }
+
+    return reconciliation.accounts.map((entry) => {
+      const actionMode = getReconciliationActionMode(entry);
+      const selectedAccountId = reconciliationAssignments[entry.accountKey] || "";
+      const recommendationText = getReconciliationRecommendationText(entry);
+
+      return (
+        <article
+          key={entry.accountKey}
+          className={IMPORT_RECONCILIATION_CARD_CLASS}
+          data-testid={`reconciliation-mobile-card-${entry.accountKey}`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-text-primary">{entry.accountName}</p>
+              <p className="mt-1 text-xs text-text-muted">{entry.status}</p>
+            </div>
+            <span className={IMPORT_RECONCILIATION_BADGE_CLASS}>
+              {entry.includedValidRows}/{entry.totalRows} rows
+            </span>
+          </div>
+
+          <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className={IMPORT_RECONCILIATION_TERM_CLASS}>Imported</dt>
+              <dd className={IMPORT_RECONCILIATION_VALUE_CLASS}>{money(entry.importedNet)}</dd>
+            </div>
+            <div>
+              <dt className={IMPORT_RECONCILIATION_TERM_CLASS}>Ledger</dt>
+              <dd className={IMPORT_RECONCILIATION_VALUE_CLASS}>{money(entry.existingWindowNet)}</dd>
+            </div>
+            <div>
+              <dt className={IMPORT_RECONCILIATION_TERM_CLASS}>Discrepancy</dt>
+              <dd className={IMPORT_RECONCILIATION_VALUE_CLASS}>{money(entry.discrepancyAmount)}</dd>
+            </div>
+            <div>
+              <dt className={IMPORT_RECONCILIATION_TERM_CLASS}>Recommendation</dt>
+              <dd className={IMPORT_RECONCILIATION_MUTED_VALUE_CLASS}>{recommendationText}</dd>
+            </div>
+          </dl>
+
+          <div className="mt-4">
+            {actionMode === "assign_account" ? (
+              <div className="grid gap-2">
+                <select
+                  value={selectedAccountId}
+                  onChange={(event) =>
+                    setReconciliationAssignments((previous) => ({
+                      ...previous,
+                      [entry.accountKey]: event.target.value
+                    }))
+                  }
+                  data-testid={`reconcile-mobile-account-select-${entry.accountKey}`}
+                  className={`${IMPORT_SELECT_FIELD_CLASS} py-2 text-sm`}
+                >
+                  <option value="">Select account</option>
+                  {accountAssignmentOptions.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => void assignReconciliationAccount(entry)}
+                  disabled={isAssigningAccount || !selectedAccountId}
+                  data-testid={`reconcile-mobile-assign-${entry.accountKey}`}
+                  className={`${reconciliationWarningActionClass} px-3 py-2 text-sm`}
+                >
+                  {isAssigningAccount ? "Assigning..." : "Assign account"}
+                </button>
+              </div>
+            ) : (
+              <span className={IMPORT_RECONCILIATION_NO_ACTION_CLASS}>No action</span>
+            )}
+          </div>
+        </article>
+      );
+    });
+  }
+
+  function getReconciliationRecommendationText(entry: ImportReconciliationAccount) {
+    return entry.recommendations.length > 0
+      ? entry.recommendations.map((recommendation) => recommendation.message).join(" ")
+      : "None";
   }
 
   return (
     <div className="space-y-6" data-testid="import-page">
       <header>
         <h2 className="text-3xl font-semibold tracking-tight">Import Transactions</h2>
-        <p className="mt-1 text-neutral-400">Upload CSV, OFX, or QFX exports from any bank. Our AI will automatically categorize and format them.</p>
+        <p className="mt-1 text-text-secondary">Upload CSV, OFX, or QFX exports from any bank. Our AI will automatically categorize and format them.</p>
       </header>
 
       {globalMessage ? (
-        <p className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300" data-testid="global-message">
-          {globalMessage}
-        </p>
+        <StatusMessage>{globalMessage}</StatusMessage>
       ) : null}
 
-      <section className="rounded-2xl border border-dashed border-neutral-700 bg-neutral-950/70 p-10 text-center">
+      <section className={IMPORT_UPLOAD_SECTION_CLASS}>
         <input
           ref={fileInputRef}
           type="file"
@@ -610,6 +923,7 @@ export default function ImportPage() {
           onChange={(event) => {
             const nextFile = event.target.files?.[0] || null;
             setFile(nextFile);
+            setWorkflowGuidance("");
             if (nextFile) {
               dispatch({ type: "file_selected", fileName: nextFile.name });
             } else {
@@ -618,22 +932,22 @@ export default function ImportPage() {
           }}
         />
 
-        <div className="rounded-xl border border-neutral-900 bg-neutral-950 p-10">
+        <div className={IMPORT_UPLOAD_STATE_PANEL_CLASS}>
           {file ? (
             <div className="flex flex-col items-center gap-3">
-              <div className="rounded-full bg-emerald-500/10 p-4">
-                <FileText className="h-8 w-8 text-emerald-400" />
+              <div className={IMPORT_SELECTED_ICON_CLASS}>
+                <FileText className="h-8 w-8 text-accent" />
               </div>
-              <p className="text-lg font-medium text-emerald-100" data-testid="import-selected-file">{file.name}</p>
-              <p className="text-sm text-neutral-400">Ready to process. Upload again to replace this file.</p>
+              <p className="text-lg font-medium text-accent" data-testid="import-selected-file">{file.name}</p>
+              <p className="text-sm text-text-secondary">Ready to process. Upload again to replace this file.</p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
-              <div className="rounded-full bg-neutral-900 p-4">
-                <UploadCloud className="h-8 w-8 text-neutral-400" />
+              <div className={IMPORT_UPLOAD_ICON_CLASS}>
+                <UploadCloud className="h-8 w-8 text-text-muted" aria-hidden="true" />
               </div>
-              <p className="text-lg font-medium text-neutral-200">Upload a CSV file to begin</p>
-              <p className="text-sm text-neutral-400">Supports CSV, OFX, QFX exports from major banks.</p>
+              <p className="text-lg font-medium text-text-primary">Upload a CSV file to begin</p>
+              <p className="text-sm text-text-secondary">Supports CSV, OFX, QFX exports from major banks.</p>
             </div>
           )}
         </div>
@@ -642,9 +956,9 @@ export default function ImportPage() {
           type="button"
           onClick={openFilePicker}
           data-testid="import-upload"
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-3 font-medium text-neutral-200 transition hover:bg-neutral-800"
+          className={IMPORT_SECONDARY_ACTION_CLASS}
         >
-          <UploadCloud className="h-4 w-4" />
+          <UploadCloud className="h-4 w-4" aria-hidden="true" />
           Upload CSV
         </button>
 
@@ -653,11 +967,11 @@ export default function ImportPage() {
           onClick={() => void processFile()}
           data-testid="import-process"
           disabled={!file || state.isAnalyzing}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+          className={IMPORT_PRIMARY_ACTION_CLASS}
         >
           {state.isAnalyzing ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               Processing via AI...
             </>
           ) : (
@@ -667,27 +981,27 @@ export default function ImportPage() {
       </section>
 
       {state.details ? (
-        <section className="rounded-xl border border-neutral-900 bg-neutral-950/70 p-4">
-          <div className="flex items-center gap-2 text-emerald-400">
-            <CheckCircle2 className="h-5 w-5" />
+        <section className={IMPORT_SECTION_PANEL_CLASS}>
+          <div className="flex items-center gap-2 text-accent">
+            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
             <h3 className="text-sm font-medium">Analyzed {state.details.importJob.rowCount} rows in {state.details.importJob.fileName}</h3>
           </div>
-          <div className="mt-3 overflow-hidden rounded-lg border border-neutral-900">
+          <div className={IMPORT_PREVIEW_TABLE_WRAP_CLASS}>
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Analyzed import preview rows</caption>
-              <thead className="bg-neutral-900/60 text-neutral-400">
+              <thead className={IMPORT_PREVIEW_TABLE_HEAD_CLASS}>
                 <tr>
                   <th scope="col" className="px-3 py-2">Date</th>
                   <th scope="col" className="px-3 py-2">Merchant</th>
                   <th scope="col" className="px-3 py-2">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-900">
+              <tbody className={IMPORT_PREVIEW_TABLE_BODY_CLASS}>
                 {state.details.processedPreview.slice(0, 5).map((row) => (
                   <tr key={row.rowId}>
-                    <td className="px-3 py-2 text-neutral-300">{row.normalized.transaction_date || "-"}</td>
-                    <td className="px-3 py-2 text-neutral-200">{row.normalized.merchant_raw}</td>
-                    <td className="px-3 py-2 text-neutral-200">{row.normalized.amount == null ? "-" : money(row.normalized.amount)}</td>
+                    <td className={IMPORT_PREVIEW_TABLE_CELL_CLASS}>{row.normalized.transaction_date || "-"}</td>
+                    <td className={IMPORT_PREVIEW_TABLE_STRONG_CELL_CLASS}>{row.normalized.merchant_raw}</td>
+                    <td className={IMPORT_PREVIEW_TABLE_STRONG_CELL_CLASS}>{row.normalized.amount == null ? "-" : money(row.normalized.amount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -696,24 +1010,24 @@ export default function ImportPage() {
         </section>
       ) : null}
 
-      <details className="rounded-2xl border border-neutral-900 bg-neutral-950/70" data-testid="advanced-import-controls" open>
-        <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-neutral-300">Advanced Import Controls</summary>
+      <details className={IMPORT_ADVANCED_DETAILS_CLASS} data-testid="advanced-import-controls" open>
+        <summary className={IMPORT_ADVANCED_SUMMARY_CLASS}>Advanced Import Controls</summary>
         <div className="space-y-4 px-4 pb-4">
-          <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4" data-testid="mapping-panel">
-            <h3 className="text-sm font-medium text-neutral-300">Mapping Review</h3>
+          <section className={IMPORT_SECTION_PANEL_CLASS} data-testid="mapping-panel">
+            <h3 className={IMPORT_SECTION_TITLE_CLASS}>Mapping Review</h3>
 
             {state.details ? (
               <>
                 <div className="mt-3 grid gap-2 md:grid-cols-2 lg:grid-cols-4">
-                  <div className="md:col-span-2 lg:col-span-4 rounded-lg border border-neutral-800 bg-neutral-900/40 p-3">
+                  <div className={IMPORT_MAPPING_TEMPLATE_CARD_CLASS}>
                     <div className="flex flex-wrap items-end gap-2">
-                      <label className="grid min-w-48 flex-1 gap-1 text-xs text-neutral-300">
+                      <label className={IMPORT_TEMPLATE_LABEL_CLASS}>
                         Mapping template
                         <select
                           value={selectedTemplateId}
                           onChange={(event) => setSelectedTemplateId(event.target.value)}
                           data-testid="mapping-template-select"
-                          className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-neutral-200 outline-none transition focus:border-emerald-500"
+                          className={IMPORT_SELECT_FIELD_CLASS}
                         >
                           {mappingTemplates.map((template) => (
                             <option key={template.id} value={template.id}>
@@ -726,23 +1040,23 @@ export default function ImportPage() {
                         type="button"
                         onClick={applyMappingTemplate}
                         data-testid="mapping-template-apply"
-                        className="inline-flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs text-neutral-200 transition hover:bg-neutral-800"
+                        className={IMPORT_SMALL_SECONDARY_ACTION_CLASS}
                       >
                         Apply Template
                       </button>
                     </div>
-                    <p className="mt-2 text-xs text-neutral-400">
+                    <p className={IMPORT_HELPER_TEXT_CLASS}>
                       {(mappingTemplates.find((entry) => entry.id === selectedTemplateId) || mappingTemplates[0])?.description}
                     </p>
                     {mappingTemplateNotice ? (
-                      <p className="mt-2 text-xs text-emerald-300" data-testid="mapping-template-notice">
+                      <p className={IMPORT_NOTICE_TEXT_CLASS} data-testid="mapping-template-notice">
                         {mappingTemplateNotice}
                       </p>
                     ) : null}
                   </div>
 
                   {CANONICAL_IMPORT_FIELDS.map((field) => (
-                    <label key={field} className="grid gap-1 text-xs text-neutral-300">
+                    <label key={field} className={IMPORT_FIELD_LABEL_CLASS}>
                       {field}
                       <select
                         value={mappingDraft[field] || ""}
@@ -753,7 +1067,7 @@ export default function ImportPage() {
                           }))
                         }
                         data-testid={`mapping-field-${field}`}
-                        className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-neutral-200 outline-none transition focus:border-emerald-500"
+                        className={IMPORT_SELECT_FIELD_CLASS}
                       >
                         <option value="">(not mapped)</option>
                         {(state.details?.importJob.headers || []).map((header) => (
@@ -771,9 +1085,9 @@ export default function ImportPage() {
                     onClick={() => void saveMapping()}
                     disabled={state.isSavingMapping}
                     data-testid="save-mapping"
-                    className="inline-flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-60"
+                    className={IMPORT_SMALL_SECONDARY_ACTION_CLASS}
                   >
-                    <Save className="h-4 w-4" />
+                    <Save className="h-4 w-4" aria-hidden="true" />
                     Save Mapping
                   </button>
                   <button
@@ -781,28 +1095,28 @@ export default function ImportPage() {
                     onClick={() => void commitImport()}
                     disabled={state.isCommitting}
                     data-testid="commit-import"
-                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-400 disabled:opacity-60"
+                    className={IMPORT_SMALL_PRIMARY_ACTION_CLASS}
                   >
-                    {state.isCommitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    {state.isCommitting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                     Commit Import
                   </button>
                 </div>
               </>
             ) : (
-              <p className="mt-2 text-sm text-neutral-400">Analyze a CSV to review mapping.</p>
+              <p className="mt-2 text-sm text-text-secondary">Analyze a CSV to review mapping.</p>
             )}
 
             <pre
-              className="mt-3 max-h-52 overflow-auto rounded-lg border border-neutral-900 bg-neutral-950 p-2 text-xs text-emerald-100"
+              className={IMPORT_COMMIT_JSON_CLASS}
               data-testid="import-summary"
             >
               {commitSummaryJson}
             </pre>
           </section>
 
-          <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4" data-testid="processed-panel">
+          <section className={IMPORT_SECTION_PANEL_CLASS} data-testid="processed-panel">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-medium text-neutral-300">Processed Records Editor</h3>
+              <h3 className={IMPORT_SECTION_TITLE_CLASS}>Processed Records Editor</h3>
               <div className="flex items-center gap-2">
                 <label htmlFor="processed-status-filter" className="sr-only">
                   Processed rows status
@@ -818,7 +1132,7 @@ export default function ImportPage() {
                     }
                   }}
                   data-testid="processed-status-filter"
-                  className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+                  className={IMPORT_SELECT_FIELD_CLASS}
                 >
                   <option value="">All statuses</option>
                   <option value="valid">Valid</option>
@@ -826,14 +1140,6 @@ export default function ImportPage() {
                   <option value="duplicate">Duplicate</option>
                   <option value="excluded">Excluded</option>
                 </select>
-                <button
-                  type="button"
-                  onClick={() => void reprocessRows()}
-                  className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800"
-                >
-                  <RefreshCcw className="h-3.5 w-3.5" />
-                  Reprocess
-                </button>
               </div>
             </div>
 
@@ -847,21 +1153,25 @@ export default function ImportPage() {
               />
             </div>
 
-            <p className="mt-2 text-xs text-neutral-400" data-testid="processed-summary">
+            <p className={IMPORT_HELPER_TEXT_CLASS} data-testid="processed-summary">
               {state.processedRows
                 ? `Total: ${state.processedRows.summary.all} · Included: ${state.processedRows.summary.included} · Valid: ${state.processedRows.summary.valid} · Invalid: ${state.processedRows.summary.invalid} · Duplicate: ${state.processedRows.summary.duplicate} · Excluded: ${state.processedRows.summary.excluded}`
                 : "No processed rows loaded yet."}
             </p>
 
+            <div className="mt-3 space-y-3 lg:hidden" data-testid="processed-mobile-cards">
+              {renderProcessedRowsMobileCards(state.processedRows)}
+            </div>
+
             <div
-              className="mt-3 overflow-auto"
+              className="mt-3 hidden overflow-auto lg:block"
               tabIndex={0}
               aria-label="Processed records table"
             >
               <table className="min-w-[1100px] w-full text-xs" data-testid="processed-table">
                 <caption className="sr-only">Processed row editor table</caption>
                 <thead>
-                  <tr className="border-b border-neutral-900 text-left text-neutral-300">
+                  <tr className={IMPORT_TABLE_HEAD_ROW_CLASS}>
                     <th scope="col" className="px-2 py-2">Include</th>
                     <th scope="col" className="px-2 py-2">Status</th>
                     <th scope="col" className="px-2 py-2">Date</th>
@@ -883,123 +1193,128 @@ export default function ImportPage() {
           <ImportIssuesSummaryPanel summary={importIssueSummary} />
 
           {isReconciliationVisible ? (
-            <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4" data-testid="reconciliation-panel">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="text-sm font-medium text-neutral-300">Reconciliation</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  if (currentImportId) {
-                    void refreshProcessedRows(currentImportId);
-                  }
-                }}
-                disabled={!currentImportId || isReconciliationLoading}
-                className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isReconciliationLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />}
-                Refresh
-              </button>
-            </div>
+            <section className={IMPORT_SECTION_PANEL_CLASS} data-testid="reconciliation-panel">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className={IMPORT_SECTION_TITLE_CLASS}>Reconciliation</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentImportId) {
+                      void refreshProcessedRows(currentImportId);
+                    }
+                  }}
+                  disabled={!currentImportId || isReconciliationLoading}
+                  className={IMPORT_RECONCILIATION_REFRESH_ACTION_CLASS}
+                >
+                  {isReconciliationLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <RefreshCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                  )}
+                  Refresh
+                </button>
+              </div>
 
-            {!currentImportId ? (
-              <p className="mt-2 text-xs text-neutral-400">Analyze a CSV to compute reconciliation.</p>
-            ) : reconciliation ? (
-              <>
-                <p className="mt-2 text-xs text-neutral-400" data-testid="reconciliation-summary">
-                  Accounts: {reconciliation.summary.accountsTotal}
-                  {" · "}Balanced: {reconciliation.summary.balancedAccounts}
-                  {" · "}Needs review: {reconciliation.summary.needsReviewAccounts}
-                  {" · "}Missing account links: {reconciliation.summary.missingAccounts}
-                  {" · "}Net discrepancy: {money(reconciliation.summary.discrepancyAmount)}
-                </p>
-                <div className="mt-3 overflow-auto">
-                  <table className="min-w-[1100px] w-full text-xs" data-testid="reconciliation-table">
-                    <caption className="sr-only">Reconciliation summary by account</caption>
-                    <thead>
-                      <tr className="border-b border-neutral-900 text-left text-neutral-300">
-                        <th scope="col" className="px-2 py-2">Account</th>
-                        <th scope="col" className="px-2 py-2">Status</th>
-                        <th scope="col" className="px-2 py-2">Rows</th>
-                        <th scope="col" className="px-2 py-2">Imported Net</th>
-                        <th scope="col" className="px-2 py-2">Ledger Net</th>
-                        <th scope="col" className="px-2 py-2">Discrepancy</th>
-                        <th scope="col" className="px-2 py-2">Recommendations</th>
-                        <th scope="col" className="px-2 py-2">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reconciliation.accounts.map((entry) => {
-                        const actionMode = getReconciliationActionMode(entry);
-                        const selectedAccountId = reconciliationAssignments[entry.accountKey] || "";
-                        return (
-                          <tr key={entry.accountKey} className="border-b border-neutral-900 align-top">
-                            <td className="px-2 py-2 text-neutral-200">{entry.accountName}</td>
-                            <td className="px-2 py-2 text-neutral-300">{entry.status}</td>
-                            <td className="px-2 py-2 text-neutral-300">{entry.includedValidRows}/{entry.totalRows}</td>
-                            <td className="px-2 py-2 text-neutral-200">{money(entry.importedNet)}</td>
-                            <td className="px-2 py-2 text-neutral-300">{money(entry.existingWindowNet)}</td>
-                            <td className="px-2 py-2 text-neutral-200">{money(entry.discrepancyAmount)}</td>
-                            <td className="px-2 py-2 text-neutral-400">
-                              {entry.recommendations.length > 0
-                                ? entry.recommendations.map((recommendation) => recommendation.message).join(" ")
-                                : "None"}
-                            </td>
-                            <td className="px-2 py-2">
-                              {actionMode === "assign_account" ? (
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <select
-                                    value={selectedAccountId}
-                                    onChange={(event) =>
-                                      setReconciliationAssignments((previous) => ({
-                                        ...previous,
-                                        [entry.accountKey]: event.target.value
-                                      }))
-                                    }
-                                    data-testid={`reconcile-account-select-${entry.accountKey}`}
-                                    className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
-                                  >
-                                    <option value="">Select account</option>
-                                    {accountAssignmentOptions.map((account) => (
-                                      <option key={account.id} value={account.id}>
-                                        {account.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <button
-                                    type="button"
-                                    onClick={() => void assignReconciliationAccount(entry)}
-                                    disabled={isAssigningAccount || !selectedAccountId}
-                                    data-testid={`reconcile-assign-${entry.accountKey}`}
-                                    className="rounded-lg border border-amber-600/70 bg-amber-500/10 px-2 py-1 text-xs text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-60"
-                                  >
-                                    {isAssigningAccount ? "Assigning..." : "Assign account"}
-                                  </button>
-                                </div>
-                              ) : (
-                                <span className="text-[11px] text-neutral-500">No action</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            ) : (
-              <p className="mt-2 text-xs text-neutral-400">No reconciliation data loaded yet.</p>
-            )}
+              {!currentImportId ? (
+                <p className={IMPORT_HELPER_TEXT_CLASS}>Analyze a CSV to compute reconciliation.</p>
+              ) : reconciliation ? (
+                <>
+                  <p className={IMPORT_HELPER_TEXT_CLASS} data-testid="reconciliation-summary">
+                    Accounts: {reconciliation.summary.accountsTotal}
+                    {" · "}Balanced: {reconciliation.summary.balancedAccounts}
+                    {" · "}Needs review: {reconciliation.summary.needsReviewAccounts}
+                    {" · "}Missing account links: {reconciliation.summary.missingAccounts}
+                    {" · "}Net discrepancy: {money(reconciliation.summary.discrepancyAmount)}
+                  </p>
+                  <div className="mt-3 space-y-3 lg:hidden" data-testid="reconciliation-mobile-cards">
+                    {renderReconciliationMobileCards()}
+                  </div>
+                  <div className="mt-3 hidden overflow-auto lg:block">
+                    <table className="min-w-[1100px] w-full text-xs" data-testid="reconciliation-table">
+                      <caption className="sr-only">Reconciliation summary by account</caption>
+                      <thead>
+                        <tr className={IMPORT_TABLE_HEAD_ROW_CLASS}>
+                          <th scope="col" className="px-2 py-2">Account</th>
+                          <th scope="col" className="px-2 py-2">Status</th>
+                          <th scope="col" className="px-2 py-2">Rows</th>
+                          <th scope="col" className="px-2 py-2">Imported Net</th>
+                          <th scope="col" className="px-2 py-2">Ledger Net</th>
+                          <th scope="col" className="px-2 py-2">Discrepancy</th>
+                          <th scope="col" className="px-2 py-2">Recommendations</th>
+                          <th scope="col" className="px-2 py-2">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {reconciliation.accounts.map((entry) => {
+                          const actionMode = getReconciliationActionMode(entry);
+                          const selectedAccountId = reconciliationAssignments[entry.accountKey] || "";
+                          return (
+                            <tr key={entry.accountKey} className={IMPORT_TABLE_ROW_CLASS}>
+                              <td className={IMPORT_TABLE_PRIMARY_CELL_CLASS}>{entry.accountName}</td>
+                              <td className={IMPORT_TABLE_SECONDARY_CELL_CLASS}>{entry.status}</td>
+                              <td className={IMPORT_TABLE_SECONDARY_CELL_CLASS}>{entry.includedValidRows}/{entry.totalRows}</td>
+                              <td className={IMPORT_TABLE_PRIMARY_CELL_CLASS}>{money(entry.importedNet)}</td>
+                              <td className={IMPORT_TABLE_SECONDARY_CELL_CLASS}>{money(entry.existingWindowNet)}</td>
+                              <td className={IMPORT_TABLE_PRIMARY_CELL_CLASS}>{money(entry.discrepancyAmount)}</td>
+                              <td className={IMPORT_TABLE_MUTED_CELL_CLASS}>
+                                {getReconciliationRecommendationText(entry)}
+                              </td>
+                              <td className="px-2 py-2">
+                                {actionMode === "assign_account" ? (
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <select
+                                      value={selectedAccountId}
+                                      onChange={(event) =>
+                                        setReconciliationAssignments((previous) => ({
+                                          ...previous,
+                                          [entry.accountKey]: event.target.value
+                                        }))
+                                      }
+                                      data-testid={`reconcile-account-select-${entry.accountKey}`}
+                                      className={`${IMPORT_SELECT_FIELD_CLASS} text-xs`}
+                                    >
+                                      <option value="">Select account</option>
+                                      {accountAssignmentOptions.map((account) => (
+                                        <option key={account.id} value={account.id}>
+                                          {account.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      type="button"
+                                      onClick={() => void assignReconciliationAccount(entry)}
+                                      disabled={isAssigningAccount || !selectedAccountId}
+                                      data-testid={`reconcile-assign-${entry.accountKey}`}
+                                      className={`${reconciliationWarningActionClass} px-2 py-1 text-xs`}
+                                    >
+                                      {isAssigningAccount ? "Assigning..." : "Assign account"}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className={IMPORT_RECONCILIATION_SMALL_NO_ACTION_CLASS}>No action</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <p className={IMPORT_HELPER_TEXT_CLASS}>No reconciliation data loaded yet.</p>
+              )}
             </section>
           ) : null}
 
-          <section className="rounded-xl border border-neutral-900 bg-neutral-950 p-4">
-            <h3 className="text-sm font-medium text-neutral-300">Recent Imports</h3>
+          <section className={IMPORT_SECTION_PANEL_CLASS}>
+            <h3 className={IMPORT_SECTION_TITLE_CLASS}>Recent Imports</h3>
             <div className="mt-3 space-y-2" data-testid="import-list">
               {imports.map((entry) => (
-                <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-neutral-900 px-3 py-2 text-sm">
+                <div key={entry.id} className={IMPORT_RECENT_IMPORT_ROW_CLASS}>
                   <div>
-                    <strong className="text-neutral-100">{entry.fileName}</strong>
-                    <p className="text-xs text-neutral-400">
+                    <strong className="text-text-primary">{entry.fileName}</strong>
+                    <p className="text-xs text-text-secondary">
                       {entry.status} · {entry.rowCount} rows · {new Date(entry.createdAt).toLocaleString()}
                     </p>
                   </div>
@@ -1007,7 +1322,7 @@ export default function ImportPage() {
                     type="button"
                     onClick={() => void openImport(entry.id)}
                     aria-label={`Open import ${entry.fileName}`}
-                    className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1 text-xs text-neutral-200 transition hover:bg-neutral-700"
+                    className={IMPORT_RECENT_IMPORT_ACTION_CLASS}
                   >
                     Open
                   </button>
@@ -1017,13 +1332,6 @@ export default function ImportPage() {
           </section>
         </div>
       </details>
-
-      {state.error ? (
-        <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          {state.error}
-        </div>
-      ) : null}
     </div>
   );
 }

@@ -31,14 +31,17 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex h-full w-64 flex-col border-r border-neutral-900 bg-neutral-950/60 px-3 py-4 backdrop-blur-xl"
+      className="flex h-full w-64 flex-col border-r border-border-subtle bg-surface-panel/75 px-3 py-4 shadow-panel [background-image:var(--gradient-shell)] backdrop-blur-xl"
       data-testid="desktop-sidebar"
     >
-      <div className="mb-6 flex items-center gap-2 px-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-500/40 bg-emerald-500/20">
-          <div className="h-3 w-3 rounded-full bg-emerald-400" />
+      <div className="mb-6 px-2">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-muted">Workspace</p>
+        <div className="mt-2 flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft">
+            <div className="h-3 w-3 rounded-full bg-accent" />
+          </div>
+          <span className="font-display text-xl font-semibold tracking-tight text-text-primary">Minance</span>
         </div>
-        <span className="text-lg font-semibold tracking-tight text-neutral-100">Minance</span>
       </div>
 
       <nav className="flex flex-col gap-1" data-testid="primary-nav" aria-label="Primary">
@@ -51,10 +54,10 @@ export function Sidebar() {
               data-testid={item.testId}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950",
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg",
                 isActive
-                  ? "bg-emerald-500/10 text-emerald-400"
-                  : "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100"
+                  ? "border border-accent/20 bg-accent-soft text-accent"
+                  : "border border-transparent text-text-secondary hover:bg-surface-elevated hover:text-text-primary"
               )}
             >
               <item.icon className="h-4 w-4" aria-hidden="true" />
@@ -64,7 +67,7 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-auto pt-3 text-[11px] text-neutral-400">Reference parity mode</div>
+      <div className="mt-auto pt-3 text-[11px] text-text-muted">Reference parity mode</div>
     </aside>
   );
 }

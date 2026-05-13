@@ -7,9 +7,12 @@ import {
   assistantResponseCards,
   ensureAiCredential,
   gotoView,
+  hasRealE2eAssistantKey,
   loginWithSeedAccount,
   uploadAndCommitFixtureCsv
 } from "./helpers.ts";
+
+test.skip(!hasRealE2eAssistantKey(), "Requires a real OpenRouter key for live assistant responses.");
 
 test("@core assistant and analytics visualizations render with imported data", async ({ page }) => {
   await loginWithSeedAccount(page);

@@ -2,13 +2,13 @@ import { test, expect } from "@playwright/test";
 import {
   analyticsAnomalyRows,
   analyticsCategoryBars,
-  analyticsHeatmapCells,
   analyticsMerchantBars,
   assistantResponseCards,
   clearAllCredentials,
   createManualTransaction,
   ensureAiCredential,
   gotoView,
+  hasRealE2eAssistantKey,
   loginWithSeedAccount,
   logout,
   searchTransactions,
@@ -27,9 +27,11 @@ test("@core full user flow covers auth, AI settings, imports, transactions, anal
   await expect(page.getByTestId("global-message")).toContainText("Preferences saved.");
 
   const { importDetails } = await uploadAndCommitFixtureCsv(page, {
-    assertAiSuggested: true
+    assertAiSuggested: hasRealE2eAssistantKey() ? true : undefined
   });
-  expect(importDetails?.importJob?.aiSuggested).toBe(true);
+  if (hasRealE2eAssistantKey()) {
+    expect(importDetails?.importJob?.aiSuggested).toBe(true);
+  }
 
   await gotoView(page, "transactions");
   const manualMerchant = `PW Core ${Date.now()}`;
@@ -68,15 +70,10 @@ test("@core full user flow covers auth, AI settings, imports, transactions, anal
   await expect(analyticsMerchantBars(page).first()).toBeVisible();
 
   await gotoView(page, "analytics");
-  await expect(page.getByTestId("analytics-heatmap")).toBeVisible();
+  await expect(page.getByTestId("explorer-page")).toBeVisible();
+  await expect(analyticsCategoryBars(page).first()).toBeVisible();
+  await expect(analyticsMerchantBars(page).first()).toBeVisible();
   await expect(page.getByTestId("analytics-anomalies")).toBeVisible();
-
-  const heatCells = analyticsHeatmapCells(page);
-  if ((await heatCells.count()) > 0) {
-    await expect(heatCells.first()).toBeVisible();
-  } else {
-    await expect(page.getByTestId("analytics-heatmap")).toContainText("No spend data for range.");
-  }
 
   const anomalyRows = analyticsAnomalyRows(page);
   if ((await anomalyRows.count()) > 0) {
@@ -87,13 +84,17 @@ test("@core full user flow covers auth, AI settings, imports, transactions, anal
 
   await gotoView(page, "assistant");
   await page.getByTestId("assistant-question").fill("How much did I spend on dining this quarter?");
-  await page.getByTestId("assistant-ask").click();
+  if (hasRealE2eAssistantKey()) {
+    await page.getByTestId("assistant-ask").click();
 
-  await expect.poll(async () => await assistantResponseCards(page).count()).toBeGreaterThan(0);
-  const firstResponse = assistantResponseCards(page).first();
-  await expect(firstResponse).toBeVisible();
-  await expect(firstResponse).toContainText(new RegExp(`${aiConfig.provider}/`, "i"));
-  await expect(firstResponse).toContainText(/\b[a-z0-9_-]+\/[a-z0-9_.-]+\b/i);
+    await expect.poll(async () => await assistantResponseCards(page).count()).toBeGreaterThan(0);
+    const firstResponse = assistantResponseCards(page).first();
+    await expect(firstResponse).toBeVisible();
+    await expect(firstResponse).toContainText(new RegExp(`${aiConfig.provider}/`, "i"));
+    await expect(firstResponse).toContainText(/\b[a-z0-9_-]+\/[a-z0-9_.-]+\b/i);
+  } else {
+    await expect(page.getByTestId("assistant-ask")).toBeEnabled();
+  }
 
   await logout(page);
   await loginWithSeedAccount(page);

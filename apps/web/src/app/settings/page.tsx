@@ -13,13 +13,38 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import { useSession } from "@/lib/session";
+import { useAppTheme } from "@/components/providers/ThemeProvider";
+import type { AppTheme } from "@/lib/theme";
 import type { Transaction } from "@/lib/api/types";
 import { getHelpResources } from "@/components/help/helpResources";
+import { StatusMessage } from "@/components/feedback/StatusMessage";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
+
+const SETTINGS_SECTION_CLASS_NAME =
+  "rounded-[24px] border border-border-subtle bg-surface-panel/85 p-4 shadow-panel";
+
+const SETTINGS_ACTION_CARD_CLASS_NAME =
+  "flex items-center justify-between rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-sm text-text-primary transition hover:bg-surface-elevated";
+
+const THEME_OPTIONS: Array<{ value: AppTheme; label: string; description: string; testId: string }> = [
+  {
+    value: "dark",
+    label: "Dark",
+    description: "High-contrast editorial shell with deep surfaces.",
+    testId: "settings-theme-dark"
+  },
+  {
+    value: "light",
+    label: "Light",
+    description: "Paper-like workspace with brighter panels and softer shadows.",
+    testId: "settings-theme-light"
+  }
+];
 
 export default function SettingsPage() {
   const api = useApi();
   const { user } = useSession();
+  const { theme, setTheme } = useAppTheme();
   const appEnv = process.env.NEXT_PUBLIC_APP_ENV || "local";
   const helpResources = useMemo(() => getHelpResources(), []);
 
@@ -103,54 +128,86 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6" data-testid="settings-page">
       <header>
-        <h2 className="text-3xl font-semibold tracking-tight">Settings</h2>
-        <p className="text-neutral-400">Self-host controls and integrations.</p>
+        <h2 className="text-3xl font-semibold tracking-tight text-text-primary">Settings</h2>
+        <p className="text-text-secondary">Self-host controls, appearance, and integrations.</p>
       </header>
 
       <SettingsMenu />
 
       {message ? (
-        <p className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300" data-testid="global-message">
-          {message}
-        </p>
+        <StatusMessage>{message}</StatusMessage>
       ) : null}
 
-      <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4" data-testid="settings-section-map">
-        <h3 className="text-sm font-medium text-neutral-300">Section Map</h3>
-        <p className="mt-1 text-xs text-neutral-400">
+      <section className={SETTINGS_SECTION_CLASS_NAME} data-testid="settings-appearance">
+        <h3 className="text-sm font-medium text-text-primary">Appearance</h3>
+        <p className="mt-1 text-xs text-text-secondary">
+          Choose the workspace palette that fits your environment. Your selection is stored locally in this browser.
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {THEME_OPTIONS.map((option) => {
+            const isActive = theme === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setTheme(option.value)}
+                data-testid={option.testId}
+                aria-pressed={isActive}
+                className={`rounded-xl border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg ${
+                  isActive
+                    ? "border-accent/35 bg-accent-soft text-accent"
+                    : "border-border-subtle bg-surface-field text-text-primary hover:bg-surface-elevated"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">{option.label}</span>
+                  <span className={`text-[11px] uppercase tracking-[0.18em] ${isActive ? "text-accent" : "text-text-muted"}`}>
+                    {isActive ? "Active" : "Available"}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-text-secondary">{option.description}</p>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={SETTINGS_SECTION_CLASS_NAME} data-testid="settings-section-map">
+        <h3 className="text-sm font-medium text-text-primary">Section Map</h3>
+        <p className="mt-1 text-xs text-text-secondary">
           This workspace defaults to self-host behavior and keeps SaaS-only surfaces optional.
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <a
             href="#settings-data-controls"
-            className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
+            className={SETTINGS_ACTION_CARD_CLASS_NAME}
           >
             Data import/export
-            <ArrowRight className="h-4 w-4 text-neutral-400" />
+            <ArrowRight className="h-4 w-4 text-text-muted" />
           </a>
           <a
             href="#settings-integrations"
-            className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
+            className={SETTINGS_ACTION_CARD_CLASS_NAME}
           >
             Integrations
-            <ArrowRight className="h-4 w-4 text-neutral-400" />
+            <ArrowRight className="h-4 w-4 text-text-muted" />
           </a>
         </div>
       </section>
 
-      <section id="settings-data-controls" className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4" data-testid="settings-data-controls">
-        <h3 className="text-sm font-medium text-neutral-300">Data Controls</h3>
-        <p className="mt-1 text-xs text-neutral-400">
+      <section id="settings-data-controls" className={SETTINGS_SECTION_CLASS_NAME} data-testid="settings-data-controls">
+        <h3 className="text-sm font-medium text-text-primary">Data Controls</h3>
+        <p className="mt-1 text-xs text-text-secondary">
           Default ingestion is CSV/manual import. Export produces a local JSON snapshot with masked credentials.
         </p>
 
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             href="/import"
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-subtle bg-surface-field px-4 py-2 text-sm text-text-primary transition hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             data-testid="settings-import-open"
           >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
+            <FileSpreadsheet className="h-4 w-4 text-accent" aria-hidden="true" />
             Open CSV Import
           </Link>
 
@@ -158,15 +215,15 @@ export default function SettingsPage() {
             type="button"
             onClick={() => void exportDataSnapshot()}
             disabled={isExporting}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-accent/35 bg-accent-soft px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent-soft/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:cursor-not-allowed disabled:opacity-60"
             data-testid="settings-export-snapshot"
           >
-            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
             Export Snapshot
           </button>
         </div>
 
-        <div className="mt-3 rounded-lg border border-neutral-900 bg-neutral-950 p-3 text-xs text-neutral-400">
+        <div className="mt-3 rounded-lg border border-border-subtle bg-surface-field p-3 text-xs text-text-secondary">
           <p>
             Hosted bank connectors are intentionally optional. If they are not configured, keep using CSV/manual import
             workflows.
@@ -174,38 +231,38 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section id="settings-integrations" className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4" data-testid="settings-integrations">
-        <h3 className="text-sm font-medium text-neutral-300">Integrations</h3>
-        <p className="mt-1 text-xs text-neutral-400">
+      <section id="settings-integrations" className={SETTINGS_SECTION_CLASS_NAME} data-testid="settings-integrations">
+        <h3 className="text-sm font-medium text-text-primary">Integrations</h3>
+        <p className="mt-1 text-xs text-text-secondary">
           AI and support channels are operator-configurable; no subscription service is required.
         </p>
 
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           <Link
             href="/settings/ai"
-            className="inline-flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
+            className={SETTINGS_ACTION_CARD_CLASS_NAME}
             data-testid="settings-ai-settings-link"
           >
             <span className="inline-flex items-center gap-2">
-              <Bot className="h-4 w-4 text-emerald-400" />
+              <Bot className="h-4 w-4 text-accent" />
               AI provider settings (BYOK)
             </span>
-            <ArrowRight className="h-4 w-4 text-neutral-400" />
+            <ArrowRight className="h-4 w-4 text-text-muted" />
           </Link>
           <Link
             href="/help"
-            className="inline-flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-900"
+            className={SETTINGS_ACTION_CARD_CLASS_NAME}
             data-testid="settings-help-link"
           >
             <span className="inline-flex items-center gap-2">
-              <LifeBuoy className="h-4 w-4 text-emerald-400" />
+              <LifeBuoy className="h-4 w-4 text-accent" />
               Help &amp; support links
             </span>
-            <ArrowRight className="h-4 w-4 text-neutral-400" />
+            <ArrowRight className="h-4 w-4 text-text-muted" />
           </Link>
         </div>
 
-        <div className="mt-3 rounded-lg border border-neutral-900 bg-neutral-950 p-3 text-xs text-neutral-400">
+        <div className="mt-3 rounded-lg border border-border-subtle bg-surface-field p-3 text-xs text-text-secondary">
           {helpResources.supportConfigured ? (
             <p>Hosted support endpoints are configured for this deployment.</p>
           ) : (

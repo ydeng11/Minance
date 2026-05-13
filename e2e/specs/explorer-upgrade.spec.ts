@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import {
+  createManualTransaction,
   explorerCategoryHeatmapRows,
   explorerWeekdaySummaryCells,
-  createManualTransaction,
   gotoView,
   loginWithSeedAccount,
   uploadAndCommitFixtureCsv
@@ -10,68 +10,80 @@ import {
 
 test("explorer advanced filters omit review status controls", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await gotoView(page, "explorer");
 
-  await expect(page.getByTestId("explorer-command-bar")).toBeVisible();
+  await expect(page.getByTestId("shell-view-toggle")).toBeVisible();
   await expect(page.getByTestId("explorer-summary-band")).toBeVisible();
   await expect(page.getByTestId("explorer-perspective-tabs")).toBeVisible();
-  await expect(page.getByTestId("explorer-filter-rail")).toHaveCount(0);
+  await expect(page.getByTestId("explorer-active-filters")).toHaveCount(0);
 
-  await page.getByTestId("explorer-open-advanced-filters").click();
-  await expect(page.getByTestId("explorer-advanced-filters")).toBeVisible();
-  await expect(page.getByText("Review status")).toHaveCount(0);
-  await expect(page.getByTestId("explorer-advanced-filter-review")).toHaveCount(0);
-  await expect(page.getByTestId("explorer-active-filters")).not.toContainText("Reviewed");
-  await expect(page.getByTestId("explorer-active-filters")).not.toContainText("Needs Review");
+  await page.getByTestId("shell-view-toggle").click();
+  const dialog = page.getByTestId("shell-view-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("Reset");
+  await expect(dialog).toContainText("Apply");
+  await expect(dialog).not.toContainText("Review status");
+  await expect(dialog).not.toContainText("Reviewed");
+  await expect(dialog).not.toContainText("Needs Review");
 });
 
 test("explorer advanced filters support category and type multiselect plus tag suggestions", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await createManualTransaction(page, {
-    category: "Dining",
-    merchant: `Explorer Tag Suggestion ${Date.now()}`,
-    tags: "monthly, household"
+    merchant: `PW Explorer Groceries ${Date.now()}`,
+    category: "Groceries",
+    tags: "monthly"
   });
   await createManualTransaction(page, {
-    category: "Groceries",
-    merchant: `Explorer Category Seed ${Date.now()}`,
-    tags: "weekly"
+    merchant: `PW Explorer Dining ${Date.now()}`,
+    category: "Dining"
   });
   await gotoView(page, "explorer");
 
-  await page.getByTestId("explorer-open-advanced-filters").click();
-  await expect(page.getByTestId("explorer-advanced-filters")).toBeVisible();
+  await page.getByTestId("shell-view-toggle").click();
+  const dialog = page.getByTestId("shell-view-dialog");
+  await expect(dialog).toBeVisible();
 
-  await page.getByTestId("explorer-category-multiselect-trigger").click();
-  await page.getByRole("option", { name: "Dining", exact: true }).click();
-  await page.getByRole("option", { name: "Groceries", exact: true }).click();
+  await dialog.getByTestId("explorer-category-multiselect-trigger").click();
+  await dialog.getByRole("option", { name: "Groceries", exact: true }).click();
+  await dialog.getByRole("option", { name: "Dining", exact: true }).click();
+  await expect(dialog.getByTestId("explorer-category-multiselect-trigger")).toContainText("Groceries");
+  await expect(dialog.getByTestId("explorer-category-multiselect-trigger")).toContainText("Dining");
 
-  await page.getByTestId("explorer-type-multiselect-trigger").click();
-  await page.getByRole("option", { name: "Expense" }).click();
-  await page.getByRole("option", { name: "Transfer" }).click();
+  await dialog.getByTestId("explorer-type-multiselect-trigger").click();
+  await dialog.getByRole("option", { name: "Expense" }).click();
+  await dialog.getByRole("option", { name: "Income" }).click();
+  await expect(dialog.getByTestId("explorer-type-multiselect-trigger")).toContainText("Expense");
+  await expect(dialog.getByTestId("explorer-type-multiselect-trigger")).toContainText("Income");
 
-  await page.getByTestId("explorer-tag-filter").fill("mon");
-  await expect(page.getByTestId("explorer-tag-suggestions")).toContainText("monthly");
+  await dialog.getByTestId("explorer-tag-filter").fill("mon");
+  await expect(dialog.getByTestId("explorer-tag-suggestions")).toContainText("monthly");
 });
 
-test("explorer keeps merchant search in the command bar and not in the advanced filters modal", async ({ page }) => {
+test("explorer keeps merchant drill-down chips in the page shell and not inside the view dialog", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await gotoView(page, "explorer");
 
-  const advancedFilters = page.getByTestId("explorer-advanced-filters");
+  await expect(page.getByTestId("shell-view-toggle")).toBeVisible();
+  await expect(page.getByTestId("explorer-active-filters")).toHaveCount(0);
 
-  await expect(page.getByPlaceholder("Search merchants, notes, and descriptions")).toBeVisible();
-  await page.getByTestId("explorer-open-advanced-filters").click();
-  await expect(advancedFilters).toBeVisible();
-  await expect(advancedFilters.getByPlaceholder("Filter by merchant")).toHaveCount(0);
+  await page.getByTestId("analytics-merchant-bars").getByRole("button").first().click();
+  await expect(page.getByTestId("explorer-active-filters")).toBeVisible();
+  await expect(page.getByTestId("explorer-active-filters")).toContainText(/merchant/i);
+  await expect(page).toHaveURL(/merchant=/);
+
+  await page.getByTestId("shell-view-toggle").click();
+  const dialog = page.getByTestId("shell-view-dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).not.toContainText(/merchant/i);
 });
 
 test("overview perspective uses a full-width trend chart with the active range label", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await page.goto("/explorer?range=365d");
 
   await expect(page.getByTestId("explorer-overview-trend")).toBeVisible();
@@ -86,7 +98,7 @@ test("overview perspective uses a full-width trend chart with the active range l
 
 test("spending trend inspects a month before filtering explorer", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await page.goto("/explorer?range=365d");
 
   const trend = page.getByTestId("explorer-overview-trend");
@@ -104,7 +116,7 @@ test("spending trend inspects a month before filtering explorer", async ({ page 
 
 test("summary cards separate selected-range totals from recent seven-day context", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await page.goto("/explorer?range=365d");
 
   const summary = page.getByTestId("explorer-summary-band");
@@ -117,7 +129,7 @@ test("summary cards separate selected-range totals from recent seven-day context
 
 test("overview uses a fixed weekday spend summary across date ranges", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
 
   await page.goto("/explorer?range=365d");
 
@@ -137,7 +149,7 @@ test("overview uses a fixed weekday spend summary across date ranges", async ({ 
 
 test("overview weekday summary keeps weekday labels horizontally centered in a lower label band", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await page.goto("/explorer?range=365d");
 
   const cells = explorerWeekdaySummaryCells(page);
@@ -171,7 +183,7 @@ test("overview weekday summary keeps weekday labels horizontally centered in a l
 
 test("overview weekday summary uses one readable label color across all capsules", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await page.goto("/explorer?range=365d");
 
   const cells = explorerWeekdaySummaryCells(page);
@@ -262,7 +274,7 @@ test("overview weekday summary uses one readable label color across all capsules
 
 test("category perspective compares filtered top categories by weekday before applying a filter", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await page.goto("/explorer?perspective=category&range=365d");
 
   await expect(page.getByTestId("explorer-category-weekday-heatmap")).toBeVisible();
@@ -287,7 +299,7 @@ test("category perspective compares filtered top categories by weekday before ap
 
 test("merchant and anomaly cards use polished presentation", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await gotoView(page, "explorer");
 
   const merchants = page.getByTestId("analytics-merchant-bars");
@@ -311,7 +323,7 @@ test("merchant and anomaly cards use polished presentation", async ({ page }) =>
 
 test("category perspective keeps filters and renders scoped category insights", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await gotoView(page, "explorer");
 
   await page.getByTestId("explorer-perspective-category").click();
@@ -323,7 +335,7 @@ test("category perspective keeps filters and renders scoped category insights", 
 
 test("category lens shows richer inspection details", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await gotoView(page, "explorer");
 
   await page.getByTestId("explorer-perspective-category").click();
@@ -337,12 +349,12 @@ test("category lens shows richer inspection details", async ({ page }) => {
 
   await expect(page.getByTestId("explorer-category-lens-detail")).toContainText("Net");
   await expect(page.getByTestId("explorer-category-lens-detail")).toContainText("Transactions");
-  await expect(page.getByTestId("analytics-category-bars")).toBeVisible();
+  await expect(page.getByTestId("explorer-category-merchants")).toBeVisible();
 });
 
 test("account perspective renders account analytics and saved views restore it", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await gotoView(page, "explorer");
 
   await page.getByTestId("explorer-perspective-account").click();
@@ -358,7 +370,7 @@ test("account perspective renders account analytics and saved views restore it",
 
 test("category and account drill-down expand the explorer workspace in place", async ({ page }) => {
   await loginWithSeedAccount(page);
-  await uploadAndCommitFixtureCsv(page);
+  await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await gotoView(page, "explorer");
 
   await page.getByTestId("analytics-category-bars").getByRole("button").first().click();

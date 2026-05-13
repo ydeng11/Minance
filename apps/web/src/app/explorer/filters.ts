@@ -47,10 +47,11 @@ export interface ExplorerAnalyticsApiParams {
   transaction_type?: ExplorerTransactionType[];
   direction?: "outflow" | "inflow";
   tag?: string;
+  merchant?: string;
   recurring_rule_id?: string;
 }
 
-const RANGE_VALUES = new Set([...RANGE_OPTIONS.map((option) => option.value), "custom"]);
+const RANGE_VALUES: Set<string> = new Set(RANGE_OPTIONS.map((option) => option.value));
 const CATEGORY_VIEW_VALUES = new Set<ExplorerCategoryView>(["granular", "coarse"]);
 const TRANSACTION_TYPE_VALUES = new Set<ExplorerTransactionType>(["expense", "income", "transfer"]);
 const DIRECTION_VALUES = new Set<ExplorerDirectionFilter>(["all", "outflow", "inflow"]);
@@ -181,6 +182,9 @@ export function toExplorerAnalyticsApiParams(
   if (filters.account) {
     params.account = filters.account;
   }
+  if (filters.merchant) {
+    params.merchant = filters.merchant;
+  }
   if (filters.transactionTypes.length) {
     params.transaction_type = filters.transactionTypes;
   }
@@ -215,14 +219,14 @@ export function buildExplorerFilterSearchParams(filters: ExplorerFilterState): U
   if (filters.query) {
     searchParams.set("query", filters.query);
   }
-  if (filters.merchant) {
-    searchParams.set("merchant", filters.merchant);
-  }
   for (const category of filters.categories) {
     searchParams.append("category", category);
   }
   if (filters.account) {
     searchParams.set("account", filters.account);
+  }
+  if (filters.merchant) {
+    searchParams.set("merchant", filters.merchant);
   }
   if (filters.perspective !== defaults.perspective) {
     searchParams.set("perspective", filters.perspective);

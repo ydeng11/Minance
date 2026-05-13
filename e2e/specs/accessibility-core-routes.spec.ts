@@ -13,9 +13,6 @@ const AXE_RUN_OPTIONS = {
   runOnly: {
     type: "tag",
     values: ["wcag2a", "wcag2aa"]
-  },
-  rules: {
-    "color-contrast": { enabled: false }
   }
 };
 
@@ -103,6 +100,6 @@ test("@core @a11y assistant dialog flow has no axe violations", async ({ page })
   await expectNoViolations(page, "assistant dialog", "#assistant-sidebar");
 
   await page.keyboard.press("Escape");
-  await expect(assistantSidebar).toHaveCount(0);
+  await expect(assistantSidebar).toBeHidden();
   await expect(assistantToggle).toBeFocused();
 });

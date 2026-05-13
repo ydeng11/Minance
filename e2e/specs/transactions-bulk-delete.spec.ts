@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 import {
   appApi,
-  applyTransactionsFilters,
   createManualTransaction,
   gotoView,
-  loginWithSeedAccount
+  loginWithSeedAccount,
+  searchTransactions
 } from "./helpers.ts";
 
 async function findTransactionIdByMerchant(page, merchant) {
@@ -48,13 +48,11 @@ test("@core transactions bulk delete removes selected visible rows", async ({ pa
   await page.getByTestId("txn-select-all-visible").check();
   await expect(page.getByTestId("txn-bulk-bar")).toBeVisible();
 
-  await page.getByTestId("txn-query").fill(first.merchant);
-  await applyTransactionsFilters(page);
+  await searchTransactions(page, first.merchant);
   await expect(page.getByTestId("txn-bulk-bar")).toHaveCount(0);
 
   await page.getByTestId(`txn-select-row-${firstId}`).check();
-  await page.getByTestId("txn-query").fill("");
-  await applyTransactionsFilters(page);
+  await gotoView(page, "transactions");
   await selectTransactions(page, selectedIds);
   await expect(page.getByTestId("txn-bulk-bar")).toContainText("2 selected");
 
@@ -65,7 +63,7 @@ test("@core transactions bulk delete removes selected visible rows", async ({ pa
     page.getByTestId("txn-bulk-delete-confirm").click()
   ]);
 
-  await expect(page.getByTestId("global-message")).toContainText("2 transactions deleted.");
+  await expect(page.getByText("2 transactions deleted.")).toBeVisible();
   await expect(page.locator('[data-testid="txn-table"] tr', { hasText: first.merchant })).toHaveCount(0);
   await expect(page.locator('[data-testid="txn-table"] tr', { hasText: second.merchant })).toHaveCount(0);
   await expect(page.getByTestId("txn-bulk-bar")).toHaveCount(0);

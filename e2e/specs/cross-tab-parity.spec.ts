@@ -27,6 +27,7 @@ test("@core cross-tab parity covers dashboard, transactions, accounts, categorie
   await expect(page.getByTestId("txn-table")).toBeVisible();
 
   await gotoView(page, "accounts");
+  await expect(page.getByTestId("shell-view-toggle")).toHaveCount(0);
   await page.getByTestId("accounts-add").click();
   await expect(page.getByTestId("accounts-wizard")).toBeVisible();
   await expect(page.getByTestId("accounts-wizard-manual-form")).toBeVisible();
@@ -55,16 +56,17 @@ test("@core cross-tab parity covers dashboard, transactions, accounts, categorie
   await expect(page.locator('[data-testid^="category-row-"]', { hasText: categoryName })).toHaveCount(1);
 
   await gotoView(page, "recurrings");
+  await expect(page.getByTestId("shell-view-toggle")).toHaveCount(0);
   await page.getByTestId("recurrings-create-name").fill(recurringName);
   await page.getByTestId("recurrings-create-cadence").selectOption("monthly");
   await page.getByTestId("recurrings-create-amount").fill("45.00");
   await page.getByTestId("recurrings-create-submit").click();
 
-  await expect(page.getByTestId("global-message")).toContainText("Recurring rule created.");
+  await expect(page.getByText("Recurring rule created.")).toBeVisible();
   await expect(page.getByText(recurringName)).toBeVisible();
   await expect(page.getByTestId("recurrings-detail-panel")).toBeVisible();
   await page.getByTestId("recurrings-evaluate").click();
-  await expect(page.getByTestId("global-message")).toContainText("Evaluation complete:");
+  await expect(page.getByText(/Evaluation complete\./)).toBeVisible();
 
   await page.goto("/investments");
   await expect(page).toHaveURL(/\/$/);

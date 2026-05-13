@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowDown, ArrowUp, Loader2, Pencil, Plus, Save, Search, Tags, Trash2 } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import type { Category, CategoryStrategyCoarse, CategoryStrategyGranular } from "@/lib/api/types";
 import { EmojiPicker } from "@/components/EmojiPicker";
+import { StatusMessage } from "@/components/feedback/StatusMessage";
+import { trapDialogTabKey } from "@/lib/dialogFocus";
 import {
   buildCategoryDraftFromCategory,
   createDefaultCategoryDraft,
@@ -21,8 +23,62 @@ import {
   syncGranularAssignment
 } from "./categoryTaxonomy";
 
-type MessageTone = "info" | "error";
 type ModalMode = "create" | "edit";
+
+const MODAL_BACKDROP_CLASS = "fixed inset-0 z-50 flex items-center justify-center bg-app-bg/80 p-4 backdrop-blur-sm";
+const FORM_ERROR_CLASS = "mt-1 text-xs text-danger";
+const DANGER_INLINE_BUTTON_CLASS =
+  "inline-flex min-h-11 items-center gap-1 rounded-md border border-danger/35 bg-danger-soft px-3 py-2 text-xs text-danger transition hover:border-danger/55 disabled:cursor-not-allowed disabled:border-border-subtle disabled:bg-surface-field disabled:text-text-muted";
+const DELETE_DIALOG_CLASS =
+  "w-full max-w-lg rounded-2xl border border-danger/35 bg-surface-panel p-5 shadow-dialog";
+const DANGER_CONFIRM_BUTTON_CLASS =
+  "inline-flex min-h-11 items-center gap-2 rounded-lg border border-danger/35 bg-danger-soft px-4 py-2 text-sm text-danger transition hover:border-danger/55 disabled:cursor-not-allowed disabled:opacity-60";
+const CATEGORY_PRIMARY_ACTION_CLASS =
+  "inline-flex min-h-11 items-center gap-2 rounded-lg border border-border-subtle bg-surface-field px-4 py-2 text-sm font-medium text-text-primary transition hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const CATEGORY_SECTION_CLASS =
+  "rounded-2xl border border-border-subtle bg-surface-panel/85 p-4 shadow-panel";
+const CATEGORY_FIELD_LABEL_CLASS = "grid gap-1 text-text-secondary";
+const CATEGORY_FIELD_ICON_CLASS = "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted";
+const CATEGORY_TEXT_FIELD_CLASS =
+  "min-h-11 w-full rounded-lg border border-border-subtle bg-surface-field py-2 pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring";
+const CATEGORY_SELECT_FIELD_CLASS =
+  "min-h-11 rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-sm text-text-primary outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring";
+const CATEGORY_TABLE_WRAP_CLASS = "mt-4 overflow-x-auto rounded-xl border border-border-subtle";
+const CATEGORY_TABLE_CLASS = "min-w-full divide-y divide-border-subtle text-sm";
+const CATEGORY_TABLE_HEAD_CLASS = "bg-surface-elevated/70 text-left text-xs uppercase tracking-wide text-text-muted";
+const CATEGORY_TABLE_BODY_CLASS = "divide-y divide-border-subtle bg-surface-panel/20 text-text-secondary";
+const CATEGORY_TABLE_EMPTY_CLASS = "px-3 py-6 text-center text-text-muted";
+const CATEGORY_TABLE_PRIMARY_TEXT_CLASS = "font-medium text-text-primary";
+const CATEGORY_TABLE_MUTED_TEXT_CLASS = "text-xs text-text-muted";
+const CATEGORY_TABLE_CELL_CLASS = "px-3 py-3 text-text-secondary";
+const CATEGORY_ROW_ACTION_BUTTON_CLASS =
+  "inline-flex min-h-11 items-center gap-1 rounded-md border border-border-strong bg-surface-field px-3 py-2 text-xs text-text-secondary transition hover:border-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const CATEGORY_SECONDARY_ACTION_CLASS =
+  "min-h-11 rounded-lg border border-border-subtle bg-surface-field px-4 py-2 text-sm text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg disabled:cursor-not-allowed disabled:opacity-60";
+const CATEGORY_ACCENT_ACTION_CLASS =
+  "inline-flex min-h-11 items-center gap-2 rounded-lg border border-accent/35 bg-accent-soft px-4 py-2 text-sm font-medium text-accent transition hover:border-accent/60 hover:bg-accent-soft/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg disabled:cursor-not-allowed disabled:opacity-60";
+const CATEGORY_TAXONOMY_HELPER_CLASS = "mt-1 text-xs text-text-muted";
+const CATEGORY_TAXONOMY_ORDER_WRAP_CLASS =
+  "inline-flex items-center gap-1 rounded-md border border-border-subtle bg-surface-field px-2 py-1";
+const CATEGORY_TAXONOMY_ICON_BUTTON_CLASS =
+  "inline-flex min-h-11 min-w-11 items-center justify-center rounded text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:cursor-not-allowed disabled:text-text-muted";
+const CATEGORY_TAXONOMY_CARD_CLASS = "rounded-xl border border-border-subtle bg-surface-field/55 p-3";
+const CATEGORY_TAXONOMY_BUCKET_CLASS = "rounded-lg border border-border-subtle bg-surface-panel/70 p-3";
+const CATEGORY_TAXONOMY_ITEM_CLASS =
+  "grid grid-cols-[1fr_130px] items-center gap-2 rounded-md border border-border-subtle bg-surface-field/70 px-2 py-1.5";
+const CATEGORY_COMPACT_TEXT_FIELD_CLASS =
+  "min-h-11 w-full min-w-48 rounded border border-border-subtle bg-surface-field px-3 py-2 text-text-primary outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring";
+const CATEGORY_COMPACT_SELECT_FIELD_CLASS =
+  "min-h-11 rounded border border-border-subtle bg-surface-field px-3 py-2 text-xs text-text-primary outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring disabled:cursor-not-allowed disabled:opacity-60";
+const CATEGORY_CHECKBOX_CLASS =
+  "h-4 w-4 rounded border-border-subtle bg-surface-field text-accent focus:ring-focus-ring";
+const CATEGORY_MODAL_PANEL_CLASS =
+  "w-full max-w-xl rounded-2xl border border-border-subtle bg-surface-panel p-5 shadow-dialog";
+const CATEGORY_MODAL_TITLE_CLASS = "text-lg font-semibold text-text-primary";
+const CATEGORY_MODAL_COPY_CLASS = "mt-1 text-sm text-text-secondary";
+const CATEGORY_MODAL_LABEL_CLASS = "block text-xs uppercase tracking-wide text-text-muted";
+const CATEGORY_MODAL_FIELD_CLASS =
+  "mt-1 min-h-11 w-full rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-sm text-text-primary outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring";
 
 function categoryTypeLabel(type: string | null | undefined) {
   if (type === "expense") {
@@ -45,13 +101,6 @@ function hasFormErrors(errors: CategoryFormErrors) {
   return Boolean(errors.name || errors.coarseKey || errors.type);
 }
 
-function messageClasses(tone: MessageTone) {
-  if (tone === "error") {
-    return "border-rose-700 bg-rose-950/40 text-rose-200";
-  }
-  return "border-neutral-800 bg-neutral-900/60 text-neutral-300";
-}
-
 export default function CategoriesPage() {
   const api = useApi();
 
@@ -66,7 +115,7 @@ export default function CategoriesPage() {
   const [query, setQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState("all");
   const [message, setMessage] = useState("");
-  const [messageTone, setMessageTone] = useState<MessageTone>("info");
+  const [messageTone, setMessageTone] = useState<"info" | "error">("info");
   const [strategyDirty, setStrategyDirty] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupEmoji, setNewGroupEmoji] = useState("");
@@ -76,6 +125,13 @@ export default function CategoriesPage() {
   const [draft, setDraft] = useState<CategoryFormDraft>(() => createDefaultCategoryDraft(""));
   const [formErrors, setFormErrors] = useState<CategoryFormErrors>({});
   const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+  const categoryDialogRef = useRef<HTMLDivElement | null>(null);
+  const categoryNameInputRef = useRef<HTMLInputElement | null>(null);
+  const deleteDialogRef = useRef<HTMLDivElement | null>(null);
+  const deleteCancelButtonRef = useRef<HTMLButtonElement | null>(null);
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null);
+  const isSavingRef = useRef(isSaving);
+  const isDeletingRef = useRef(isDeleting);
 
   const coarseLabelByKey = useMemo(
     () => new Map(coarseGroups.map((entry) => [entry.key, entry.name])),
@@ -127,6 +183,81 @@ export default function CategoriesPage() {
   useEffect(() => {
     void loadPageData();
   }, [loadPageData]);
+
+  useEffect(() => {
+    isSavingRef.current = isSaving;
+  }, [isSaving]);
+
+  useEffect(() => {
+    isDeletingRef.current = isDeleting;
+  }, [isDeleting]);
+
+  useEffect(() => {
+    if (!modalOpen) {
+      return;
+    }
+
+    previousFocusedElementRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    requestAnimationFrame(() => {
+      categoryNameInputRef.current?.focus();
+    });
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!isSavingRef.current) {
+          setModalOpen(false);
+          setFormErrors({});
+        }
+        return;
+      }
+
+      trapDialogTabKey(event, categoryDialogRef.current);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      requestAnimationFrame(() => {
+        previousFocusedElementRef.current?.focus();
+      });
+    };
+  }, [modalOpen]);
+
+  useEffect(() => {
+    if (!deleteTarget) {
+      return;
+    }
+
+    previousFocusedElementRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    requestAnimationFrame(() => {
+      deleteCancelButtonRef.current?.focus();
+    });
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        if (!isDeletingRef.current) {
+          setDeleteTarget(null);
+        }
+        return;
+      }
+
+      trapDialogTabKey(event, deleteDialogRef.current);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      requestAnimationFrame(() => {
+        previousFocusedElementRef.current?.focus();
+      });
+    };
+  }, [deleteTarget]);
 
   useEffect(() => {
     if (!modalOpen || isSaving || !coarseGroups.length) {
@@ -337,60 +468,58 @@ export default function CategoriesPage() {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-3xl font-semibold tracking-tight">Categories</h2>
-          <p className="text-neutral-400">Manage category names, group assignments, and type mapping behavior.</p>
+          <p className="text-text-secondary">Manage category names, group assignments, and type mapping behavior.</p>
         </div>
 
         <button
           type="button"
           onClick={openCreateModal}
           data-testid="categories-add"
-          className="inline-flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-200 transition hover:border-emerald-500/40 hover:text-emerald-300"
+          className={CATEGORY_PRIMARY_ACTION_CLASS}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden="true" />
           Add category
         </button>
       </header>
 
       {message ? (
-        <p className={`rounded-lg border px-3 py-2 text-sm ${messageClasses(messageTone)}`} data-testid="global-message">
-          {message}
-        </p>
+        <StatusMessage tone={messageTone}>{message}</StatusMessage>
       ) : null}
 
-      <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4">
+      <section className={CATEGORY_SECTION_CLASS}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="inline-flex items-center gap-2 text-sm font-medium text-neutral-300">
-            <Tags className="h-4 w-4 text-neutral-400" />
+          <h3 className="inline-flex items-center gap-2 text-sm font-medium text-text-secondary">
+            <Tags className="h-4 w-4 text-text-muted" aria-hidden="true" />
             Category catalog
           </h3>
-          <span className="rounded-md border border-neutral-800 bg-neutral-900/70 px-2 py-1 text-xs text-neutral-400">
+          <span className="rounded-md border border-border-subtle bg-surface-field px-2 py-1 text-xs text-text-muted">
             {filteredCategories.length} / {categories.length} visible
           </span>
         </div>
 
         <div className="mt-3 grid gap-3 md:grid-cols-[1fr_220px]">
-          <label htmlFor="categories-query" className="grid gap-1 text-neutral-400">
+          <label htmlFor="categories-query" className={CATEGORY_FIELD_LABEL_CLASS}>
             <span className="text-xs uppercase tracking-wide">Search</span>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+              <Search className={CATEGORY_FIELD_ICON_CLASS} aria-hidden="true" />
               <input
                 id="categories-query"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search category, group, or type"
                 data-testid="categories-query"
-                className="w-full rounded-lg border border-neutral-700 bg-neutral-900 py-2 pl-9 pr-3 text-sm text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+                className={CATEGORY_TEXT_FIELD_CLASS}
               />
             </div>
           </label>
-          <label htmlFor="categories-group-filter" className="grid gap-1 text-neutral-400">
+          <label htmlFor="categories-group-filter" className={CATEGORY_FIELD_LABEL_CLASS}>
             <span className="text-xs uppercase tracking-wide">Group filter</span>
             <select
               id="categories-group-filter"
               value={groupFilter}
               onChange={(event) => setGroupFilter(event.target.value)}
               data-testid="categories-group-filter"
-              className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+              className={CATEGORY_SELECT_FIELD_CLASS}
             >
               <option value="all">All groups</option>
               {coarseGroups.map((entry) => (
@@ -402,10 +531,10 @@ export default function CategoriesPage() {
           </label>
         </div>
 
-        <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-800">
-          <table className="min-w-full divide-y divide-neutral-800 text-sm" data-testid="categories-table">
+        <div className={CATEGORY_TABLE_WRAP_CLASS}>
+          <table className={CATEGORY_TABLE_CLASS} data-testid="categories-table">
             <caption className="sr-only">Category list</caption>
-            <thead className="bg-neutral-900/70 text-left text-xs uppercase tracking-wide text-neutral-400">
+            <thead className={CATEGORY_TABLE_HEAD_CLASS}>
               <tr>
                 <th scope="col" className="px-3 py-2 font-medium">Category</th>
                 <th scope="col" className="px-3 py-2 font-medium">Type</th>
@@ -413,12 +542,12 @@ export default function CategoriesPage() {
                 <th scope="col" className="px-3 py-2 font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-800 bg-neutral-950/20 text-neutral-200">
+            <tbody className={CATEGORY_TABLE_BODY_CLASS}>
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-neutral-400">
+                  <td colSpan={4} className={CATEGORY_TABLE_EMPTY_CLASS}>
                     <span className="inline-flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                       Loading categories...
                     </span>
                   </td>
@@ -430,15 +559,15 @@ export default function CategoriesPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-base">{category.emoji || "🏷️"}</span>
                         <div>
-                          <p className="font-medium text-neutral-100">{category.name}</p>
+                          <p className={CATEGORY_TABLE_PRIMARY_TEXT_CLASS}>{category.name}</p>
                           {category.isSystem ? (
-                            <p className="text-xs text-neutral-500">System category</p>
+                            <p className={CATEGORY_TABLE_MUTED_TEXT_CLASS}>System category</p>
                           ) : null}
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-neutral-300">{categoryTypeLabel(category.type)}</td>
-                    <td className="px-3 py-3 text-neutral-300">
+                    <td className={CATEGORY_TABLE_CELL_CLASS}>{categoryTypeLabel(category.type)}</td>
+                    <td className={CATEGORY_TABLE_CELL_CLASS}>
                       {coarseLabelByKey.get(String(category.coarseKey || "")) || category.coarseKey || "Unassigned"}
                     </td>
                     <td className="px-3 py-3">
@@ -447,9 +576,9 @@ export default function CategoriesPage() {
                           type="button"
                           onClick={() => openEditModal(category)}
                           data-testid={`category-edit-${category.id}`}
-                          className="inline-flex items-center gap-1 rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 transition hover:border-emerald-500/40 hover:text-emerald-300"
+                          className={CATEGORY_ROW_ACTION_BUTTON_CLASS}
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                           Edit
                         </button>
                         <button
@@ -457,9 +586,9 @@ export default function CategoriesPage() {
                           onClick={() => setDeleteTarget(category)}
                           disabled={category.isSystem}
                           data-testid={`category-delete-${category.id}`}
-                          className="inline-flex items-center gap-1 rounded-md border border-rose-800/60 bg-rose-950/20 px-2 py-1 text-xs text-rose-200 transition hover:border-rose-700 disabled:cursor-not-allowed disabled:border-neutral-800 disabled:bg-neutral-900 disabled:text-neutral-500"
+                          className={DANGER_INLINE_BUTTON_CLASS}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                           Delete
                         </button>
                       </div>
@@ -468,7 +597,7 @@ export default function CategoriesPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-neutral-400">
+                  <td colSpan={4} className={CATEGORY_TABLE_EMPTY_CLASS}>
                     No categories match the current filter.
                   </td>
                 </tr>
@@ -478,11 +607,11 @@ export default function CategoriesPage() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4" data-testid="taxonomy-management">
+      <section className={CATEGORY_SECTION_CLASS} data-testid="taxonomy-management">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-sm font-medium text-neutral-300">Grouping &amp; taxonomy management</h3>
-            <p className="mt-1 text-xs text-neutral-400">
+            <h3 className="text-sm font-medium text-text-secondary">Grouping &amp; taxonomy management</h3>
+            <p className={CATEGORY_TAXONOMY_HELPER_CLASS}>
               Reorder and edit coarse groups, then save once to synchronize grouped list views and filters.
             </p>
           </div>
@@ -492,7 +621,7 @@ export default function CategoriesPage() {
               onClick={() => void loadPageData()}
               disabled={isSavingStrategy}
               data-testid="taxonomy-reset"
-              className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className={CATEGORY_SECONDARY_ACTION_CLASS}
             >
               Reset
             </button>
@@ -501,18 +630,18 @@ export default function CategoriesPage() {
               onClick={() => void saveTaxonomy()}
               disabled={isSavingStrategy || !coarseGroups.length || !strategyDirty}
               data-testid="taxonomy-save"
-              className="inline-flex items-center gap-2 rounded-lg border border-emerald-700/60 bg-emerald-900/30 px-3 py-2 text-sm text-emerald-200 transition hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className={CATEGORY_ACCENT_ACTION_CLASS}
             >
-              {isSavingStrategy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {isSavingStrategy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
               Save taxonomy
             </button>
           </div>
         </div>
 
-        <div className="mt-4 overflow-x-auto rounded-xl border border-neutral-800">
-          <table className="min-w-full divide-y divide-neutral-800 text-sm" data-testid="taxonomy-groups-table">
+        <div className={CATEGORY_TABLE_WRAP_CLASS}>
+          <table className={CATEGORY_TABLE_CLASS} data-testid="taxonomy-groups-table">
             <caption className="sr-only">Coarse group taxonomy editor</caption>
-            <thead className="bg-neutral-900/70 text-left text-xs uppercase tracking-wide text-neutral-400">
+            <thead className={CATEGORY_TABLE_HEAD_CLASS}>
               <tr>
                 <th scope="col" className="px-3 py-2 font-medium">Order</th>
                 <th scope="col" className="px-3 py-2 font-medium">Emoji</th>
@@ -520,29 +649,31 @@ export default function CategoriesPage() {
                 <th scope="col" className="px-3 py-2 font-medium">Excluded</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-800 bg-neutral-950/20 text-neutral-200">
+            <tbody className={CATEGORY_TABLE_BODY_CLASS}>
               {coarseGroups.map((entry, index) => (
                 <tr key={entry.key}>
                   <td className="px-3 py-2">
-                    <div className="inline-flex items-center gap-1 rounded-md border border-neutral-800 bg-neutral-900/70 px-2 py-1">
+                    <div className={CATEGORY_TAXONOMY_ORDER_WRAP_CLASS}>
                       <button
                         type="button"
                         onClick={() => reorderCoarseGroup(entry.key, "up")}
                         disabled={index === 0}
                         data-testid={`taxonomy-order-up-${entry.key}`}
-                        className="rounded p-1 text-neutral-300 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:text-neutral-600"
+                        aria-label={`Move ${entry.name} up`}
+                        className={CATEGORY_TAXONOMY_ICON_BUTTON_CLASS}
                       >
-                        <ArrowUp className="h-3.5 w-3.5" />
+                        <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
-                      <span className="min-w-5 text-center text-xs text-neutral-300">{index + 1}</span>
+                      <span className="min-w-5 text-center text-xs text-text-secondary">{index + 1}</span>
                       <button
                         type="button"
                         onClick={() => reorderCoarseGroup(entry.key, "down")}
                         disabled={index === coarseGroups.length - 1}
                         data-testid={`taxonomy-order-down-${entry.key}`}
-                        className="rounded p-1 text-neutral-300 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:text-neutral-600"
+                        aria-label={`Move ${entry.name} down`}
+                        className={CATEGORY_TAXONOMY_ICON_BUTTON_CLASS}
                       >
-                        <ArrowDown className="h-3.5 w-3.5" />
+                        <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
                     </div>
                   </td>
@@ -561,17 +692,17 @@ export default function CategoriesPage() {
                       onChange={(event) => updateCoarseGroup(entry.key, { name: event.target.value })}
                       aria-label={`Name for ${entry.key}`}
                       data-testid={`taxonomy-name-${entry.key}`}
-                      className="w-full min-w-48 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100 outline-none transition focus:border-emerald-400"
+                      className={CATEGORY_COMPACT_TEXT_FIELD_CLASS}
                     />
                   </td>
                   <td className="px-3 py-2">
-                    <label className="inline-flex items-center gap-2 text-xs text-neutral-300">
+                    <label className="inline-flex items-center gap-2 text-xs text-text-secondary">
                       <input
                         type="checkbox"
                         checked={entry.isExcluded}
                         onChange={(event) => updateCoarseGroup(entry.key, { isExcluded: event.target.checked })}
                         data-testid={`taxonomy-excluded-${entry.key}`}
-                        className="h-4 w-4 rounded border-neutral-600 bg-neutral-900 text-emerald-400 focus:ring-emerald-500/50"
+                        className={CATEGORY_CHECKBOX_CLASS}
                       />
                       Exclude from rollups
                     </label>
@@ -583,24 +714,24 @@ export default function CategoriesPage() {
         </div>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[1.35fr_0.65fr]">
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 p-3">
-            <h4 className="text-sm font-medium text-neutral-200">Grouped category lists</h4>
-            <p className="mt-1 text-xs text-neutral-400">Reassign categories between groups to keep board and filters aligned.</p>
+          <div className={CATEGORY_TAXONOMY_CARD_CLASS}>
+            <h4 className="text-sm font-medium text-text-primary">Grouped category lists</h4>
+            <p className={CATEGORY_TAXONOMY_HELPER_CLASS}>Reassign categories between groups to keep board and filters aligned.</p>
             <div className="mt-3 grid gap-3 xl:grid-cols-2">
               {groupedBuckets.map((bucket) => (
-                <article key={bucket.key} className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-3" data-testid={`taxonomy-group-${bucket.key}`}>
+                <article key={bucket.key} className={CATEGORY_TAXONOMY_BUCKET_CLASS} data-testid={`taxonomy-group-${bucket.key}`}>
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-neutral-100">
+                    <p className="text-sm font-medium text-text-primary">
                       {bucket.emoji ? `${bucket.emoji} ` : ""}{bucket.name}
                     </p>
-                    <span className="rounded-md border border-neutral-800 bg-neutral-900/70 px-2 py-0.5 text-xs text-neutral-400">
+                    <span className="rounded-md border border-border-subtle bg-surface-field px-2 py-0.5 text-xs text-text-muted">
                       {bucket.count}
                     </span>
                   </div>
                   <div className="mt-2 space-y-2">
                     {bucket.items.length ? bucket.items.map((category) => (
-                      <div key={category.id} className="grid grid-cols-[1fr_130px] items-center gap-2 rounded-md border border-neutral-800 bg-neutral-900/40 px-2 py-1.5">
-                        <span className="truncate text-xs text-neutral-200">
+                      <div key={category.id} className={CATEGORY_TAXONOMY_ITEM_CLASS}>
+                        <span className="truncate text-xs text-text-secondary">
                           {category.emoji ? `${category.emoji} ` : ""}{category.name}
                         </span>
                         <select
@@ -608,7 +739,7 @@ export default function CategoriesPage() {
                           onChange={(event) => void moveCategoryToGroup(category, event.target.value)}
                           disabled={movingCategoryId === category.id}
                           data-testid={`taxonomy-move-${category.id}`}
-                          className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-100 outline-none transition focus:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                          className={CATEGORY_COMPACT_SELECT_FIELD_CLASS}
                         >
                           {coarseGroups.map((entry) => (
                             <option key={entry.key} value={entry.key}>
@@ -618,7 +749,7 @@ export default function CategoriesPage() {
                         </select>
                       </div>
                     )) : (
-                      <p className="rounded-md border border-dashed border-neutral-800 px-2 py-3 text-xs text-neutral-500">
+                      <p className="rounded-md border border-dashed border-border-subtle px-2 py-3 text-xs text-text-muted">
                         No categories in this group.
                       </p>
                     )}
@@ -628,21 +759,21 @@ export default function CategoriesPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 p-3">
-            <h4 className="text-sm font-medium text-neutral-200">Add coarse group</h4>
-            <p className="mt-1 text-xs text-neutral-400">
+          <div className={CATEGORY_TAXONOMY_CARD_CLASS}>
+            <h4 className="text-sm font-medium text-text-primary">Add coarse group</h4>
+            <p className={CATEGORY_TAXONOMY_HELPER_CLASS}>
               Create custom taxonomy buckets and save to persist the new filter/group option.
             </p>
-            <label className="mt-3 grid gap-1 text-xs text-neutral-400">
+            <label className="mt-3 grid gap-1 text-xs text-text-muted">
               Group name
               <input
                 value={newGroupName}
                 onChange={(event) => setNewGroupName(event.target.value)}
                 data-testid="taxonomy-new-group-name"
-                className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400"
+                className={CATEGORY_SELECT_FIELD_CLASS}
               />
             </label>
-            <label className="mt-3 grid gap-1 text-xs text-neutral-400">
+            <label className="mt-3 grid gap-1 text-xs text-text-muted">
               Emoji
               <EmojiPicker
                 value={newGroupEmoji}
@@ -657,9 +788,9 @@ export default function CategoriesPage() {
               type="button"
               onClick={addCoarseGroupDraft}
               data-testid="taxonomy-add-group"
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 transition hover:border-emerald-500/50 hover:text-emerald-200"
+              className={`mt-3 ${CATEGORY_PRIMARY_ACTION_CLASS}`}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
               Add group draft
             </button>
           </div>
@@ -668,7 +799,7 @@ export default function CategoriesPage() {
 
       {modalOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4"
+          className={MODAL_BACKDROP_CLASS}
           onClick={(event) => {
             if (event.currentTarget === event.target) {
               closeModal();
@@ -676,40 +807,42 @@ export default function CategoriesPage() {
           }}
         >
           <div
+            ref={categoryDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="category-modal-title"
             data-testid="category-modal"
-            className="w-full max-w-xl rounded-2xl border border-neutral-800 bg-neutral-950 p-5 shadow-2xl"
+            tabIndex={-1}
+            className={CATEGORY_MODAL_PANEL_CLASS}
           >
-            <h3 id="category-modal-title" className="text-lg font-semibold text-neutral-100">
+            <h3 id="category-modal-title" className={CATEGORY_MODAL_TITLE_CLASS}>
               {modalMode === "edit" ? "Edit category" : "Add category"}
             </h3>
-            <p className="mt-1 text-sm text-neutral-400">
+            <p className={CATEGORY_MODAL_COPY_CLASS}>
               Configure required fields, type, and group assignment.
             </p>
 
             <form onSubmit={(event) => void submitCategory(event)} className="mt-4 space-y-4">
               <div>
-                <label htmlFor="category-form-name" className="block text-xs uppercase tracking-wide text-neutral-400">
+                <label htmlFor="category-form-name" className={CATEGORY_MODAL_LABEL_CLASS}>
                   Category name
                 </label>
                 <input
+                  ref={categoryNameInputRef}
                   id="category-form-name"
                   value={draft.name}
                   onChange={(event) => updateDraft("name", event.target.value)}
                   required
-                  autoFocus
                   data-testid="category-form-name"
-                  className="mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+                  className={CATEGORY_MODAL_FIELD_CLASS}
                 />
                 {formErrors.name ? (
-                  <p className="mt-1 text-xs text-rose-300" data-testid="category-form-error-name">{formErrors.name}</p>
+                  <p className={FORM_ERROR_CLASS} data-testid="category-form-error-name">{formErrors.name}</p>
                 ) : null}
               </div>
 
               <div>
-                <label className="block text-xs uppercase tracking-wide text-neutral-400">
+                <label className={CATEGORY_MODAL_LABEL_CLASS}>
                   Emoji
                 </label>
                 <EmojiPicker
@@ -724,7 +857,7 @@ export default function CategoriesPage() {
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="category-form-type" className="block text-xs uppercase tracking-wide text-neutral-400">
+                  <label htmlFor="category-form-type" className={CATEGORY_MODAL_LABEL_CLASS}>
                     Category type
                   </label>
                   <select
@@ -732,7 +865,7 @@ export default function CategoriesPage() {
                     value={draft.type}
                     onChange={(event) => updateDraft("type", event.target.value)}
                     data-testid="category-form-type"
-                    className="mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+                    className={CATEGORY_MODAL_FIELD_CLASS}
                   >
                     <option value="">Not set</option>
                     <option value="expense">Expense</option>
@@ -740,12 +873,12 @@ export default function CategoriesPage() {
                     <option value="transfer">Transfer</option>
                   </select>
                   {formErrors.type ? (
-                    <p className="mt-1 text-xs text-rose-300" data-testid="category-form-error-type">{formErrors.type}</p>
+                    <p className={FORM_ERROR_CLASS} data-testid="category-form-error-type">{formErrors.type}</p>
                   ) : null}
                 </div>
 
                 <div>
-                  <label htmlFor="category-form-group" className="block text-xs uppercase tracking-wide text-neutral-400">
+                  <label htmlFor="category-form-group" className={CATEGORY_MODAL_LABEL_CLASS}>
                     Group
                   </label>
                   <select
@@ -754,7 +887,7 @@ export default function CategoriesPage() {
                     onChange={(event) => updateDraft("coarseKey", event.target.value)}
                     required
                     data-testid="category-form-group"
-                    className="mt-1 w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+                    className={CATEGORY_MODAL_FIELD_CLASS}
                   >
                     {!coarseGroups.length ? <option value="">No groups available</option> : null}
                     {coarseGroups.map((entry) => (
@@ -764,7 +897,7 @@ export default function CategoriesPage() {
                     ))}
                   </select>
                   {formErrors.coarseKey ? (
-                    <p className="mt-1 text-xs text-rose-300" data-testid="category-form-error-group">{formErrors.coarseKey}</p>
+                    <p className={FORM_ERROR_CLASS} data-testid="category-form-error-group">{formErrors.coarseKey}</p>
                   ) : null}
                 </div>
               </div>
@@ -775,7 +908,7 @@ export default function CategoriesPage() {
                   onClick={closeModal}
                   disabled={isSaving}
                   data-testid="category-form-cancel"
-                  className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={CATEGORY_SECONDARY_ACTION_CLASS}
                 >
                   Cancel
                 </button>
@@ -783,9 +916,9 @@ export default function CategoriesPage() {
                   type="submit"
                   disabled={isSaving || !coarseGroups.length}
                   data-testid="category-form-save"
-                  className="inline-flex items-center gap-2 rounded-lg border border-emerald-700/60 bg-emerald-900/30 px-3 py-2 text-sm text-emerald-200 transition hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={CATEGORY_ACCENT_ACTION_CLASS}
                 >
-                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                   {modalMode === "edit" ? "Save changes" : "Create category"}
                 </button>
               </div>
@@ -796,7 +929,7 @@ export default function CategoriesPage() {
 
       {deleteTarget ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4"
+          className={MODAL_BACKDROP_CLASS}
           onClick={(event) => {
             if (event.currentTarget === event.target && !isDeleting) {
               setDeleteTarget(null);
@@ -804,26 +937,29 @@ export default function CategoriesPage() {
           }}
         >
           <div
+            ref={deleteDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-category-title"
             data-testid="category-delete-modal"
-            className="w-full max-w-lg rounded-2xl border border-rose-900/70 bg-neutral-950 p-5 shadow-2xl"
+            tabIndex={-1}
+            className={DELETE_DIALOG_CLASS}
           >
-            <h3 id="delete-category-title" className="text-lg font-semibold text-neutral-100">
+            <h3 id="delete-category-title" className={CATEGORY_MODAL_TITLE_CLASS}>
               Delete category?
             </h3>
-            <p className="mt-2 text-sm text-neutral-300">
+            <p className="mt-2 text-sm text-text-secondary">
               This permanently removes <strong>{deleteTarget.name}</strong>. Existing references must be cleared before deletion.
             </p>
 
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <button
+                ref={deleteCancelButtonRef}
                 type="button"
                 onClick={() => setDeleteTarget(null)}
                 disabled={isDeleting}
                 data-testid="category-delete-cancel"
-                className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-200 transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className={CATEGORY_SECONDARY_ACTION_CLASS}
               >
                 Cancel
               </button>
@@ -832,9 +968,9 @@ export default function CategoriesPage() {
                 onClick={() => void confirmDeleteCategory()}
                 disabled={isDeleting}
                 data-testid="category-delete-confirm"
-                className="inline-flex items-center gap-2 rounded-lg border border-rose-700/70 bg-rose-900/30 px-3 py-2 text-sm text-rose-200 transition hover:border-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className={DANGER_CONFIRM_BUTTON_CLASS}
               >
-                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                 Confirm delete
               </button>
             </div>

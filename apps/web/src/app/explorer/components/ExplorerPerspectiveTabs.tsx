@@ -35,10 +35,21 @@ const PERSPECTIVES: Array<{
   }
 ];
 
+const TABS_SHELL_CLASS =
+  "flex flex-col gap-3 rounded-[28px] border border-border-subtle bg-surface-panel/85 p-3 shadow-panel sm:flex-row";
+const TAB_BASE_CLASS =
+  "group flex flex-1 items-start gap-3 rounded-[20px] border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const TAB_ACTIVE_CLASS = "border-accent/35 bg-accent-soft text-text-primary";
+const TAB_INACTIVE_CLASS =
+  "border-transparent bg-surface-field/70 text-text-secondary hover:border-border-subtle hover:bg-surface-elevated hover:text-text-primary";
+const ICON_BASE_CLASS = "mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl border transition";
+const ICON_ACTIVE_CLASS = "border-accent/35 bg-accent-soft text-accent";
+const ICON_INACTIVE_CLASS = "border-border-subtle bg-surface-panel text-text-muted group-hover:text-text-secondary";
+
 export function ExplorerPerspectiveTabs({ perspective, onChange }: ExplorerPerspectiveTabsProps) {
   return (
     <div
-      className="flex flex-col gap-3 rounded-[28px] border border-neutral-900 bg-neutral-950/85 p-3 sm:flex-row"
+      className={TABS_SHELL_CLASS}
       data-testid="explorer-perspective-tabs"
     >
       {PERSPECTIVES.map((item) => (
@@ -48,25 +59,25 @@ export function ExplorerPerspectiveTabs({ perspective, onChange }: ExplorerPersp
           onClick={() => onChange(item.value)}
           data-testid={`explorer-perspective-${item.value}`}
           className={cn(
-            "group flex flex-1 items-start gap-3 rounded-[20px] border px-4 py-4 text-left transition",
+            TAB_BASE_CLASS,
             perspective === item.value
-              ? "border-emerald-400/30 bg-emerald-400/10 text-neutral-50"
-              : "border-transparent bg-neutral-900/70 text-neutral-300 hover:border-neutral-800 hover:bg-neutral-900"
+              ? TAB_ACTIVE_CLASS
+              : TAB_INACTIVE_CLASS
           )}
         >
           <div
             className={cn(
-              "mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl border transition",
+              ICON_BASE_CLASS,
               perspective === item.value
-                ? "border-emerald-400/30 bg-emerald-400/15 text-emerald-300"
-                : "border-neutral-800 bg-neutral-950 text-neutral-500 group-hover:text-neutral-300"
+                ? ICON_ACTIVE_CLASS
+                : ICON_INACTIVE_CLASS
             )}
           >
             <item.icon className="h-5 w-5" />
           </div>
           <div className="min-w-0">
             <div className="text-sm font-semibold tracking-tight">{item.label}</div>
-            <div className="mt-1 text-sm text-neutral-500">{item.description}</div>
+            <div className="mt-1 text-sm text-text-muted">{item.description}</div>
           </div>
         </button>
       ))}

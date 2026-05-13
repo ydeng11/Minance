@@ -1,11 +1,11 @@
 ---
 # minance2-tbbk
 title: Investigate current Playwright failures on latest main
-status: todo
+status: completed
 type: bug
 priority: high
 created_at: 2026-03-21T21:49:20Z
-updated_at: 2026-03-21T21:49:20Z
+updated_at: 2026-04-12T21:50:24Z
 ---
 
 `pnpm e2e:ci` failed during the legacy-cleanup verification pass on 2026-03-21, so repo-wide verification is not currently green on latest `origin/main`.
@@ -23,7 +23,14 @@ updated_at: 2026-03-21T21:49:20Z
 - `e2e/specs/transactions-multiselect-filters.spec.ts` missing category filter search control
 
 ## Checklist
-- [ ] Triage assistant and AI-gating failures
-- [ ] Triage auth/login readiness failures in shared helpers
-- [ ] Triage explorer/transactions/category interaction failures
-- [ ] Re-run `pnpm e2e:ci` and capture a green result
+- [x] Triage assistant and AI-gating failures
+- [x] Triage auth/login readiness failures in shared helpers
+- [x] Triage explorer/transactions/category interaction failures
+- [x] Re-run `pnpm e2e:ci` and capture a green result
+
+## Summary of Changes
+
+- Updated shared Playwright helpers to match the current auth, import, assistant, and transactions UI contracts.
+- Reworked import-related specs to wait on durable current UI state instead of removed toast-only assertions.
+- Aligned explorer, contrast, and transactions specs with the current shell/dialog and URL-driven filtering behavior.
+- Verified the focused failure clusters and completed a green `CI=1 pnpm e2e:ci` run (`50 passed, 1 skipped`).

@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
 import { Archive, Building2, CreditCard, Loader2, Plus, Save, Trash2, Undo2, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import type { Account } from "@/lib/api/types";
+import { StatusMessage } from "@/components/feedback/StatusMessage";
+import { getDialogFocusableElements, trapDialogTabKey } from "@/lib/dialogFocus";
 import {
   createDefaultManualAccountDraft,
   hasManualDraftChanges,
@@ -15,8 +17,6 @@ import {
 } from "./wizard";
 import { formatAccountTypeLabel, getAccountIdentifier } from "./accountFormatting";
 import { resolveSupportedAccountTypes } from "./accountTypes";
-
-type MessageTone = "info" | "error";
 
 interface AccountSettingsDraft {
   sourceInstitution: string;
@@ -46,21 +46,35 @@ interface NormalizedAccountSettingsDraft {
   includeInCharts: boolean;
 }
 
-function messageClasses(tone: MessageTone) {
-  if (tone === "error") {
-    return "border-rose-700 bg-rose-950/40 text-rose-200";
-  }
-  return "border-neutral-800 bg-neutral-900/60 text-neutral-300";
-}
+const SECTION_PANEL_CLASS =
+  "rounded-2xl border border-border-subtle bg-surface-panel/85 p-4 shadow-panel";
+const DIALOG_PANEL_CLASS =
+  "w-full max-w-2xl rounded-2xl border border-border-subtle bg-surface-panel shadow-dialog";
+const DIALOG_HEADER_CLASS = "flex items-start justify-between gap-3 border-b border-border-subtle px-5 py-4";
+const DIALOG_BACKDROP_CLASS = "fixed inset-0 z-50 flex items-center justify-center bg-app-bg/80 p-4 backdrop-blur-sm";
+const FIELD_CLASS =
+  "rounded-md border border-border-subtle bg-surface-field px-3 py-2 text-sm text-text-primary placeholder:text-text-muted outline-none transition focus:border-accent focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const FIELD_ERROR_CLASS = "text-xs text-danger";
+const SECONDARY_BUTTON_CLASS =
+  "inline-flex min-h-[44px] items-center justify-center rounded-md border border-border-strong px-3 py-2 text-sm text-text-secondary transition hover:border-accent/40 hover:text-text-primary";
+const PRIMARY_BUTTON_CLASS =
+  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-sm font-medium text-accent transition hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-60";
+const CLOSE_BUTTON_CLASS =
+  "inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-border-subtle bg-surface-field p-2 text-text-muted transition hover:text-text-primary";
+const WARNING_ACTION_BUTTON_CLASS =
+  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-warning/35 bg-warning-soft px-3 py-2 text-sm text-warning transition hover:border-warning/55 disabled:cursor-not-allowed disabled:opacity-60";
+const DANGER_ACTION_BUTTON_CLASS =
+  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-danger/35 bg-danger-soft px-3 py-2 text-sm text-danger transition hover:border-danger/55 disabled:cursor-not-allowed disabled:opacity-60";
+const DANGER_ALERT_CLASS = "rounded-lg border border-danger/35 bg-danger-soft px-3 py-2 text-sm text-danger";
 
 function statusClasses(status: string) {
   if (status === "closed") {
-    return "bg-rose-500/10 text-rose-300";
+    return "bg-danger-soft text-danger";
   }
   if (status === "hidden") {
-    return "bg-amber-500/10 text-amber-300";
+    return "bg-warning-soft text-warning";
   }
-  return "bg-emerald-500/10 text-emerald-300";
+  return "bg-accent-soft text-accent";
 }
 
 function formatBalance(amount: number, currency: string) {
@@ -158,7 +172,7 @@ export default function AccountsPage() {
   const [manualDraft, setManualDraft] = useState<ManualAccountDraft>(() => createDefaultManualAccountDraft());
   const [manualErrors, setManualErrors] = useState<ManualAccountErrors>({});
   const [message, setMessage] = useState("");
-  const [messageTone, setMessageTone] = useState<MessageTone>("info");
+  const [messageTone, setMessageTone] = useState<"info" | "error">("info");
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
@@ -168,6 +182,9 @@ export default function AccountsPage() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isUpdatingAccountState, setIsUpdatingAccountState] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const wizardDialogRef = useRef<HTMLElement | null>(null);
+  const settingsDialogRef = useRef<HTMLElement | null>(null);
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null);
 
   const supportedAccountTypes = useMemo(
     () => resolveSupportedAccountTypes(accountTypes),
@@ -205,12 +222,41 @@ export default function AccountsPage() {
     void loadAccountsPage();
   }, [loadAccountsPage]);
 
-  function openWizard() {
+  const focusDialogFirstElement = useCallback((dialog: HTMLElement | null) => {
+    const focusable = getDialogFocusableElements(dialog);
+    const target = focusable[0] ?? dialog;
+    target?.focus();
+  }, []);
+
+  const rememberFocusedElement = useCallback(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    lastFocusedElementRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }, []);
+
+  const restoreFocusAfterDialogClose = useCallback(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const target = lastFocusedElementRef.current;
+      if (target && document.contains(target)) {
+        target.focus();
+      }
+      lastFocusedElementRef.current = null;
+    });
+  }, []);
+
+  const openWizard = useCallback(() => {
+    rememberFocusedElement();
     resetWizardState();
     setIsWizardOpen(true);
-  }
+  }, [rememberFocusedElement, resetWizardState]);
 
-  function closeWizard(force = false) {
+  const closeWizard = useCallback((force = false) => {
     if (!force) {
       const confirmCancel = hasManualDraftChanges(manualDraft);
       if (confirmCancel && typeof window !== "undefined") {
@@ -222,7 +268,8 @@ export default function AccountsPage() {
     }
     setIsWizardOpen(false);
     resetWizardState();
-  }
+    restoreFocusAfterDialogClose();
+  }, [manualDraft, resetWizardState, restoreFocusAfterDialogClose]);
 
   function handleWizardBackdropClick(event: ReactMouseEvent<HTMLDivElement>) {
     if (event.target === event.currentTarget) {
@@ -259,6 +306,7 @@ export default function AccountsPage() {
       setMessageTone("info");
       setIsWizardOpen(false);
       resetWizardState();
+      restoreFocusAfterDialogClose();
       await loadAccountsPage();
     } catch (error) {
       const nextMessage = error instanceof ApiError ? error.message : "Failed to create account.";
@@ -299,16 +347,17 @@ export default function AccountsPage() {
     });
   }
 
-  function openAccountSettings(account: Account) {
+  const openAccountSettings = useCallback((account: Account) => {
+    rememberFocusedElement();
     setMessage("");
     setSettingsError("");
     setSettingsErrors({});
     setEditingAccount(account);
     setSettingsDraft(createAccountSettingsDraft(account));
     setIsSettingsOpen(true);
-  }
+  }, [rememberFocusedElement]);
 
-  function closeAccountSettings(force = false) {
+  const closeAccountSettings = useCallback((force = false) => {
     if (!force && editingAccount && settingsDraft && typeof window !== "undefined") {
       const shouldConfirm = hasSettingsDraftChanges(editingAccount, settingsDraft);
       if (shouldConfirm && !window.confirm("Discard account setting changes?")) {
@@ -324,7 +373,59 @@ export default function AccountsPage() {
     setIsSavingSettings(false);
     setIsUpdatingAccountState(false);
     setIsDeletingAccount(false);
-  }
+    restoreFocusAfterDialogClose();
+  }, [editingAccount, restoreFocusAfterDialogClose, settingsDraft]);
+
+  useEffect(() => {
+    const dialogRef = isWizardOpen ? wizardDialogRef : isSettingsOpen ? settingsDialogRef : null;
+    const dialog = dialogRef?.current;
+    if (!dialogRef || !dialog) {
+      return;
+    }
+    const activeDialogRef = dialogRef;
+
+    requestAnimationFrame(() => {
+      if (!dialog.contains(document.activeElement)) {
+        focusDialogFirstElement(dialog);
+      }
+    });
+
+    function closeActiveDialog() {
+      if (isWizardOpen) {
+        closeWizard();
+        return;
+      }
+      closeAccountSettings();
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeActiveDialog();
+        return;
+      }
+
+      const activeDialog = activeDialogRef.current;
+      trapDialogTabKey(event, activeDialog);
+    }
+
+    function onFocusIn(event: FocusEvent) {
+      const activeDialog = activeDialogRef.current;
+      const target = event.target as Node | null;
+      if (!activeDialog || !target || activeDialog.contains(target)) {
+        return;
+      }
+
+      focusDialogFirstElement(activeDialog);
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("focusin", onFocusIn);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("focusin", onFocusIn);
+    };
+  }, [closeAccountSettings, closeWizard, focusDialogFirstElement, isSettingsOpen, isWizardOpen]);
 
   function updateSettingsDraftField<Key extends keyof AccountSettingsDraft>(field: Key, value: AccountSettingsDraft[Key]) {
     setSettingsDraft((previous) => {
@@ -436,51 +537,51 @@ export default function AccountsPage() {
     <div className="space-y-6" data-testid="accounts-page">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-3xl font-semibold tracking-tight">Accounts</h2>
-          <p className="text-neutral-400">Manage manual accounts across your workspace.</p>
+          <h2 className="text-3xl font-semibold tracking-tight text-text-primary">Accounts</h2>
+          <p className="text-text-secondary">Manage manual accounts across your workspace.</p>
         </div>
         <button
           type="button"
-          className="inline-flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-200 transition hover:border-emerald-500/40 hover:text-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-sm font-medium text-text-primary transition hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
           data-testid="accounts-add"
           onClick={openWizard}
           disabled={isLoading}
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-4 w-4" aria-hidden="true" />
           Add account
         </button>
       </header>
 
       {message ? (
-        <p
-          className={`rounded-lg border px-3 py-2 text-sm ${messageClasses(messageTone)}`}
+        <StatusMessage
+          tone={messageTone}
           data-testid={messageTone === "error" ? "accounts-error" : "global-message"}
         >
           {message}
-        </p>
+        </StatusMessage>
       ) : null}
 
       {isLoading ? (
-        <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4 text-sm text-neutral-400" data-testid="accounts-skeleton">
+        <section className={`${SECTION_PANEL_CLASS} text-sm text-text-secondary`} data-testid="accounts-skeleton">
           Loading accounts…
         </section>
       ) : (
-        <section className="rounded-2xl border border-neutral-900 bg-neutral-950/70 p-4">
-          <h3 className="text-sm font-medium text-neutral-300">Connected accounts</h3>
+        <section className={SECTION_PANEL_CLASS}>
+          <h3 className="text-sm font-medium text-text-primary">Connected accounts</h3>
           {accounts.length ? (
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {accounts.map((entry) => (
-                <article key={entry.id} className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4" data-testid={`account-row-${entry.id}`}>
+                <article key={entry.id} className="rounded-xl border border-border-subtle bg-surface-field p-4" data-testid={`account-row-${entry.id}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-base font-medium text-neutral-100">{entry.displayName}</p>
-                      <p className="text-xs text-neutral-400">{getAccountIdentifier(entry)}</p>
+                      <p className="text-base font-medium text-text-primary">{entry.displayName}</p>
+                      <p className="text-xs text-text-secondary">{getAccountIdentifier(entry)}</p>
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <span className={`rounded-full px-2 py-1 text-xs ${statusClasses(entry.status)}`}>{entry.status}</span>
                       <button
                         type="button"
-                        className="rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-300 transition hover:border-neutral-600"
+                        className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-border-strong bg-surface-panel px-3 py-2 text-xs text-text-secondary transition hover:border-accent/40 hover:text-text-primary"
                         data-testid={`account-manage-${entry.id}`}
                         onClick={() => openAccountSettings(entry)}
                       >
@@ -488,66 +589,68 @@ export default function AccountsPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-3 text-sm text-neutral-300">
+                  <div className="mt-4 flex items-center justify-between gap-3 text-sm text-text-secondary">
                     <div className="flex items-center gap-2">
                       {entry.accountType === "credit" || entry.accountType === "loan" ? (
-                        <CreditCard className="h-4 w-4" />
+                        <CreditCard className="h-4 w-4" aria-hidden="true" />
                       ) : (
-                        <Building2 className="h-4 w-4" />
+                        <Building2 className="h-4 w-4" aria-hidden="true" />
                       )}
                       <span>{formatAccountTypeLabel(entry.accountType)}</span>
                     </div>
-                    <span className="font-medium text-neutral-200">{formatBalance(entry.initialBalance, entry.currency)}</span>
+                    <span className="font-medium text-text-primary">{formatBalance(entry.initialBalance, entry.currency)}</span>
                   </div>
                 </article>
               ))}
             </div>
           ) : (
-            <p className="mt-3 rounded-lg border border-dashed border-neutral-800 bg-neutral-900/40 px-3 py-4 text-sm text-neutral-400">
-              No accounts yet. Use <strong className="text-neutral-200">Add account</strong> to create one manually.
+            <p className="mt-3 rounded-lg border border-dashed border-border-subtle bg-surface-field px-3 py-4 text-sm text-text-secondary">
+              No accounts yet. Use <strong className="text-text-primary">Add account</strong> to create one manually.
             </p>
           )}
         </section>
       )}
 
-      <p className="rounded-lg border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-sm text-neutral-300">
-        Use account <strong className="text-neutral-100">Manage</strong> actions for rename/type/state updates, and use{" "}
-        <Link href="/transactions" className="text-emerald-300 underline decoration-emerald-700 underline-offset-2">
+      <p className="rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-sm text-text-secondary">
+        Use account <strong className="text-text-primary">Manage</strong> actions for rename/type/state updates, and use{" "}
+        <Link href="/transactions" className="text-accent underline decoration-accent/50 underline-offset-2">
           transactions
         </Link>{" "}
         to validate account activity after onboarding.
       </p>
 
       {isWizardOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={handleWizardBackdropClick}>
+        <div className={DIALOG_BACKDROP_CLASS} onClick={handleWizardBackdropClick}>
           <section
+            ref={wizardDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="add-account-wizard-title"
+            tabIndex={-1}
             data-testid="accounts-wizard"
-            className="w-full max-w-2xl rounded-2xl border border-neutral-800 bg-neutral-950 shadow-2xl shadow-black/50"
+            className={DIALOG_PANEL_CLASS}
           >
-            <header className="flex items-start justify-between gap-3 border-b border-neutral-800 px-5 py-4">
+            <header className={DIALOG_HEADER_CLASS}>
               <div>
-                <h3 id="add-account-wizard-title" className="text-lg font-semibold text-neutral-100">Add account</h3>
-                <p className="text-sm text-neutral-400">Create an account with institution, type, and starting balance.</p>
+                <h3 id="add-account-wizard-title" className="text-lg font-semibold text-text-primary">Add account</h3>
+                <p className="text-sm text-text-secondary">Create an account with institution, type, and starting balance.</p>
               </div>
               <button
                 type="button"
-                className="rounded-md border border-neutral-800 bg-neutral-900 p-2 text-neutral-400 transition hover:text-neutral-200"
+                className={CLOSE_BUTTON_CLASS}
                 data-testid="accounts-wizard-close"
                 onClick={() => closeWizard()}
               >
                 <span className="sr-only">Close</span>
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </header>
 
             <div className="space-y-4 px-5 py-4">
-              <p className="text-xs font-medium uppercase tracking-wide text-emerald-300">Manual setup</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-accent">Manual setup</p>
               <form className="space-y-4" data-testid="accounts-wizard-manual-form" onSubmit={submitManualAccount}>
                   <div className="grid gap-2">
-                    <label htmlFor="accounts-manual-institution" className="text-sm font-medium text-neutral-200">Institution</label>
+                    <label htmlFor="accounts-manual-institution" className="text-sm font-medium text-text-primary">Institution</label>
                     <input
                       id="accounts-manual-institution"
                       data-testid="accounts-wizard-manual-institution"
@@ -555,7 +658,7 @@ export default function AccountsPage() {
                       list="accounts-known-institutions"
                       value={manualDraft.sourceInstitution}
                       onChange={(event) => updateManualDraft("sourceInstitution", event.target.value)}
-                      className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500"
+                      className={FIELD_CLASS}
                       placeholder="e.g. Chase"
                     />
                     {knownInstitutions.length ? (
@@ -566,35 +669,35 @@ export default function AccountsPage() {
                       </datalist>
                     ) : null}
                     {manualErrors.sourceInstitution ? (
-                      <p className="text-xs text-rose-300">{manualErrors.sourceInstitution}</p>
+                      <p className={FIELD_ERROR_CLASS}>{manualErrors.sourceInstitution}</p>
                     ) : null}
                   </div>
 
                   <div className="grid gap-2">
-                    <label htmlFor="accounts-manual-name" className="text-sm font-medium text-neutral-200">Account name</label>
+                    <label htmlFor="accounts-manual-name" className="text-sm font-medium text-text-primary">Account name</label>
                     <input
                       id="accounts-manual-name"
                       data-testid="accounts-wizard-manual-name"
                       type="text"
                       value={manualDraft.displayName}
                       onChange={(event) => updateManualDraft("displayName", event.target.value)}
-                      className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500"
+                      className={FIELD_CLASS}
                       placeholder="e.g. Travel Card"
                     />
                     {manualErrors.displayName ? (
-                      <p className="text-xs text-rose-300">{manualErrors.displayName}</p>
+                      <p className={FIELD_ERROR_CLASS}>{manualErrors.displayName}</p>
                     ) : null}
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">
-                      <label htmlFor="accounts-manual-type" className="text-sm font-medium text-neutral-200">Account type</label>
+                      <label htmlFor="accounts-manual-type" className="text-sm font-medium text-text-primary">Account type</label>
                       <select
                         id="accounts-manual-type"
                         data-testid="accounts-wizard-manual-type"
                         value={manualDraft.accountType}
                         onChange={(event) => updateManualDraft("accountType", event.target.value)}
-                        className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+                        className={FIELD_CLASS}
                       >
                         <option value="">Select account type</option>
                         {supportedAccountTypes.map((type) => (
@@ -602,12 +705,12 @@ export default function AccountsPage() {
                         ))}
                       </select>
                       {manualErrors.accountType ? (
-                        <p className="text-xs text-rose-300">{manualErrors.accountType}</p>
+                        <p className={FIELD_ERROR_CLASS}>{manualErrors.accountType}</p>
                       ) : null}
                     </div>
 
                     <div className="grid gap-2">
-                      <label htmlFor="accounts-manual-currency" className="text-sm font-medium text-neutral-200">Currency</label>
+                      <label htmlFor="accounts-manual-currency" className="text-sm font-medium text-text-primary">Currency</label>
                       <input
                         id="accounts-manual-currency"
                         data-testid="accounts-wizard-manual-currency"
@@ -615,17 +718,17 @@ export default function AccountsPage() {
                         maxLength={3}
                         value={manualDraft.currency}
                         onChange={(event) => updateManualDraft("currency", event.target.value.toUpperCase())}
-                        className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm uppercase text-neutral-100 placeholder:text-neutral-500"
+                        className={`${FIELD_CLASS} uppercase`}
                         placeholder="USD"
                       />
                       {manualErrors.currency ? (
-                        <p className="text-xs text-rose-300">{manualErrors.currency}</p>
+                        <p className={FIELD_ERROR_CLASS}>{manualErrors.currency}</p>
                       ) : null}
                     </div>
                   </div>
 
                   <div className="grid gap-2">
-                    <label htmlFor="accounts-manual-balance" className="text-sm font-medium text-neutral-200">Starting balance</label>
+                    <label htmlFor="accounts-manual-balance" className="text-sm font-medium text-text-primary">Starting balance</label>
                     <input
                       id="accounts-manual-balance"
                       data-testid="accounts-wizard-manual-balance"
@@ -633,11 +736,11 @@ export default function AccountsPage() {
                       inputMode="decimal"
                       value={manualDraft.initialBalance}
                       onChange={(event) => updateManualDraft("initialBalance", event.target.value)}
-                      className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500"
+                      className={FIELD_CLASS}
                       placeholder="0.00"
                     />
                     {manualErrors.initialBalance ? (
-                      <p className="text-xs text-rose-300">{manualErrors.initialBalance}</p>
+                      <p className={FIELD_ERROR_CLASS}>{manualErrors.initialBalance}</p>
                     ) : null}
                   </div>
 
@@ -645,7 +748,7 @@ export default function AccountsPage() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 transition hover:border-neutral-600"
+                        className={SECONDARY_BUTTON_CLASS}
                         onClick={() => closeWizard()}
                       >
                         Cancel
@@ -654,10 +757,10 @@ export default function AccountsPage() {
                     <button
                       type="submit"
                       data-testid="accounts-wizard-manual-save"
-                      className="inline-flex items-center gap-2 rounded-md border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                      className={PRIMARY_BUTTON_CLASS}
                       disabled={isSubmittingManual}
                     >
-                      {isSubmittingManual ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                      {isSubmittingManual ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
                       Save account
                     </button>
                   </div>
@@ -668,110 +771,112 @@ export default function AccountsPage() {
       ) : null}
 
       {isSettingsOpen && editingAccount && settingsDraft ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={(event) => {
+        <div className={DIALOG_BACKDROP_CLASS} onClick={(event) => {
           if (event.target === event.currentTarget) {
             closeAccountSettings();
           }
         }}>
           <section
+            ref={settingsDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="account-settings-title"
+            tabIndex={-1}
             data-testid="accounts-settings-modal"
-            className="w-full max-w-2xl rounded-2xl border border-neutral-800 bg-neutral-950 shadow-2xl shadow-black/50"
+            className={DIALOG_PANEL_CLASS}
           >
-            <header className="flex items-start justify-between gap-3 border-b border-neutral-800 px-5 py-4">
+            <header className={DIALOG_HEADER_CLASS}>
               <div>
-                <h3 id="account-settings-title" className="text-lg font-semibold text-neutral-100">Account settings</h3>
-                <p className="text-sm text-neutral-400">Rename, retype, archive, close, or delete this account.</p>
+                <h3 id="account-settings-title" className="text-lg font-semibold text-text-primary">Account settings</h3>
+                <p className="text-sm text-text-secondary">Rename, retype, archive, close, or delete this account.</p>
               </div>
               <button
                 type="button"
-                className="rounded-md border border-neutral-800 bg-neutral-900 p-2 text-neutral-400 transition hover:text-neutral-200"
+                className={CLOSE_BUTTON_CLASS}
                 data-testid="accounts-settings-close"
                 onClick={() => closeAccountSettings()}
               >
                 <span className="sr-only">Close</span>
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </header>
 
             <form className="space-y-4 px-5 py-4" onSubmit={(event) => void saveAccountSettings(event)}>
               <div className="grid gap-2">
-                <label htmlFor="accounts-settings-institution" className="text-sm font-medium text-neutral-200">Institution</label>
+                <label htmlFor="accounts-settings-institution" className="text-sm font-medium text-text-primary">Institution</label>
                 <input
                   id="accounts-settings-institution"
                   type="text"
                   value={settingsDraft.sourceInstitution}
                   onChange={(event) => updateSettingsDraftField("sourceInstitution", event.target.value)}
-                  className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500"
+                  className={FIELD_CLASS}
                 />
-                {settingsErrors.sourceInstitution ? <p className="text-xs text-rose-300">{settingsErrors.sourceInstitution}</p> : null}
+                {settingsErrors.sourceInstitution ? <p className={FIELD_ERROR_CLASS}>{settingsErrors.sourceInstitution}</p> : null}
               </div>
 
               <div className="grid gap-2">
-                <label htmlFor="accounts-settings-name" className="text-sm font-medium text-neutral-200">Account name</label>
+                <label htmlFor="accounts-settings-name" className="text-sm font-medium text-text-primary">Account name</label>
                 <input
                   id="accounts-settings-name"
                   type="text"
                   value={settingsDraft.displayName}
                   onChange={(event) => updateSettingsDraftField("displayName", event.target.value)}
-                  className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500"
+                  className={FIELD_CLASS}
                 />
-                {settingsErrors.displayName ? <p className="text-xs text-rose-300">{settingsErrors.displayName}</p> : null}
+                {settingsErrors.displayName ? <p className={FIELD_ERROR_CLASS}>{settingsErrors.displayName}</p> : null}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
-                  <label htmlFor="accounts-settings-type" className="text-sm font-medium text-neutral-200">Account type</label>
+                  <label htmlFor="accounts-settings-type" className="text-sm font-medium text-text-primary">Account type</label>
                   <select
                     id="accounts-settings-type"
                     value={settingsDraft.accountType}
                     onChange={(event) => updateSettingsDraftField("accountType", event.target.value)}
-                    className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+                    className={FIELD_CLASS}
                   >
                     {supportedAccountTypes.map((type) => (
                       <option key={type} value={type}>{formatAccountTypeLabel(type)}</option>
                     ))}
                   </select>
-                  {settingsErrors.accountType ? <p className="text-xs text-rose-300">{settingsErrors.accountType}</p> : null}
+                  {settingsErrors.accountType ? <p className={FIELD_ERROR_CLASS}>{settingsErrors.accountType}</p> : null}
                 </div>
 
                 <div className="grid gap-2">
-                  <label htmlFor="accounts-settings-currency" className="text-sm font-medium text-neutral-200">Currency</label>
+                  <label htmlFor="accounts-settings-currency" className="text-sm font-medium text-text-primary">Currency</label>
                   <input
                     id="accounts-settings-currency"
                     type="text"
                     maxLength={3}
                     value={settingsDraft.currency}
                     onChange={(event) => updateSettingsDraftField("currency", event.target.value.toUpperCase())}
-                    className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm uppercase text-neutral-100 placeholder:text-neutral-500"
+                    className={`${FIELD_CLASS} uppercase`}
                   />
-                  {settingsErrors.currency ? <p className="text-xs text-rose-300">{settingsErrors.currency}</p> : null}
+                  {settingsErrors.currency ? <p className={FIELD_ERROR_CLASS}>{settingsErrors.currency}</p> : null}
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-2">
-                  <label htmlFor="accounts-settings-balance" className="text-sm font-medium text-neutral-200">Starting balance</label>
+                  <label htmlFor="accounts-settings-balance" className="text-sm font-medium text-text-primary">Starting balance</label>
                   <input
                     id="accounts-settings-balance"
                     type="text"
                     inputMode="decimal"
                     value={settingsDraft.initialBalance}
                     onChange={(event) => updateSettingsDraftField("initialBalance", event.target.value)}
-                    className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500"
+                    className={FIELD_CLASS}
                   />
-                  {settingsErrors.initialBalance ? <p className="text-xs text-rose-300">{settingsErrors.initialBalance}</p> : null}
+                  {settingsErrors.initialBalance ? <p className={FIELD_ERROR_CLASS}>{settingsErrors.initialBalance}</p> : null}
                 </div>
 
                 <div className="grid gap-2">
-                  <label htmlFor="accounts-settings-status" className="text-sm font-medium text-neutral-200">State</label>
+                  <label htmlFor="accounts-settings-status" className="text-sm font-medium text-text-primary">State</label>
                   <select
                     id="accounts-settings-status"
                     value={settingsDraft.status}
                     onChange={(event) => updateSettingsDraftField("status", event.target.value as Account["status"])}
-                    className="rounded-md border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
+                    className={FIELD_CLASS}
                   >
                     <option value="active">Active</option>
                     <option value="hidden">Archived</option>
@@ -780,54 +885,54 @@ export default function AccountsPage() {
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-neutral-300">
+              <label className="flex items-center gap-2 text-sm text-text-secondary">
                 <input
                   type="checkbox"
                   checked={settingsDraft.includeInCharts}
                   onChange={(event) => updateSettingsDraftField("includeInCharts", event.target.checked)}
-                  className="h-4 w-4 rounded border border-neutral-700 bg-neutral-900"
+                  className="h-4 w-4 rounded border border-border-strong bg-surface-field text-accent focus-visible:ring-2 focus-visible:ring-focus-ring"
                 />
                 Include in charts and net worth calculations
               </label>
 
               {settingsError ? (
-                <p className="rounded-lg border border-rose-700 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">{settingsError}</p>
+                <p className={DANGER_ALERT_CLASS}>{settingsError}</p>
               ) : null}
 
-              <div className="grid gap-2 border-t border-neutral-800 pt-4 sm:grid-cols-3">
+              <div className="grid gap-2 border-t border-border-subtle pt-4 sm:grid-cols-3">
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-md border border-amber-700/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300 transition hover:border-amber-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={WARNING_ACTION_BUTTON_CLASS}
                   onClick={() => void updateAccountState("hidden")}
                   disabled={isUpdatingAccountState || editingAccount.status === "hidden"}
                 >
-                  {isUpdatingAccountState ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" />}
+                  {isUpdatingAccountState ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Archive className="h-4 w-4" aria-hidden="true" />}
                   Archive
                 </button>
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 transition hover:border-neutral-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border-strong px-3 py-2 text-sm text-text-secondary transition hover:border-accent/40 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
                   onClick={() => void updateAccountState(editingAccount.status === "active" ? "closed" : "active")}
                   disabled={isUpdatingAccountState}
                 >
-                  {isUpdatingAccountState ? <Loader2 className="h-4 w-4 animate-spin" /> : <Undo2 className="h-4 w-4" />}
+                  {isUpdatingAccountState ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Undo2 className="h-4 w-4" aria-hidden="true" />}
                   {editingAccount.status === "active" ? "Close account" : "Restore active"}
                 </button>
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-md border border-rose-700/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-300 transition hover:border-rose-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={DANGER_ACTION_BUTTON_CLASS}
                   onClick={() => void deleteEditingAccount()}
                   disabled={isDeletingAccount}
                 >
-                  {isDeletingAccount ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  {isDeletingAccount ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
                   Delete
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-neutral-800 pt-4">
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle pt-4">
                 <button
                   type="button"
-                  className="rounded-md border border-neutral-700 px-3 py-2 text-sm text-neutral-300 transition hover:border-neutral-600"
+                  className={SECONDARY_BUTTON_CLASS}
                   onClick={() => closeAccountSettings()}
                 >
                   Cancel
@@ -835,10 +940,10 @@ export default function AccountsPage() {
                 <button
                   type="submit"
                   data-testid="accounts-settings-save"
-                  className="inline-flex items-center gap-2 rounded-md border border-emerald-600/40 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition hover:border-emerald-500/60 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={PRIMARY_BUTTON_CLASS}
                   disabled={isSavingSettings}
                 >
-                  {isSavingSettings ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {isSavingSettings ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
                   Save changes
                 </button>
               </div>

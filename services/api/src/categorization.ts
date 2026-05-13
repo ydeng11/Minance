@@ -1,6 +1,5 @@
 import { CATEGORY_KEYWORDS } from "../../../packages/domain/src/constants.ts";
 import { normalizeText, clamp } from "./utils.ts";
-import { resolveTrainingCategory } from "./training.ts";
 import { runToolCallingAgent, type AgentResult } from "./llm/agent.ts";
 import { AI_TOOL_CALLING_AGENT_ENABLED } from "./flags.ts";
 
@@ -10,7 +9,6 @@ export const CATEGORIZATION_STRATEGY = {
   RULE_CONTAINS: "rule_contains",
   RULE_REGEX: "rule_regex",
   MERCHANT_MEMORY: "merchant_memory",
-  TRAINING_DATA: "training_data",
   KEYWORD_MODEL: "keyword_model",
   HEURISTIC_FALLBACK: "heuristic_fallback",
   AGENT_HISTORY: "agent_history",
@@ -146,16 +144,6 @@ export function categorizeTransaction({ transaction, userRules, merchantMemory }
     return applyAutoCanonicalization(byMemory, transaction);
   }
 
-  const byTraining = resolveTrainingCategory({
-    categoryRaw: transaction.category_raw,
-    merchantNormalized: transaction.merchant_normalized,
-    description: transaction.description,
-    memo: transaction.memo
-  });
-  if (byTraining) {
-    return applyAutoCanonicalization(byTraining, transaction);
-  }
-
   return applyAutoCanonicalization(applyKeywordModel(transaction), transaction);
 }
 
@@ -219,7 +207,7 @@ export interface CategorizeWithAgentInput {
 
 /**
  * Categorizes a transaction with AI agent integration.
- * Priority: rules > merchant memory > training data > agent > keyword model
+ * Priority: rules > merchant memory > agent > keyword model
  */
 export async function categorizeTransactionWithAgent(
   input: CategorizeWithAgentInput
@@ -238,18 +226,7 @@ export async function categorizeTransactionWithAgent(
     return applyAutoCanonicalization(byMemory, transaction);
   }
 
-  // 3. Training data
-  const byTraining = resolveTrainingCategory({
-    categoryRaw: transaction.category_raw,
-    merchantNormalized: transaction.merchant_normalized,
-    description: transaction.description,
-    memo: transaction.memo
-  });
-  if (byTraining) {
-    return applyAutoCanonicalization(byTraining, transaction);
-  }
-
-  // 4. Agent (if enabled)
+  // 3. Agent (if enabled)
   const agentEnabled = _testAgentEnabled !== undefined ? _testAgentEnabled : AI_TOOL_CALLING_AGENT_ENABLED;
   if (agentEnabled) {
     const agentResult = await callAgentForCategorization(userId, transaction, _testAgentFn);
@@ -267,7 +244,7 @@ export async function categorizeTransactionWithAgent(
     }
   }
 
-  // 5. Keyword model fallback
+  // 4. Keyword model fallback
   return applyAutoCanonicalization(applyKeywordModel(transaction), transaction);
 }
 

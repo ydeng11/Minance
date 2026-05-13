@@ -5,6 +5,7 @@ test("@core assistant is available as a shell sidebar", async ({ page }) => {
   await loginWithSeedAccount(page);
 
   const toggle = page.getByTestId("assistant-toggle");
+  const newConversationButton = page.getByTestId("assistant-new-conversation");
   const closeButton = page.getByTestId("assistant-close");
   const questionInput = page.getByTestId("assistant-question");
   const askButton = page.getByTestId("assistant-ask");
@@ -23,7 +24,11 @@ test("@core assistant is available as a shell sidebar", async ({ page }) => {
   await page.keyboard.press("Shift+Tab");
   await expect(closeButton).toBeFocused();
   await page.keyboard.press("Shift+Tab");
+  await expect(newConversationButton).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
   await expect(askButton).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(newConversationButton).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(closeButton).toBeFocused();
   await page.keyboard.press("Tab");

@@ -21,6 +21,32 @@ interface CategoryPerspectiveProps {
   loading?: boolean;
 }
 
+const FOCUS_RING_CLASS =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
+const CATEGORY_SKELETON_CLASS = "h-28 animate-pulse rounded-2xl bg-surface-field";
+const CATEGORY_BUTTON_CLASS =
+  `rounded-2xl border px-4 py-4 text-left transition ${FOCUS_RING_CLASS}`;
+const CATEGORY_BUTTON_ACTIVE_CLASS = "border-accent/35 bg-accent-soft";
+const CATEGORY_BUTTON_INACTIVE_CLASS = "border-border-subtle bg-surface-panel/70 hover:border-border-strong hover:bg-surface-elevated";
+const CATEGORY_TITLE_CLASS = "text-sm font-semibold text-text-primary";
+const CATEGORY_META_CLASS = "mt-1 text-xs uppercase tracking-[0.18em] text-text-muted";
+const CATEGORY_ICON_CLASS = "mt-0.5 h-4 w-4 text-text-muted";
+const CATEGORY_STAT_LABEL_CLASS = "text-text-secondary";
+const CATEGORY_STAT_VALUE_CLASS = "font-semibold text-text-primary";
+const CATEGORY_INCOME_VALUE_CLASS = "font-semibold text-accent";
+const DETAIL_PANEL_CLASS = "mt-4 rounded-3xl border border-accent/25 bg-accent-soft/70 p-4";
+const DETAIL_HEADING_CLASS = "flex items-center gap-2 text-sm font-semibold text-accent";
+const DETAIL_COPY_CLASS = "mt-2 text-sm text-text-secondary";
+const NET_BADGE_CLASS = "rounded-full bg-surface-field px-3 py-1 text-sm font-medium text-text-primary";
+const DETAIL_STAT_CARD_CLASS = "rounded-2xl border border-border-subtle bg-surface-field/80 px-4 py-3";
+const DETAIL_STAT_LABEL_CLASS = "text-xs uppercase tracking-[0.18em] text-text-muted";
+const DETAIL_STAT_VALUE_CLASS = "mt-2 text-xl font-semibold text-text-primary";
+const DETAIL_STAT_HELPER_CLASS = "mt-1 text-sm text-text-secondary";
+const APPLY_FILTER_BUTTON_CLASS =
+  `rounded-full border border-accent/35 bg-accent-soft px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-accent transition hover:bg-accent-soft/80 ${FOCUS_RING_CLASS}`;
+const EMPTY_MESSAGE_CLASS =
+  "mt-4 rounded-2xl border border-border-subtle bg-surface-panel/70 px-4 py-3 text-sm text-text-secondary";
+
 export function CategoryPerspective({
   overview,
   categories,
@@ -91,7 +117,7 @@ export function CategoryPerspective({
         {loading ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className="h-28 animate-pulse rounded-2xl bg-neutral-900" />
+              <div key={index} className={CATEGORY_SKELETON_CLASS} />
             ))}
           </div>
         ) : (
@@ -102,32 +128,32 @@ export function CategoryPerspective({
                 type="button"
                 onClick={() => setInspectedCategory(entry.category)}
                 className={cn(
-                  "rounded-2xl border px-4 py-4 text-left transition",
+                  CATEGORY_BUTTON_CLASS,
                   selectedSet.has(entry.category)
-                    ? "border-emerald-400/30 bg-emerald-400/10"
-                    : "border-neutral-900 bg-neutral-950/70 hover:border-neutral-800 hover:bg-neutral-900/80"
+                    ? CATEGORY_BUTTON_ACTIVE_CLASS
+                    : CATEGORY_BUTTON_INACTIVE_CLASS
                 )}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-sm font-semibold text-neutral-100">
+                    <div className={CATEGORY_TITLE_CLASS}>
                       {entry.emoji ? `${entry.emoji} ` : ""}
                       {entry.category}
                     </div>
-                    <div className="mt-1 text-xs uppercase tracking-[0.18em] text-neutral-500">
+                    <div className={CATEGORY_META_CLASS}>
                       {entry.transactionCount || entry.count || 0} transactions
                     </div>
                   </div>
-                  <Layers3 className="mt-0.5 h-4 w-4 text-neutral-500" />
+                  <Layers3 className={CATEGORY_ICON_CLASS} />
                 </div>
                 <div className="mt-5 space-y-2">
                   <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="text-neutral-400">Spend</span>
-                    <span className="font-semibold text-neutral-50">{money(entry.spend)}</span>
+                    <span className={CATEGORY_STAT_LABEL_CLASS}>Spend</span>
+                    <span className={CATEGORY_STAT_VALUE_CLASS}>{money(entry.spend)}</span>
                   </div>
                   <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="text-neutral-400">Income</span>
-                    <span className="font-semibold text-sky-200">{money(entry.income)}</span>
+                    <span className={CATEGORY_STAT_LABEL_CLASS}>Income</span>
+                    <span className={CATEGORY_INCOME_VALUE_CLASS}>{money(entry.income)}</span>
                   </div>
                 </div>
               </button>
@@ -136,50 +162,45 @@ export function CategoryPerspective({
         )}
         {!loading && activeCategory ? (
           <div
-            className="mt-4 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-4"
+            className={DETAIL_PANEL_CLASS}
             data-testid="explorer-category-lens-detail"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-100">
+                <div className={DETAIL_HEADING_CLASS}>
                   <BadgeDollarSign className="h-4 w-4" />
                   {activeCategory.emoji ? `${activeCategory.emoji} ` : ""}
                   {activeCategory.category}
                 </div>
-                <p className="mt-2 text-sm text-emerald-50/80">
+                <p className={DETAIL_COPY_CLASS}>
                   Spend and income context for the current Explorer filters.
                 </p>
               </div>
-              <div className={cn(
-                "rounded-full px-3 py-1 text-sm font-medium",
-                activeCategory.net >= 0
-                  ? "bg-sky-400/15 text-sky-100"
-                  : "bg-rose-400/15 text-rose-100"
-              )}>
+              <div className={NET_BADGE_CLASS}>
                 Net {money(activeCategory.net)}
               </div>
             </div>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.18em] text-emerald-100/70">Spend</div>
-                <div className="mt-2 text-xl font-semibold text-white">{money(activeCategory.spend)}</div>
-                <div className="mt-1 text-sm text-emerald-50/75">{activeCategory.spendShare.toFixed(1)}% of total spend</div>
+              <div className={DETAIL_STAT_CARD_CLASS}>
+                <div className={DETAIL_STAT_LABEL_CLASS}>Spend</div>
+                <div className={DETAIL_STAT_VALUE_CLASS}>{money(activeCategory.spend)}</div>
+                <div className={DETAIL_STAT_HELPER_CLASS}>{activeCategory.spendShare.toFixed(1)}% of total spend</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.18em] text-emerald-100/70">Income</div>
-                <div className="mt-2 text-xl font-semibold text-white">{money(activeCategory.income)}</div>
-                <div className="mt-1 text-sm text-emerald-50/75">{activeCategory.incomeShare.toFixed(1)}% of total income</div>
+              <div className={DETAIL_STAT_CARD_CLASS}>
+                <div className={DETAIL_STAT_LABEL_CLASS}>Income</div>
+                <div className={DETAIL_STAT_VALUE_CLASS}>{money(activeCategory.income)}</div>
+                <div className={DETAIL_STAT_HELPER_CLASS}>{activeCategory.incomeShare.toFixed(1)}% of total income</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.18em] text-emerald-100/70">Net</div>
-                <div className="mt-2 text-xl font-semibold text-white">{money(activeCategory.net)}</div>
-                <div className="mt-1 text-sm text-emerald-50/75">Income minus spend</div>
+              <div className={DETAIL_STAT_CARD_CLASS}>
+                <div className={DETAIL_STAT_LABEL_CLASS}>Net</div>
+                <div className={DETAIL_STAT_VALUE_CLASS}>{money(activeCategory.net)}</div>
+                <div className={DETAIL_STAT_HELPER_CLASS}>Income minus spend</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.18em] text-emerald-100/70">Transactions</div>
-                <div className="mt-2 text-xl font-semibold text-white">{activeCategory.transactionCount}</div>
-                <div className="mt-1 text-sm text-emerald-50/75">Activity in the selected range</div>
+              <div className={DETAIL_STAT_CARD_CLASS}>
+                <div className={DETAIL_STAT_LABEL_CLASS}>Transactions</div>
+                <div className={DETAIL_STAT_VALUE_CLASS}>{activeCategory.transactionCount}</div>
+                <div className={DETAIL_STAT_HELPER_CLASS}>Activity in the selected range</div>
               </div>
             </div>
 
@@ -187,7 +208,7 @@ export function CategoryPerspective({
               <button
                 type="button"
                 onClick={() => onCategoryClick(inspectedCategory)}
-                className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-emerald-100 transition hover:border-emerald-300/40 hover:bg-emerald-400/15"
+                className={APPLY_FILTER_BUTTON_CLASS}
                 data-testid="explorer-category-apply-filter"
               >
                 {selectedCategories[0] === inspectedCategory
@@ -197,11 +218,11 @@ export function CategoryPerspective({
             </div>
           </div>
         ) : !loading && selectedCategories.length > 1 ? (
-          <div className="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/70 px-4 py-3 text-sm text-neutral-400">
+          <div className={EMPTY_MESSAGE_CLASS}>
             Multiple categories are active. Select a single category to inspect its spend, income, net, and transaction mix.
           </div>
         ) : !loading && categories.length > 0 ? (
-          <div className="mt-4 rounded-2xl border border-neutral-800 bg-neutral-950/70 px-4 py-3 text-sm text-neutral-400">
+          <div className={EMPTY_MESSAGE_CLASS}>
             Select a category above to inspect its spend, income, net, and transaction mix.
           </div>
         ) : null}

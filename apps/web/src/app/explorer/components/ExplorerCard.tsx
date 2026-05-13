@@ -25,7 +25,7 @@ export function ExplorerCard({
   return (
     <section
       className={cn(
-        "rounded-[28px] border border-neutral-800 bg-[linear-gradient(180deg,rgba(19,22,25,0.98),rgba(10,12,14,0.94))] shadow-[0_18px_48px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.02]",
+        "rounded-[28px] border border-border-subtle bg-surface-panel shadow-panel ring-1 ring-border-subtle/35",
         className
       )}
       data-testid={testId}
@@ -34,10 +34,10 @@ export function ExplorerCard({
         <header className="flex items-start justify-between gap-4 px-5 pt-5 sm:px-6 sm:pt-6">
           <div>
             {title ? (
-              <h3 className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-400">{title}</h3>
+              <h3 className="text-sm font-medium uppercase tracking-[0.2em] text-text-muted">{title}</h3>
             ) : null}
             {subtitle ? (
-              <p className="mt-2 text-sm text-neutral-500">{subtitle}</p>
+              <p className="mt-2 text-sm text-text-secondary">{subtitle}</p>
             ) : null}
           </div>
           {headerAction}

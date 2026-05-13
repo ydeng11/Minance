@@ -87,7 +87,6 @@ import {
   requireConversationOwnership
 } from "./assistant.ts";
 import { loadStore, saveStore, addAuditEvent, refreshStoreCacheIfChanged } from "./store.ts";
-import { getTrainingStatus } from "./training.ts";
 import {
   listSavedViews,
   createSavedView,
@@ -549,12 +548,6 @@ async function handleApiRequest(req, res, url) {
       const body = await parseJsonBody(req);
       const preferences = updatePreferences(user.id, body);
       sendJson(res, 200, { preferences });
-      return;
-    }
-
-    if (req.method === "GET" && pathname === "/v1/ai/training-status") {
-      requireUser(req);
-      sendJson(res, 200, { training: getTrainingStatus() });
       return;
     }
 

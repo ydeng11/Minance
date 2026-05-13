@@ -17,10 +17,31 @@ test("@core transactions remains usable on narrow screens", async ({ page }) => 
   await page.getByTestId("txn-open-advanced-filters").click();
   await expect(page.getByTestId("txn-advanced-filters")).toBeVisible();
   await expect(page.getByTestId("txn-custom-date-row")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("txn-advanced-filters")).toHaveCount(0);
+  await page.getByTestId("txn-range").selectOption("90d");
+  await expect(page.getByTestId("txn-range")).toHaveValue("90d");
 
   const overflowsHorizontally = await page.getByTestId("txn-table-scroll").evaluate((node) => {
     return node.scrollWidth > node.clientWidth;
   });
 
-  expect(overflowsHorizontally).toBe(true);
+  expect(overflowsHorizontally).toBe(false);
+});
+
+test("@core transactions advanced filters restore focus on escape", async ({ page }) => {
+  await loginWithSeedAccount(page);
+  await page.goto("/transactions");
+
+  const trigger = page.getByTestId("txn-open-advanced-filters");
+  await trigger.click();
+
+  const dialog = page.getByTestId("txn-advanced-filters");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toBeFocused();
+
+  await page.keyboard.press("Escape");
+
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
 });

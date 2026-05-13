@@ -12,8 +12,14 @@ export const SEED_ACCOUNT = {
 
 export const CSV_FIXTURE_PATH = path.resolve(__dirname, "../fixtures/transactions.csv");
 export const POSITIVE_EXPENSE_FIXTURE_PATH = path.resolve(__dirname, "../fixtures/positive-expense-inference.csv");
+export const IMPORT_ACCOUNT_ASSIGNED_TOAST = "Import account assigned. Review any remaining unmatched rows.";
 
 const PROVIDER_ORDER = ["openrouter", "openai", "anthropic", "google"];
+
+export function hasRealE2eAssistantKey() {
+  const openRouterKey = process.env.E2E_OPENROUTER_KEY || process.env.OPENROUTER_API_KEY;
+  return Boolean(openRouterKey && openRouterKey.startsWith("sk-or-v1-"));
+}
 
 function providerTestKey(provider) {
   const suffix = String(Date.now());
@@ -172,7 +178,7 @@ export async function loginWithSeedAccount(page) {
 export async function logout(page) {
   if (await page.getByTestId("assistant-close").isVisible().catch(() => false)) {
     await page.getByTestId("assistant-close").click();
-    await expect(page.getByTestId("assistant-sidebar")).toHaveCount(0);
+    await expect(page.getByTestId("assistant-sidebar")).toBeHidden();
   }
 
   await page.getByTestId("logout-button").click();
@@ -187,7 +193,7 @@ export async function gotoView(page, viewName) {
 
   if (viewName !== "assistant" && assistantIsOpen) {
     await assistantClose.click();
-    await expect(assistantSidebar).toHaveCount(0);
+    await expect(assistantSidebar).toBeHidden();
   }
 
   if (viewName === "dashboard") {
@@ -300,6 +306,7 @@ export async function ensureOpenAiCredential(page) {
 
 export async function ensureAiCredential(page, options = {}) {
   await gotoAiSettings(page);
+  await expect.poll(async () => await page.locator('[data-testid="ai-provider-select"] option').count()).toBeGreaterThan(0);
 
   const availableProviders = await page
     .locator('[data-testid="ai-provider-select"] option')
@@ -345,18 +352,37 @@ export async function uploadAndCommitFixtureCsv(page, options = {}) {
   await gotoView(page, "imports");
   await page.getByTestId("import-file").setInputFiles(CSV_FIXTURE_PATH);
   await page.getByTestId("import-process").click();
-  await expect(page.getByTestId("global-message")).toContainText("Import analyzed.");
 
   await expect(page.getByTestId("mapping-panel")).toBeVisible();
   await expect(page.getByTestId("processed-panel")).toBeVisible();
-  await expect(page.getByTestId("processed-summary")).not.toHaveText("No processed rows loaded yet.");
+  await expect(page.getByText(/^Analyzed \d+ rows in /)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("commit-import")).toBeVisible({ timeout: 30_000 });
 
   if (options.editProcessedRows !== false) {
+    await expect
+      .poll(async () => await page.locator('[data-testid^="processed-memo-"]').count(), { timeout: 30_000 })
+      .toBeGreaterThan(0);
+    await expect(page.getByTestId("processed-summary")).not.toHaveText("No processed rows loaded yet.");
+
     const memoField = page.locator('[data-testid^="processed-memo-"]').first();
     if ((await memoField.count()) > 0) {
+      const rowId = ((await memoField.getAttribute("data-testid")) || "").replace("processed-memo-", "");
       await memoField.fill("Playwright edited row");
       await memoField.press("Tab");
-      await expect(page.getByTestId("global-message")).toContainText("Mapping saved.");
+      if (rowId) {
+        await expect.poll(async () => {
+          const importsList = await appApi(page, "/v1/imports");
+          const latestImport = importsList.imports?.[0];
+          if (!latestImport?.id) {
+            return null;
+          }
+
+          const processedRows = await appApi(page, `/v1/imports/${latestImport.id}/processed-rows?limit=200`);
+          const items = Array.isArray(processedRows?.items) ? processedRows.items : [];
+          const updatedRow = items.find((row) => row?.rowId === rowId);
+          return updatedRow?.normalized?.memo || null;
+        }).toBe("Playwright edited row");
+      }
     }
   }
 
@@ -446,6 +472,19 @@ async function waitForCategoryOption(form, categoryName) {
   }).toContain(categoryName);
 }
 
+async function selectTransactionAccount(form, accountName: string) {
+  await expect.poll(async () => {
+    return await form.locator('select[name="account_name"] option').count();
+  }).toBeGreaterThan(0);
+
+  const availableAccounts = await form
+    .locator('select[name="account_name"] option')
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("value") || "").filter(Boolean));
+
+  const selectedAccount = availableAccounts.includes(accountName) ? accountName : availableAccounts[0];
+  await form.locator('select[name="account_name"]').selectOption(selectedAccount);
+}
+
 export async function createManualTransaction(page, options = {}) {
   const categoryName = options.category || "Dining";
   const merchant = options.merchant || `PW Manual ${Date.now()}`;
@@ -466,7 +505,7 @@ export async function createManualTransaction(page, options = {}) {
   await form.locator('select[name="direction"]').selectOption(direction);
   await waitForCategoryOption(form, categoryName);
   await form.locator('select[name="category_final"]').selectOption(categoryName);
-  await form.locator('input[name="account_name"]').fill(accountName);
+  await selectTransactionAccount(form, accountName);
 
   if (options.memo) {
     await form.locator('input[name="memo"]').fill(options.memo);
@@ -478,7 +517,9 @@ export async function createManualTransaction(page, options = {}) {
 
   await form.locator('button[type="submit"]').click();
   await expect(dialog).toHaveCount(0);
-  await expect(page.getByTestId("global-message")).toContainText("Transaction created.");
+  await expect.poll(async () => {
+    return await page.locator('[data-testid="txn-table"] tr', { hasText: merchant }).count();
+  }).toBeGreaterThan(0);
 
   return {
     merchant,
@@ -487,7 +528,6 @@ export async function createManualTransaction(page, options = {}) {
 }
 
 export async function searchTransactions(page, query) {
-  await gotoView(page, "transactions");
-  await page.getByTestId("txn-query").fill(query);
-  await applyTransactionsFilters(page);
+  await page.goto(`/transactions?query=${encodeURIComponent(query)}`);
+  await expect(page.getByTestId("transactions-page")).toBeVisible();
 }

@@ -225,6 +225,10 @@ export function computeDateRange(range = "90d", start = null, end = null) {
     };
   } else if (range === "ytd") {
     startDate = new Date(today.getFullYear(), 0, 1);
+  } else if (range === "this_month") {
+    startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+  } else if (range === "this_year") {
+    startDate = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
   } else {
     startDate.setDate(startDate.getDate() - 90);
   }

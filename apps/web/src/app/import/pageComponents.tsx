@@ -17,16 +17,16 @@ export function ImportAccountSelector({
   onChange
 }: ImportAccountSelectorProps) {
   return (
-    <div className="rounded-lg border border-neutral-900 bg-neutral-900/40 px-3 py-3" data-testid="import-account-panel">
+    <div className="rounded-lg border border-border-subtle bg-surface-field px-3 py-3" data-testid="import-account-panel">
       <div className="flex flex-wrap items-end gap-3">
-        <label className="grid min-w-64 flex-1 gap-1 text-xs text-neutral-300">
+        <label className="grid min-w-0 flex-1 gap-1 text-xs text-text-secondary sm:min-w-64">
           Import into account
           <select
             value={value}
             onChange={(event) => onChange(event.target.value)}
             data-testid="import-account-select"
             disabled={isApplying || disabled}
-            className="rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-neutral-200 outline-none transition focus:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-lg border border-border-subtle bg-surface-panel px-2 py-1.5 text-text-primary outline-none transition focus:border-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
             <option value="">Select account</option>
             {accountOptions.map((option) => (
@@ -37,7 +37,7 @@ export function ImportAccountSelector({
           </select>
         </label>
       </div>
-      <p className="mt-2 text-xs text-neutral-400">
+      <p className="mt-2 text-xs text-text-secondary">
         Row-level account edits stay available below for exceptions.
       </p>
     </div>
@@ -48,6 +48,7 @@ interface ProcessedRowAccountSelectProps {
   rowId: string;
   accountOptions: ImportAccountOption[];
   value: string;
+  testIdPrefix?: string;
   onChange: (value: string) => void;
 }
 
@@ -55,14 +56,15 @@ export function ProcessedRowAccountSelect({
   rowId,
   accountOptions,
   value,
+  testIdPrefix = "processed-account",
   onChange
 }: ProcessedRowAccountSelectProps) {
   return (
     <select
       value={value}
-      className="w-44 rounded border border-neutral-500 bg-neutral-900 px-2 py-1 text-neutral-100 placeholder:text-neutral-400 outline-none transition focus:border-emerald-400 focus:ring-1 focus:ring-emerald-500/40"
+      className="w-full rounded border border-border-strong bg-surface-field px-2 py-1 text-text-primary placeholder:text-text-secondary outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring md:w-44"
       aria-label={`Account for row ${rowId}`}
-      data-testid={`processed-account-${rowId}`}
+      data-testid={`${testIdPrefix}-${rowId}`}
       onChange={(event) => onChange(event.target.value)}
     >
       {accountOptions.map((option) => (
@@ -104,13 +106,13 @@ export function ImportIssuesSummaryPanel({ summary }: ImportIssuesSummaryPanelPr
   }
 
   return (
-    <section className="rounded-xl border border-amber-900/60 bg-amber-500/5 p-4" data-testid="issues-panel">
-      <h3 className="text-sm font-medium text-amber-100">Issues found</h3>
+    <section className="rounded-xl border border-warning/35 bg-warning-soft p-4" data-testid="issues-panel">
+      <h3 className="text-sm font-medium text-warning">Issues found</h3>
       <div className="mt-3 flex flex-wrap gap-2">
         {items.map((item) => (
           <span
             key={item}
-            className="rounded-full border border-amber-800/80 bg-neutral-950 px-2 py-1 text-xs text-amber-100"
+            className="rounded-full border border-warning/40 bg-surface-panel px-2 py-1 text-xs text-warning"
           >
             {item}
           </span>

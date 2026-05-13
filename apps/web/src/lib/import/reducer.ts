@@ -66,7 +66,7 @@ export function importWorkflowReducer(
         details: action.details,
         processedRows: action.processedRows,
         error: null,
-        notice: "Import analyzed."
+        notice: null
       };
     case "mapping_save_started":
       return {
@@ -82,7 +82,7 @@ export function importWorkflowReducer(
         details: action.details,
         processedRows: action.processedRows,
         error: null,
-        notice: "Mapping saved."
+        notice: null
       };
     case "commit_started":
       return {
@@ -98,7 +98,7 @@ export function importWorkflowReducer(
         isCommitting: false,
         commitResult: action.result,
         error: null,
-        notice: "Import committed."
+        notice: null
       };
     case "error":
       return {

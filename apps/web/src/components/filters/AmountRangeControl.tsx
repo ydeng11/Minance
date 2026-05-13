@@ -61,15 +61,15 @@ export function AmountRangeControl({
 
   return (
     <div data-testid={`${testIdPrefix}-amount-range-control`}>
-      <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.22em] text-neutral-500">
+      <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.22em] text-text-muted">
         <span>Amount bar</span>
         <span>{money(selectedMinAmount)} to {money(selectedMaxAmount)}</span>
       </div>
 
       <div className="relative mt-4">
-        <div className="h-2 rounded-full bg-neutral-900" />
+        <div className="h-2 rounded-full bg-surface-field" />
         <div
-          className="pointer-events-none absolute top-0 h-2 rounded-full bg-emerald-400/70"
+          className="pointer-events-none absolute top-0 h-2 rounded-full bg-accent/70"
           style={sliderTrackStyle}
         />
         <input
@@ -87,7 +87,7 @@ export function AmountRangeControl({
           }}
           data-testid={`${testIdPrefix}-min-amount-range`}
           aria-label="Minimum amount range"
-          className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-emerald-400"
+          className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-accent"
         />
         <input
           type="range"
@@ -104,7 +104,7 @@ export function AmountRangeControl({
           }}
           data-testid={`${testIdPrefix}-max-amount-range`}
           aria-label="Maximum amount range"
-          className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-emerald-200"
+          className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-accent"
         />
       </div>
 

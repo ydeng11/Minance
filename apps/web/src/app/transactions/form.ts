@@ -328,3 +328,15 @@ export function validateTransactionDraft(
     payload
   };
 }
+
+/** Maps draft fields to `TransactionFormErrors` keys for inline blur validation. */
+export const TRANSACTION_FORM_FIELD_ERROR_KEYS: Partial<
+  Record<keyof TransactionFormDraft, keyof TransactionFormErrors>
+> = {
+  transaction_date: "transaction_date",
+  description: "description",
+  amount: "amount",
+  category_final: "category_final",
+  tags: "tags",
+  transaction_type: "transaction_type"
+};

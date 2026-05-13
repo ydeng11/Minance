@@ -48,22 +48,22 @@ export function SuggestionsSection({ suggestions, onSuggestionHandled }: Suggest
   }
 
   return (
-    <section className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-4" data-testid="recurrings-suggestions">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-neutral-400">
+    <section className="rounded-xl border border-border-subtle bg-surface-panel/85 p-4" data-testid="recurrings-suggestions">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
         Suggested Recurrings ({suggestions.length})
       </h4>
-      <p className="mt-1 text-xs text-neutral-500">
+      <p className="mt-1 text-xs text-text-muted">
         Merchants detected as potentially recurring. Create rules to track them.
       </p>
       <div className="mt-3 space-y-2">
         {suggestions.map((suggestion) => (
           <div
             key={suggestion.id}
-            className="flex items-center justify-between rounded-lg bg-neutral-950 px-3 py-2"
+            className="flex items-center justify-between rounded-lg bg-surface-field px-3 py-2"
           >
             <div>
-              <p className="text-sm font-medium text-neutral-200">{suggestion.merchant_pattern}</p>
-              <p className="text-xs text-neutral-500">
+              <p className="text-sm font-medium text-text-primary">{suggestion.merchant_pattern}</p>
+              <p className="text-xs text-text-muted">
                 {money(suggestion.amount)} · {suggestion.occurrence_count} months
               </p>
             </div>
@@ -72,20 +72,20 @@ export function SuggestionsSection({ suggestions, onSuggestionHandled }: Suggest
                 type="button"
                 onClick={() => handleCreate(suggestion)}
                 disabled={loading === suggestion.id}
-                className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-1 text-xs text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
+                className="inline-flex min-h-11 items-center gap-1 rounded-md bg-accent-soft px-3 py-2 text-xs text-accent transition hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50"
                 data-testid={`suggestion-create-${suggestion.id}`}
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3 w-3" aria-hidden="true" />
                 Create
               </button>
               <button
                 type="button"
                 onClick={() => handleDismiss(suggestion)}
                 disabled={loading === suggestion.id}
-                className="inline-flex items-center gap-1 rounded-md bg-neutral-800 px-2 py-1 text-xs text-neutral-400 transition hover:bg-neutral-700 disabled:opacity-50"
+                className="inline-flex min-h-11 items-center gap-1 rounded-md bg-surface-elevated px-3 py-2 text-xs text-text-secondary transition hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50"
                 data-testid={`suggestion-dismiss-${suggestion.id}`}
               >
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3" aria-hidden="true" />
                 Dismiss
               </button>
             </div>
