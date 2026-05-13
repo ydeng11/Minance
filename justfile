@@ -35,6 +35,22 @@ start-web:
 start-api:
     pnpm start:api
 
+# Build the nightly Docker image (runs test suite first)
+docker-build:
+    just test
+    docker build -t ydeng11/minance:nightly -f deploy/docker/Dockerfile.combined .
+    echo "✅ Image built: ydeng11/minance:nightly"
+
+# Push the pre-built nightly image to Docker Hub
+docker-push:
+    docker push ydeng11/minance:nightly
+    echo "✅ Image pushed: ydeng11/minance:nightly"
+
+# Build and push the nightly Docker image (test → build → push)
+docker-nightly: docker-build
+    docker push ydeng11/minance:nightly
+    echo "✅ Image built and pushed: ydeng11/minance:nightly"
+
 # Run the project guardrails
 guardrails:
     pnpm guardrails
