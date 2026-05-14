@@ -13,6 +13,7 @@ test("createDefaultTransactionsFilterState returns expected defaults", () => {
   assert.deepEqual(createDefaultTransactionsFilterState(), {
     query: "",
     categories: [],
+    invertCategories: false,
     accounts: [],
     minAmount: "",
     maxAmount: "",
@@ -38,6 +39,7 @@ test("parseTransactionsFilterState reads supported query tokens", () => {
   assert.deepEqual(parsed, {
     query: "Transfer",
     categories: ["Dining", "Groceries"],
+    invertCategories: false,
     accounts: ["primary-checking", "travel-card"],
     minAmount: "",
     maxAmount: "",
@@ -225,6 +227,7 @@ test("toValidFilterState trims values and clears custom dates when not in custom
   assert.deepEqual(validated, {
     query: "Rent",
     categories: ["Housing", "Travel"],
+    invertCategories: false,
     accounts: ["fixture-checking", "travel-card"],
     minAmount: "20.5",
     maxAmount: "140",

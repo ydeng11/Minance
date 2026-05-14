@@ -226,7 +226,8 @@ export async function createStartupPlan(options: StartupPlanOptions): Promise<St
   );
 
   const apiEnv: Record<string, string> = {
-    PORT: String(apiPort.port)
+    PORT: String(apiPort.port),
+    MINANCE_ALLOWED_ORIGINS: `http://localhost:${webPort.port},http://127.0.0.1:${webPort.port}`
   };
 
   if (options.mode === "dev") {

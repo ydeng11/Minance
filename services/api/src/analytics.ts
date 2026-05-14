@@ -141,7 +141,8 @@ export function filterUserTransactions(userId, filters = {}) {
       const categoryToMatch = categoryView === CATEGORY_VIEW_COARSE
         ? resolvedCategory.categoryCoarse
         : resolvedCategory.categoryGranular;
-      if (!categoryFilters.includes(categoryToMatch)) {
+      const isMatch = categoryFilters.includes(categoryToMatch);
+      if (filters.invert_categories ? isMatch : !isMatch) {
         continue;
       }
     }

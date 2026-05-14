@@ -60,8 +60,10 @@ export function deriveActiveBadges(filters: Record<string, unknown>): ActiveBadg
 
   // Categories array
   const categories = Array.isArray(filters.categories) ? filters.categories as string[] : [];
+  const invertCategories = Boolean(filters.invertCategories);
   if (categories.length > 0) {
-    badges.push({ key: "categories", label: `${categories.length} categories` });
+    const prefix = invertCategories ? "Excluding" : "Filtering";
+    badges.push({ key: "categories", label: `${prefix} ${categories.length} categories` });
   }
 
   // Accounts array (Transactions)

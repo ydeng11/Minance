@@ -11,6 +11,7 @@ function createDefaultExplorerFilters(): ExplorerFilterState {
     query: "",
     merchant: "",
     categories: [],
+    invertCategories: false,
     account: "",
     range: "90d",
     start: "",
@@ -29,6 +30,7 @@ function createDefaultTransactionsFilters(): TransactionsFilterState {
   return {
     query: "",
     categories: [],
+    invertCategories: false,
     accounts: [],
     minAmount: "",
     maxAmount: "",
@@ -61,7 +63,7 @@ test("deriveActiveBadges returns badge for query filter", () => {
 test("deriveActiveBadges returns badge for categories array with count", () => {
   const filters = { ...createDefaultExplorerFilters(), categories: ["food", "transport"] };
   const badges = deriveActiveBadges(filters);
-  assert.equal(badges.some(b => b.key === "categories" && b.label === "2 categories"), true);
+  assert.equal(badges.some(b => b.key === "categories" && b.label === "Filtering 2 categories"), true);
 });
 
 test("deriveActiveBadges returns badge for accounts array with count", () => {

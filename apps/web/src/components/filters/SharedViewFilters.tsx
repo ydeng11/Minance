@@ -42,6 +42,7 @@ export type SharedViewFilterState = {
   start: string;
   end: string;
   categories: string[];
+  invertCategories: boolean;
   categoryView: "granular" | "coarse";
   transactionTypes: Array<"expense" | "income" | "transfer">;
   tag: string;
@@ -247,6 +248,37 @@ export function SharedViewFilters({
               searchable={true}
               searchPlaceholder="Search categories"
             />
+            {filters.categories.length > 0 ? (
+              <div className="mt-2 flex items-center justify-end gap-2">
+                <span className="text-xs text-text-muted">Mode:</span>
+                <div className="flex overflow-hidden rounded-lg border border-border-subtle text-xs font-medium">
+                  <button
+                    type="button"
+                    onClick={() => onChange({ invertCategories: false })}
+                    data-testid={`${testIdPrefix}-category-filter-include`}
+                    className={`px-2.5 py-1 transition ${
+                      !filters.invertCategories
+                        ? "bg-accent text-white"
+                        : "bg-surface-field text-text-muted hover:text-text-primary"
+                    }`}
+                  >
+                    Include
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChange({ invertCategories: true })}
+                    data-testid={`${testIdPrefix}-category-filter-exclude`}
+                    className={`px-2.5 py-1 transition ${
+                      filters.invertCategories
+                        ? "bg-red-500 text-white"
+                        : "bg-surface-field text-text-muted hover:text-text-primary"
+                    }`}
+                  >
+                    Exclude
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <label className={FIELD_GROUP_CLASS}>

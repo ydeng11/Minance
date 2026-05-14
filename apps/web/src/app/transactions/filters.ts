@@ -6,6 +6,7 @@ export type TransactionTypeFilter = "expense" | "income" | "transfer";
 export interface TransactionsFilterState {
   query: string;
   categories: string[];
+  invertCategories: boolean;
   accounts: string[];
   minAmount: string;
   maxAmount: string;
@@ -30,6 +31,7 @@ export interface TransactionsListApiParams {
   start?: string;
   end?: string;
   category_view: TransactionCategoryView;
+  invert_categories?: boolean;
   transaction_type?: TransactionTypeFilter[];
   tag?: string;
   limit: number;
@@ -116,6 +118,7 @@ export function createDefaultTransactionsFilterState(): TransactionsFilterState 
   return {
     query: "",
     categories: [],
+    invertCategories: false,
     accounts: [],
     minAmount: "",
     maxAmount: "",
@@ -141,6 +144,7 @@ export function parseTransactionsFilterState(searchParams: SearchParamsLike): Tr
   return {
     query: cleanValue(searchParams.get("query")),
     categories: cleanStringList(searchParams.getAll("category")),
+    invertCategories: searchParams.get("invert_categories") === "true",
     accounts: cleanStringList(searchParams.getAll("account")),
     minAmount: cleanAmountValue(searchParams.get("min_amount")),
     maxAmount: cleanAmountValue(searchParams.get("max_amount")),
@@ -171,6 +175,9 @@ export function toTransactionsListApiParams(filters: TransactionsFilterState): T
   }
   if (filters.categories.length) {
     params.category = filters.categories;
+  }
+  if (filters.invertCategories) {
+    params.invert_categories = true;
   }
   if (filters.accounts.length) {
     params.account = filters.accounts;
@@ -236,6 +243,9 @@ export function buildTransactionsFilterSearchParams(filters: TransactionsFilterS
   for (const category of filters.categories) {
     searchParams.append("category", category);
   }
+  if (filters.invertCategories) {
+    searchParams.set("invert_categories", "true");
+  }
   for (const account of filters.accounts) {
     searchParams.append("account", account);
   }
@@ -289,6 +299,7 @@ export function toValidFilterState(filters: TransactionsFilterState): Transactio
   const next: TransactionsFilterState = {
     query: cleanValue(filters.query),
     categories: cleanStringList(filters.categories),
+    invertCategories: Boolean(filters.invertCategories),
     accounts: cleanStringList(filters.accounts),
     minAmount: cleanAmountValue(filters.minAmount),
     maxAmount: cleanAmountValue(filters.maxAmount),
@@ -308,6 +319,10 @@ export function toValidFilterState(filters: TransactionsFilterState): Transactio
   }
   if (!CATEGORY_VIEW_VALUES.has(next.categoryView)) {
     next.categoryView = "granular";
+  }
+
+  if (!next.categories.length) {
+    next.invertCategories = false;
   }
 
   if (next.range !== "custom") {

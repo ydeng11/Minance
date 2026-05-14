@@ -82,7 +82,7 @@ export function ExplorerAdvancedFilters({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className={FIELD_GROUP_WIDE_CLASS}>
+        <div className={FIELD_GROUP_WIDE_CLASS}>
           <span>Category</span>
           <MultiSelectField
             selectedValues={filters.categories}
@@ -97,7 +97,38 @@ export function ExplorerAdvancedFilters({
             searchPlaceholder="Search category"
             searchAriaLabel="Search category"
           />
-        </label>
+          {filters.categories.length > 0 ? (
+            <div className="mt-2 flex items-center justify-end gap-2">
+              <span className="text-xs text-text-muted">Mode:</span>
+              <div className="flex overflow-hidden rounded-lg border border-border-subtle text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => onChange({ invertCategories: false })}
+                  data-testid="explorer-category-filter-include"
+                  className={`px-2.5 py-1 transition ${
+                    !filters.invertCategories
+                      ? "bg-accent text-white"
+                      : "bg-surface-field text-text-muted hover:text-text-primary"
+                  }`}
+                >
+                  Include
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ invertCategories: true })}
+                  data-testid="explorer-category-filter-exclude"
+                  className={`px-2.5 py-1 transition ${
+                    filters.invertCategories
+                      ? "bg-red-500 text-white"
+                      : "bg-surface-field text-text-muted hover:text-text-primary"
+                  }`}
+                >
+                  Exclude
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
 
         <label className={FIELD_GROUP_CLASS}>
           Category view

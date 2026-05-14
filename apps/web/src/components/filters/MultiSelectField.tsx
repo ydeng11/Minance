@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, RotateCcw, X, CheckSquare } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 export interface MultiSelectOption {
@@ -174,17 +174,70 @@ export function MultiSelectField({
 
       {isOpen ? (
         <div className="mt-2 rounded-2xl border border-border-subtle bg-surface-panel/95 p-3 shadow-dialog">
-          {searchable ? (
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={handleSearchKeyDown}
-              data-testid={`${testId}-search`}
-              aria-label={searchAriaLabel || searchPlaceholder}
-              placeholder={searchPlaceholder}
-              className={`mb-3 h-10 w-full rounded-xl border border-border-subtle bg-surface-field px-3 text-sm text-text-primary outline-none transition focus:border-accent ${FOCUS_RING_CLASS}`}
-            />
-          ) : null}
+          <div className="mb-3 space-y-2">
+            {searchable ? (
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                data-testid={`${testId}-search`}
+                aria-label={searchAriaLabel || searchPlaceholder}
+                placeholder={searchPlaceholder}
+                className={`h-10 w-full rounded-xl border border-border-subtle bg-surface-field px-3 text-sm text-text-primary outline-none transition focus:border-accent ${FOCUS_RING_CLASS}`}
+              />
+            ) : null}
+
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-text-muted">
+                {selectedValues.length > 0
+                  ? `${selectedValues.length} selected`
+                  : `${options.length} options`}
+              </span>
+              <div className="flex items-center gap-1">
+                {selectedValues.length > 0 && selectedValues.length < options.length ? (
+                  <button
+                    type="button"
+                    onClick={() => onChange(options.map((o) => o.value))}
+                    data-testid={`${testId}-select-all`}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-accent transition hover:bg-accent-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    title="Select all"
+                  >
+                    <CheckSquare className="h-3 w-3" />
+                    All
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onChange([])}
+                    data-testid={`${testId}-clear-all`}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-text-muted transition hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    title="Clear all"
+                  >
+                    <X className="h-3 w-3" />
+                    Clear
+                  </button>
+                )}
+                {selectedValues.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allValues = new Set(options.map((o) => o.value));
+                      const inverted = options
+                        .map((o) => o.value)
+                        .filter((v) => !selectedValues.includes(v));
+                      onChange(inverted);
+                    }}
+                    data-testid={`${testId}-invert`}
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-text-muted transition hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    title="Invert selection"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Invert
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </div>
 
           <div
             id={listboxId}

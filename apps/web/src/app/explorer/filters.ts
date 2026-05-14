@@ -16,6 +16,7 @@ export interface ExplorerFilterState {
 
   // Category & Account
   categories: string[];
+  invertCategories: boolean;
   account: string;
   categoryView: ExplorerCategoryView;
 
@@ -43,6 +44,7 @@ export interface ExplorerAnalyticsApiParams {
   perspective?: ExplorerPerspective;
   compare?: "previous";
   category?: string[];
+  invert_categories?: boolean;
   account?: string;
   transaction_type?: ExplorerTransactionType[];
   direction?: "outflow" | "inflow";
@@ -120,6 +122,7 @@ export function createDefaultExplorerFilterState(): ExplorerFilterState {
     query: "",
     merchant: "",
     categories: [],
+    invertCategories: false,
     account: "",
     range: "90d",
     start: "",
@@ -150,6 +153,7 @@ export function parseExplorerFilterState(searchParams: SearchParamsLike): Explor
     query: cleanValue(searchParams.get("query")),
     merchant: cleanValue(searchParams.get("merchant")),
     categories: cleanStringList(searchParams.getAll("category")),
+    invertCategories: searchParams.get("invert_categories") === "true",
     account: cleanValue(searchParams.get("account")),
     range: RANGE_VALUES.has(range) ? range : defaults.range,
     start: cleanIsoDate(searchParams.get("start")),
@@ -178,6 +182,9 @@ export function toExplorerAnalyticsApiParams(
 
   if (filters.categories.length) {
     params.category = filters.categories;
+  }
+  if (filters.invertCategories) {
+    params.invert_categories = true;
   }
   if (filters.account) {
     params.account = filters.account;
@@ -221,6 +228,9 @@ export function buildExplorerFilterSearchParams(filters: ExplorerFilterState): U
   }
   for (const category of filters.categories) {
     searchParams.append("category", category);
+  }
+  if (filters.invertCategories) {
+    searchParams.set("invert_categories", "true");
   }
   if (filters.account) {
     searchParams.set("account", filters.account);
@@ -283,6 +293,7 @@ export function toValidExplorerFilterState(filters: ExplorerFilterState): Explor
     query: cleanValue(filters.query),
     merchant: cleanValue(filters.merchant),
     categories: cleanStringList(filters.categories),
+    invertCategories: Boolean(filters.invertCategories),
     account: cleanValue(filters.account),
     start: cleanIsoDate(filters.start),
     end: cleanIsoDate(filters.end),
@@ -300,6 +311,10 @@ export function toValidExplorerFilterState(filters: ExplorerFilterState): Explor
   }
   next.categoryView = readEnumValue(next.categoryView, CATEGORY_VIEW_VALUES, "granular");
   next.direction = readEnumValue(next.direction, DIRECTION_VALUES, "all");
+
+  if (!next.categories.length) {
+    next.invertCategories = false;
+  }
 
   if (next.range !== "custom") {
     next.start = "";
@@ -324,6 +339,7 @@ export function savedExplorerFiltersToState(
     query: readSavedString(source.query, defaults.query),
     merchant: readSavedString(source.merchant, defaults.merchant),
     categories: readStringArray(source.categories),
+    invertCategories: source.invertCategories === true,
     account: readSavedString(source.account, defaults.account),
     categoryView: readSavedString(source.categoryView, defaults.categoryView),
     range: readSavedString(source.range, defaults.range),
