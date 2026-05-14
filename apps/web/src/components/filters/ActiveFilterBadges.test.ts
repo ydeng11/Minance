@@ -51,15 +51,6 @@ test("deriveActiveBadges returns empty array when no active filters", () => {
   assert.deepEqual(badges, []);
 });
 
-test("deriveActiveBadges returns badge for query filter", () => {
-  const filters = { ...createDefaultExplorerFilters(), query: "amazon" };
-  const badges = deriveActiveBadges(filters);
-  assert.equal(badges.length, 1);
-  assert.equal(badges[0].key, "query");
-  assert.ok(badges[0].label.includes("Search"));
-  assert.ok(badges[0].label.includes("amazon"));
-});
-
 test("deriveActiveBadges returns badge for categories array with count", () => {
   const filters = { ...createDefaultExplorerFilters(), categories: ["food", "transport"] };
   const badges = deriveActiveBadges(filters);
@@ -159,10 +150,9 @@ test("deriveActiveBadges returns badge for recurring filter", () => {
 test("deriveActiveBadges handles multiple active filters", () => {
   const filters = {
     ...createDefaultExplorerFilters(),
-    query: "test",
     categories: ["food"],
     direction: "outflow"
   };
   const badges = deriveActiveBadges(filters);
-  assert.equal(badges.length, 3);
+  assert.equal(badges.length, 2);
 });

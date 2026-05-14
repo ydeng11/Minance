@@ -31,7 +31,6 @@ export interface ActiveFilterBadgesProps {
  * Returns badges for non-default/non-empty filter values.
  *
  * Badge labels follow these patterns:
- * - query -> "Search: <value>"
  * - categories (array) -> "X categories" (count)
  * - accounts (array) -> "X accounts" (count)
  * - account (single) -> "Account: <value>"
@@ -45,12 +44,6 @@ export interface ActiveFilterBadgesProps {
  */
 export function deriveActiveBadges(filters: Record<string, unknown>): ActiveBadge[] {
   const badges: ActiveBadge[] = [];
-
-  // Query/search text
-  const query = String(filters.query || "").trim();
-  if (query) {
-    badges.push({ key: "query", label: `Search: "${query}"` });
-  }
 
   // Merchant filter (Explorer only)
   const merchant = String(filters.merchant || "").trim();

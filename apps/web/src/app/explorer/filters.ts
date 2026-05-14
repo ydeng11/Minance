@@ -10,8 +10,7 @@ export interface ExplorerFilterState {
   perspective: ExplorerPerspective;
   compare: ExplorerCompareMode;
 
-  // Search & Text
-  query: string;
+  // Merchant
   merchant: string;
 
   // Category & Account
@@ -119,7 +118,6 @@ export function createDefaultExplorerFilterState(): ExplorerFilterState {
   return {
     perspective: "overview",
     compare: "none",
-    query: "",
     merchant: "",
     categories: [],
     invertCategories: false,
@@ -150,7 +148,6 @@ export function parseExplorerFilterState(searchParams: SearchParamsLike): Explor
   return {
     perspective: readEnumValue(perspective, PERSPECTIVE_VALUES, defaults.perspective),
     compare: readEnumValue(compare, COMPARE_VALUES, defaults.compare),
-    query: cleanValue(searchParams.get("query")),
     merchant: cleanValue(searchParams.get("merchant")),
     categories: cleanStringList(searchParams.getAll("category")),
     invertCategories: searchParams.get("invert_categories") === "true",
@@ -223,9 +220,6 @@ export function buildExplorerFilterSearchParams(filters: ExplorerFilterState): U
   const defaults = createDefaultExplorerFilterState();
   const searchParams = new URLSearchParams();
 
-  if (filters.query) {
-    searchParams.set("query", filters.query);
-  }
   for (const category of filters.categories) {
     searchParams.append("category", category);
   }
@@ -290,7 +284,6 @@ export function buildExplorerFilterSearchParams(filters: ExplorerFilterState): U
 export function toValidExplorerFilterState(filters: ExplorerFilterState): ExplorerFilterState {
   const next = {
     ...filters,
-    query: cleanValue(filters.query),
     merchant: cleanValue(filters.merchant),
     categories: cleanStringList(filters.categories),
     invertCategories: Boolean(filters.invertCategories),
@@ -336,7 +329,6 @@ export function savedExplorerFiltersToState(
   return toValidExplorerFilterState({
     perspective: readSavedString(source.perspective, defaults.perspective),
     compare: readSavedString(source.compare, defaults.compare),
-    query: readSavedString(source.query, defaults.query),
     merchant: readSavedString(source.merchant, defaults.merchant),
     categories: readStringArray(source.categories),
     invertCategories: source.invertCategories === true,

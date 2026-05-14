@@ -78,7 +78,6 @@ export default function ExplorerPage() {
         end: next.end,
         categories: next.categories,
         accounts: next.account ? [next.account] : [],
-        query: next.query,
         tag: next.tag,
         transactionTypes: next.transactionTypes,
         categoryView: next.categoryView,
@@ -108,7 +107,6 @@ export default function ExplorerPage() {
         end: shared.end,
         categories: shared.categories,
         account: shared.accounts[0] || "",
-        query: shared.query,
         tag: shared.tag,
         transactionTypes: shared.transactionTypes as ExplorerTransactionType[],
         categoryView: shared.categoryView,
@@ -220,13 +218,12 @@ export default function ExplorerPage() {
   );
 
   const openTransactionsDrillDown = useCallback(
-    (overrides: Partial<{ query: string; category: string; account: string; transactionType: "expense" | "income" | "transfer"; tag: string }>) => {
+    (overrides: Partial<{ category: string; account: string; transactionType: "expense" | "income" | "transfer"; tag: string }>) => {
       const singleCategory = filters.categories.length === 1 ? filters.categories[0] : "";
       const singleTransactionType = filters.transactionTypes.length === 1 ? filters.transactionTypes[0] : null;
       const transactionTypeValue = overrides.transactionType ?? singleTransactionType;
       const transactionFilters = toValidTransactionsFilterState({
         ...createDefaultTransactionsFilterState(),
-        query: overrides.query ?? filters.query,
         categories: [overrides.category ?? singleCategory].filter(Boolean),
         accounts: [overrides.account ?? filters.account].filter(Boolean),
         minAmount: filters.minAmount,
