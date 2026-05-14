@@ -13,6 +13,14 @@ output/playwright
 playwright-report
 .playwright-cli
 .playwright-cli.*
+
+# Sensitive / personal data exports (bank CSVs, etc.)
+*Activity*.csv
+*Statement*.csv
+*transactions*.csv
+personal-*.csv
+private-*.csv
+
 apps/web/.next/
 apps/web/.next-e2e/
 apps/web/next-env.d.ts
@@ -21,8 +29,5 @@ apps/web/tsconfig.tsbuildinfo
 *.db
 .db
 
-# Planning docs
-
 # npm lockfiles are not authoritative in this repo.
 package-lock.json
-**/package-lock.json/
