@@ -184,5 +184,25 @@ export function ensureSqliteFoundation(overrides = {}) {
     throw new Error(`MINANCE_STORE_BACKEND=sqlite requires a ready SQLite foundation: ${reason}`);
   }
 
+  // Reclaim free space and enable incremental vacuum to prevent file bloat.
+  // On existing databases with auto_vacuum=0, VACUUM rebuilds the file with
+  // auto_vacuum=1 so future DELETE+INSERT cycles don't balloon the file size.
+  if (status.ready && status.sqliteFileExists && status.sqliteCliAvailable) {
+    try {
+      const freePages = Number(
+        (sqliteQueryJson(status.sqliteFilePath, "PRAGMA freelist_count;")[0] || {}).freelist_count || 0
+      );
+      if (freePages > 500) {
+        runSqlScript(status.sqliteFilePath, "PRAGMA auto_vacuum = 1; VACUUM;");
+      } else {
+        // Even with a small freelist, ensure future page allocations use incremental vacuum
+        runSqlScript(status.sqliteFilePath, "PRAGMA auto_vacuum = 1;");
+      }
+    } catch (_vacuumError) {
+      // Non-fatal — old free pages and auto_vacuum=0 are a performance issue,
+      // not a correctness issue. The VACUUM can run on next restart or manually.
+    }
+  }
+
   return status;
 }

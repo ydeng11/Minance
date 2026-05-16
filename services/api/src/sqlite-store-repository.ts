@@ -244,3 +244,39 @@ export function writeStoreCollectionsToSqlite(store, options = {}) {
   lines.push("COMMIT;");
   runSqlScript(dbPath, lines.join("\n"));
 }
+
+/**
+ * Write only a single table's data to SQLite (DELETE + INSERT for that table only).
+ * Avoids rewriting the entire database for targeted hot-path mutations.
+ */
+export function writeTableToSqlite(store, spec, options = {}) {
+  const dbPath = resolveDbPath(options);
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+
+  const lines = [
+    "PRAGMA foreign_keys = ON;",
+    "BEGIN IMMEDIATE TRANSACTION;"
+  ];
+
+  lines.push(`DELETE FROM ${spec.tableName};`);
+  const rows = getRowsForSpec(store, spec);
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index];
+    const mapped = spec.mapRow(row || {});
+    const ensured = withRequiredColumns(spec, mapped, row, index);
+    lines.push(insertStatement(spec.tableName, ensured));
+  }
+
+  lines.push("COMMIT;");
+  runSqlScript(dbPath, lines.join("\n"));
+}
+
+/**
+ * Execute arbitrary SQL against the SQLite database.
+ * Used for maintenance operations like VACUUM or PRAGMA changes.
+ */
+export function executeSqlOnSqlite(sql, options = {}) {
+  const dbPath = resolveDbPath(options);
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  runSqlScript(dbPath, sql);
+}

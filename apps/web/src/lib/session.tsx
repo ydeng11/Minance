@@ -129,6 +129,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Skip refetch if user is already loaded (e.g., from a just-completed login/signup).
+    if (user) {
+      return;
+    }
+
     authApi
       .me(client.request)
       .then((result) => {
@@ -138,7 +143,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         onAuthFailure();
       });
-  }, [client.request, onAuthFailure, tokens]);
+  }, [client.request, onAuthFailure, tokens, user]);
 
   const value = useMemo<SessionContextValue>(
     () => ({

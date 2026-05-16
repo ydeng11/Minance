@@ -5,8 +5,10 @@ import { nowIso, createId } from "./utils.ts";
 import { ensureSqliteFoundation } from "./sqlite-foundation.ts";
 import {
   readStoreCollectionsFromSqlite,
-  writeStoreCollectionsToSqlite
+  writeStoreCollectionsToSqlite,
+  writeTableToSqlite
 } from "./sqlite-store-repository.ts";
+import { STORE_TABLE_SPECS } from "../../../scripts/sqlite-cutover-lib.ts";
 
 const defaultStore = {
   users: [],
@@ -180,6 +182,30 @@ export function saveStore(nextStore = null) {
   }
 
   writeJsonStoreFromCache();
+}
+
+/**
+ * Save only the specified SQLite tables instead of rewriting the entire database.
+ * Falls back to full save for the JSON backend.
+ * This is the primary optimization for hot-path writes (login, auth, etc.).
+ */
+export function saveStoreTables(tableNames) {
+  if (!cache) {
+    cache = loadStore();
+  }
+
+  if (STORE_BACKEND === "sqlite") {
+    ensureSqliteStoreReady();
+    const specs = STORE_TABLE_SPECS.filter((spec) => tableNames.includes(spec.tableName));
+    for (const spec of specs) {
+      writeTableToSqlite(cache, spec);
+    }
+    cacheFileMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
+    return;
+  }
+
+  // JSON backend has no partial-write support; fall back to full save
+  saveStore();
 }
 
 export function withStore(mutator) {

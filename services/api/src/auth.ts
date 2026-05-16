@@ -1,5 +1,5 @@
 import { TOKEN_TTL_MS, REFRESH_TTL_MS } from "./config.ts";
-import { loadStore, saveStore, addAuditEvent } from "./store.ts";
+import { loadStore, saveStore, saveStoreTables, addAuditEvent } from "./store.ts";
 import { ensureDevOpenRouterCredential } from "./ai.ts";
 import {
   nowIso,
@@ -170,9 +170,18 @@ export function login(email, password) {
   const session = generateSession(user.id);
   store.sessions.push(session);
   pruneSessions(store);
-  saveStore(store);
 
-  addAuditEvent(user.id, "user.login", {});
+  // Inline audit event to avoid a second full saveStore call
+  store.auditEvents.push({
+    id: createId("audit"),
+    userId: user.id,
+    action: "user.login",
+    details: {},
+    createdAt: nowIso()
+  });
+
+  // Only rewrite the tables that changed (sessions + audit_events)
+  saveStoreTables(["sessions", "audit_events"]);
 
   return {
     user: sanitizeUser(user),
