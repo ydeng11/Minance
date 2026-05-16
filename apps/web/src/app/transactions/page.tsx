@@ -37,7 +37,8 @@ import { getSharedFilters, setSharedFilters } from "@/lib/sharedFilters";
 import {
   buildCreateResultMessage,
   getLedgerAmountBounds,
-  sortTransactionsForLedger
+  sortTransactionsForLedger,
+  type SortDirection
 } from "./ledger";
 import {
   pruneSelectionToVisible,
@@ -247,12 +248,13 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [isExporting, setIsExporting] = useState(false);
   const createDialogRef = useRef<HTMLElement | null>(null);
   const bulkDeleteDialogRef = useRef<HTMLElement | null>(null);
   const previousFocusedElementRef = useRef<HTMLElement | null>(null);
 
-  const ledgerTransactions = useMemo(() => sortTransactionsForLedger(transactions), [transactions]);
+  const ledgerTransactions = useMemo(() => sortTransactionsForLedger(transactions, sortDirection), [transactions, sortDirection]);
   const amountBounds = useMemo(
     () => getLedgerAmountBounds(transactionsMeta, ledgerTransactions),
     [ledgerTransactions, transactionsMeta]
@@ -1401,7 +1403,19 @@ export default function TransactionsPage() {
                     className={TRANSACTION_SELECTION_CHECKBOX_CLASS}
                   />
                 </th>
-                <th scope="col" className="hidden px-5 py-3.5 font-medium lg:table-cell">Dates</th>
+                <th scope="col" className="hidden px-5 py-3.5 font-medium lg:table-cell">
+                  <button
+                    type="button"
+                    onClick={() => setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"))}
+                    className="inline-flex items-center gap-1.5 transition hover:text-text-primary"
+                    data-testid="txn-sort-date"
+                  >
+                    Dates
+                    <span className="text-[10px] leading-none">
+                      {sortDirection === "desc" ? "\u25BC" : "\u25B2"}
+                    </span>
+                  </button>
+                </th>
                 <th scope="col" className="px-3 py-3.5 font-medium lg:px-5">Details</th>
                 <th scope="col" className="hidden px-5 py-3.5 font-medium lg:table-cell">Category</th>
                 <th scope="col" className="hidden px-5 py-3.5 font-medium lg:table-cell">Account</th>

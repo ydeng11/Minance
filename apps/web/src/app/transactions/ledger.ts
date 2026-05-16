@@ -4,19 +4,26 @@ function compareIsoDesc(left?: string | null, right?: string | null) {
   return String(right || "").localeCompare(String(left || ""));
 }
 
-export function sortTransactionsForLedger(transactions: Transaction[]) {
+function compareIsoAsc(left?: string | null, right?: string | null) {
+  return String(left || "").localeCompare(String(right || ""));
+}
+
+export type SortDirection = "desc" | "asc";
+
+export function sortTransactionsForLedger(transactions: Transaction[], sortDirection: SortDirection = "desc") {
+  const compare = sortDirection === "asc" ? compareIsoAsc : compareIsoDesc;
   return [...transactions].sort((left, right) => {
-    const byTransactionDate = compareIsoDesc(left.transaction_date, right.transaction_date);
+    const byTransactionDate = compare(left.transaction_date, right.transaction_date);
     if (byTransactionDate !== 0) {
       return byTransactionDate;
     }
 
-    const byCreatedAt = compareIsoDesc(left.created_at, right.created_at);
+    const byCreatedAt = compare(left.created_at, right.created_at);
     if (byCreatedAt !== 0) {
       return byCreatedAt;
     }
 
-    const byUpdatedAt = compareIsoDesc(left.updated_at, right.updated_at);
+    const byUpdatedAt = compare(left.updated_at, right.updated_at);
     if (byUpdatedAt !== 0) {
       return byUpdatedAt;
     }
