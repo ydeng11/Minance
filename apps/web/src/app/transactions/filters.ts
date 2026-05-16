@@ -19,6 +19,7 @@ export interface TransactionsFilterState {
   page: number;
   recurringRuleId: string;
   recurring: boolean;
+  sortDirection: "desc" | "asc";
 }
 
 export interface TransactionsListApiParams {
@@ -36,6 +37,7 @@ export interface TransactionsListApiParams {
   tag?: string;
   limit: number;
   offset: number;
+  sort_direction?: string;
   recurring_rule_id?: string;
 }
 
@@ -66,12 +68,10 @@ function cleanStringList(values: string[]) {
 
   for (const value of values) {
     const normalized = cleanValue(value);
-    if (!normalized || seen.has(normalized)) {
-      continue;
+    if (normalized && !seen.has(normalized)) {
+      seen.add(normalized);
+      cleaned.push(normalized);
     }
-
-    seen.add(normalized);
-    cleaned.push(normalized);
   }
 
   return cleaned;
@@ -130,7 +130,8 @@ export function createDefaultTransactionsFilterState(): TransactionsFilterState 
     tag: "",
     page: 1,
     recurringRuleId: "",
-    recurring: false
+    recurring: false,
+    sortDirection: "desc"
   };
 }
 
@@ -158,7 +159,8 @@ export function parseTransactionsFilterState(searchParams: SearchParamsLike): Tr
     tag: cleanValue(searchParams.get("tag")),
     page: cleanPositiveInteger(searchParams.get("page"), defaults.page),
     recurringRuleId: cleanValue(searchParams.get("recurring_rule_id")),
-    recurring: recurringParam === "true"
+    recurring: recurringParam === "true",
+    sortDirection: searchParams.get("sort") === "asc" ? "asc" : "desc"
   };
 }
 
@@ -194,6 +196,10 @@ export function toTransactionsListApiParams(filters: TransactionsFilterState): T
   if (filters.tag) {
     params.tag = filters.tag;
   }
+  if (filters.sortDirection === "asc") {
+    params.sort_direction = "asc";
+  }
+
   if (filters.recurring) {
     params.recurring_rule_id = "true";
   } else if (filters.recurringRuleId) {
@@ -288,6 +294,10 @@ export function buildTransactionsFilterSearchParams(filters: TransactionsFilterS
     searchParams.set("recurring_rule_id", filters.recurringRuleId);
   }
 
+  if (filters.sortDirection !== "desc") {
+    searchParams.set("sort", filters.sortDirection);
+  }
+
   if (filters.recurring) {
     searchParams.set("recurring", "true");
   }
@@ -311,7 +321,8 @@ export function toValidFilterState(filters: TransactionsFilterState): Transactio
     tag: cleanValue(filters.tag),
     page: Math.max(1, Number.isFinite(filters.page) ? Math.trunc(filters.page) : 1),
     recurringRuleId: cleanValue(filters.recurringRuleId),
-    recurring: Boolean(filters.recurring)
+    recurring: Boolean(filters.recurring),
+    sortDirection: filters.sortDirection === "asc" ? "asc" : "desc"
   };
 
   if (!RANGE_VALUES.has(next.range)) {

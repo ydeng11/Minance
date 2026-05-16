@@ -37,8 +37,7 @@ import { getSharedFilters, setSharedFilters } from "@/lib/sharedFilters";
 import {
   buildCreateResultMessage,
   getLedgerAmountBounds,
-  sortTransactionsForLedger,
-  type SortDirection
+  sortTransactionsForLedger
 } from "./ledger";
 import {
   pruneSelectionToVisible,
@@ -248,13 +247,14 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [isExporting, setIsExporting] = useState(false);
   const createDialogRef = useRef<HTMLElement | null>(null);
   const bulkDeleteDialogRef = useRef<HTMLElement | null>(null);
   const previousFocusedElementRef = useRef<HTMLElement | null>(null);
 
-  const ledgerTransactions = useMemo(() => sortTransactionsForLedger(transactions, sortDirection), [transactions, sortDirection]);
+  // Server returns data sorted by sort_direction.
+  // Client-side sort ensures correctness even before server restart or for optimistic updates.
+  const ledgerTransactions = useMemo(() => sortTransactionsForLedger(transactions, filters.sortDirection), [transactions, filters.sortDirection]);
   const amountBounds = useMemo(
     () => getLedgerAmountBounds(transactionsMeta, ledgerTransactions),
     [ledgerTransactions, transactionsMeta]
@@ -298,7 +298,6 @@ export default function TransactionsPage() {
   const hasVisibleTransactions = visibleTransactionIds.length > 0;
   const allVisibleSelected = visibleTransactionIds.length > 0 && selectedVisibleCount === visibleTransactionIds.length;
   const selectionInputDisabled = loading || saving || bulkDeleting;
-  const selectedTransactionLabel = formatTransactionCountLabel(selectedVisibleCount);
   const createDialogDefaultCategory = categories[0]?.name || "";
 
   const applyTransactionViewFilters = useCallback(
@@ -852,7 +851,7 @@ export default function TransactionsPage() {
       resetManualForm();
     }
 
-    setTransactions((previous) => sortTransactionsForLedger(previous.filter((entry) => entry.id !== transactionId)));
+    setTransactions((previous) => sortTransactionsForLedger(previous.filter((entry) => entry.id !== transactionId), filtersRef.current.sortDirection));
     setTotalTransactions((previous) => Math.max(0, previous - 1));
 
     try {
@@ -898,7 +897,7 @@ export default function TransactionsPage() {
     }
 
     setTransactions((previous) =>
-      sortTransactionsForLedger(previous.filter((entry) => !selectedIds.includes(entry.id)))
+      sortTransactionsForLedger(previous.filter((entry) => !selectedIds.includes(entry.id)), filtersRef.current.sortDirection)
     );
     setTotalTransactions((previous) => Math.max(0, previous - deletedCount));
     clearSelectedTransactions();
@@ -1406,13 +1405,19 @@ export default function TransactionsPage() {
                 <th scope="col" className="hidden px-5 py-3.5 font-medium lg:table-cell">
                   <button
                     type="button"
-                    onClick={() => setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"))}
+                    onClick={() => {
+                      const nextDirection = filtersRef.current.sortDirection === "desc" ? "asc" : "desc";
+                      commitFiltersWithSelectionReset({
+                        ...filtersRef.current,
+                        sortDirection: nextDirection
+                      });
+                    }}
                     className="inline-flex items-center gap-1.5 transition hover:text-text-primary"
                     data-testid="txn-sort-date"
                   >
                     Dates
                     <span className="text-[10px] leading-none">
-                      {sortDirection === "desc" ? "\u25BC" : "\u25B2"}
+                      {filters.sortDirection === "desc" ? "\u25BC" : "\u25B2"}
                     </span>
                   </button>
                 </th>
@@ -1783,7 +1788,7 @@ export default function TransactionsPage() {
               <div>
                 <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-danger">Bulk delete</div>
                 <h3 id="txn-bulk-delete-dialog-title" className="mt-2 text-2xl font-semibold text-text-primary">
-                  Delete {selectedTransactionLabel}
+                  Delete {formatTransactionCountLabel(selectedVisibleCount)}
                 </h3>
                 <p className="mt-2 text-sm text-text-secondary">
                   This removes only the transactions currently selected on this visible page. Selection clears after delete.

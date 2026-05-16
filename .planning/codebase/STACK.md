@@ -9,7 +9,7 @@
 
 **Secondary:**
 - JavaScript - Used for configuration files (`playwright.config.mjs`, `postcss.config.mjs`)
-- Python 3 - Used for AI agents (`services/agents/`) and CSV processing scripts (`scripts/process_csv.py`)
+- Python 3 - Used for AI agents (`services/agents/`)
 
 ## Runtime
 
@@ -83,6 +83,3 @@
 - SQLite database file
 - Environment secrets for AI providers
 
----
-
-*Stack analysis: 2026-03-31*

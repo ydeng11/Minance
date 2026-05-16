@@ -58,18 +58,13 @@ function buildQuery(params: Record<string, QueryValue>) {
   for (const [key, value] of Object.entries(params)) {
     if (Array.isArray(value)) {
       for (const item of value) {
-        if (item === null || item === undefined || item === "") {
-          continue;
+        if (item !== null && item !== undefined && item !== "") {
+          query.append(key, String(item));
         }
-        query.append(key, String(item));
       }
-      continue;
+    } else if (value !== null && value !== undefined && value !== "") {
+      query.set(key, String(value));
     }
-
-    if (value === null || value === undefined || value === "") {
-      continue;
-    }
-    query.set(key, String(value));
   }
   const result = query.toString();
   return result ? `?${result}` : "";
@@ -221,6 +216,7 @@ export const transactionsApi = {
       transaction_type?: Array<"expense" | "income" | "transfer">;
       tag?: string;
       recurring_rule_id?: string;
+      sort_direction?: string;
       limit?: number;
       offset?: number;
     }

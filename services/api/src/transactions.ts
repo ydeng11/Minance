@@ -567,6 +567,8 @@ export function listTransactions(userId, filters = {}) {
     effectiveFilters.range = "all";
   }
 
+  const sortDirection = effectiveFilters.sort_direction === "asc" ? "asc" : "desc";
+
   const store = loadStore();
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
@@ -579,22 +581,23 @@ export function listTransactions(userId, filters = {}) {
   txns = txns.map((entry) => normalizeTransactionRecord(entry, store));
 
   txns = [...txns].sort((a, b) => {
-    const byTransactionDate = String(b.transaction_date || "").localeCompare(String(a.transaction_date || ""));
+    const [first, second] = sortDirection === "desc" ? [b, a] : [a, b];
+    const byTransactionDate = String(first.transaction_date || "").localeCompare(String(second.transaction_date || ""));
     if (byTransactionDate !== 0) {
       return byTransactionDate;
     }
 
-    const byCreatedAt = String(b.created_at || "").localeCompare(String(a.created_at || ""));
+    const byCreatedAt = String(first.created_at || "").localeCompare(String(second.created_at || ""));
     if (byCreatedAt !== 0) {
       return byCreatedAt;
     }
 
-    const byUpdatedAt = String(b.updated_at || "").localeCompare(String(a.updated_at || ""));
+    const byUpdatedAt = String(first.updated_at || "").localeCompare(String(second.updated_at || ""));
     if (byUpdatedAt !== 0) {
       return byUpdatedAt;
     }
 
-    return String(b.id || "").localeCompare(String(a.id || ""));
+    return String(first.id || "").localeCompare(String(second.id || ""));
   });
 
   const total = txns.length;

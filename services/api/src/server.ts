@@ -675,6 +675,7 @@ async function handleApiRequest(req, res, url) {
         min_amount: searchParams.get("min_amount"),
         max_amount: searchParams.get("max_amount"),
         recurring_rule_id: searchParams.get("recurring_rule_id"),
+        sort_direction: searchParams.get("sort_direction"),
         limit: searchParams.get("limit"),
         offset: searchParams.get("offset")
       });

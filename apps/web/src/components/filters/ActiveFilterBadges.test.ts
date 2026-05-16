@@ -42,7 +42,8 @@ function createDefaultTransactionsFilters(): TransactionsFilterState {
     tag: "",
     page: 1,
     recurringRuleId: "",
-    recurring: false
+    recurring: false,
+    sortDirection: "desc"
   };
 }
 

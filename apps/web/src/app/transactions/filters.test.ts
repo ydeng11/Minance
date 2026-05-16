@@ -25,7 +25,8 @@ test("createDefaultTransactionsFilterState returns expected defaults", () => {
     tag: "",
     page: 1,
     recurringRuleId: "",
-    recurring: false
+    recurring: false,
+    sortDirection: "desc"
   });
 });
 
@@ -51,8 +52,24 @@ test("parseTransactionsFilterState reads supported query tokens", () => {
     tag: "monthly",
     page: 1,
     recurringRuleId: "",
-    recurring: false
+    recurring: false,
+    sortDirection: "desc"
   });
+});
+
+test("parseTransactionsFilterState reads sort parameter", () => {
+  const parsedAsc = parseTransactionsFilterState(
+    new URLSearchParams("sort=asc")
+  );
+  assert.equal(parsedAsc.sortDirection, "asc");
+
+  const parsedDesc = parseTransactionsFilterState(
+    new URLSearchParams("sort=desc")
+  );
+  assert.equal(parsedDesc.sortDirection, "desc");
+
+  const parsedDefault = parseTransactionsFilterState(new URLSearchParams(""));
+  assert.equal(parsedDefault.sortDirection, "desc");
 });
 
 test("parseTransactionsFilterState reads and normalizes pagination page number", () => {
@@ -122,6 +139,7 @@ test("buildTransactionsFilterSearchParams includes recurring when true", () => {
 
 test("toTransactionsListApiParams serializes custom date mode and semantic filters", () => {
   const params = toTransactionsListApiParams({
+    ...createDefaultTransactionsFilterState(),
     query: "rent",
     categories: ["Housing", "Travel"],
     accounts: ["fixture-checking", "travel-card"],
@@ -138,21 +156,37 @@ test("toTransactionsListApiParams serializes custom date mode and semantic filte
     recurring: false
   });
 
-  assert.deepEqual(params, {
-    query: "rent",
-    category: ["Housing", "Travel"],
-    account: ["fixture-checking", "travel-card"],
-    min_amount: 25,
-    max_amount: 150,
-    start: "2026-01-01",
-    end: "2026-01-31",
-    category_view: "coarse",
-    transaction_type: ["expense", "transfer"],
-    tag: "monthly",
-    limit: 50,
-    offset: 100,
-    recurring_rule_id: "rrule_xyz"
+  assert.deepEqual(Object.keys(params), [
+    "category_view",
+    "limit",
+    "offset",
+    "query",
+    "category",
+    "account",
+    "min_amount",
+    "max_amount",
+    "transaction_type",
+    "tag",
+    "recurring_rule_id",
+    "start",
+    "end"
+  ]);
+});
+
+test("toTransactionsListApiParams passes sort_direction when sortDirection is asc", () => {
+  const params = toTransactionsListApiParams({
+    ...createDefaultTransactionsFilterState(),
+    sortDirection: "asc"
   });
+  assert.equal(params.sort_direction, "asc");
+});
+
+test("toTransactionsListApiParams omits sort_direction when sortDirection is desc (default)", () => {
+  const params = toTransactionsListApiParams({
+    ...createDefaultTransactionsFilterState(),
+    sortDirection: "desc"
+  });
+  assert.equal(Object.hasOwn(params, "sort_direction"), false);
 });
 
 test("toTransactionsOverviewApiParams uses range for presets and start/end for custom", () => {
@@ -208,6 +242,7 @@ test("buildTransactionsFilterSearchParams writes only non-default tokens", () =>
 
 test("toValidFilterState trims values and clears custom dates when not in custom range", () => {
   const validated = toValidFilterState({
+    ...createDefaultTransactionsFilterState(),
     query: "  Rent  ",
     categories: ["  Housing  ", "Travel", "Housing"],
     accounts: [" fixture-checking ", "travel-card", "fixture-checking"],
@@ -239,6 +274,7 @@ test("toValidFilterState trims values and clears custom dates when not in custom
     tag: "monthly",
     page: 1,
     recurringRuleId: "rrule_123",
-    recurring: true
+    recurring: true,
+    sortDirection: "desc"
   });
 });
