@@ -1,4 +1,4 @@
-import { loadStore } from "./store.ts";
+import { loadStore, getUserTransactions, onCacheReloaded, onStoreReset } from "./store.ts";
 import { computeDateRange, inDateRange, monthKey } from "./utils.ts";
 import { applySharedTransactionFilters } from "./transactionFilters.ts";
 import {
@@ -9,6 +9,38 @@ import {
 } from "./category-strategy.ts";
 
 const TAG_PATTERN = /^[a-z0-9]+(?:[ _-][a-z0-9]+)*$/;
+
+/**
+ * Simple LRU-like cache for filterUserTransactions results.
+ * Keyed by `userId::<sorted-JSON of effectiveFilters>`.
+ * Cleared whenever the store cache is reloaded.
+ * Max 20 entries to prevent unbounded memory growth.
+ */
+const _filterResultCache = new Map();
+const FILTER_CACHE_MAX = 20;
+
+// Clear the filter-result cache whenever the underlying store is reloaded
+// (e.g. after a mutation).  This hook is registered at module init time
+// and fires inside refreshStoreCacheIfChanged.
+onCacheReloaded(() => {
+  _filterResultCache.clear();
+});
+
+// Also clear on store reset (used between tests) so stale results from
+// a previous test don't leak into the next one via the cache.
+onStoreReset(() => {
+  _filterResultCache.clear();
+});
+
+function filterCacheKey(userId, filters) {
+  // Sort keys so {a:1, b:2} and {b:2, a:1} produce the same key.
+  const sorted = {};
+  const keys = Object.keys(filters || {}).sort();
+  for (const key of keys) {
+    sorted[key] = filters[key];
+  }
+  return `${userId}::${JSON.stringify(sorted)}`;
+}
 
 function resolveTxnCategory(resolveCategory, txn) {
   return resolveCategory({
@@ -108,7 +140,13 @@ function normalizeAnalyticsFilters(filters = {}) {
 }
 
 export function filterUserTransactions(userId, filters = {}) {
-  const store = loadStore();
+  // Check result cache (scoped to store-cache lifecycle).
+  const cacheKey = filterCacheKey(userId, filters);
+  const cached = _filterResultCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const { start, end } = computeDateRange(filters.range, filters.start, filters.end);
   const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
   const strategy = ensureCategoryStrategyForUser(userId);
@@ -116,14 +154,11 @@ export function filterUserTransactions(userId, filters = {}) {
   const categoryFilters = normalizeFilterList(filters.category);
   const includeExcluded = normalizeIncludeExcluded(readIncludeExcludedFilter(filters), true);
 
+  // Use the per-user transaction index instead of scanning all store.transactions.
+  const userTransactions = getUserTransactions(userId);
+
   const filtered = [];
-  for (const txn of store.transactions) {
-    if (txn.user_id !== userId) {
-      continue;
-    }
-    if (txn.deleted_at) {
-      continue;
-    }
+  for (const txn of userTransactions) {
     if (!inDateRange(txn.transaction_date, start, end)) {
       continue;
     }
@@ -155,12 +190,22 @@ export function filterUserTransactions(userId, filters = {}) {
     filtered.push(normalizedTxn);
   }
 
-  return applySharedTransactionFilters(filtered, filters);
+  const result = applySharedTransactionFilters(filtered, filters);
+
+  // Store in cache, evict oldest entry if needed.
+  if (_filterResultCache.size >= FILTER_CACHE_MAX) {
+    const firstKey = _filterResultCache.keys().next().value;
+    if (firstKey !== undefined) {
+      _filterResultCache.delete(firstKey);
+    }
+  }
+  _filterResultCache.set(cacheKey, result);
+
+  return result;
 }
 
 export function getUserDataBounds(userId) {
-  const store = loadStore();
-  const userTxns = store.transactions.filter((txn) => txn.user_id === userId && !txn.deleted_at);
+  const userTxns = getUserTransactions(userId);
   if (!userTxns.length) {
     return {
       start: null,

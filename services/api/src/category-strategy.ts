@@ -340,24 +340,57 @@ function findOrCreateStrategyEntry(store, userId) {
   return { strategy, changed };
 }
 
+/**
+ * Simple memoization cache for strategy objects, keyed by userId.
+ * The strategy for a given user rarely changes, and within the 2s
+ * cache-cooldown window the store is guaranteed stable.
+ * Cleared whenever the store is saved (see clearCategoryStrategyCache export).
+ */
+const _strategyCache = new Map();
+
+/**
+ * Memoization cache for resolvers, keyed by strategy object reference.
+ * Uses WeakMap so resolvers are garbage-collected when the strategy is dropped.
+ */
+const _resolverCache = new WeakMap();
+
+/**
+ * Clears the in-memory strategy cache.
+ * Called by store.ts after any mutation to ensure subsequent reads
+ * pick up fresh strategy data.
+ */
+export function clearCategoryStrategyCache() {
+  _strategyCache.clear();
+  // WeakMap is not iterable, so resolvers will be GC'd when their strategy
+  // objects are dropped from _strategyCache.
+}
+
 export function normalizeCategoryView(value) {
   return value === CATEGORY_VIEW_COARSE ? CATEGORY_VIEW_COARSE : CATEGORY_VIEW_GRANULAR;
 }
 
 export function ensureCategoryStrategyForUser(userId) {
+  const cached = _strategyCache.get(userId);
+  if (cached) {
+    return cached;
+  }
+
   const store = loadStore();
   const existingStrategy = store.categoryStrategies.find((entry) => entry.userId === userId);
   if (!existingStrategy) {
     const userCategories = store.categories
       .filter((entry) => entry.userId === userId)
       .map((entry) => entry.name);
-    return buildDefaultStrategy(userId, userCategories);
+    const strategy = buildDefaultStrategy(userId, userCategories);
+    _strategyCache.set(userId, strategy);
+    return strategy;
   }
 
   const { strategy, changed } = findOrCreateStrategyEntry(store, userId);
   if (changed) {
     saveStore(store);
   }
+  _strategyCache.set(userId, strategy);
   return strategy;
 }
 
@@ -425,6 +458,13 @@ export function createCategoryResolver(strategyInput) {
     coarseCategories: cloneCoarseCategories(DEFAULT_COARSE_CATEGORIES),
     granularCategories: buildDefaultGranularSet()
   };
+
+  // Return cached resolver if the same strategy object is reused
+  // (which happens thanks to _strategyCache above).
+  const cached = _resolverCache.get(strategy);
+  if (cached) {
+    return cached;
+  }
   const lookup = buildLookup(strategy);
   const fallbackCoarse =
     lookup.coarseByKey.get("neutral")

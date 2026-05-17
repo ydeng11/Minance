@@ -86,13 +86,14 @@ import {
   getConversation,
   requireConversationOwnership
 } from "./assistant.ts";
-import { loadStore, saveStore, addAuditEvent, refreshStoreCacheIfChanged } from "./store.ts";
+import { loadStore, saveStore, addAuditEvent, refreshStoreCacheIfChanged, onCacheReloaded } from "./store.ts";
 import {
   listSavedViews,
   createSavedView,
   updateSavedView,
   deleteSavedView
 } from "./savedViews.ts";
+import { clearCategoryStrategyCache } from "./category-strategy.ts";
 import { createId, nowIso, stableHash } from "./utils.ts";
 import { ensureSqliteFoundation, getSqliteFoundationStatus } from "./sqlite-foundation.ts";
 import {
@@ -1089,12 +1090,7 @@ async function handleApiRequest(req, res, url) {
         range: searchParams.get("range"),
         category_view: searchParams.get("category_view")
       };
-      const result = getCategoryRollup(user.id, {
-        start: filters.start,
-        end: filters.end,
-        range: filters.range,
-        category_view: filters.category_view
-      });
+      const result = getCategoryRollup(user.id, filters);
       sendJson(res, 200, { items: result, meta: buildAnalyticsMeta(user.id, filters) });
       return;
     }
@@ -1107,11 +1103,7 @@ async function handleApiRequest(req, res, url) {
         range: searchParams.get("range"),
         category_view: searchParams.get("category_view")
       };
-      const result = getMerchantRollup(user.id, {
-        start: filters.start,
-        end: filters.end,
-        range: filters.range
-      });
+      const result = getMerchantRollup(user.id, filters);
       sendJson(res, 200, { items: result, meta: buildAnalyticsMeta(user.id, filters) });
       return;
     }
@@ -1124,11 +1116,7 @@ async function handleApiRequest(req, res, url) {
         range: searchParams.get("range"),
         category_view: searchParams.get("category_view")
       };
-      const result = getHeatmap(user.id, {
-        start: filters.start,
-        end: filters.end,
-        range: filters.range
-      });
+      const result = getHeatmap(user.id, filters);
       sendJson(res, 200, { items: result, meta: buildAnalyticsMeta(user.id, filters) });
       return;
     }
@@ -1141,12 +1129,7 @@ async function handleApiRequest(req, res, url) {
         range: searchParams.get("range"),
         category_view: searchParams.get("category_view")
       };
-      const result = getAnomalies(user.id, {
-        start: filters.start,
-        end: filters.end,
-        range: filters.range,
-        category_view: filters.category_view
-      });
+      const result = getAnomalies(user.id, filters);
       sendJson(res, 200, { items: result, meta: buildAnalyticsMeta(user.id, filters) });
       return;
     }
@@ -1372,6 +1355,12 @@ function serveStatic(req, res, url) {
   });
   stream.pipe(res);
 }
+
+// Wire up derived-cache invalidation: refresh the category strategy cache
+// whenever the in-memory store is reloaded from the backing store.
+onCacheReloaded(() => {
+  clearCategoryStrategyCache();
+});
 
 const server = http.createServer(async (req, res) => {
   applySecurityHeaders(req, res);

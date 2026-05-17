@@ -8,7 +8,15 @@ import {
   writeStoreCollectionsToSqlite,
   writeTableToSqlite
 } from "./sqlite-store-repository.ts";
+
 import { STORE_TABLE_SPECS } from "../../../scripts/sqlite-cutover-lib.ts";
+
+/**
+ * Minimum interval (ms) between cache-staleness checks.
+ * Prevents redundant SQLite mtime stat + full reload on every API request.
+ * Only relevant for the SQLite backend; for JSON, the stat is cheap.
+ */
+const REFRESH_COOLDOWN_MS = 2_000;
 
 const defaultStore = {
   users: [],
@@ -45,14 +53,24 @@ const defaultStore = {
 let cache = null;
 let cacheFileMtimeMs = null;
 
-function ensureSqliteStoreReady() {
-  if (STORE_BACKEND !== "sqlite") {
+/** Timestamp of the last cache-staleness check, used to throttle refreshStoreCacheIfChanged. */
+let lastRefreshCheckMs = 0;
+
+/**
+ * Index: userId → active (non-deleted) transactions for that user.
+ * Rebuilt whenever the store cache is loaded/reloaded, so it stays consistent
+ * with the in-memory cache without needing separate invalidation.
+ */
+let _transactionsByUser = new Map();
+
+let sqliteFoundationEnsured = false;
+
+function ensureSqliteStoreOnce() {
+  if (sqliteFoundationEnsured || STORE_BACKEND !== "sqlite") {
     return;
   }
-
-  ensureSqliteFoundation({
-    backend: "sqlite"
-  });
+  ensureSqliteFoundation({ backend: "sqlite" });
+  sqliteFoundationEnsured = true;
 }
 
 function ensureDataFile() {
@@ -73,18 +91,37 @@ function getStoreFileMtimeMs(filePath) {
   return fs.statSync(filePath).mtimeMs;
 }
 
+function buildTransactionIndex() {
+  if (!cache) return;
+  const index = new Map();
+  for (const txn of cache.transactions) {
+    const uid = txn.user_id || txn.userId;
+    if (!uid) continue;
+    if (txn.deleted_at) continue;
+    let list = index.get(uid);
+    if (!list) {
+      list = [];
+      index.set(uid, list);
+    }
+    list.push(txn);
+  }
+  _transactionsByUser = index;
+}
+
 function loadJsonStoreIntoCache() {
   ensureDataFile();
   const raw = fs.readFileSync(DATA_FILE, "utf8");
   cache = normalizeStore(JSON.parse(raw));
   cacheFileMtimeMs = getDataFileMtimeMs();
+  buildTransactionIndex();
   return cache;
 }
 
 function loadSqliteStoreIntoCache() {
-  ensureSqliteStoreReady();
+  ensureSqliteStoreOnce();
   cache = normalizeStore(readStoreCollectionsFromSqlite());
   cacheFileMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
+  buildTransactionIndex();
   return cache;
 }
 
@@ -129,40 +166,72 @@ export function loadStore() {
   return loadJsonStoreIntoCache();
 }
 
+/** Hook registered by server.ts to clear derived caches after cache reload. */
+let _onCacheReloaded = null;
+
+/** Hook registered by analytics.ts to clear filter result cache on store reset. */
+let _onStoreReset = null;
+
+/**
+ * Register a callback that fires when the in-memory cache is reloaded from
+ * the backing store (file or SQLite). Used to invalidate derived caches
+ * (e.g. category strategy) without creating circular imports.
+ */
+export function onCacheReloaded(callback) {
+  _onCacheReloaded = callback;
+}
+
+/**
+ * Register a callback that fires when the store is reset (e.g. between tests).
+ * Used to clear derived caches that aren't invalidated by the normal
+ * cache-reload path.  Avoids circular imports.
+ */
+export function onStoreReset(callback) {
+  _onStoreReset = callback;
+}
+
 export function refreshStoreCacheIfChanged() {
+  // Throttle: skip if we checked within the cooldown window.
+  // This prevents every API request from stat-ing the file and potentially
+  // reloading the entire store from SQLite.
+  const now = Date.now();
+  if (now - lastRefreshCheckMs < REFRESH_COOLDOWN_MS) {
+    return false;
+  }
+  lastRefreshCheckMs = now;
+
+  let changed = false;
+
   if (STORE_BACKEND === "sqlite") {
     if (!cache) {
       loadSqliteStoreIntoCache();
-      return true;
+      changed = true;
+    } else {
+      const currentMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
+      if (cacheFileMtimeMs == null || currentMtimeMs !== cacheFileMtimeMs) {
+        loadSqliteStoreIntoCache();
+        changed = true;
+      }
     }
-
-    ensureSqliteStoreReady();
-    const currentMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
-    if (cacheFileMtimeMs != null && currentMtimeMs === cacheFileMtimeMs) {
-      return false;
+  } else if (STORE_BACKEND === "json") {
+    if (!cache) {
+      loadJsonStoreIntoCache();
+      changed = true;
+    } else {
+      ensureDataFile();
+      const currentMtimeMs = getDataFileMtimeMs();
+      if (cacheFileMtimeMs == null || currentMtimeMs !== cacheFileMtimeMs) {
+        loadJsonStoreIntoCache();
+        changed = true;
+      }
     }
-
-    loadSqliteStoreIntoCache();
-    return true;
   }
 
-  if (STORE_BACKEND !== "json") {
-    return false;
+  if (changed && _onCacheReloaded) {
+    _onCacheReloaded();
   }
 
-  if (!cache) {
-    loadJsonStoreIntoCache();
-    return true;
-  }
-
-  ensureDataFile();
-  const currentMtimeMs = getDataFileMtimeMs();
-  if (cacheFileMtimeMs != null && currentMtimeMs === cacheFileMtimeMs) {
-    return false;
-  }
-
-  loadJsonStoreIntoCache();
-  return true;
+  return changed;
 }
 
 export function saveStore(nextStore = null) {
@@ -174,14 +243,32 @@ export function saveStore(nextStore = null) {
     cache = loadStore();
   }
 
+  // Always rebuild the transaction index when the store is saved,
+  // regardless of backend (SQLite or JSON).  Ensures getUserTransactions()
+  // is consistent with the current in-memory cache.
+  buildTransactionIndex();
+
   if (STORE_BACKEND === "sqlite") {
-    ensureSqliteStoreReady();
+    ensureSqliteStoreOnce();
     writeStoreCollectionsToSqlite(cache);
     cacheFileMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
+    // After a mutation, reset the cooldown so the next refresh check actually picks it up.
+    lastRefreshCheckMs = 0;
     return;
   }
 
   writeJsonStoreFromCache();
+}
+
+/**
+ * Return only the transactions belonging to `userId` (pre-filtered and cached).
+ * Much faster than scanning `store.transactions` for each analytics query.
+ */
+export function getUserTransactions(userId) {
+  if (!_transactionsByUser.size) {
+    buildTransactionIndex();
+  }
+  return _transactionsByUser.get(userId) || [];
 }
 
 /**
@@ -195,12 +282,15 @@ export function saveStoreTables(tableNames) {
   }
 
   if (STORE_BACKEND === "sqlite") {
-    ensureSqliteStoreReady();
+    ensureSqliteStoreOnce();
     const specs = STORE_TABLE_SPECS.filter((spec) => tableNames.includes(spec.tableName));
     for (const spec of specs) {
       writeTableToSqlite(cache, spec);
     }
     cacheFileMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
+    buildTransactionIndex();
+    // After a mutation, reset the cooldown so the next refresh check actually picks it up.
+    lastRefreshCheckMs = 0;
     return;
   }
 
@@ -217,6 +307,9 @@ export function withStore(mutator) {
 
 export function resetStoreForTests(nextStore = null) {
   cache = normalizeStore(nextStore || defaultStore);
+  if (_onStoreReset) {
+    _onStoreReset();
+  }
   saveStore(cache);
 }
 
