@@ -482,9 +482,10 @@ export default function ImportPage() {
 
     setIsAssigningAccount(true);
     try {
-      await Promise.all(
-        rowIds.map((rowId) => api.imports.updateProcessedRow(currentImportId, rowId, { account_name: account.displayName }))
-      );
+      await api.imports.updateProcessedRows(currentImportId, {
+        rowIds,
+        updates: { account_name: account.displayName }
+      });
       await refreshProcessedRows(currentImportId);
       return true;
     } catch (error) {

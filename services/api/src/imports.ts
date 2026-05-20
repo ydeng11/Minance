@@ -739,21 +739,8 @@ export function updateImportProcessedRow(userId, importId, rowId, payload = {}) 
     throw new Error("Processed row not found");
   }
 
-  const updates = {};
-  for (const field of EDITABLE_ROW_FIELDS) {
-    if (Object.hasOwn(payload, field)) {
-      updates[field] = payload[field];
-    }
-  }
-  if (Object.hasOwn(payload, "include")) {
-    updates.include = Boolean(payload.include);
-  }
-
-  target.overrides = {
-    ...(target.overrides || {}),
-    ...updates
-  };
-  target.editedAt = nowIso();
+  const updates = extractProcessedRowUpdates(payload);
+  applyProcessedRowUpdates(target, updates);
 
   const rebuilt = rebuildProcessedRows(store, userId, importJob);
   importJob.updatedAt = nowIso();
@@ -763,6 +750,77 @@ export function updateImportProcessedRow(userId, importId, rowId, payload = {}) 
   const updated = rebuilt.find((entry) => entry.rowId === rowId) || null;
   return {
     row: updated,
+    summary: summarizeProcessedRows(rebuilt)
+  };
+}
+
+function extractProcessedRowUpdates(payload = {}) {
+  const updates = {};
+  for (const field of EDITABLE_ROW_FIELDS) {
+    if (Object.hasOwn(payload, field)) {
+      updates[field] = payload[field];
+    }
+  }
+  if (Object.hasOwn(payload, "include")) {
+    updates.include = Boolean(payload.include);
+  }
+  return updates;
+}
+
+function applyProcessedRowUpdates(row, updates, editedAt = nowIso()) {
+  row.overrides = {
+    ...(row.overrides || {}),
+    ...updates
+  };
+  row.editedAt = editedAt;
+}
+
+export function updateImportProcessedRows(userId, importId, payload = {}) {
+  const store = loadStore();
+  const importJob = store.imports.find((entry) => entry.id === importId && entry.userId === userId);
+  if (!importJob) {
+    throw new Error("Import not found");
+  }
+
+  const rowIds = Array.isArray(payload.rowIds)
+    ? Array.from(new Set(payload.rowIds.map((entry) => String(entry || "").trim()).filter(Boolean)))
+    : [];
+  if (!rowIds.length) {
+    throw new Error("No processed rows selected");
+  }
+
+  const updates = extractProcessedRowUpdates(payload.updates || {});
+  if (!Object.keys(updates).length) {
+    throw new Error("No processed row updates provided");
+  }
+
+  const rowsById = new Map(
+    store.importRowsProcessed
+      .filter((entry) => entry.importId === importId)
+      .map((entry) => [entry.rowId, entry])
+  );
+  const missingRowIds = rowIds.filter((rowId) => !rowsById.has(rowId));
+  if (missingRowIds.length) {
+    throw new Error("Processed row not found");
+  }
+
+  const editedAt = nowIso();
+  for (const rowId of rowIds) {
+    applyProcessedRowUpdates(rowsById.get(rowId), updates, editedAt);
+  }
+
+  const rebuilt = rebuildProcessedRows(store, userId, importJob);
+  importJob.updatedAt = nowIso();
+  saveStore(store);
+  addAuditEvent(userId, "import.processed_rows.updated", {
+    importId,
+    rowCount: rowIds.length,
+    fields: Object.keys(updates)
+  });
+
+  const updatedRowIds = new Set(rowIds);
+  return {
+    rows: rebuilt.filter((entry) => updatedRowIds.has(entry.rowId)),
     summary: summarizeProcessedRows(rebuilt)
   };
 }

@@ -144,3 +144,11 @@ test("import action icons are decorative when text labels carry the action", () 
   assert.match(importPageSource, /<Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" \/>/);
   assert.match(importPageSource, /<RefreshCcw className="h-3\.5 w-3\.5" aria-hidden="true" \/>/);
 });
+
+test("import account assignment uses the bulk processed row update endpoint", () => {
+  assert.match(importPageSource, /api\.imports\.updateProcessedRows\(currentImportId,\s*\{\s*rowIds,/s);
+  assert.doesNotMatch(
+    importPageSource,
+    /rowIds\.map\(\(rowId\) => api\.imports\.updateProcessedRow\(currentImportId, rowId, \{ account_name: account\.displayName \}\)\)/
+  );
+});

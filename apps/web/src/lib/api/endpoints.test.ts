@@ -249,6 +249,26 @@ test("importsApi exposes reconciliation query and resolution mutation contracts"
   assert.equal(calls[1].options?.method, "POST");
 });
 
+test("importsApi exposes bulk processed row update contract", async () => {
+  const { calls, request } = createRecorder();
+
+  await importsApi.updateProcessedRows(request, "imp_123", {
+    rowIds: ["prow_1", "prow_2"],
+    updates: {
+      account_name: "Checking"
+    }
+  });
+
+  assert.equal(calls[0].path, "/v1/imports/imp_123/processed-rows");
+  assert.equal(calls[0].options?.method, "PATCH");
+  assert.deepEqual(calls[0].options?.body, {
+    rowIds: ["prow_1", "prow_2"],
+    updates: {
+      account_name: "Checking"
+    }
+  });
+});
+
 test("importsApi no longer exposes a manual reprocess endpoint helper in the web client", () => {
   assert.equal("reprocess" in importsApi, false);
 });

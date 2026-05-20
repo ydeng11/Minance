@@ -23,6 +23,7 @@ import {
   commitImport,
   listImportProcessedRows,
   updateImportProcessedRow,
+  updateImportProcessedRows,
   reprocessImportRows,
   getImportReconciliation,
   resolveImportReconciliation
@@ -599,6 +600,14 @@ async function handleApiRequest(req, res, url) {
         limit: searchParams.get("limit"),
         status: searchParams.get("status")
       });
+      sendJson(res, 200, result);
+      return;
+    }
+
+    if (req.method === "PATCH" && processedRowsParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const result = updateImportProcessedRows(user.id, processedRowsParams.id, body);
       sendJson(res, 200, result);
       return;
     }

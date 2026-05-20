@@ -14,6 +14,7 @@ import type {
   HeatmapItem,
   ImportDetailsResponse,
   ImportJob,
+  ImportProcessedRowsUpdateResponse,
   ImportReconciliationResolutionResponse,
   ImportReconciliationResponse,
   InvestmentAccountSummary,
@@ -121,6 +122,18 @@ export const importsApi = {
     request<ImportProcessedRowsResponse>(`/v1/imports/${id}/processed-rows${buildQuery(params)}`),
   updateProcessedRow: (request: ApiRequest, id: string, rowId: string, body: Partial<ProcessedRow["normalized"]> & { include?: boolean }) =>
     request<{ row: ProcessedRow | null; summary: ProcessedSummary }>(`/v1/imports/${id}/processed-rows/${rowId}`, {
+      method: "PATCH",
+      body
+    }),
+  updateProcessedRows: (
+    request: ApiRequest,
+    id: string,
+    body: {
+      rowIds: string[];
+      updates: Partial<ProcessedRow["normalized"]> & { include?: boolean };
+    }
+  ) =>
+    request<ImportProcessedRowsUpdateResponse>(`/v1/imports/${id}/processed-rows`, {
       method: "PATCH",
       body
     }),

@@ -206,6 +206,11 @@ export interface ImportProcessedRowsResponse {
   summary: ProcessedSummary;
 }
 
+export interface ImportProcessedRowsUpdateResponse {
+  rows: ProcessedRow[];
+  summary: ProcessedSummary;
+}
+
 export interface ImportReconciliationRecommendation {
   type: string;
   message: string;

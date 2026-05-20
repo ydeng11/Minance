@@ -7,6 +7,7 @@ import {
   createImportJob,
   listImportProcessedRows,
   updateImportProcessedRow,
+  updateImportProcessedRows,
   reprocessImportRows,
   commitImport,
   getImportReconciliation,
@@ -77,6 +78,49 @@ test("processed import rows can be edited, reprocessed, and committed", async ()
   assert.equal(committed.status, "completed");
   assert.equal(Boolean(committed.dateBounds.start), true);
   assert.equal(Boolean(committed.dateBounds.end), true);
+});
+
+test("processed import rows can be bulk assigned to an account with one rebuild", async () => {
+  resetStoreForTests(structuredClone(EMPTY_STORE));
+
+  const csvText = [
+    "date,merchant,description,amount,account",
+    "2025-01-01,Coffee Shop,Coffee Shop,-5.25,Imported Account",
+    "2025-01-02,Payroll,Payroll Deposit,2000.00,Imported Account",
+    "2025-01-03,Grocer,Grocer,-43.21,Imported Account"
+  ].join("\n");
+
+  const created = await createImportJob({
+    userId: "user_1",
+    fileName: "bulk-account.csv",
+    csvText
+  });
+  const before = listImportProcessedRows("user_1", created.importJob.id, {});
+  const rowIds = before.items.slice(0, 2).map((row) => row.rowId);
+
+  const updated = updateImportProcessedRows("user_1", created.importJob.id, {
+    rowIds,
+    updates: {
+      account_name: "Checking"
+    }
+  });
+
+  assert.equal(updated.rows.length, 2);
+  assert.equal(updated.summary.all, 3);
+  assert.deepEqual(
+    updated.rows.map((row) => row.normalized.account_name),
+    ["Checking", "Checking"]
+  );
+
+  const after = listImportProcessedRows("user_1", created.importJob.id, {});
+  assert.deepEqual(
+    after.items.map((row) => row.normalized.account_name),
+    ["Checking", "Checking", "Imported Account"]
+  );
+
+  const audit = loadStore().auditEvents.find((entry) => entry.action === "import.processed_rows.updated");
+  assert.equal(audit?.details.rowCount, 2);
+  assert.deepEqual(audit?.details.fields, ["account_name"]);
 });
 
 test("csv import keeps outflow expense amounts positive while preserving outflow direction", async () => {
