@@ -172,9 +172,19 @@ test("transaction create and bulk delete dialogs use the shared focus-management
   assert.match(transactionsPageSource, /ref=\{bulkDeleteDialogRef\}[\s\S]*data-testid="txn-bulk-delete-dialog"[\s\S]*tabIndex=\{-1\}/);
 });
 
+test("transaction dialog close buttons keep a circular non-shrinking icon target", () => {
+  assert.match(transactionsPageSource, /const TRANSACTION_DIALOG_CLOSE_BUTTON_CLASS =\n\s+"[^"]*inline-flex[^"]*h-11[^"]*w-11[^"]*shrink-0[^"]*rounded-full/);
+});
+
 test("transaction bulk dropdown fields expose accessible labels", () => {
   assert.match(transactionsPageSource, /aria-label="Bulk category"/);
   assert.match(transactionsPageSource, /aria-label="Bulk tags"/);
+});
+
+test("transaction bulk dropdowns layer above the sticky table header", () => {
+  assert.match(transactionsPageSource, /const TRANSACTION_TABLE_HEAD_CLASS =\n\s+"[^"]*z-10/);
+  assert.match(transactionsPageSource, /const TRANSACTION_BULK_BAR_CLASS =\n\s+"[^"]*z-20/);
+  assert.match(transactionsPageSource, /const TRANSACTION_BULK_DROPDOWN_PANEL_CLASS =\n\s+"[^"]*z-30/);
 });
 
 test("transaction row pagination and bulk action buttons keep touch-friendly minimum height", () => {

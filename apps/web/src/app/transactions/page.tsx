@@ -118,7 +118,7 @@ const TRANSACTION_DIALOG_BACKDROP_CLASS =
 const TRANSACTION_DIALOG_PANEL_CLASS =
   "w-full rounded-[28px] border border-border-subtle bg-surface-panel p-5 shadow-dialog";
 const TRANSACTION_DIALOG_CLOSE_BUTTON_CLASS =
-  "min-h-11 min-w-11 rounded-full border border-border-subtle bg-surface-field p-2 text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary";
+  "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border-subtle bg-surface-field text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary";
 const TRANSACTION_SECONDARY_ACTION_BUTTON_CLASS =
   "min-h-11 rounded-xl border border-border-strong bg-surface-field px-4 py-2 text-sm text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary";
 const TRANSACTION_PRIMARY_ACTION_BUTTON_CLASS =
@@ -145,13 +145,13 @@ const TRANSACTION_ACTIVE_FILTER_EMPTY_CLASS =
 const TRANSACTION_LEDGER_SHELL_CLASS =
   "overflow-hidden rounded-[30px] border border-border-subtle bg-surface-panel shadow-panel";
 const TRANSACTION_BULK_BAR_CLASS =
-  "relative flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle bg-surface-elevated/70 px-5 py-3.5";
+  "relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle bg-surface-elevated/70 px-5 py-3.5";
 const TRANSACTION_BULK_BAR_TEXT_CLASS = "text-sm text-text-secondary";
 const TRANSACTION_BULK_BAR_COUNT_CLASS = "font-semibold text-text-primary";
 const TRANSACTION_BULK_ACTION_BUTTON_CLASS =
   "min-h-11 rounded-xl border border-border-strong bg-surface-field px-3 py-2 text-sm text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary disabled:opacity-60";
 const TRANSACTION_BULK_DROPDOWN_PANEL_CLASS =
-  "absolute top-full left-0 mt-1 z-10 rounded-lg border border-border-subtle bg-surface-panel p-3 shadow-dialog";
+  "absolute left-0 top-full z-30 mt-1 rounded-lg border border-border-subtle bg-surface-panel p-3 shadow-dialog";
 const TRANSACTION_BULK_FIELD_CLASS =
   "w-full rounded-md border border-border-subtle bg-surface-field px-3 py-2 text-sm text-text-primary";
 const TRANSACTION_BULK_APPLY_BUTTON_CLASS =
