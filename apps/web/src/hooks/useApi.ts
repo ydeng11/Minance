@@ -61,6 +61,7 @@ export function useApi() {
         saveMapping: importsApi.saveMapping.bind(null, request),
         listProcessedRows: importsApi.listProcessedRows.bind(null, request),
         updateProcessedRow: importsApi.updateProcessedRow.bind(null, request),
+        updateProcessedRows: importsApi.updateProcessedRows.bind(null, request),
         getReconciliation: importsApi.getReconciliation.bind(null, request),
         resolveReconciliation: importsApi.resolveReconciliation.bind(null, request),
         commit: importsApi.commit.bind(null, request)
