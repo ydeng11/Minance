@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
+  ChevronDown,
   CheckCircle2,
   FileText,
   Loader2,
@@ -84,6 +85,10 @@ const IMPORT_ADVANCED_DETAILS_CLASS = "rounded-2xl border border-border-subtle b
 const IMPORT_ADVANCED_SUMMARY_CLASS = "cursor-pointer px-4 py-3 text-sm font-medium text-text-secondary";
 const IMPORT_SECTION_PANEL_CLASS = "rounded-xl border border-border-subtle bg-surface-panel/80 p-4 shadow-panel";
 const IMPORT_SECTION_TITLE_CLASS = "text-sm font-medium text-text-secondary";
+const IMPORT_COLLAPSIBLE_SECTION_CLASS =
+  "group rounded-xl border border-border-subtle bg-surface-panel/80 p-4 shadow-panel";
+const IMPORT_COLLAPSIBLE_SUMMARY_CLASS =
+  "flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-text-secondary [&::-webkit-details-marker]:hidden";
 const IMPORT_MAPPING_TEMPLATE_CARD_CLASS =
   "md:col-span-2 lg:col-span-4 rounded-lg border border-border-subtle bg-surface-field/60 p-3";
 const IMPORT_FIELD_LABEL_CLASS = "grid gap-1 text-xs text-text-secondary";
@@ -453,11 +458,13 @@ export default function ImportPage() {
 
     setIsAssigningAccount(true);
     try {
-      const didApply = importDefaultRowIds.length > 0
-        ? await applyAccountToRows(importDefaultRowIds, selectedAccount.id)
+      const rowIds = allProcessedRows.map((row) => row.rowId);
+      const didApply = rowIds.length > 0
+        ? await applyAccountToRows(rowIds, selectedAccount.id)
         : true;
       if (didApply) {
         setImportAccountId(nextAccountId);
+        setImportDefaultRowIds(rowIds);
         setWorkflowGuidance("Review the processed rows below before commit.");
         toast.success(IMPORT_ACCOUNT_ASSIGNED_SUCCESS_MESSAGE);
       }
@@ -1308,8 +1315,14 @@ export default function ImportPage() {
             </section>
           ) : null}
 
-          <section className={IMPORT_SECTION_PANEL_CLASS}>
-            <h3 className={IMPORT_SECTION_TITLE_CLASS}>Recent Imports</h3>
+          <details className={IMPORT_COLLAPSIBLE_SECTION_CLASS}>
+            <summary className={IMPORT_COLLAPSIBLE_SUMMARY_CLASS}>
+              <span>Recent Imports</span>
+              <span className="inline-flex items-center gap-2 text-xs text-text-muted">
+                {imports.length} {imports.length === 1 ? "import" : "imports"}
+                <ChevronDown aria-hidden="true" className="size-4 transition group-open:rotate-180" />
+              </span>
+            </summary>
             <div className="mt-3 space-y-2" data-testid="import-list">
               {imports.map((entry) => (
                 <div key={entry.id} className={IMPORT_RECENT_IMPORT_ROW_CLASS}>
@@ -1330,7 +1343,7 @@ export default function ImportPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
         </div>
       </details>
     </div>

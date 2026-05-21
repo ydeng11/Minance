@@ -152,3 +152,11 @@ test("import account assignment uses the bulk processed row update endpoint", ()
     /rowIds\.map\(\(rowId\) => api\.imports\.updateProcessedRow\(currentImportId, rowId, \{ account_name: account\.displayName \}\)\)/
   );
 });
+
+test("import account assignment updates every processed row so the table matches the selector", () => {
+  assert.match(importPageSource, /const rowIds = allProcessedRows\.map\(\(row\) => row\.rowId\);/);
+  assert.doesNotMatch(
+    importPageSource,
+    /const didApply = importDefaultRowIds\.length > 0\s*\?\s*await applyAccountToRows\(importDefaultRowIds, selectedAccount\.id\)/s
+  );
+});

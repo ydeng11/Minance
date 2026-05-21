@@ -46,7 +46,7 @@ const importReconciliationPanelStart = importPageSource.lastIndexOf(
   importPageSource.indexOf('data-testid="reconciliation-panel"')
 );
 const importRecentImportsStart = importPageSource.lastIndexOf(
-  "<section",
+  "<details",
   importPageSource.indexOf("Recent Imports")
 );
 const importMappingPanelSource = importPageSource.slice(
@@ -562,7 +562,8 @@ test("import reconciliation panel uses semantic row, card, table, and action tok
 });
 
 test("import recent imports list uses semantic panel, row, and action tokens", () => {
-  assert.match(importRecentImportsSource, /IMPORT_SECTION_PANEL_CLASS/);
+  assert.match(importRecentImportsSource, /IMPORT_COLLAPSIBLE_SECTION_CLASS/);
+  assert.match(importRecentImportsSource, /IMPORT_COLLAPSIBLE_SUMMARY_CLASS/);
   assert.match(importRecentImportsSource, /IMPORT_RECENT_IMPORT_ROW_CLASS/);
   assert.match(importRecentImportsSource, /IMPORT_RECENT_IMPORT_ACTION_CLASS/);
   assert.match(importRecentImportsSource, /text-text-primary/);
