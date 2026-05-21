@@ -166,8 +166,12 @@ export function loadStore() {
   return loadJsonStoreIntoCache();
 }
 
-/** Hook registered by server.ts to clear derived caches after cache reload. */
-let _onCacheReloaded = null;
+/**
+ * Registered callbacks that fire when the in-memory cache is reloaded from
+ * the backing store (file or SQLite). Used to invalidate derived caches
+ * (e.g. filter result cache, category strategy) without creating circular imports.
+ */
+let _onCacheReloadedCallbacks = [];
 
 /** Hook registered by analytics.ts to clear filter result cache on store reset. */
 let _onStoreReset = null;
@@ -178,7 +182,7 @@ let _onStoreReset = null;
  * (e.g. category strategy) without creating circular imports.
  */
 export function onCacheReloaded(callback) {
-  _onCacheReloaded = callback;
+  _onCacheReloadedCallbacks.push(callback);
 }
 
 /**
@@ -227,8 +231,10 @@ export function refreshStoreCacheIfChanged() {
     }
   }
 
-  if (changed && _onCacheReloaded) {
-    _onCacheReloaded();
+  if (changed && _onCacheReloadedCallbacks.length) {
+    for (const cb of _onCacheReloadedCallbacks) {
+      cb();
+    }
   }
 
   return changed;
@@ -251,7 +257,9 @@ export function saveStore(nextStore = null) {
   if (STORE_BACKEND === "sqlite") {
     ensureSqliteStoreOnce();
     writeStoreCollectionsToSqlite(cache);
-    cacheFileMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
+    // Set to null so the next refreshStoreCacheIfChanged call always detects a change,
+    // reloads the store cache, fires _onCacheReloaded, and clears _filterResultCache.
+    cacheFileMtimeMs = null;
     // After a mutation, reset the cooldown so the next refresh check actually picks it up.
     lastRefreshCheckMs = 0;
     return;
@@ -287,7 +295,9 @@ export function saveStoreTables(tableNames) {
     for (const spec of specs) {
       writeTableToSqlite(cache, spec);
     }
-    cacheFileMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
+    // Set to null so the next refreshStoreCacheIfChanged call always detects a change,
+    // reloads the store cache, fires _onCacheReloaded, and clears _filterResultCache.
+    cacheFileMtimeMs = null;
     buildTransactionIndex();
     // After a mutation, reset the cooldown so the next refresh check actually picks it up.
     lastRefreshCheckMs = 0;

@@ -1350,19 +1350,21 @@ function serveStatic(req, res, url) {
     filePath = path.join(WEB_DIR, "index.html");
   }
 
+  // Check file existence before attempting to stream, to avoid
+  // ERR_HTTP_HEADERS_SENT if createReadStream errors after writeHead.
+  if (!fs.existsSync(filePath)) {
+    sendError(res, 404, "Not found");
+    return;
+  }
+
   const ext = path.extname(filePath).toLowerCase();
   const contentType = contentTypeByExt[ext] || "application/octet-stream";
-
-  const stream = fs.createReadStream(filePath);
-  stream.on("error", () => {
-    sendError(res, 404, "Not found");
-  });
 
   res.writeHead(200, {
     "Content-Type": contentType,
     "Cache-Control": "no-store"
   });
-  stream.pipe(res);
+  fs.createReadStream(filePath).pipe(res);
 }
 
 // Wire up derived-cache invalidation: refresh the category strategy cache
