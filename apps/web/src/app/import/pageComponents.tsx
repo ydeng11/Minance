@@ -48,6 +48,7 @@ interface ProcessedRowAccountSelectProps {
   rowId: string;
   accountOptions: ImportAccountOption[];
   value: string;
+  className?: string;
   testIdPrefix?: string;
   onChange: (value: string) => void;
 }
@@ -56,13 +57,14 @@ export function ProcessedRowAccountSelect({
   rowId,
   accountOptions,
   value,
+  className = "w-full md:w-44",
   testIdPrefix = "processed-account",
   onChange
 }: ProcessedRowAccountSelectProps) {
   return (
     <select
       value={value}
-      className="w-full rounded border border-border-strong bg-surface-field px-2 py-1 text-text-primary placeholder:text-text-secondary outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring md:w-44"
+      className={`${className} rounded border border-border-strong bg-surface-field px-2 py-1 text-text-primary placeholder:text-text-secondary outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring`}
       aria-label={`Account for row ${rowId}`}
       data-testid={`${testIdPrefix}-${rowId}`}
       onChange={(event) => onChange(event.target.value)}

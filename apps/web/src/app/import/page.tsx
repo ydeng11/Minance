@@ -48,6 +48,18 @@ const IMPORT_ACCOUNT_ASSIGNED_SUCCESS_MESSAGE = "Import account assigned. Review
 const RECONCILIATION_ACCOUNT_MAPPED_SUCCESS_MESSAGE =
   "Reconciliation account mapped. Check the remaining issues before commit.";
 const IMPORT_COMMITTED_SUCCESS_MESSAGE = "Import committed. Review imported transactions if anything looks off.";
+const PROCESSED_TABLE_COLUMNS = [
+  "Review",
+  "Date",
+  "Merchant",
+  "Description",
+  "Amount",
+  "Flow",
+  "Category",
+  "Account",
+  "Memo",
+  "Issues"
+];
 
 const LOAD_IMPORT_DETAILS_ERROR_MESSAGE =
   "Import details couldn't be loaded. Nothing changed. Reopen the import and try again.";
@@ -115,7 +127,9 @@ const IMPORT_PROCESSED_META_CLASS = "mt-3 flex flex-wrap items-center gap-2 text
 const IMPORT_TABLE_HEAD_ROW_CLASS = "border-b border-border-subtle text-left text-text-secondary";
 const IMPORT_TABLE_ROW_CLASS = "border-b border-border-subtle align-top";
 const IMPORT_TABLE_EMPTY_CLASS = "px-3 py-6 text-center text-xs text-text-muted";
-const IMPORT_TABLE_MUTED_CELL_CLASS = "px-2 py-2 text-[11px] text-text-muted";
+const IMPORT_TABLE_HEADER_CELL_CLASS = "px-1.5 py-2 text-[11px] font-semibold text-text-secondary";
+const IMPORT_TABLE_COMPACT_CELL_CLASS = "px-1.5 py-2";
+const IMPORT_TABLE_MUTED_CELL_CLASS = "px-1.5 py-2 text-[11px] text-text-muted";
 const IMPORT_TABLE_PRIMARY_CELL_CLASS = "px-2 py-2 text-text-primary";
 const IMPORT_TABLE_SECONDARY_CELL_CLASS = "px-2 py-2 text-text-secondary";
 const IMPORT_RECONCILIATION_EMPTY_CLASS =
@@ -562,7 +576,7 @@ export default function ImportPage() {
     if (!data || !data.items.length) {
       return (
         <tr>
-          <td colSpan={11} className={IMPORT_TABLE_EMPTY_CLASS}>
+          <td colSpan={10} className={IMPORT_TABLE_EMPTY_CLASS}>
             No rows found for the selected filter.
           </td>
         </tr>
@@ -574,19 +588,19 @@ export default function ImportPage() {
 
       return (
         <tr key={row.rowId} className={IMPORT_TABLE_ROW_CLASS}>
-          <td className="px-2 py-2">
-            <input
-              type="checkbox"
-              data-testid={`processed-include-${row.rowId}`}
-              defaultChecked={row.include}
-              aria-label={`Include row ${row.rowId}`}
-              onChange={(event) => void updateProcessedRow(row.rowId, { include: event.target.checked })}
-            />
+          <td className={IMPORT_TABLE_COMPACT_CELL_CLASS}>
+            <label className="flex min-h-11 w-24 items-center gap-2 rounded border border-border-subtle bg-surface-field px-2 py-1 text-[11px] text-text-secondary">
+              <input
+                type="checkbox"
+                data-testid={`processed-include-${row.rowId}`}
+                defaultChecked={row.include}
+                aria-label={`Include row ${row.rowId}`}
+                onChange={(event) => void updateProcessedRow(row.rowId, { include: event.target.checked })}
+              />
+              <span className={IMPORT_PROCESSED_STATUS_CLASS}>{row.status}</span>
+            </label>
           </td>
-          <td className="px-2 py-2 text-xs">
-            <span className={IMPORT_PROCESSED_STATUS_CLASS}>{row.status}</span>
-          </td>
-          <td className="px-2 py-2">
+          <td className={IMPORT_TABLE_COMPACT_CELL_CLASS}>
             <input
               defaultValue={row.normalized.transaction_date || ""}
               type="date"
@@ -595,36 +609,36 @@ export default function ImportPage() {
               onBlur={(event) => void updateProcessedRow(row.rowId, { transaction_date: event.target.value })}
             />
           </td>
-          <td className="px-2 py-2">
+          <td className={IMPORT_TABLE_COMPACT_CELL_CLASS}>
             <input
               defaultValue={row.normalized.merchant_raw}
-              className={`w-40 ${IMPORT_PROCESSED_FIELD_CLASS}`}
+              className={`w-32 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Merchant for row ${row.rowId}`}
               onBlur={(event) => void updateProcessedRow(row.rowId, { merchant_raw: event.target.value })}
             />
           </td>
-          <td className="px-2 py-2">
+          <td className={IMPORT_TABLE_COMPACT_CELL_CLASS}>
             <input
               defaultValue={row.normalized.description}
-              className={`w-44 ${IMPORT_PROCESSED_FIELD_CLASS}`}
+              className={`w-36 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Description for row ${row.rowId}`}
               onBlur={(event) => void updateProcessedRow(row.rowId, { description: event.target.value })}
             />
           </td>
-          <td className="px-2 py-2">
+          <td className={IMPORT_TABLE_COMPACT_CELL_CLASS}>
             <input
               defaultValue={row.normalized.amount == null ? "" : String(row.normalized.amount)}
               type="number"
               step="0.01"
-              className={`w-24 ${IMPORT_PROCESSED_FIELD_CLASS}`}
+              className={`w-20 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Amount for row ${row.rowId}`}
               onBlur={(event) => void updateProcessedRow(row.rowId, { amount: Number(event.target.value) })}
             />
           </td>
-          <td className="px-2 py-2">
+          <td className={IMPORT_TABLE_COMPACT_CELL_CLASS}>
             <select
               defaultValue={row.normalized.direction}
-              className={`w-20 ${IMPORT_PROCESSED_FIELD_CLASS}`}
+              className={`w-24 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Direction for row ${row.rowId}`}
               onChange={(event) => void updateProcessedRow(row.rowId, { direction: event.target.value as "outflow" | "inflow" })}
             >
@@ -632,10 +646,10 @@ export default function ImportPage() {
               <option value="inflow">inflow</option>
             </select>
           </td>
-          <td className="px-2 py-2">
+          <td className={IMPORT_TABLE_COMPACT_CELL_CLASS}>
             <select
               defaultValue={row.normalized.category_final || ""}
-              className={`w-36 ${IMPORT_PROCESSED_FIELD_CLASS}`}
+              className={`w-32 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Category for row ${row.rowId}`}
               onChange={(event) => void updateProcessedRow(row.rowId, { category_final: event.target.value || null })}
             >
@@ -647,19 +661,20 @@ export default function ImportPage() {
               ))}
             </select>
           </td>
-          <td className="px-2 py-2">
+          <td className={IMPORT_TABLE_COMPACT_CELL_CLASS}>
             <ProcessedRowAccountSelect
               rowId={row.rowId}
               accountOptions={accountOptionsForRow}
+              className="w-36"
               value={resolveImportAccountValue(accountOptions, row.normalized.account_name)}
               onChange={(value) => void updateProcessedRow(row.rowId, { account_name: value })}
             />
           </td>
-          <td className="px-2 py-2">
+          <td className={IMPORT_TABLE_COMPACT_CELL_CLASS}>
             <input
               defaultValue={row.normalized.memo || ""}
               data-testid={`processed-memo-${row.rowId}`}
-              className={`w-32 ${IMPORT_PROCESSED_FIELD_CLASS}`}
+              className={`w-28 ${IMPORT_PROCESSED_FIELD_CLASS}`}
               aria-label={`Memo for row ${row.rowId}`}
               onBlur={(event) => void updateProcessedRow(row.rowId, { memo: event.target.value || null })}
             />
@@ -1176,21 +1191,15 @@ export default function ImportPage() {
               tabIndex={0}
               aria-label="Processed records table"
             >
-              <table className="min-w-[1100px] w-full text-xs" data-testid="processed-table">
+              <table className="w-full min-w-[1000px] text-xs" data-testid="processed-table">
                 <caption className="sr-only">Processed row editor table</caption>
                 <thead>
                   <tr className={IMPORT_TABLE_HEAD_ROW_CLASS}>
-                    <th scope="col" className="px-2 py-2">Include</th>
-                    <th scope="col" className="px-2 py-2">Status</th>
-                    <th scope="col" className="px-2 py-2">Date</th>
-                    <th scope="col" className="px-2 py-2">Merchant</th>
-                    <th scope="col" className="px-2 py-2">Description</th>
-                    <th scope="col" className="px-2 py-2">Amount</th>
-                    <th scope="col" className="px-2 py-2">Dir</th>
-                    <th scope="col" className="px-2 py-2">Category</th>
-                    <th scope="col" className="px-2 py-2">Account</th>
-                    <th scope="col" className="px-2 py-2">Memo</th>
-                    <th scope="col" className="px-2 py-2">Issues</th>
+                    {PROCESSED_TABLE_COLUMNS.map((column) => (
+                      <th key={column} scope="col" className={IMPORT_TABLE_HEADER_CELL_CLASS}>
+                        {column}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>{renderProcessedRowsTable(state.processedRows)}</tbody>
