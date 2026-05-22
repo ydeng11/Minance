@@ -5,7 +5,13 @@ import { setTimeout as delay } from "node:timers/promises";
 
 import { SQLITE_FILE, STORE_BACKEND } from "../src/config.ts";
 import { login, signup } from "../src/auth.ts";
-import { loadStore, refreshStoreCacheIfChanged, resetStoreForTests } from "../src/store.ts";
+import {
+  appendAuditEventToStore,
+  loadStore,
+  refreshStoreCacheIfChanged,
+  resetStoreForTests,
+  saveStoreRows
+} from "../src/store.ts";
 import { readStoreCollectionsFromSqlite } from "../src/sqlite-store-repository.ts";
 import { writeStoreCollectionsToSqlite } from "../src/sqlite-store-repository.ts";
 import { hashPassword } from "../src/utils.ts";
@@ -76,6 +82,56 @@ test("test runtime persists auth mutations through isolated sqlite storage", () 
     }),
     true
   );
+});
+
+test("sqlite targeted row save persists rows without forcing local cache reload", () => {
+  resetStoreForTests(structuredClone(EMPTY_STORE));
+
+  const store = loadStore();
+  const transaction = {
+    id: "txn_targeted_store",
+    user_id: "user_targeted_store",
+    account_id: "acct_targeted_store",
+    account_key: "targeted:checking",
+    source_type: "manual",
+    source_file_id: null,
+    transaction_date: "2026-03-01",
+    post_date: null,
+    merchant_raw: "Targeted Store",
+    merchant_normalized: "targeted store",
+    description: "Targeted save",
+    amount: 33.4,
+    currency: "USD",
+    direction: "outflow",
+    category_final: "Dining",
+    category_confidence: 1,
+    memo: null,
+    transaction_type: "expense",
+    tags: [],
+    needs_category_review: false,
+    review_status: "reviewed",
+    recurring_rule_id: null,
+    created_at: "2026-03-01T00:00:00.000Z",
+    updated_at: "2026-03-01T00:00:00.000Z"
+  };
+  store.transactions.push(transaction);
+  const auditEvent = appendAuditEventToStore(store, "user_targeted_store", "transaction.update", {
+    transactionId: transaction.id
+  });
+
+  saveStoreRows(store, [
+    { tableName: "transactions", row: transaction },
+    { tableName: "audit_events", row: auditEvent }
+  ]);
+
+  const persisted = readStoreCollectionsFromSqlite({ dbPath: SQLITE_FILE });
+  assert.equal(persisted.transactions.find((entry) => entry.id === transaction.id)?.transaction_type, "expense");
+  assert.equal(
+    persisted.auditEvents.find((entry) => entry.id === auditEvent.id)?.details?.transactionId,
+    transaction.id
+  );
+  assert.equal(refreshStoreCacheIfChanged(), false);
+  assert.equal(loadStore().transactions.find((entry) => entry.id === transaction.id)?.description, "Targeted save");
 });
 
 test("sqlite runtime refresh picks up externally seeded users before login", async () => {

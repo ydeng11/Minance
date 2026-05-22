@@ -6,7 +6,8 @@ import { ensureSqliteFoundation } from "./sqlite-foundation.ts";
 import {
   readStoreCollectionsFromSqlite,
   writeStoreCollectionsToSqlite,
-  writeTableToSqlite
+  writeTableToSqlite,
+  writeRowsToSqlite
 } from "./sqlite-store-repository.ts";
 
 import { STORE_TABLE_SPECS } from "../../../scripts/sqlite-cutover-lib.ts";
@@ -185,6 +186,12 @@ export function onCacheReloaded(callback) {
   _onCacheReloadedCallbacks.push(callback);
 }
 
+function notifyCacheReloadedCallbacks() {
+  for (const cb of _onCacheReloadedCallbacks) {
+    cb();
+  }
+}
+
 /**
  * Register a callback that fires when the store is reset (e.g. between tests).
  * Used to clear derived caches that aren't invalidated by the normal
@@ -231,10 +238,8 @@ export function refreshStoreCacheIfChanged() {
     }
   }
 
-  if (changed && _onCacheReloadedCallbacks.length) {
-    for (const cb of _onCacheReloadedCallbacks) {
-      cb();
-    }
+  if (changed) {
+    notifyCacheReloadedCallbacks();
   }
 
   return changed;
@@ -308,6 +313,28 @@ export function saveStoreTables(tableNames) {
   saveStore();
 }
 
+export function saveStoreRows(nextStore, rowWrites = []) {
+  if (nextStore && nextStore !== cache) {
+    cache = normalizeStore(nextStore);
+  } else if (!cache) {
+    cache = loadStore();
+  }
+
+  buildTransactionIndex();
+
+  if (STORE_BACKEND === "sqlite") {
+    ensureSqliteStoreOnce();
+    writeRowsToSqlite(rowWrites);
+    cacheFileMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
+    lastRefreshCheckMs = Date.now();
+    notifyCacheReloadedCallbacks();
+    return;
+  }
+
+  saveStore(cache);
+  notifyCacheReloadedCallbacks();
+}
+
 export function withStore(mutator) {
   const store = loadStore();
   const result = mutator(store);
@@ -324,15 +351,17 @@ export function resetStoreForTests(nextStore = null) {
 }
 
 export function addAuditEvent(userId, action, details = {}) {
-  return withStore((store) => {
-    const event = {
-      id: createId("audit"),
-      userId,
-      action,
-      details,
-      createdAt: nowIso()
-    };
-    store.auditEvents.push(event);
-    return event;
-  });
+  return withStore((store) => appendAuditEventToStore(store, userId, action, details));
+}
+
+export function appendAuditEventToStore(store, userId, action, details = {}) {
+  const event = {
+    id: createId("audit"),
+    userId,
+    action,
+    details,
+    createdAt: nowIso()
+  };
+  store.auditEvents.push(event);
+  return event;
 }

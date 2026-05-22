@@ -7,6 +7,7 @@ import { STORE_TABLE_SPECS, getRowsForSpec } from "../../../scripts/sqlite-cutov
 const SQLITE_MAX_BUFFER = 1024 * 1024 * 20;
 const SQLITE_READ_BATCH_SIZE = 1000;
 const SQLITE_BUSY_TIMEOUT_MS = 5_000;
+const STORE_TABLE_SPECS_BY_TABLE = new Map(STORE_TABLE_SPECS.map((spec) => [spec.tableName, spec]));
 
 function sqlLiteral(value) {
   if (value == null) {
@@ -23,7 +24,7 @@ function sqlLiteral(value) {
 }
 
 function sqliteExec(args, options = {}) {
-  return spawnSync("sqlite3", ["-cmd", `.timeout ${SQLITE_BUSY_TIMEOUT_MS}`, ...args], {
+  return spawnSync("sqlite3", ["-bail", "-cmd", `.timeout ${SQLITE_BUSY_TIMEOUT_MS}`, ...args], {
     encoding: "utf8",
     maxBuffer: SQLITE_MAX_BUFFER,
     ...(options || {})
@@ -122,11 +123,35 @@ function parsePayloadRow(row, tableName) {
   }
 }
 
+function quoteColumn(column) {
+  return `"${column}"`;
+}
+
+function columnList(columns) {
+  return columns.map(quoteColumn).join(", ");
+}
+
 function insertStatement(tableName, mapped) {
   const columns = Object.keys(mapped);
-  const quotedColumns = columns.map((column) => `"${column}"`).join(", ");
   const values = columns.map((column) => sqlLiteral(mapped[column])).join(", ");
-  return `INSERT INTO ${tableName}(${quotedColumns}) VALUES (${values});`;
+  return `INSERT INTO ${tableName}(${columnList(columns)}) VALUES (${values});`;
+}
+
+function upsertStatement(spec, mapped) {
+  const columns = Object.keys(mapped);
+  const values = columns.map((column) => sqlLiteral(mapped[column])).join(", ");
+  const insertSql = `INSERT INTO ${spec.tableName}(${columnList(columns)}) VALUES (${values})`;
+  const conflictColumns = columnList(spec.keyColumns);
+  const updateColumns = columns.filter((column) => !spec.keyColumns.includes(column));
+
+  if (updateColumns.length === 0) {
+    return `${insertSql} ON CONFLICT(${conflictColumns}) DO NOTHING;`;
+  }
+
+  const assignments = updateColumns
+    .map((column) => `${quoteColumn(column)} = excluded.${quoteColumn(column)}`)
+    .join(", ");
+  return `${insertSql} ON CONFLICT(${conflictColumns}) DO UPDATE SET ${assignments};`;
 }
 
 function ensureText(value, fallback) {
@@ -265,6 +290,37 @@ export function writeTableToSqlite(store, spec, options = {}) {
     const mapped = spec.mapRow(row || {});
     const ensured = withRequiredColumns(spec, mapped, row, index);
     lines.push(insertStatement(spec.tableName, ensured));
+  }
+
+  lines.push("COMMIT;");
+  runSqlScript(dbPath, lines.join("\n"));
+}
+
+export function writeRowsToSqlite(rowWrites, options = {}) {
+  if (!Array.isArray(rowWrites) || rowWrites.length === 0) {
+    return;
+  }
+
+  const preparedWrites = rowWrites.map((write, index) => {
+    const spec = STORE_TABLE_SPECS_BY_TABLE.get(write?.tableName);
+    if (!spec) {
+      throw new Error(`Unknown SQLite table for targeted write: ${write?.tableName || "unknown"}`);
+    }
+    const row = write.row || {};
+    const sqliteRow = withRequiredColumns(spec, spec.mapRow(row), row, index);
+    return { spec, sqliteRow };
+  });
+
+  const dbPath = resolveDbPath(options);
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+
+  const lines = [
+    "PRAGMA foreign_keys = ON;",
+    "BEGIN IMMEDIATE TRANSACTION;"
+  ];
+
+  for (const { spec, sqliteRow } of preparedWrites) {
+    lines.push(upsertStatement(spec, sqliteRow));
   }
 
   lines.push("COMMIT;");

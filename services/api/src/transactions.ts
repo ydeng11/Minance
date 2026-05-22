@@ -1,4 +1,10 @@
-import { loadStore, saveStore, addAuditEvent } from "./store.ts";
+import {
+  loadStore,
+  saveStore,
+  saveStoreRows,
+  addAuditEvent,
+  appendAuditEventToStore
+} from "./store.ts";
 import { parseDate, toDecimal, nowIso, createId, normalizeText, stableHash } from "./utils.ts";
 import { normalizeMerchant } from "./categorization.ts";
 import { filterUserTransactions, getUserDataBounds, buildAppliedRange } from "./analytics.ts";
@@ -504,7 +510,7 @@ function resolveManualContractFields(
 
 function maybeCreateRuleFromCorrection(store, userId, transaction, previousCategory, nextCategory) {
   if (!transaction || !previousCategory || !nextCategory || previousCategory === nextCategory) {
-    return;
+    return null;
   }
 
   const matching = store.transactions
@@ -514,7 +520,7 @@ function maybeCreateRuleFromCorrection(store, userId, transaction, previousCateg
     .length;
 
   if (matching < 2) {
-    return;
+    return null;
   }
 
   const pattern = transaction.merchant_normalized;
@@ -523,10 +529,10 @@ function maybeCreateRuleFromCorrection(store, userId, transaction, previousCateg
   );
 
   if (exists) {
-    return;
+    return null;
   }
 
-  store.categoryRules.push({
+  const rule = {
     id: createId("rule"),
     userId,
     type: "contains",
@@ -536,7 +542,9 @@ function maybeCreateRuleFromCorrection(store, userId, transaction, previousCateg
     createdAt: nowIso(),
     updatedAt: nowIso(),
     generatedFromCorrections: true
-  });
+  };
+  store.categoryRules.push(rule);
+  return rule;
 }
 
 function normalizeBulkTransactionIds(rawIds) {
@@ -761,10 +769,17 @@ export function updateTransaction(userId, transactionId, payload) {
     tx.memo
   );
 
-  maybeCreateRuleFromCorrection(store, userId, tx, previousCategory, tx.category_final);
-
-  saveStore(store);
-  addAuditEvent(userId, "transaction.update", { transactionId });
+  const correctionRule = maybeCreateRuleFromCorrection(store, userId, tx, previousCategory, tx.category_final);
+  const auditEvent = appendAuditEventToStore(store, userId, "transaction.update", { transactionId });
+  const rowWrites = [
+    { tableName: "transactions", row: tx },
+    { tableName: "accounts", row: account },
+    { tableName: "audit_events", row: auditEvent }
+  ];
+  if (correctionRule) {
+    rowWrites.push({ tableName: "category_rules", row: correctionRule });
+  }
+  saveStoreRows(store, rowWrites);
 
   return normalizeTransactionRecord(tx, store);
 }
