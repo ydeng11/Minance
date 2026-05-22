@@ -345,7 +345,7 @@ test("buildImportAccountReviewState catches ambiguity that a first-page slice wo
   });
 });
 
-test("ImportAccountSelector renders the top-level import account chooser and omits the batch toolbar", () => {
+test("ImportAccountSelector renders the inline import account chooser and omits the batch toolbar", () => {
   const markup = renderToStaticMarkup(
     createElement(ImportAccountSelector, {
       accountOptions: [
@@ -359,7 +359,9 @@ test("ImportAccountSelector renders the top-level import account chooser and omi
   );
 
   assert.match(markup, /Import into account/);
+  assert.match(markup, /data-testid="import-account-selector"/);
   assert.match(markup, /data-testid="import-account-select"/);
+  assert.doesNotMatch(markup, /data-testid="import-account-panel"/);
   assert.match(markup, /value="acct_main"/);
   assert.doesNotMatch(markup, /Select visible/);
   assert.doesNotMatch(markup, /Assign account/);

@@ -1,14 +1,17 @@
 "use client";
 
+import type { MouseEvent } from "react";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   ChevronDown,
   CheckCircle2,
   FileText,
+  Funnel,
   Loader2,
   RefreshCcw,
   Save,
-  UploadCloud
+  UploadCloud,
+  WalletCards
 } from "lucide-react";
 import { toast } from "sonner";
 import { useApi } from "@/hooks/useApi";
@@ -60,6 +63,8 @@ const PROCESSED_TABLE_COLUMNS = [
   "Memo",
   "Issues"
 ];
+const REVIEW_HEADER_POPOVER_WIDTH = 144;
+const ACCOUNT_HEADER_POPOVER_WIDTH = 320;
 
 const LOAD_IMPORT_DETAILS_ERROR_MESSAGE =
   "Import details couldn't be loaded. Nothing changed. Reopen the import and try again.";
@@ -124,14 +129,25 @@ const IMPORT_PROCESSED_LABEL_CLASS = "grid gap-1 text-xs text-text-secondary";
 const IMPORT_PROCESSED_STATUS_CLASS =
   "rounded-full border border-border-subtle bg-surface-field px-2 py-0.5 text-text-secondary";
 const IMPORT_PROCESSED_META_CLASS = "mt-3 flex flex-wrap items-center gap-2 text-[11px] text-text-muted";
-const IMPORT_TABLE_HEAD_ROW_CLASS = "border-b border-border-subtle text-left text-text-secondary";
+const IMPORT_TABLE_HEAD_ROW_CLASS = "border-b border-border-subtle text-center text-text-secondary";
 const IMPORT_TABLE_ROW_CLASS = "border-b border-border-subtle align-top";
 const IMPORT_TABLE_EMPTY_CLASS = "px-3 py-6 text-center text-xs text-text-muted";
 const IMPORT_TABLE_HEADER_CELL_CLASS = "px-1.5 py-2 text-[11px] font-semibold text-text-secondary";
+const IMPORT_TABLE_ACCOUNT_HEADER_CELL_CLASS = `${IMPORT_TABLE_HEADER_CELL_CLASS} w-[123px] max-w-[123px]`;
 const IMPORT_TABLE_COMPACT_CELL_CLASS = "px-1.5 py-2";
 const IMPORT_TABLE_MUTED_CELL_CLASS = "px-1.5 py-2 text-[11px] text-text-muted";
 const IMPORT_TABLE_PRIMARY_CELL_CLASS = "px-2 py-2 text-text-primary";
 const IMPORT_TABLE_SECONDARY_CELL_CLASS = "px-2 py-2 text-text-secondary";
+const IMPORT_ACCOUNT_HEADER_TRIGGER_CLASS =
+  "inline-flex h-5 w-5 items-center justify-center rounded-full border border-border-subtle bg-surface-field text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
+const IMPORT_ACCOUNT_HEADER_POPOVER_CLASS =
+  "fixed z-50 w-80 -translate-y-full rounded-lg border border-border-subtle bg-surface-panel p-3 text-left shadow-panel";
+const IMPORT_ACCOUNT_HEADER_SELECT_CLASS =
+  "min-h-10 w-full rounded-lg border border-border-subtle bg-surface-field px-2 py-1.5 text-xs font-normal text-text-primary outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring disabled:cursor-not-allowed disabled:opacity-60";
+const IMPORT_REVIEW_HEADER_POPOVER_CLASS =
+  "fixed z-50 w-36 -translate-y-full rounded-lg border border-border-subtle bg-surface-panel p-2 text-left shadow-panel";
+const IMPORT_REVIEW_HEADER_SELECT_CLASS =
+  "min-h-9 w-full rounded-md border border-border-subtle bg-surface-field px-2 py-1 text-xs font-normal text-text-primary outline-none transition focus:border-accent focus:ring-1 focus:ring-focus-ring";
 const IMPORT_RECONCILIATION_EMPTY_CLASS =
   "rounded-xl border border-border-subtle bg-surface-field/70 px-4 py-5 text-sm text-text-muted";
 const IMPORT_RECONCILIATION_CARD_CLASS = "rounded-xl border border-border-subtle bg-surface-panel/80 p-4 shadow-panel";
@@ -148,6 +164,7 @@ const IMPORT_RECENT_IMPORT_ROW_CLASS =
   "flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border-subtle bg-surface-field/70 px-3 py-2 text-sm";
 const IMPORT_RECENT_IMPORT_ACTION_CLASS =
   "inline-flex min-h-11 items-center rounded-lg border border-border-subtle bg-surface-field px-3 py-1 text-xs text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring";
+type HeaderPopoverKind = "review" | "account";
 
 export default function ImportPage() {
   const api = useApi();
@@ -170,12 +187,53 @@ export default function ImportPage() {
   const [importAccountId, setImportAccountId] = useState("");
   const [importDefaultRowIds, setImportDefaultRowIds] = useState<string[]>([]);
   const [hasInitializedImportAccountState, setHasInitializedImportAccountState] = useState(false);
+  const [activeHeaderPopover, setActiveHeaderPopover] = useState<HeaderPopoverKind | null>(null);
+  const [headerPopoverPosition, setHeaderPopoverPosition] = useState({ left: 0, top: 0 });
   const [state, dispatch] = useReducer(importWorkflowReducer, initialImportWorkflowState);
   const mappingTemplates = useMemo(() => getImportMappingTemplates(), []);
 
   const globalMessage = state.error || workflowGuidance || "";
 
   const currentImportId = state.currentImport?.id || null;
+  useEffect(() => {
+    if (!activeHeaderPopover) {
+      return;
+    }
+
+    function closeHeaderPopoverOnOutsidePointer(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      if (target.closest("[data-import-header-popover], [data-import-header-trigger]")) {
+        return;
+      }
+      setActiveHeaderPopover(null);
+    }
+
+    function closeHeaderPopoverOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setActiveHeaderPopover(null);
+      }
+    }
+
+    function closeHeaderPopoverOnViewportChange() {
+      setActiveHeaderPopover(null);
+    }
+
+    document.addEventListener("pointerdown", closeHeaderPopoverOnOutsidePointer);
+    document.addEventListener("keydown", closeHeaderPopoverOnEscape);
+    document.addEventListener("scroll", closeHeaderPopoverOnViewportChange, true);
+    window.addEventListener("resize", closeHeaderPopoverOnViewportChange);
+
+    return () => {
+      document.removeEventListener("pointerdown", closeHeaderPopoverOnOutsidePointer);
+      document.removeEventListener("keydown", closeHeaderPopoverOnEscape);
+      document.removeEventListener("scroll", closeHeaderPopoverOnViewportChange, true);
+      window.removeEventListener("resize", closeHeaderPopoverOnViewportChange);
+    };
+  }, [activeHeaderPopover]);
+
   const accountOptions = useMemo(
     () => accounts.slice().sort((left, right) => left.displayName.localeCompare(right.displayName)),
     [accounts]
@@ -570,6 +628,59 @@ export default function ImportPage() {
     } catch (error) {
       publishInlineError(error, IMPORT_COMMIT_ERROR_MESSAGE);
     }
+  }
+
+  function renderProcessedStatusFilter({
+    id,
+    testId,
+    className
+  }: {
+    id?: string;
+    testId: string;
+    className: string;
+  }) {
+    return (
+      <>
+        <label htmlFor={id} className="sr-only">
+          Processed rows status
+        </label>
+        <select
+          id={id}
+          value={statusFilter}
+          onChange={(event) => {
+            const nextStatus = event.target.value;
+            setStatusFilter(nextStatus);
+            setActiveHeaderPopover(null);
+            if (currentImportId) {
+              void openImport(currentImportId, nextStatus);
+            }
+          }}
+          data-testid={testId}
+          className={className}
+        >
+          <option value="">All statuses</option>
+          <option value="valid">Valid</option>
+          <option value="invalid">Invalid</option>
+          <option value="duplicate">Duplicate</option>
+          <option value="excluded">Excluded</option>
+        </select>
+      </>
+    );
+  }
+
+  function toggleHeaderPopover(
+    kind: HeaderPopoverKind,
+    event: MouseEvent<HTMLButtonElement>,
+    width: number
+  ) {
+    const triggerRect = event.currentTarget.getBoundingClientRect();
+    const proposedLeft = kind === "account" ? triggerRect.right - width : triggerRect.left;
+    const maxLeft = window.innerWidth - width - 12;
+    setHeaderPopoverPosition({
+      left: Math.max(12, Math.min(proposedLeft, maxLeft)),
+      top: Math.max(12, triggerRect.top - 8)
+    });
+    setActiveHeaderPopover((current) => (current === kind ? null : kind));
   }
 
   function renderProcessedRowsTable(data: ImportProcessedRowsResponse | null) {
@@ -1140,38 +1251,24 @@ export default function ImportPage() {
           <section className={IMPORT_SECTION_PANEL_CLASS} data-testid="processed-panel">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className={IMPORT_SECTION_TITLE_CLASS}>Processed Records Editor</h3>
-              <div className="flex items-center gap-2">
-                <label htmlFor="processed-status-filter" className="sr-only">
-                  Processed rows status
-                </label>
-                <select
-                  id="processed-status-filter"
-                  value={statusFilter}
-                  onChange={(event) => {
-                    const nextStatus = event.target.value;
-                    setStatusFilter(nextStatus);
-                    if (currentImportId) {
-                      void openImport(currentImportId, nextStatus);
-                    }
-                  }}
-                  data-testid="processed-status-filter"
-                  className={IMPORT_SELECT_FIELD_CLASS}
-                >
-                  <option value="">All statuses</option>
-                  <option value="valid">Valid</option>
-                  <option value="invalid">Invalid</option>
-                  <option value="duplicate">Duplicate</option>
-                  <option value="excluded">Excluded</option>
-                </select>
+              <div className="flex items-center gap-2 lg:hidden">
+                {renderProcessedStatusFilter({
+                  id: "processed-status-filter",
+                  testId: "processed-status-filter",
+                  className: IMPORT_SELECT_FIELD_CLASS
+                })}
               </div>
             </div>
 
-            <div className="mt-3">
+            <div className="mt-3 lg:hidden">
               <ImportAccountSelector
                 accountOptions={importAccountOptions}
                 value={importAccountId}
                 isApplying={isAssigningAccount}
                 disabled={!currentImportId || !hasInitializedImportAccountState}
+                className="grid gap-1 rounded-lg border border-border-subtle bg-surface-field px-3 py-3 text-xs text-text-secondary"
+                showHelper
+                testId="import-mobile-account-select"
                 onChange={(value) => void applyImportAccountSelection(value)}
               />
             </div>
@@ -1193,11 +1290,86 @@ export default function ImportPage() {
             >
               <table className="w-full min-w-[1000px] text-xs" data-testid="processed-table">
                 <caption className="sr-only">Processed row editor table</caption>
+                <colgroup>
+                  {PROCESSED_TABLE_COLUMNS.map((column) => (
+                    <col key={column} style={column === "Account" ? { width: "123px" } : undefined} />
+                  ))}
+                </colgroup>
                 <thead>
                   <tr className={IMPORT_TABLE_HEAD_ROW_CLASS}>
                     {PROCESSED_TABLE_COLUMNS.map((column) => (
-                      <th key={column} scope="col" className={IMPORT_TABLE_HEADER_CELL_CLASS}>
-                        {column}
+                      <th
+                        key={column}
+                        scope="col"
+                        className={column === "Account" ? IMPORT_TABLE_ACCOUNT_HEADER_CELL_CLASS : IMPORT_TABLE_HEADER_CELL_CLASS}
+                      >
+                        {column === "Review" ? (
+                          <div className="relative mx-auto inline-flex items-center gap-1">
+                            <span>Review</span>
+                            <button
+                              type="button"
+                              aria-label="Filter processed rows"
+                              aria-expanded={activeHeaderPopover === "review"}
+                              title="Filter processed rows"
+                              className={IMPORT_ACCOUNT_HEADER_TRIGGER_CLASS}
+                              data-import-header-trigger
+                              onClick={(event) => toggleHeaderPopover("review", event, REVIEW_HEADER_POPOVER_WIDTH)}
+                            >
+                              <Funnel className="h-3 w-3" aria-hidden="true" />
+                            </button>
+                            {activeHeaderPopover === "review" ? (
+                              <div
+                                className={IMPORT_REVIEW_HEADER_POPOVER_CLASS}
+                                data-import-header-popover
+                                style={headerPopoverPosition}
+                              >
+                                {renderProcessedStatusFilter({
+                                  testId: "processed-header-status-filter",
+                                  className: IMPORT_REVIEW_HEADER_SELECT_CLASS
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : column === "Account" ? (
+                          <div className="relative mx-auto inline-flex items-center gap-1">
+                            <span>Account</span>
+                            <button
+                              type="button"
+                              aria-label="Set import account"
+                              aria-expanded={activeHeaderPopover === "account"}
+                              title="Set import account"
+                              className={IMPORT_ACCOUNT_HEADER_TRIGGER_CLASS}
+                              data-import-header-trigger
+                              onClick={(event) => toggleHeaderPopover("account", event, ACCOUNT_HEADER_POPOVER_WIDTH)}
+                            >
+                              <WalletCards className="h-3 w-3" aria-hidden="true" />
+                            </button>
+                            {activeHeaderPopover === "account" ? (
+                              <div
+                                className={IMPORT_ACCOUNT_HEADER_POPOVER_CLASS}
+                                data-import-header-popover
+                                style={headerPopoverPosition}
+                              >
+                                <ImportAccountSelector
+                                  accountOptions={importAccountOptions}
+                                  value={importAccountId}
+                                  isApplying={isAssigningAccount}
+                                  disabled={!currentImportId || !hasInitializedImportAccountState}
+                                  label="Import account"
+                                  className="grid gap-1 text-xs font-normal text-text-secondary"
+                                  selectClassName={IMPORT_ACCOUNT_HEADER_SELECT_CLASS}
+                                  showHelper
+                                  onChange={(value) => {
+                                    setActiveHeaderPopover(null);
+                                    void applyImportAccountSelection(value);
+                                  }}
+                                />
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : (
+                          column
+                        )}
                       </th>
                     ))}
                   </tr>
