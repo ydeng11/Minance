@@ -65,7 +65,11 @@ const WARNING_ACTION_BUTTON_CLASS =
   "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-warning/35 bg-warning-soft px-3 py-2 text-sm text-warning transition hover:border-warning/55 disabled:cursor-not-allowed disabled:opacity-60";
 const DANGER_ACTION_BUTTON_CLASS =
   "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-danger/35 bg-danger-soft px-3 py-2 text-sm text-danger transition hover:border-danger/55 disabled:cursor-not-allowed disabled:opacity-60";
+const DANGER_CONFIRM_BUTTON_CLASS =
+  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-danger bg-danger px-3 py-2 text-sm font-medium text-app-bg transition hover:bg-danger/90 disabled:cursor-not-allowed disabled:opacity-60";
 const DANGER_ALERT_CLASS = "rounded-lg border border-danger/35 bg-danger-soft px-3 py-2 text-sm text-danger";
+const DANGER_CONFIRM_PANEL_CLASS =
+  "rounded-lg border border-danger/35 bg-danger-soft px-3 py-3 text-sm text-danger";
 
 function statusClasses(status: string) {
   if (status === "closed") {
@@ -182,6 +186,7 @@ export default function AccountsPage() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isUpdatingAccountState, setIsUpdatingAccountState] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const wizardDialogRef = useRef<HTMLElement | null>(null);
   const settingsDialogRef = useRef<HTMLElement | null>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
@@ -352,6 +357,7 @@ export default function AccountsPage() {
     setMessage("");
     setSettingsError("");
     setSettingsErrors({});
+    setIsDeleteConfirmOpen(false);
     setEditingAccount(account);
     setSettingsDraft(createAccountSettingsDraft(account));
     setIsSettingsOpen(true);
@@ -373,6 +379,7 @@ export default function AccountsPage() {
     setIsSavingSettings(false);
     setIsUpdatingAccountState(false);
     setIsDeletingAccount(false);
+    setIsDeleteConfirmOpen(false);
     restoreFocusAfterDialogClose();
   }, [editingAccount, restoreFocusAfterDialogClose, settingsDraft]);
 
@@ -442,6 +449,7 @@ export default function AccountsPage() {
       [field]: undefined
     }));
     setSettingsError("");
+    setIsDeleteConfirmOpen(false);
   }
 
   async function saveAccountSettings(event: FormEvent<HTMLFormElement>) {
@@ -509,11 +517,13 @@ export default function AccountsPage() {
     }
   }
 
-  async function deleteEditingAccount() {
+  function requestDeleteEditingAccount() {
+    setSettingsError("");
+    setIsDeleteConfirmOpen(true);
+  }
+
+  async function confirmDeleteEditingAccount() {
     if (!editingAccount) {
-      return;
-    }
-    if (typeof window !== "undefined" && !window.confirm(`Delete "${editingAccount.displayName}"? This cannot be undone.`)) {
       return;
     }
 
@@ -530,6 +540,7 @@ export default function AccountsPage() {
       setSettingsError(error instanceof ApiError ? error.message : "Failed to delete account.");
     } finally {
       setIsDeletingAccount(false);
+      setIsDeleteConfirmOpen(false);
     }
   }
 
@@ -921,13 +932,48 @@ export default function AccountsPage() {
                 <button
                   type="button"
                   className={DANGER_ACTION_BUTTON_CLASS}
-                  onClick={() => void deleteEditingAccount()}
+                  onClick={requestDeleteEditingAccount}
                   disabled={isDeletingAccount}
                 >
                   {isDeletingAccount ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
                   Delete
                 </button>
               </div>
+
+              {isDeleteConfirmOpen ? (
+                <div className={DANGER_CONFIRM_PANEL_CLASS} role="alert" aria-labelledby="account-delete-confirm-title" data-testid="accounts-delete-confirm">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p id="account-delete-confirm-title" className="font-medium text-danger">
+                        Delete {editingAccount.displayName}?
+                      </p>
+                      <p className="mt-1 text-danger/85">
+                        This account will be removed permanently. Accounts with linked transactions cannot be deleted.
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className={SECONDARY_BUTTON_CLASS}
+                        onClick={() => setIsDeleteConfirmOpen(false)}
+                        disabled={isDeletingAccount}
+                      >
+                        Keep account
+                      </button>
+                      <button
+                        type="button"
+                        className={DANGER_CONFIRM_BUTTON_CLASS}
+                        onClick={() => void confirmDeleteEditingAccount()}
+                        disabled={isDeletingAccount}
+                        data-testid="accounts-delete-confirm-submit"
+                      >
+                        {isDeletingAccount ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                        Delete account
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border-subtle pt-4">
                 <button

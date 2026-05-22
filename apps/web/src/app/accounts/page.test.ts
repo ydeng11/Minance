@@ -32,3 +32,12 @@ test("accounts controls declare touch targets and decorative icons", () => {
   assert.match(pageSource, /<CreditCard className="h-4 w-4" aria-hidden="true" \/>/);
   assert.match(pageSource, /<Building2 className="h-4 w-4" aria-hidden="true" \/>/);
 });
+
+test("account delete confirmation uses styled in-app controls", () => {
+  assert.match(pageSource, /isDeleteConfirmOpen/);
+  assert.match(pageSource, /data-testid="accounts-delete-confirm"/);
+  assert.match(pageSource, /DANGER_CONFIRM_PANEL_CLASS/);
+  assert.match(pageSource, /DANGER_CONFIRM_BUTTON_CLASS/);
+  assert.match(pageSource, /Delete account/);
+  assert.doesNotMatch(pageSource, /window\.confirm\(`Delete/);
+});
