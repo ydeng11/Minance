@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loginWithSeedAccount } from "./helpers.ts";
+import { loginWithSeedAccount, openNewTransactionDialog } from "./helpers.ts";
 
 test("@core transactions remains usable on narrow screens", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -44,4 +44,16 @@ test("@core transactions advanced filters restore focus on escape", async ({ pag
 
   await expect(dialog).toHaveCount(0);
   await expect(trigger).toBeFocused();
+});
+
+test("manual transaction category and account selects keep compact desktop sizing", async ({ page }) => {
+  await page.setViewportSize({ width: 1517, height: 1128 });
+  await loginWithSeedAccount(page);
+
+  await openNewTransactionDialog(page);
+
+  await expect(page.locator("#txn-create-category")).toHaveCSS("width", "205px");
+  await expect(page.locator("#txn-create-category")).toHaveCSS("height", "38px");
+  await expect(page.locator("#txn-create-account")).toHaveCSS("width", "205px");
+  await expect(page.locator("#txn-create-account")).toHaveCSS("height", "38px");
 });

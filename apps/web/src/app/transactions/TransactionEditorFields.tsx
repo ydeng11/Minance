@@ -17,6 +17,7 @@ const controlClassName =
 const errorControlClassName = "border-danger focus:border-danger";
 const labelClassName = "grid gap-1 text-sm text-text-secondary";
 const errorTextClassName = "text-xs text-danger";
+const createDialogSelectClassName = "h-[38px] w-[205px]";
 
 export function TransactionEditorFields({
   accountOptions,
@@ -132,7 +133,11 @@ export function TransactionEditorFields({
             onBlur={() => onFieldBlur?.("category_final")}
             aria-invalid={errors.category_final ? true : undefined}
             aria-describedby={errors.category_final ? `${idPrefix}-err-category_final` : undefined}
-            className={cn(controlClassName, errors.category_final && errorControlClassName)}
+            className={cn(
+              controlClassName,
+              idPrefix === "txn-create" && createDialogSelectClassName,
+              errors.category_final && errorControlClassName
+            )}
           >
             <option value="">Select category</option>
             {categories.map((entry) => (
@@ -155,7 +160,7 @@ export function TransactionEditorFields({
             name="account_name"
             value={form.account_name}
             onChange={(event) => onFieldChange("account_name", event.target.value)}
-            className={controlClassName}
+            className={cn(controlClassName, idPrefix === "txn-create" && createDialogSelectClassName)}
           >
             {accountOptions.map((option) => (
               <option key={option.value} value={option.value}>
