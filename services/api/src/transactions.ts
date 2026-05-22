@@ -9,6 +9,7 @@ import { parseDate, toDecimal, nowIso, createId, normalizeText, stableHash } fro
 import { normalizeMerchant } from "./categorization.ts";
 import { filterUserTransactions, getUserDataBounds, buildAppliedRange } from "./analytics.ts";
 import { createCategoryResolver, ensureCategoryStrategyForUser } from "./category-strategy.ts";
+import { ensureAccountIdentity } from "./account-identity.ts";
 
 const TRANSACTION_TYPE_VALUES = new Set(["expense", "income", "transfer"]);
 const TRANSACTION_TYPE_ALIASES = new Map(
@@ -47,30 +48,11 @@ function pickFirstDefined(payload, keys = []) {
 }
 
 function ensureAccount(store, userId, accountId, accountName) {
-  if (accountId) {
-    const existingById = store.accounts.find((entry) => entry.id === accountId && entry.userId === userId);
-    if (existingById) {
-      return existingById;
-    }
-  }
-
-  const resolvedName = String(accountName || "Manual Account").trim() || "Manual Account";
-  const key = normalizeText(resolvedName);
-  let existing = store.accounts.find((entry) => entry.userId === userId && entry.normalizedKey === key);
-  if (!existing) {
-    existing = {
-      id: createId("acct"),
-      userId,
-      normalizedKey: key,
-      displayName: resolvedName,
-      sourceInstitution: null,
-      accountType: "checking",
-      createdAt: nowIso(),
-      updatedAt: nowIso()
-    };
-    store.accounts.push(existing);
-  }
-  return existing;
+  return ensureAccountIdentity(store, userId, {
+    accountId,
+    accountName,
+    fallbackName: "Manual Account"
+  });
 }
 
 function deriveDirection(rawDirection, rawAmount) {

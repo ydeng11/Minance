@@ -1,7 +1,18 @@
 import { createId, nowIso, normalizeText } from "./utils.ts";
+import { formatAccountDisplayIdentifier } from "../../../packages/domain/src/accounts.ts";
 
 function normalizeAccountIdentity(value) {
   return normalizeText(value || "");
+}
+
+function normalizeAccountDisplayIdentifier(account) {
+  return normalizeAccountIdentity(
+    formatAccountDisplayIdentifier(
+      account.displayName,
+      account.sourceInstitution,
+      account.accountType
+    )
+  );
 }
 
 function countLinkedTransactions(store, userId, account) {
@@ -74,7 +85,12 @@ export function findAccountsByDisplayName(store, userId, displayName) {
     return [];
   }
   return (store.accounts || []).filter(
-    (entry) => entry.userId === userId && normalizeAccountIdentity(entry.displayName) === normalizedDisplayName
+    (entry) =>
+      entry.userId === userId
+      && (
+        normalizeAccountIdentity(entry.displayName) === normalizedDisplayName
+        || normalizeAccountDisplayIdentifier(entry) === normalizedDisplayName
+      )
   );
 }
 

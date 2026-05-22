@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resetStoreForTests } from "../src/store.ts";
+import { loadStore, resetStoreForTests } from "../src/store.ts";
 import { bulkUpdateTransactions, createManualTransaction, listTransactions } from "../src/transactions.ts";
 import { getOverview } from "../src/analytics.ts";
 
@@ -252,6 +252,51 @@ test("createManualTransaction returns the normalized transaction contract", () =
   });
 
   assert.deepEqual(sortedKeys(created), NORMALIZED_TRANSACTION_KEYS);
+});
+
+test("createManualTransaction reuses account selected by display identifier label", () => {
+  const store = structuredClone(BASE_STORE);
+  store.accounts = [
+    {
+      id: "acct_costco_citi",
+      userId: "user_1",
+      normalizedKey: "costco",
+      displayName: "COSTCO",
+      sourceInstitution: "CITI",
+      accountType: "credit",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    }
+  ];
+  store.categories = [
+    {
+      id: "cat_groceries",
+      userId: "user_1",
+      name: "Groceries",
+      emoji: "G",
+      coarseKey: "essential",
+      type: "expense",
+      budget: null,
+      isSystem: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    }
+  ];
+  resetStoreForTests(store);
+
+  const created = createManualTransaction("user_1", {
+    transaction_date: "2026-01-11",
+    description: "Costco run",
+    merchant_raw: "Costco",
+    amount: 45,
+    direction: "outflow",
+    category_final: "Groceries",
+    account_name: "COSTCO (CITI | CREDIT)"
+  });
+
+  assert.equal(created.account_id, "acct_costco_citi");
+  assert.equal(created.account_key, "costco");
+  assert.equal(loadStore().accounts.length, 1);
 });
 
 test("bulkUpdateTransactions delete preserves soft-delete metadata in normalized responses", () => {
