@@ -1,5 +1,8 @@
 import { money } from "@/lib/utils";
 
+const RANGE_INPUT_CLASS =
+  "pointer-events-none absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-accent [&::-moz-range-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:pointer-events-auto";
+
 interface AmountRangeControlProps {
   minBound: number;
   maxBound: number;
@@ -87,7 +90,7 @@ export function AmountRangeControl({
           }}
           data-testid={`${testIdPrefix}-min-amount-range`}
           aria-label="Minimum amount range"
-          className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-accent"
+          className={RANGE_INPUT_CLASS}
         />
         <input
           type="range"
@@ -104,7 +107,7 @@ export function AmountRangeControl({
           }}
           data-testid={`${testIdPrefix}-max-amount-range`}
           aria-label="Maximum amount range"
-          className="pointer-events-auto absolute inset-x-0 top-[-7px] h-5 w-full cursor-pointer appearance-none bg-transparent accent-accent"
+          className={RANGE_INPUT_CLASS}
         />
       </div>
 

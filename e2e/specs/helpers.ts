@@ -414,8 +414,17 @@ function isTransactionsListResponse(response) {
 
 export async function applyTransactionsFilters(page) {
   const advancedApplyButton = page.getByTestId("txn-advanced-apply");
+  const shellApplyButton = page.getByTestId("shell-view-apply");
   const isAdvancedApplyVisible = await advancedApplyButton.isVisible().catch(() => false);
-  const applyButton = isAdvancedApplyVisible ? advancedApplyButton : page.getByTestId("txn-apply");
+  const isShellApplyVisible = await shellApplyButton.isVisible().catch(() => false);
+  let applyButton = page.getByTestId("txn-apply");
+
+  if (isAdvancedApplyVisible) {
+    applyButton = advancedApplyButton;
+  } else if (isShellApplyVisible) {
+    applyButton = shellApplyButton;
+  }
+
   const previousUrl = page.url();
 
   await applyButton.click();
@@ -428,13 +437,24 @@ export async function applyTransactionsFilters(page) {
   if (isAdvancedApplyVisible) {
     completionSignals.push(expect(page.getByTestId("txn-advanced-filters")).toHaveCount(0, { timeout: 10000 }));
   }
+  if (isShellApplyVisible) {
+    completionSignals.push(expect(page.getByTestId("shell-view-dialog")).toHaveCount(0, { timeout: 10000 }));
+  }
 
   await Promise.race(completionSignals);
 }
 
 export async function openTransactionsAdvancedFilters(page) {
-  await page.getByTestId("txn-open-advanced-filters").click();
-  await expect(page.getByTestId("txn-advanced-filters")).toBeVisible();
+  const legacyTrigger = page.getByTestId("txn-open-advanced-filters");
+  if (await legacyTrigger.isVisible().catch(() => false)) {
+    await legacyTrigger.click();
+    await expect(page.getByTestId("txn-advanced-filters")).toBeVisible();
+    return;
+  }
+
+  await page.getByTestId("shell-view-toggle").click();
+  await expect(page.getByTestId("shell-view-dialog")).toBeVisible();
+  await expect(page.getByTestId("transactions-advanced-filters")).toBeVisible();
 }
 
 export async function openNewTransactionDialog(page) {

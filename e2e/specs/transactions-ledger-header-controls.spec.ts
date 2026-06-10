@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import assert from "node:assert/strict";
 import {
   applyTransactionsFilters,
   createManualTransaction,
@@ -38,8 +39,19 @@ test("@core transactions header controls route into the ledger, create from the 
   await expect(page.getByTestId("txn-select-all-visible")).toBeVisible();
 
   await openTransactionsAdvancedFilters(page);
-  await expect(page.getByTestId("txn-amount-filter")).toBeVisible();
-  await expect(page.getByTestId("txn-amount-range-control")).toBeVisible();
+  await expect(page.getByTestId("transactions-amount-range-amount-range-control")).toBeVisible();
+  const minAmountRange = page.getByTestId("transactions-amount-range-min-amount-range");
+  const minAmountRangeBox = await minAmountRange.boundingBox();
+  assert(minAmountRangeBox, "Expected the minimum amount slider to be measurable");
+  const initialMinimumAmount = Number(await minAmountRange.inputValue());
+
+  await page.mouse.move(minAmountRangeBox.x + 2, minAmountRangeBox.y + minAmountRangeBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(minAmountRangeBox.x + minAmountRangeBox.width * 0.45, minAmountRangeBox.y + minAmountRangeBox.height / 2);
+  await page.mouse.up();
+
+  await expect.poll(async () => Number(await minAmountRange.inputValue())).toBeGreaterThan(initialMinimumAmount);
+
   await page.getByPlaceholder(/Min \(\$/).fill("70");
   await applyTransactionsFilters(page);
   await expect(page).toHaveURL(/min_amount=70/);
