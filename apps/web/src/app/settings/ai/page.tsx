@@ -40,6 +40,8 @@ export default function AiSettingsPage() {
     return provider?.models || [];
   }, [defaultProvider, providers]);
 
+  const modelListId = useMemo(() => "ai-model-datalist", []);
+
   async function loadSettings() {
     try {
       const [providerData, credentialData] = await Promise.all([
@@ -75,12 +77,9 @@ export default function AiSettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Seed initial model from provider defaults only when no model is set
   useEffect(() => {
-    if (!providerModelOptions.length) {
-      setDefaultModel("");
-      return;
-    }
-    if (!providerModelOptions.includes(defaultModel)) {
+    if (!defaultModel && providerModelOptions.length) {
       setDefaultModel(providerModelOptions[0]);
     }
   }, [defaultModel, providerModelOptions]);
@@ -240,20 +239,19 @@ export default function AiSettingsPage() {
 
             <label className={SETTINGS_LABEL_CLASS_NAME}>
               Default model
-              <select
+              <input
                 value={defaultModel}
                 onChange={(event) => setDefaultModel(event.target.value)}
+                placeholder={providerModelOptions.length ? "Select or type a model" : "No models available"}
                 data-testid="ai-pref-model"
-                disabled={!providerModelOptions.length}
-                className={`${SETTINGS_FIELD_CLASS_NAME} disabled:opacity-60`}
-              >
-                {providerModelOptions.length ? null : <option value="">No models available</option>}
+                list={modelListId}
+                className={SETTINGS_FIELD_CLASS_NAME}
+              />
+              <datalist id={modelListId}>
                 {providerModelOptions.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
+                  <option key={model} value={model} />
                 ))}
-              </select>
+              </datalist>
             </label>
 
             <label className={SETTINGS_LABEL_CLASS_NAME}>

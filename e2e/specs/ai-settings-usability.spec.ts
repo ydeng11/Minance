@@ -19,7 +19,7 @@ test("@core AI settings supports end-to-end credential and preference actions", 
   await expect(page.getByTestId("credential-list")).toContainText("openai");
 
   await page.getByTestId("ai-pref-provider").selectOption("openai");
-  await expect.poll(async () => await page.locator('[data-testid="ai-pref-model"] option').count()).toBeGreaterThan(0);
+  await expect.poll(async () => await page.locator('#ai-model-datalist option').count()).toBeGreaterThan(0);
 
   await page.getByTestId("ai-save-preferences").click();
   await expect(page.getByTestId("global-message")).toContainText("Preferences saved.");
