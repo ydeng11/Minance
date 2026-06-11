@@ -10,6 +10,7 @@ export const CATEGORIZATION_STRATEGY = {
   RULE_REGEX: "rule_regex",
   MERCHANT_MEMORY: "merchant_memory",
   KEYWORD_MODEL: "keyword_model",
+  BANK_ALIAS: "bank_alias",
   HEURISTIC_FALLBACK: "heuristic_fallback",
   AGENT_HISTORY: "agent_history",
   AGENT_INFERRED: "agent_inferred"
@@ -17,9 +18,9 @@ export const CATEGORIZATION_STRATEGY = {
 
 export type CategorizationStrategy = typeof CATEGORIZATION_STRATEGY[keyof typeof CATEGORIZATION_STRATEGY];
 
-const AUTO_HINT_PATTERN = /\b(jeep|honda|honda finance|honda financial|american honda)\b/i;
+export const AUTO_HINT_PATTERN = /\b(jeep|honda|honda finance|honda financial|american honda)\b/i;
 
-function applyAutoCanonicalization(result, transaction) {
+export function applyAutoCanonicalization(result, transaction) {
   if (!result?.category) {
     return result;
   }
@@ -57,7 +58,7 @@ export function normalizeMerchant(raw) {
   return normalized;
 }
 
-function applyRule(userRules, transaction) {
+export function applyRule(userRules, transaction) {
   const sorted = [...userRules].sort((a, b) => (b.priority || 0) - (a.priority || 0));
   const text = `${transaction.merchant_normalized} ${normalizeText(transaction.description)} ${normalizeText(
     transaction.memo
@@ -90,7 +91,7 @@ function applyRule(userRules, transaction) {
   return null;
 }
 
-function applyMerchantMemory(memory, transaction) {
+export function applyMerchantMemory(memory, transaction) {
   const key = transaction.merchant_normalized;
   if (!memory[key]) {
     return null;
@@ -103,7 +104,7 @@ function applyMerchantMemory(memory, transaction) {
   };
 }
 
-function applyKeywordModel(transaction) {
+export function applyKeywordModel(transaction) {
   const text = `${transaction.merchant_normalized} ${normalizeText(transaction.description)} ${normalizeText(
     transaction.memo
   )}`;

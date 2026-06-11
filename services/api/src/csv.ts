@@ -368,7 +368,7 @@ export function inferMapping(parsedCsv, aiBoost = false) {
       }
 
       const headerNormalized = String(header || "").toLowerCase();
-      if (field === "description" && /(amount|outflow|inflow|debit|credit|value|total)/.test(headerNormalized)) {
+      if (field === "description" && /(amount|outflow|inflow|debit|credit|value|total|category|type)/.test(headerNormalized)) {
         continue;
       }
 

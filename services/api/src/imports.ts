@@ -1,7 +1,15 @@
 import { loadStore, saveStore, addAuditEvent } from "./store.ts";
 import { parseCsv, inferMapping } from "./csv.ts";
 import { isOfxQfxFile, parseOfxQfx } from "./ofx-qfx.ts";
-import { normalizeMerchant, categorizeTransaction, buildMerchantMemory } from "./categorization.ts";
+import {
+  normalizeMerchant,
+  buildMerchantMemory,
+  applyRule,
+  applyMerchantMemory,
+  applyKeywordModel,
+  applyAutoCanonicalization,
+  CATEGORIZATION_STRATEGY
+} from "./categorization.ts";
 import { parseDate, toDecimal, nowIso, createId, stableHash, normalizeText, clamp } from "./utils.ts";
 import { createAccountManualAdjustment } from "./accounts.ts";
 import { requireAiFeature } from "./ai.ts";
@@ -26,6 +34,154 @@ import { detectRecurringSuggestions } from "./recurring-suggestions.ts";
 import { incrementUserScanCounter } from "./recurring-scan.ts";
 import { ensureAccountIdentity, resolveAccountIdentity, resolveCanonicalAccountKey } from "./account-identity.ts";
 import { buildTransactionFingerprint } from "./transaction-fingerprint.ts";
+
+const TRANSFER_CATEGORIES = new Set([
+  "credit card payments",
+  "transfer",
+  "transfer & withdrawl"
+]);
+
+// Pre-normalized lookup for transfer categories
+const _normalizedTransferCategories = new Set(
+  Array.from(TRANSFER_CATEGORIES).map((key) => normalizeText(key))
+);
+
+const BANK_CATEGORY_ALIASES = {
+  // Food & dining
+  "restaurants": "Dining",
+  "restaurant": "Dining",
+  "food & drink": "Dining",
+  "food & beverage": "Dining",
+  "food and drink": "Dining",
+  "dining": "Dining",
+  "dining out": "Dining",
+  "fast food": "Dining",
+  // Groceries
+  "groceries": "Groceries",
+  "grocery": "Groceries",
+  "supermarket": "Groceries",
+  "merchandise & supplies-groceries": "Groceries",
+  "merchandise & supplies": "Shopping",
+  // Auto
+  "automotive": "Auto",
+  "gas": "Auto",
+  "fuel": "Auto",
+  "gas/automotive": "Auto",
+  // Entertainment
+  "entertainment": "Entertainments & Growth",
+  "entertainment/recreation": "Entertainments & Growth",
+  // Shopping
+  "merchandise": "Merchandise",
+  "shopping": "Shopping",
+  "retail": "Shopping",
+  // Transfers / payments
+  "payment": "Credit Card Payments",
+  "payments": "Credit Card Payments",
+  "payments and credits": "Credit Card Payments",
+  "credit card payment": "Credit Card Payments",
+  "card payment": "Credit Card Payments",
+  "automatic payment": "Credit Card Payments",
+  "transfer": "Transfer & Withdrawl",
+  "transfers": "Transfer & Withdrawl",
+  // Income / refunds
+  "refunds/adjustments": "Other Income",
+  "refund": "Other Income",
+  "reimbursement": "Other Income",
+  "income": "Income",
+  "interest earned": "Investment Income",
+  "deposit": "Income",
+  // Utilities
+  "utilities": "Bills & Utilities",
+  "bills & utilities": "Bills & Utilities",
+  "bill payment": "Bills & Utilities",
+  // Health
+  "health & wellness": "Health",
+  "healthcare": "Healthcare",
+  "medical": "Healthcare",
+  // Travel
+  "travel": "Travel",
+  "air travel": "Travel",
+  // Subscriptions
+  "subscriptions": "Subscriptions & Services",
+  "subscription": "Subscriptions & Services",
+  "dues and subscriptions": "Subscriptions & Services",
+  "dues & subscriptions": "Subscriptions & Services",
+  // Housing
+  "rent": "Housing",
+  "mortgage": "Mortgage & Loan",
+  "mortgage & loan": "Mortgage & Loan",
+  "home": "Home",
+  // Other
+  "fees & adjustments": "Miscellaneous",
+  "fees": "Miscellaneous",
+  "service charges": "Miscellaneous",
+  "other expenses": "Miscellaneous",
+  "other": "Miscellaneous"
+};
+
+// Build a normalized lookup from BANK_CATEGORY_ALIASES
+const _normalizedBankAliases = Object.fromEntries(
+  Object.entries(BANK_CATEGORY_ALIASES).map(([key, value]) => [normalizeText(key), value])
+);
+
+function deriveTransactionType(category, direction) {
+  if (!category) {
+    return direction === "inflow" ? "income" : "expense";
+  }
+  const normalized = normalizeText(category);
+  if (_normalizedTransferCategories.has(normalized)) {
+    return "transfer";
+  }
+  return direction === "inflow" ? "income" : "expense";
+}
+
+function classifyByBankAlias(transaction) {
+  const categoryRaw = transaction?.category_raw;
+  if (!categoryRaw) {
+    return null;
+  }
+  const normalized = normalizeText(categoryRaw);
+  if (!normalized) {
+    return null;
+  }
+  const mapped = _normalizedBankAliases[normalized];
+  if (mapped) {
+    return {
+      category: mapped,
+      confidence: 0.85,
+      strategy: CATEGORIZATION_STRATEGY.BANK_ALIAS
+    };
+  }
+  return null;
+}
+
+function classifyImportRow({ transaction, userRules, merchantMemory }) {
+  // 1. Manual override - must be checked by caller before calling
+  if (transaction.category_final) {
+    return {
+      category: transaction.category_final,
+      confidence: 1,
+      strategy: "import_override"
+    };
+  }
+  // 2. User rules
+  const byRule = applyRule(userRules, transaction);
+  if (byRule) {
+    return applyAutoCanonicalization(byRule, transaction);
+  }
+  // 3. Merchant memory
+  const byMemory = applyMerchantMemory(merchantMemory, transaction);
+  if (byMemory) {
+    return applyAutoCanonicalization(byMemory, transaction);
+  }
+  // 4. Bank category/type alias
+  const byBankAlias = classifyByBankAlias(transaction);
+  if (byBankAlias) {
+    return byBankAlias;
+  }
+  // 5. Keyword model (with heuristic fallback)
+  return applyAutoCanonicalization(applyKeywordModel(transaction), transaction);
+}
 
 const EDITABLE_ROW_FIELDS = [
   "transaction_date",
@@ -69,10 +225,8 @@ function normalizeDirectionInference(value) {
       ...(value.auxiliaryColumns || {})
     },
     llmDirectionInference: {
-      attempted: Number(value?.llmDirectionInference?.attempted || 0),
-      succeeded: Number(value?.llmDirectionInference?.succeeded || 0),
-      failed: Number(value?.llmDirectionInference?.failed || 0),
-      fallbackUsed: Number(value?.llmDirectionInference?.fallbackUsed || 0)
+      ...fallback.llmDirectionInference,
+      ...(value?.llmDirectionInference || {})
     }
   };
 }
@@ -97,17 +251,6 @@ function getMapped(row, mapping, key) {
     return "";
   }
   return row[sourceKey] ?? "";
-}
-
-function computeFingerprint({ userId, accountKey, merchantNormalized, amount, transactionDate, memo }) {
-  return buildTransactionFingerprint({
-    userId,
-    accountKey,
-    merchantNormalized,
-    amount,
-    transactionDate,
-    memo
-  });
 }
 
 function summarizeProcessedRows(rows = []) {
@@ -257,7 +400,7 @@ function normalizeStagedRow({
     accountKey: accountName,
     accountName
   });
-  const dedupeFingerprint = computeFingerprint({
+  const dedupeFingerprint = buildTransactionFingerprint({
     userId,
     accountKey: canonicalAccountKey,
     merchantNormalized,
@@ -351,6 +494,7 @@ function buildProcessedRows(store, userId, importJob, mapping, previousProcessed
     let categoryConfidence = 0;
     let categoryStrategy = null;
     let needsCategoryReview = false;
+    let transactionType = null;
 
     if (staged.ok) {
       const txForCategorization = {
@@ -361,20 +505,24 @@ function buildProcessedRows(store, userId, importJob, mapping, previousProcessed
         category_raw: staged.normalized.category_raw
       };
 
-      const deterministic = categorizeTransaction({
-        transaction: txForCategorization,
-        userRules,
-        merchantMemory
-      });
-
       if (staged.normalized.category_final) {
         categoryConfidence = 1;
         categoryStrategy = "import_override";
       } else {
-        staged.normalized.category_final = deterministic.category;
-        categoryConfidence = deterministic.confidence;
-        categoryStrategy = deterministic.strategy;
+        const classification = classifyImportRow({
+          transaction: txForCategorization,
+          userRules,
+          merchantMemory
+        });
+        staged.normalized.category_final = classification.category;
+        categoryConfidence = classification.confidence;
+        categoryStrategy = classification.strategy;
       }
+
+      transactionType = deriveTransactionType(
+        staged.normalized.category_final,
+        staged.normalized.direction
+      );
 
       needsCategoryReview = categoryConfidence < 0.6;
       const categoryMeta = resolveCategory({
@@ -392,6 +540,7 @@ function buildProcessedRows(store, userId, importJob, mapping, previousProcessed
         strategy: categoryStrategy,
         confidence: categoryConfidence,
         needsCategoryReview,
+        transactionType,
         directionStrategy: staged.normalized.direction_strategy,
         directionConfidence: staged.normalized.direction_confidence
       });
@@ -409,7 +558,9 @@ function buildProcessedRows(store, userId, importJob, mapping, previousProcessed
         ...staged.normalized,
         category_confidence: categoryConfidence,
         category_strategy: categoryStrategy,
-        needs_category_review: needsCategoryReview
+        needs_category_review: needsCategoryReview,
+        transaction_type: transactionType,
+        transaction_type_raw: staged.normalized.category_raw
       },
       overrides: { ...overrides, include },
       editedAt: previous?.editedAt || null,
@@ -447,15 +598,6 @@ function parsedCsvFromRawRows(importJob, rawRows) {
   };
 }
 
-function llmDirectionStats() {
-  return {
-    attempted: 0,
-    succeeded: 0,
-    failed: 0,
-    fallbackUsed: 0
-  };
-}
-
 async function computeDirectionInference({ userId, parsedCsv, mapping, auxiliaryColumns }) {
   if (!IMPORT_DIRECTION_INFERENCE_ENABLED) {
     return {
@@ -463,9 +605,9 @@ async function computeDirectionInference({ userId, parsedCsv, mapping, auxiliary
         ...getDefaultDirectionInference(),
         strategy: "disabled",
         warnings: ["Direction inference disabled by feature flag"],
-        llmDirectionInference: llmDirectionStats()
+        llmDirectionInference: { attempted: 0, succeeded: 0, failed: 0, fallbackUsed: 0 }
       },
-      llmDirectionInference: llmDirectionStats()
+      llmDirectionInference: { attempted: 0, succeeded: 0, failed: 0, fallbackUsed: 0 }
     };
   }
 
@@ -475,7 +617,7 @@ async function computeDirectionInference({ userId, parsedCsv, mapping, auxiliary
     auxiliaryColumns
   });
 
-  const llmStats = llmDirectionStats();
+  const llmStats = { attempted: 0, succeeded: 0, failed: 0, fallbackUsed: 0 };
   let directionInference = {
     ...deterministic,
     llmDirectionInference: llmStats
@@ -713,9 +855,10 @@ export function listImportProcessedRows(userId, importId, options = {}) {
   const limit = Math.max(1, Math.min(500, Number(options.limit || 100)));
   const status = options.status ? String(options.status) : null;
 
-  let rows = processedRowsForImport(store, importId);
+  const allRows = processedRowsForImport(store, importId);
+  let rows = allRows;
   if (status) {
-    rows = rows.filter((entry) => entry.status === status);
+    rows = allRows.filter((entry) => entry.status === status);
   }
 
   return {
@@ -723,7 +866,7 @@ export function listImportProcessedRows(userId, importId, options = {}) {
     offset,
     limit,
     items: rows.slice(offset, offset + limit),
-    summary: summarizeProcessedRows(processedRowsForImport(store, importId))
+    summary: summarizeProcessedRows(allRows)
   };
 }
 
@@ -1349,7 +1492,7 @@ export async function commitImport(userId, importId) {
       accountKey: normalized.account_name,
       accountName: normalized.account_name
     });
-    const dedupeFingerprint = computeFingerprint({
+    const dedupeFingerprint = buildTransactionFingerprint({
       userId,
       accountKey: matchedAccount?.normalizedKey || normalizeText(normalized.account_name),
       merchantNormalized: normalized.merchant_normalized,
@@ -1369,6 +1512,11 @@ export async function commitImport(userId, importId) {
       fallbackName: normalized.account_name
     });
 
+    const transactionType = deriveTransactionType(
+      normalized.category_final || "Uncategorized",
+      normalized.direction
+    );
+
     const tx = {
       id: createId("txn"),
       user_id: userId,
@@ -1384,6 +1532,7 @@ export async function commitImport(userId, importId) {
       amount: normalized.amount,
       currency: normalized.currency,
       direction: normalized.direction,
+      transaction_type: transactionType,
       category_raw: normalized.category_raw,
       category_final: normalized.category_final || "Uncategorized",
       category_coarse: null,
@@ -1398,23 +1547,23 @@ export async function commitImport(userId, importId) {
     };
 
     if (!normalized.category_final) {
-      const deterministic = categorizeTransaction({
+      const classification = classifyImportRow({
         transaction: tx,
         userRules,
         merchantMemory
       });
 
-      tx.category_final = deterministic.category;
-      tx.category_confidence = deterministic.confidence;
-      tx.category_strategy = deterministic.strategy;
+      tx.category_final = classification.category;
+      tx.category_confidence = classification.confidence;
+      tx.category_strategy = classification.strategy;
 
-      // Model stage comes after rule and merchant memory stages.
-      if (!["rule_exact", "rule_contains", "rule_regex", "merchant_memory"].includes(deterministic.strategy)) {
+      // LLM fallback for low-confidence deterministic strategies
+      if (["bank_alias", "keyword_model", "heuristic_fallback"].includes(classification.strategy)) {
         logImportProcessing("llm_categorization_attempted", {
           importId,
           rowIndex: rowEntry.rowIndex,
           merchant: tx.merchant_normalized,
-          deterministicStrategy: deterministic.strategy
+          deterministicStrategy: classification.strategy
         });
         summary.llmCategorization.attempted += 1;
         const llmResult = await categorizeTransactionWithLlm({
@@ -1427,6 +1576,10 @@ export async function commitImport(userId, importId) {
           tx.category_final = llmResult.category;
           tx.category_confidence = llmResult.confidence_internal;
           tx.category_strategy = "llm_model";
+          tx.transaction_type = deriveTransactionType(
+            tx.category_final,
+            normalized.direction
+          );
           summary.llmCategorization.succeeded += 1;
           logImportProcessing("llm_categorization_succeeded", {
             importId,
@@ -1443,7 +1596,7 @@ export async function commitImport(userId, importId) {
             rowIndex: rowEntry.rowIndex,
             merchant: tx.merchant_normalized,
             reason: llmResult.reason || "unknown",
-            fallbackStrategy: deterministic.strategy
+            fallbackStrategy: classification.strategy
           });
         }
       }
@@ -1464,14 +1617,14 @@ export async function commitImport(userId, importId) {
     tx.category_coarse = categoryMeta.categoryCoarse;
     tx.category_emoji = categoryMeta.categoryEmoji;
 
-    // Track low confidence for summary, but mark as reviewed since user
-    // has already reviewed/edited transactions in the import UI before committing
+    // Track low confidence rows. Rows that the user has already reviewed in the import UI
+    // are marked reviewed. Rows where LLM was attempted and failed remain flagged.
     const isLowConfidence = tx.category_confidence < 0.6;
     if (isLowConfidence) {
       summary.lowConfidenceRows += 1;
     }
-    tx.needs_category_review = false;
-    tx.review_status = "reviewed";
+    tx.needs_category_review = isLowConfidence;
+    tx.review_status = isLowConfidence ? "needs_review" : "reviewed";
 
     if (normalized.needs_direction_review) {
       summary.lowDirectionConfidenceRows += 1;

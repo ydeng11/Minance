@@ -175,6 +175,8 @@ export interface ProcessedRow {
     category_confidence: number;
     category_strategy: string | null;
     needs_category_review: boolean;
+    transaction_type?: "expense" | "income" | "transfer";
+    transaction_type_raw?: string | null;
   };
   overrides: Record<string, unknown>;
   editedAt: string | null;
