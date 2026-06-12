@@ -81,6 +81,8 @@ Fixture source of truth:
 
 ## Self-host profile
 
+This project uses [OrbStack](https://orbstack.dev) to build Docker images (e.g., `docker build` targets in the repo use OrbStack's Docker engine under the hood).
+
 Reference deployment and operations profile:
 - `docker-compose.selfhost.yml`
 - `.env.selfhost.example`
