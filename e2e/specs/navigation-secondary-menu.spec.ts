@@ -23,7 +23,7 @@ test("@core AI settings are available in the settings menu", async ({ page }) =>
   await expect(helpMenuToggle).toBeVisible();
   await helpMenuToggle.click();
   await expect(page.getByTestId("help-menu-panel")).toBeVisible();
-  await page.getByTestId("help-menu-link-help-center").click();
+  await page.getByTestId("help-menu-link-operator-guide").click();
   await expect(page.getByTestId("help-page")).toBeVisible();
 });
 

@@ -152,20 +152,7 @@ export function HelpMenu() {
               ))}
               {resources.messengerLink ? (
                 <HelpMenuItem link={resources.messengerLink} onSelect={() => closeMenu()} />
-              ) : (
-                <div
-                  className="rounded-xl border border-border-subtle bg-surface-field p-3 text-xs text-text-secondary"
-                  data-testid="help-menu-messenger-disabled"
-                >
-                  <div className="flex items-center gap-1.5 text-text-primary">
-                    <MessageCircle className="h-3.5 w-3.5 text-text-muted" aria-hidden="true" />
-                    Messenger integration disabled
-                  </div>
-                  <p className="mt-1">
-                    Set <code>NEXT_PUBLIC_HELP_MESSENGER_URL</code> to enable external chat support.
-                  </p>
-                </div>
-              )}
+              ) : null}
             </div>
           </section>
         </div>

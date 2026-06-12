@@ -27,7 +27,6 @@ test("help menu uses menu semantics and shared shell tokens", () => {
   assert.match(helpMenuSource, /<CircleHelp[^>]*aria-hidden="true"/);
   assert.match(helpMenuSource, /<ChevronDown[^>]*aria-hidden="true"/);
   assert.match(helpMenuSource, /<ExternalLink[^>]*aria-hidden="true"/);
-  assert.match(helpMenuSource, /<MessageCircle[^>]*aria-hidden="true"/);
   assert.match(helpMenuSource, /border-border-subtle/);
   assert.match(helpMenuSource, /bg-surface-panel\/95/);
   assert.doesNotMatch(helpMenuSource, /neutral-\d/);

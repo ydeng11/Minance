@@ -491,9 +491,9 @@ export default function SettingsPage() {
 
         <div className="mt-3 rounded-lg border border-border-subtle bg-surface-field p-3 text-xs text-text-secondary">
           {helpResources.supportConfigured ? (
-            <p>Hosted support endpoints are configured for this deployment.</p>
+            <p>External support endpoints are configured for this deployment.</p>
           ) : (
-            <p>No hosted support endpoint configured; local help docs are used as the default fallback.</p>
+            <p>Self-host support defaults are active. Visit Help for operator docs and local troubleshooting.</p>
           )}
         </div>
       </section>

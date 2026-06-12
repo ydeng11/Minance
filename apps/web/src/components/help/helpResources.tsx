@@ -13,7 +13,7 @@ export interface HelpResources {
   supportConfigured: boolean;
 }
 
-const DEFAULT_HELP_CENTER_PATH = "/help";
+const HELP_PATH = "/help";
 
 function normalizeExternalUrl(value: string | undefined): string | null {
   if (!value) {
@@ -53,10 +53,28 @@ export function getHelpResources(): HelpResources {
 
   const docsLinks: HelpLink[] = [
     {
-      id: "help-center",
-      label: "Help Center",
-      description: "Local self-host documentation and troubleshooting.",
-      href: DEFAULT_HELP_CENTER_PATH
+      id: "operator-guide",
+      label: "Operator Guide",
+      description: "Deployment, environment config, and quick-start checklist.",
+      href: `${HELP_PATH}#operator-guide`
+    },
+    {
+      id: "backup-restore",
+      label: "Backup & Restore",
+      description: "Database backup, restore, and migration procedures.",
+      href: `${HELP_PATH}#backup-restore`
+    },
+    {
+      id: "security-checklist",
+      label: "Security Checklist",
+      description: "Hardening guide for production deployments.",
+      href: `${HELP_PATH}#security-checklist`
+    },
+    {
+      id: "feature-matrix",
+      label: "Feature Availability",
+      description: "What works locally vs. what needs external services.",
+      href: `${HELP_PATH}#feature-matrix`
     },
     {
       id: "csv-import-guide",
@@ -102,8 +120,8 @@ export function getHelpResources(): HelpResources {
     supportLinks.push({
       id: "support-fallback",
       label: "Self-host fallback",
-      description: "No hosted support URL configured; use local troubleshooting docs.",
-      href: `${DEFAULT_HELP_CENTER_PATH}#support-fallback`
+      description: "No hosted support URL configured; use local operator docs.",
+      href: `${HELP_PATH}#operator-guide`
     });
   }
 
