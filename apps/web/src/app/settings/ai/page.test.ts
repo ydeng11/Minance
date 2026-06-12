@@ -43,8 +43,14 @@ test("ai settings save buttons show spinner during loading and disable when empt
 });
 
 test("ai settings uses semantic design tokens, not hard-coded color scales", () => {
-  assert.match(pageSource, /SETTINGS_PANEL_CLASS_NAME = "rounded-\[24px\] border border-border-subtle bg-surface-panel\/85 p-4 shadow-panel"/);
-  assert.match(pageSource, /SETTINGS_FIELD_CLASS_NAME = "rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-text-primary outline-none transition focus:border-accent focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"/);
+  assert.match(
+    pageSource,
+    /SETTINGS_PANEL_CLASS_NAME =\n  "rounded-\[24px\] border border-border-subtle bg-surface-panel\/85 p-4 shadow-panel"/
+  );
+  assert.match(
+    pageSource,
+    /SETTINGS_FIELD_CLASS_NAME =\n  "rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-text-primary outline-none transition focus:border-accent focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"/
+  );
   assert.match(pageSource, /SETTINGS_LABEL_CLASS_NAME = "grid gap-1 text-sm text-text-secondary"/);
 });
 

@@ -38,7 +38,7 @@ start-api:
 # Build the nightly image for the host arch (test → build → load)
 docker-build:
     just test
-    docker buildx build -t ydeng11/minance:nightly -f deploy/docker/Dockerfile.combined --load .
+    docker buildx build --builder orbstack -t ydeng11/minance:nightly -f deploy/docker/Dockerfile.combined --load .
     echo "✅ Image built: ydeng11/minance:nightly"
 
 # Build and push nightly image for amd64 + arm64 (test → buildx → push)
