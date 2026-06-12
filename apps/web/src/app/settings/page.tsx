@@ -146,13 +146,13 @@ export default function SettingsPage() {
     setBackupMessage("");
     try {
       const response = await api.system.restoreBackup(selectedBackupId, confirmText);
+      resetBackupSelection();
+      await fetchBackups();
       setBackupMessage(
         response.currentSessionStillExists
           ? `Backup restored (id: ${response.backupId}). Reload the page to see changes.`
           : "Backup restored. Your session has changed — please log in again."
       );
-      resetBackupSelection();
-      await fetchBackups();
     } catch (error) {
       setBackupMessage(error instanceof ApiError ? error.message : "Failed to restore backup.");
     } finally {

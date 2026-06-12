@@ -42,7 +42,7 @@ export default defineConfig({
   globalSetup: path.join(__dirname, "e2e/global-setup.ts"),
   webServer: [
     {
-      command: `env NODE_ENV=test PORT=${E2E_API_PORT} MINANCE_STORE_BACKEND=sqlite MINANCE_SQLITE_FILE_TEST=${E2E_SQLITE_FILE} MINANCE_ALLOWED_ORIGINS=http://${E2E_HOST}:${E2E_FRONTEND_PORT} MINANCE_RATE_LIMIT_MAX_REQUESTS=5000 MINANCE_AUTH_RATE_LIMIT_MAX_REQUESTS=500 MINANCE_SEED_TEST_ACCOUNT=true DEV_TEST_ACCOUNT_EMAIL=dev@minance.local DEV_TEST_ACCOUNT_PASSWORD=devpassword123 apps/web/node_modules/.bin/tsx services/api/src/server.ts`,
+      command: `env NODE_ENV=test PORT=${E2E_API_PORT} MINANCE_STORE_BACKEND=sqlite MINANCE_SQLITE_FILE_TEST=${E2E_SQLITE_FILE} MINANCE_BACKUP_ROOT=services/api/tmp/e2e-backups MINANCE_ALLOWED_ORIGINS=http://${E2E_HOST}:${E2E_FRONTEND_PORT} MINANCE_RATE_LIMIT_MAX_REQUESTS=5000 MINANCE_AUTH_RATE_LIMIT_MAX_REQUESTS=500 MINANCE_SEED_TEST_ACCOUNT=true DEV_TEST_ACCOUNT_EMAIL=dev@minance.local DEV_TEST_ACCOUNT_PASSWORD=devpassword123 apps/web/node_modules/.bin/tsx services/api/src/server.ts`,
       url: `http://${E2E_HOST}:${E2E_API_PORT}`,
       timeout: 120_000,
       reuseExistingServer: !process.env.CI
