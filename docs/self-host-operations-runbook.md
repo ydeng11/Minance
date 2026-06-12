@@ -59,7 +59,16 @@ curl -i -sS http://localhost:${MINANCE_WEB_PORT:-3000}/v1/system/storage | sed -
 ## 2. Backup and Restore Strategy
 
 ### Backups
-The backup script captures the runtime SQLite database, optional JSON fixture/input file if present, and the uploads archive with checksums.
+
+You can manage server-side database backups through the UI at **Settings > Data Controls > Database backups** (requires authentication), or through the CLI scripts below.
+
+**UI path (any signed-in user):**
+- Create: click **Create Backup**.
+- List: backups are fetched on page load; use **Refresh List** to reload.
+- Export: click the download icon on any backup row.
+- Restore: click the restore icon, type the backup id into the confirmation input, then click **Restore**.
+  - A pre-restore safety backup is created automatically before the reload.
+  - After restore, if the current session still exists the UI shows a reload hint; otherwise it prompts re-login.
 
 When `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`, the backup/restore defaults already point at the same host directory used by Docker, so no script overrides are required.
 

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import net from "node:net";
 import os from "node:os";
@@ -1682,3 +1682,187 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(response.payload?.error?.message, "Endpoint not found: POST /v1/migrations/minance/sqlite");
   });
 });
+
+test("POST /v1/system/backups creates a backup", { skip: !hasSqlite3Cli() }, async (t) => {
+  const backupRoot = fs.mkdtempSync(path.join(os.tmpdir(), "minance-backup-contract-"));
+  const context = await startApiServer(t, {
+    env: {
+      MINANCE_BACKUP_ROOT: backupRoot
+    }
+  });
+
+  const signupResponse = await apiRequest(context, "POST", "/v1/auth/signup", {
+    expectedStatus: 201,
+    body: {
+      email: "backup-create-contract@example.com",
+      password: "contractpass123"
+    }
+  });
+  const accessToken = signupResponse.payload?.tokens?.accessToken;
+  assert.equal(typeof accessToken, "string");
+
+  const result = await apiRequest(context, "POST", "/v1/system/backups", {
+    token: accessToken,
+    expectedStatus: 201
+  });
+
+  assert.ok(result.payload?.backup?.id, "backup should have an id");
+  assert.ok(result.payload?.backup?.createdAt, "backup should have createdAt");
+  assert.ok(result.payload?.backup?.quickCheckResult?.includes("ok"), "quick_check should pass");
+
+  t.after(async () => {
+    fs.rmSync(backupRoot, { recursive: true, force: true });
+  });
+});
+
+test("GET /v1/system/backups lists backups", { skip: !hasSqlite3Cli() }, async (t) => {
+  const backupRoot = fs.mkdtempSync(path.join(os.tmpdir(), "minance-backup-contract2-"));
+  const context = await startApiServer(t, {
+    env: {
+      MINANCE_BACKUP_ROOT: backupRoot
+    }
+  });
+
+  const signupResponse = await apiRequest(context, "POST", "/v1/auth/signup", {
+    expectedStatus: 201,
+    body: {
+      email: "backup-list-contract@example.com",
+      password: "contractpass123"
+    }
+  });
+  const accessToken = signupResponse.payload?.tokens?.accessToken;
+  assert.equal(typeof accessToken, "string");
+
+  // Initially empty
+  const emptyList = await apiRequest(context, "GET", "/v1/system/backups", {
+    token: accessToken,
+    expectedStatus: 200
+  });
+  assert.deepEqual(emptyList.payload?.backups || [], []);
+
+  // Create a backup
+  await apiRequest(context, "POST", "/v1/system/backups", {
+    token: accessToken,
+    expectedStatus: 201
+  });
+
+  const list = await apiRequest(context, "GET", "/v1/system/backups", {
+    token: accessToken,
+    expectedStatus: 200
+  });
+  assert.equal(list.payload?.backups?.length, 1, "should list 1 backup");
+
+  t.after(async () => {
+    fs.rmSync(backupRoot, { recursive: true, force: true });
+  });
+});
+
+test("GET /v1/system/backups/:id/archive exports backup as tar.gz", { skip: !hasSqlite3Cli() }, async (t) => {
+  const backupRoot = fs.mkdtempSync(path.join(os.tmpdir(), "minance-backup-contract3-"));
+  const context = await startApiServer(t, {
+    env: {
+      MINANCE_BACKUP_ROOT: backupRoot
+    }
+  });
+
+  const signupResponse = await apiRequest(context, "POST", "/v1/auth/signup", {
+    expectedStatus: 201,
+    body: {
+      email: "backup-archive-contract@example.com",
+      password: "contractpass123"
+    }
+  });
+  const accessToken = signupResponse.payload?.tokens?.accessToken;
+  assert.equal(typeof accessToken, "string");
+
+  const created = await apiRequest(context, "POST", "/v1/system/backups", {
+    token: accessToken,
+    expectedStatus: 201
+  });
+  const backupId = created.payload?.backup?.id;
+  assert.ok(backupId);
+
+  // Fetch archive directly via fetch to check headers and body
+  const response = await fetch(`${context.baseUrl}/v1/system/backups/${backupId}/archive`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  assert.equal(response.status, 200, "archive endpoint should return 200");
+  assert.equal(response.headers.get("content-type"), "application/gzip", "should be gzip content type");
+  const disposition = response.headers.get("content-disposition") || "";
+  assert.ok(disposition.includes(".tar.gz"), "disposition should include .tar.gz");
+
+  const blob = await response.blob();
+  assert.ok(blob.size > 0, "archive body should not be empty");
+
+  t.after(async () => {
+    fs.rmSync(backupRoot, { recursive: true, force: true });
+  });
+});
+
+test("POST /v1/system/backups/:id/restore requires confirmation", { skip: !hasSqlite3Cli() }, async (t) => {
+  const backupRoot = fs.mkdtempSync(path.join(os.tmpdir(), "minance-backup-contract4-"));
+  const context = await startApiServer(t, {
+    env: {
+      MINANCE_BACKUP_ROOT: backupRoot
+    }
+  });
+
+  const signupResponse = await apiRequest(context, "POST", "/v1/auth/signup", {
+    expectedStatus: 201,
+    body: {
+      email: "backup-restore-contract@example.com",
+      password: "contractpass123"
+    }
+  });
+  const accessToken = signupResponse.payload?.tokens?.accessToken;
+  assert.equal(typeof accessToken, "string");
+
+  const created = await apiRequest(context, "POST", "/v1/system/backups", {
+    token: accessToken,
+    expectedStatus: 201
+  });
+  const backupId = created.payload?.backup?.id;
+  assert.ok(backupId);
+
+  // Without confirmation
+  const badResult = await apiRequest(context, "POST", `/v1/system/backups/${backupId}/restore`, {
+    token: accessToken,
+    expectedStatus: 400,
+    body: { confirmation: "wrong-id" }
+  });
+  assert.ok(badResult.payload?.error?.message, "should return error without valid confirmation");
+
+  // With correct confirmation
+  const goodResult = await apiRequest(context, "POST", `/v1/system/backups/${backupId}/restore`, {
+    token: accessToken,
+    expectedStatus: 200,
+    body: { confirmation: backupId }
+  });
+  assert.equal(goodResult.payload?.restored, true, "should succeed with valid confirmation");
+  assert.equal(goodResult.payload?.backupId, backupId, "should return the backup id");
+  assert.ok(goodResult.payload?.safetyBackupId, "should have created a safety backup");
+
+  // currentSessionStillExists should be a boolean
+  assert.equal(typeof goodResult.payload?.currentSessionStillExists, "boolean");
+
+  t.after(async () => {
+    fs.rmSync(backupRoot, { recursive: true, force: true });
+  });
+});
+
+test("GET /v1/system/backups requires auth", async (t) => {
+  const context = await startApiServer(t);
+  const result = await apiRequest(context, "GET", "/v1/system/backups", { expectedStatus: 401 });
+  assert.ok(result.payload?.error?.message);
+});
+
+test("POST /v1/system/backups requires auth", async (t) => {
+  const context = await startApiServer(t);
+  const result = await apiRequest(context, "POST", "/v1/system/backups", { expectedStatus: 401 });
+  assert.ok(result.payload?.error?.message);
+});
+
+function hasSqlite3Cli() {
+  const result = spawnSync("sqlite3", ["--version"], { encoding: "utf8" });
+  return result.status === 0 && !result.error;
+}

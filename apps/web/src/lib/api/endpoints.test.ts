@@ -8,6 +8,7 @@ import {
   importsApi,
   investmentsApi,
   recurringsApi,
+  systemApi,
   transactionsApi,
   type ApiRequest
 } from "./endpoints";
@@ -324,4 +325,24 @@ test("recurringsApi routes lifecycle and evaluation contracts", async () => {
   assert.equal(calls[7].path, "/v1/recurrings/rrule_1/archive");
   assert.equal(calls[8].path, "/v1/recurrings/rrule_1");
   assert.equal(calls[8].options?.method, "DELETE");
+});
+
+test("systemApi.backup methods build correct paths and options", async () => {
+  const { calls, request } = createRecorder();
+
+  await systemApi.listBackups(request);
+  assert.equal(calls[0].path, "/v1/system/backups");
+
+  await systemApi.createBackup(request);
+  assert.equal(calls[1].path, "/v1/system/backups");
+  assert.equal(calls[1].options?.method, "POST");
+
+  await systemApi.exportBackupArchive(request, "backup_2026");
+  assert.equal(calls[2].path, "/v1/system/backups/backup_2026/archive");
+  assert.equal(calls[2].options?.responseType, "blob");
+
+  await systemApi.restoreBackup(request, "backup_2026", "backup_2026");
+  assert.equal(calls[3].path, "/v1/system/backups/backup_2026/restore");
+  assert.equal(calls[3].options?.method, "POST");
+  assert.deepEqual(calls[3].options?.body, { confirmation: "backup_2026" });
 });

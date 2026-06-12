@@ -37,13 +37,17 @@ import type {
   TransactionsBulkUpdateRequest,
   TransactionsBulkUpdateResult,
   TransactionsResponse,
-  User
+  User,
+  DatabaseBackupsResponse,
+  CreateDatabaseBackupResponse,
+  RestoreDatabaseBackupResponse
 } from "@/lib/api/types";
 
 export type ApiRequest = <T>(path: string, options?: {
   method?: string;
   auth?: boolean;
   body?: BodyInit | object | null;
+  responseType?: "json" | "blob";
 }) => Promise<T>;
 
 type QueryValue =
@@ -81,7 +85,18 @@ export const authApi = {
 };
 
 export const systemApi = {
-  storage: (request: ApiRequest) => request<StorageStatusResponse>("/v1/system/storage")
+  storage: (request: ApiRequest) => request<StorageStatusResponse>("/v1/system/storage"),
+  listBackups: (request: ApiRequest) =>
+    request<DatabaseBackupsResponse>("/v1/system/backups"),
+  createBackup: (request: ApiRequest) =>
+    request<CreateDatabaseBackupResponse>("/v1/system/backups", { method: "POST" }),
+  exportBackupArchive: (request: ApiRequest, id: string) =>
+    request<Blob>(`/v1/system/backups/${encodeURIComponent(id)}/archive`, { responseType: "blob" }),
+  restoreBackup: (request: ApiRequest, id: string, confirmation: string) =>
+    request<RestoreDatabaseBackupResponse>(`/v1/system/backups/${encodeURIComponent(id)}/restore`, {
+      method: "POST",
+      body: { confirmation }
+    })
 };
 
 export const aiApi = {

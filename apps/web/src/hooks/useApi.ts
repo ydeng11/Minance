@@ -30,7 +30,11 @@ export function useApi() {
         savePreferences: aiApi.savePreferences.bind(null, request)
       },
       system: {
-        storage: () => systemApi.storage(request)
+        storage: () => systemApi.storage(request),
+        listBackups: () => systemApi.listBackups(request),
+        createBackup: () => systemApi.createBackup(request),
+        exportBackupArchive: systemApi.exportBackupArchive.bind(null, request),
+        restoreBackup: systemApi.restoreBackup.bind(null, request)
       },
       analytics: {
         overview: analyticsApi.overview.bind(null, request),

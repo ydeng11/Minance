@@ -245,6 +245,27 @@ export function refreshStoreCacheIfChanged() {
   return changed;
 }
 
+/**
+ * Force-reload the in-memory store cache from the backing file (SQLite or JSON),
+ * bypassing mtime checks and cooldown. Used by restore operations to pick up
+ * the replaced database immediately without waiting for the next API request.
+ */
+export function forceReloadStoreCache() {
+  if (STORE_BACKEND === "sqlite") {
+    ensureSqliteStoreOnce();
+    cache = normalizeStore(readStoreCollectionsFromSqlite());
+    cacheFileMtimeMs = getStoreFileMtimeMs(SQLITE_FILE);
+  } else {
+    ensureDataFile();
+    const raw = fs.readFileSync(DATA_FILE, "utf8");
+    cache = normalizeStore(JSON.parse(raw));
+    cacheFileMtimeMs = getDataFileMtimeMs();
+  }
+  lastRefreshCheckMs = Date.now();
+  buildTransactionIndex();
+  notifyCacheReloadedCallbacks();
+}
+
 export function saveStore(nextStore = null) {
   if (nextStore) {
     cache = normalizeStore(nextStore);

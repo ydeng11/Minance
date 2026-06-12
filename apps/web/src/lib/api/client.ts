@@ -22,6 +22,7 @@ export interface RequestOptions extends Omit<RequestInit, "body"> {
   auth?: boolean;
   retry?: boolean;
   body?: BodyInit | object | null;
+  responseType?: "json" | "blob";
 }
 
 function parseErrorMessage(status: number, payload: ApiErrorPayload | null) {
@@ -30,9 +31,12 @@ function parseErrorMessage(status: number, payload: ApiErrorPayload | null) {
   return remediation ? `${base}: ${remediation}` : base;
 }
 
-async function parsePayload<T>(response: Response): Promise<T | null> {
+async function parsePayload<T>(response: Response, responseType: "json" | "blob" = "json"): Promise<T | null> {
   if (response.status === 204) {
     return null;
+  }
+  if (responseType === "blob") {
+    return (await response.blob()) as unknown as T;
   }
   return (await response.json().catch(() => null)) as T | null;
 }
@@ -83,7 +87,7 @@ export function createApiClient(context: ApiClientContext) {
   }
 
   async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { auth = true, retry = true, body, headers, ...rest } = options;
+    const { auth = true, retry = true, body, headers, responseType = "json", ...rest } = options;
     const tokens = context.getTokens();
 
     const requestHeaders = new Headers(headers || {});
@@ -113,7 +117,18 @@ export function createApiClient(context: ApiClientContext) {
       context.onAuthFailure();
     }
 
-    const payload = await parsePayload<T & ApiErrorPayload>(response);
+    let payload: T & ApiErrorPayload | null = null;
+    if (responseType === "blob" && !response.ok) {
+      // For blob responses that are errors, parse the body as JSON to get the error message
+      try {
+        const errorJson = await response.clone().json();
+        payload = errorJson as T & ApiErrorPayload;
+      } catch {
+        payload = null;
+      }
+    } else {
+      payload = await parsePayload<T & ApiErrorPayload>(response, responseType);
+    }
 
     if (!response.ok) {
       throw new ApiError(parseErrorMessage(response.status, payload as ApiErrorPayload | null), response.status, payload as ApiErrorPayload | null);

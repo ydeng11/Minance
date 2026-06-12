@@ -81,6 +81,14 @@ function parseOriginList(value, fallback) {
     .filter(Boolean);
 }
 
+function resolvePathFromRoot(rootDir, configuredPath, fallbackPath) {
+  const raw = configuredPath || fallbackPath;
+  if (!raw) {
+    throw new Error("Path configuration is required");
+  }
+  return path.isAbsolute(raw) ? raw : path.join(rootDir, raw);
+}
+
 const runtimePaths = resolveRuntimePaths({
   rootDir: ROOT_DIR,
   env: process.env,
@@ -95,6 +103,8 @@ export const STORE_BACKEND = resolveStoreBackend({
   nodeEnv: process.env.NODE_ENV
 });
 export const SQLITE_AUTO_INIT = parseBoolean(process.env.MINANCE_SQLITE_AUTO_INIT, true);
+export const BACKUP_ROOT = resolvePathFromRoot(ROOT_DIR, process.env.MINANCE_BACKUP_ROOT, "backups");
+export const UPLOAD_DIR = process.env.MINANCE_UPLOAD_DIR || path.join(path.dirname(SQLITE_FILE), "uploads");
 export const TMP_DIR = path.join(__dirname, "../tmp");
 export const WEB_DIR = path.join(ROOT_DIR, "apps/web");
 

@@ -828,6 +828,31 @@ export interface StorageStatusResponse {
   };
 }
 
+export interface DatabaseBackupSummary {
+  id: string;
+  createdAt: string;
+  sizeBytes: number;
+  sqliteSizeBytes: number;
+  quickCheckResult: string;
+  hasUploads: boolean;
+  checksums: Record<string, string>;
+}
+
+export interface DatabaseBackupsResponse {
+  backups: DatabaseBackupSummary[];
+}
+
+export interface CreateDatabaseBackupResponse {
+  backup: DatabaseBackupSummary;
+}
+
+export interface RestoreDatabaseBackupResponse {
+  restored: boolean;
+  backupId: string;
+  safetyBackupId: string | null;
+  currentSessionStillExists: boolean;
+}
+
 export interface ApiErrorPayload {
   error?: {
     message?: string;

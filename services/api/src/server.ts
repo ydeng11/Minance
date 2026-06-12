@@ -98,6 +98,12 @@ import { clearCategoryStrategyCache } from "./category-strategy.ts";
 import { createId, nowIso, stableHash } from "./utils.ts";
 import { ensureSqliteFoundation, getSqliteFoundationStatus } from "./sqlite-foundation.ts";
 import {
+  listDatabaseBackups,
+  createDatabaseBackup,
+  createBackupArchive,
+  restoreDatabaseBackup
+} from "./system-backups.ts";
+import {
   beginHttpObservation,
   createRequestId,
   endHttpObservation,
@@ -358,6 +364,67 @@ async function handleApiRequest(req, res, url) {
       sendJson(res, 200, {
         metrics: getMetricsSnapshot()
       });
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/system/backups") {
+      requireUser(req);
+      sendJson(res, 200, listDatabaseBackups());
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/v1/system/backups") {
+      requireUser(req);
+      const result = createDatabaseBackup();
+      sendJson(res, 201, result);
+      return;
+    }
+
+    const backupArchiveParams = matchPath(pathname, "/v1/system/backups/:id/archive");
+    if (req.method === "GET" && backupArchiveParams) {
+      requireUser(req);
+
+      let archiveInfo;
+      try {
+        archiveInfo = createBackupArchive(backupArchiveParams.id);
+      } catch (error) {
+        apiError(res, error);
+        return;
+      }
+
+      const stat = fs.statSync(archiveInfo.filePath);
+      res.writeHead(200, {
+        "Content-Type": "application/gzip",
+        "Content-Disposition": `attachment; filename="${archiveInfo.fileName}"`,
+        "Content-Length": String(stat.size),
+        "Cache-Control": "no-store"
+      });
+
+      const readStream = fs.createReadStream(archiveInfo.filePath);
+      readStream.pipe(res);
+
+      const cleanup = () => {
+        try {
+          fs.rmSync(archiveInfo.filePath, { force: true });
+        } catch { /* best effort */ }
+      };
+      readStream.on("end", cleanup);
+      readStream.on("error", cleanup);
+      readStream.on("close", cleanup);
+      res.on("close", cleanup);
+      return;
+    }
+
+    const backupRestoreParams = matchPath(pathname, "/v1/system/backups/:id/restore");
+    if (req.method === "POST" && backupRestoreParams) {
+      requireUser(req);
+      const body = await parseJsonBody(req);
+      const auth = requireAuth(req);
+      const result = restoreDatabaseBackup(backupRestoreParams.id, {
+        confirmation: body.confirmation,
+        currentSessionId: auth.session?.id
+      });
+      sendJson(res, 200, result);
       return;
     }
 
