@@ -40,7 +40,7 @@ export default function AiSettingsPage() {
     return provider?.models || [];
   }, [defaultProvider, providers]);
 
-  const modelListId = useMemo(() => "ai-model-datalist", []);
+  const MODEL_LIST_ID = "ai-model-datalist";
 
   async function loadSettings() {
     try {
@@ -77,7 +77,6 @@ export default function AiSettingsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Seed initial model from provider defaults only when no model is set
   useEffect(() => {
     if (!defaultModel && providerModelOptions.length) {
       setDefaultModel(providerModelOptions[0]);
@@ -244,10 +243,10 @@ export default function AiSettingsPage() {
                 onChange={(event) => setDefaultModel(event.target.value)}
                 placeholder={providerModelOptions.length ? "Select or type a model" : "No models available"}
                 data-testid="ai-pref-model"
-                list={modelListId}
+                list={MODEL_LIST_ID}
                 className={SETTINGS_FIELD_CLASS_NAME}
               />
-              <datalist id={modelListId}>
+              <datalist id={MODEL_LIST_ID}>
                 {providerModelOptions.map((model) => (
                   <option key={model} value={model} />
                 ))}
@@ -261,7 +260,7 @@ export default function AiSettingsPage() {
                 size={4}
                 value={failoverProviders}
                 onChange={(event) =>
-                  setFailoverProviders(Array.from(event.target.selectedOptions).map((entry) => entry.value))
+                  setFailoverProviders(Array.from(event.target.selectedOptions, (entry) => entry.value))
                 }
                 data-testid="ai-pref-failover"
                 className={SETTINGS_FIELD_CLASS_NAME}
