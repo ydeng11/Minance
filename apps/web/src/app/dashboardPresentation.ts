@@ -1,9 +1,10 @@
 import type { OverviewResponse } from "@/lib/api/types";
 
 const DASHBOARD_BAR_COUNT_BY_RANGE: Record<string, number> = {
-  "7d": 7,
-  "14d": 14,
-  "30d": 4,
+  "3m": 3,
+  "6m": 6,
+  "12m": 12,
+  "last_year": 12,
   "90d": 3,
   "180d": 6,
   "1y": 12
@@ -26,7 +27,7 @@ export function buildDashboardTrendBars({
   trend
 }: BuildDashboardTrendBarsInput): DashboardTrendBar[] {
   const safeTrend = trend ?? [];
-  const barCount = range === "all" ? Math.min(safeTrend.length, 24) : (DASHBOARD_BAR_COUNT_BY_RANGE[range] ?? 6);
+  const barCount = range === "all" ? Math.min(safeTrend.length, 24) : range === "this_year" ? safeTrend.length : (DASHBOARD_BAR_COUNT_BY_RANGE[range] ?? 6);
   const maxAbsNet = Math.max(1, ...safeTrend.map((item) => Math.abs(item.net)));
 
   return safeTrend.slice(-barCount).map((entry) => ({

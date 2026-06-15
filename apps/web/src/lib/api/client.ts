@@ -93,7 +93,7 @@ export function createApiClient(context: ApiClientContext) {
     const requestHeaders = new Headers(headers || {});
     const requestBody = buildBody(body);
 
-    if (requestBody && !(requestBody instanceof FormData)) {
+    if (requestBody && !(requestBody instanceof FormData) && !(requestBody instanceof Blob)) {
       requestHeaders.set("Content-Type", "application/json");
     }
     if (auth && tokens?.accessToken) {

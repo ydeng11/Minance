@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Bot,
+  ChevronRight,
   Database,
   Download,
   FileSpreadsheet,
@@ -62,6 +63,9 @@ export default function SettingsPage() {
   const [confirmText, setConfirmText] = useState("");
   const [isRestoring, setIsRestoring] = useState(false);
   const [backupMessage, setBackupMessage] = useState("");
+  const [isUploadingBackup, setIsUploadingBackup] = useState(false);
+  const [backupsListExpanded, setBackupsListExpanded] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function listAllTransactions() {
     const pageSize = 250;
@@ -157,6 +161,26 @@ export default function SettingsPage() {
       setBackupMessage(error instanceof ApiError ? error.message : "Failed to restore backup.");
     } finally {
       setIsRestoring(false);
+    }
+  }
+
+  async function handleBackupFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingBackup(true);
+    setBackupMessage("");
+    try {
+      const response = await api.system.importBackupArchive(file);
+      await fetchBackups();
+      setBackupMessage(`Backup imported: ${response.backup.id}`);
+    } catch (error) {
+      setBackupMessage(error instanceof ApiError ? error.message : "Failed to import backup.");
+    } finally {
+      setIsUploadingBackup(false);
+      if (event.target) {
+        event.target.value = "";
+      }
     }
   }
 
@@ -344,21 +368,50 @@ export default function SettingsPage() {
 
             <button
               type="button"
-              onClick={() => void fetchBackups()}
-              disabled={isLoadingBackups}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingBackup}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-subtle bg-surface-field px-4 py-2 text-sm text-text-primary transition hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-60"
-              data-testid="settings-backup-refresh"
+              data-testid="settings-backup-upload"
             >
-              {isLoadingBackups ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <HardDrive className="h-4 w-4 text-text-muted" aria-hidden="true" />}
-              Refresh List
+              {isUploadingBackup ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Upload className="h-4 w-4 text-text-muted" aria-hidden="true" />}
+              Upload Backup
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".tar.gz,application/gzip,application/x-gzip"
+              onChange={(e) => void handleBackupFileUpload(e)}
+              className="hidden"
+              data-testid="settings-backup-upload-input"
+            />
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".tar.gz,application/gzip,application/x-gzip"
+              onChange={(e) => void handleBackupFileUpload(e)}
+              className="hidden"
+              data-testid="settings-backup-upload-input"
+            />
           </div>
 
           {backups.length > 0 ? (
             <div className="mt-3 space-y-2">
-              <p className="text-xs font-medium text-text-secondary">
+              <button
+                type="button"
+                onClick={() => setBackupsListExpanded((prev) => !prev)}
+                className="flex w-full items-center gap-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
+                data-testid="settings-backup-list-toggle"
+              >
+                <ChevronRight
+                  className={`h-3 w-3 transition-transform ${backupsListExpanded ? "rotate-90" : ""}`}
+                  aria-hidden="true"
+                />
                 Recent backups ({backups.length})
-              </p>
+              </button>
+
+              {backupsListExpanded ? (
+                <div className="space-y-2">
               {backups.slice(0, 10).map((b) => (
                 <div
                   key={b.id}
@@ -447,6 +500,8 @@ export default function SettingsPage() {
                   ) : null}
                 </div>
               ))}
+                </div>
+              ) : null}
             </div>
           ) : (
             !isLoadingBackups && (

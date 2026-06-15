@@ -846,6 +846,10 @@ export interface CreateDatabaseBackupResponse {
   backup: DatabaseBackupSummary;
 }
 
+export interface ImportDatabaseBackupResponse {
+  backup: DatabaseBackupSummary;
+}
+
 export interface RestoreDatabaseBackupResponse {
   restored: boolean;
   backupId: string;

@@ -108,10 +108,6 @@ const weekdayHeatmapPresentationSource = readFileSync(
   join(process.cwd(), "src/app/explorer/components/weekdayHeatmapPresentation.ts"),
   "utf8"
 );
-const accountPerspectiveSource = readFileSync(
-  join(process.cwd(), "src/app/explorer/components/AccountPerspective.tsx"),
-  "utf8"
-);
 const categoryPerspectiveSource = readFileSync(
   join(process.cwd(), "src/app/explorer/components/CategoryPerspective.tsx"),
   "utf8"
@@ -264,21 +260,13 @@ test("explorer heatmap widgets use semantic tokens instead of hard-coded dark pa
   });
 });
 
-test("explorer account and category perspectives use semantic tokens instead of hard-coded dark palettes", () => {
-  const perspectiveSources = [
-    accountPerspectiveSource,
-    categoryPerspectiveSource
-  ];
-
-  assert.match(accountPerspectiveSource, /bg-surface-field/);
+test("explorer category perspective uses semantic tokens instead of hard-coded dark palettes", () => {
   assert.match(categoryPerspectiveSource, /bg-surface-field/);
   assert.match(categoryPerspectiveSource, /bg-accent-soft/);
 
-  perspectiveSources.forEach((source) => {
-    assert.doesNotMatch(source, /neutral-\d/);
-    assert.doesNotMatch(source, /emerald-\d/);
-    assert.doesNotMatch(source, /(?:border|bg|text)-(?:white|black)/);
-  });
+  assert.doesNotMatch(categoryPerspectiveSource, /neutral-\d/);
+  assert.doesNotMatch(categoryPerspectiveSource, /emerald-\d/);
+  assert.doesNotMatch(categoryPerspectiveSource, /(?:border|bg|text)-(?:white|black)/);
 });
 
 test("explorer merchant and anomaly insight widgets use semantic tokens instead of hard-coded stone palettes", () => {

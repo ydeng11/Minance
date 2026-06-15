@@ -5,7 +5,7 @@ import { RANGE_OPTIONS } from "./constants.js";
 describe("RANGE_OPTIONS", () => {
   it("exports array with expected presets", () => {
     assert.ok(Array.isArray(RANGE_OPTIONS));
-    assert.ok(RANGE_OPTIONS.length >= 8);
+    assert.strictEqual(RANGE_OPTIONS.length, 6);
   });
 
   it("each preset has value and label", () => {
@@ -15,11 +15,14 @@ describe("RANGE_OPTIONS", () => {
     }
   });
 
-  it("contains new presets this_month, this_year, custom", () => {
+  it("contains expected presets for the new range selector", () => {
     const values = RANGE_OPTIONS.map((o) => o.value);
-    assert.ok(values.includes("this_month"));
+    assert.ok(values.includes("3m"));
+    assert.ok(values.includes("6m"));
+    assert.ok(values.includes("12m"));
+    assert.ok(values.includes("last_year"));
     assert.ok(values.includes("this_year"));
-    assert.ok(values.includes("custom"));
+    assert.ok(values.includes("all"));
   });
 
   it("all values are unique", () => {

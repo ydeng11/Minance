@@ -212,23 +212,33 @@ export function computeDateRange(range = "90d", start = null, end = null) {
   const today = startOfToday();
   let startDate = new Date(today);
 
-  if (range === "30d") {
-    startDate.setDate(startDate.getDate() - 30);
-  } else if (range === "90d") {
-    startDate.setDate(startDate.getDate() - 90);
-  } else if (range === "365d") {
-    startDate.setDate(startDate.getDate() - 365);
+  if (range === "3m") {
+    startDate.setUTCMonth(startDate.getUTCMonth() - 3);
+  } else if (range === "6m") {
+    startDate.setUTCMonth(startDate.getUTCMonth() - 6);
+  } else if (range === "12m") {
+    startDate.setUTCMonth(startDate.getUTCMonth() - 12);
+  } else if (range === "last_year") {
+    const lastYear = today.getUTCFullYear() - 1;
+    return {
+      start: formatDateYmd(lastYear, 1, 1),
+      end: formatDateYmd(lastYear, 12, 31)
+    };
+  } else if (range === "this_year" || range === "ytd") {
+    startDate = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
   } else if (range === "all") {
     return {
       start: null,
       end: null
     };
-  } else if (range === "ytd") {
-    startDate = new Date(today.getFullYear(), 0, 1);
+  } else if (range === "30d") {
+    startDate.setDate(startDate.getDate() - 30);
+  } else if (range === "90d") {
+    startDate.setDate(startDate.getDate() - 90);
+  } else if (range === "365d") {
+    startDate.setDate(startDate.getDate() - 365);
   } else if (range === "this_month") {
     startDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-  } else if (range === "this_year") {
-    startDate = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
   } else {
     startDate.setDate(startDate.getDate() - 90);
   }
@@ -251,6 +261,30 @@ export function inDateRange(dateText, start, end) {
     return false;
   }
   return true;
+}
+
+export function parseBinaryBody(req, maxBytes = 250 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let totalBytes = 0;
+
+    req.on("data", (chunk) => {
+      totalBytes += chunk.length;
+      if (totalBytes > maxBytes) {
+        reject(new Error("Request body too large"));
+        return;
+      }
+      chunks.push(chunk);
+    });
+
+    req.on("end", () => {
+      resolve(Buffer.concat(chunks));
+    });
+
+    req.on("error", (error) => {
+      reject(error);
+    });
+  });
 }
 
 export function pick(obj, keys) {

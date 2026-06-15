@@ -13,12 +13,12 @@ import {
 test("buildExplorerFilterSearchParams persists perspective and compare mode", () => {
   const params = buildExplorerFilterSearchParams({
     ...createDefaultExplorerFilterState(),
-    perspective: "account",
+    perspective: "category",
     compare: "previous",
     account: "acct_card"
   });
 
-  assert.equal(params.toString(), "account=acct_card&perspective=account&compare=previous");
+  assert.equal(params.toString(), "account=acct_card&perspective=category&compare=previous");
 });
 
 test("buildExplorerFilterSearchParams persists merchant drill-down state", () => {
@@ -35,7 +35,7 @@ test("parseExplorerFilterState ignores legacy review search params", () => {
     new URLSearchParams("range=30d&review=reviewed&category=Groceries&category=Travel")
   );
 
-  assert.equal(state.range, "30d");
+  assert.equal(state.range, "3m");
   assert.deepEqual(state.categories, ["Groceries", "Travel"]);
   assert.equal("review" in state, false);
 });

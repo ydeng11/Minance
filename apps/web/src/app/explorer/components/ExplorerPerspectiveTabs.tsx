@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Layers3, Landmark } from "lucide-react";
+import { BarChart3, Layers3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ExplorerPerspective } from "../filters";
 
@@ -26,12 +26,6 @@ const PERSPECTIVES: Array<{
     label: "Category",
     description: "Where spending is going",
     icon: Layers3
-  },
-  {
-    value: "account",
-    label: "Account",
-    description: "Which accounts drive activity",
-    icon: Landmark
   }
 ];
 

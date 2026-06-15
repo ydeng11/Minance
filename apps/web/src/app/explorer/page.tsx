@@ -22,7 +22,6 @@ import {
 } from "./filters";
 import { getSharedFilters, setSharedFilters, type TransactionTypeFilter } from "@/lib/sharedFilters";
 import { RANGE_OPTIONS } from "@/lib/constants";
-import { AccountPerspective } from "./components/AccountPerspective";
 import { CategoryPerspective } from "./components/CategoryPerspective";
 import { ExplorerPerspectiveTabs } from "./components/ExplorerPerspectiveTabs";
 import { ExplorerSummaryBand } from "./components/ExplorerSummaryBand";
@@ -501,19 +500,6 @@ export default function ExplorerPage() {
             onCategoryClick={handleCategoryClick}
             trend={explorer?.trend.items || []}
             onApplyMonthFilter={handleApplyMonthFilter}
-            onMerchantClick={handleMerchantClick}
-            loading={loading}
-          />
-        ) : filters.perspective === "account" ? (
-          <AccountPerspective
-            overview={overview}
-            trend={explorer?.trend.items || []}
-            accounts={explorer?.accounts.items || []}
-            selectedAccount={filters.account}
-            onAccountClick={(account) => updateFilters({ perspective: "account", account })}
-            onOpenTransactions={() => openTransactionsDrillDown({ account: filters.account || undefined })}
-            onApplyMonthFilter={handleApplyMonthFilter}
-            onCategoryClick={handleCategoryClick}
             onMerchantClick={handleMerchantClick}
             loading={loading}
           />

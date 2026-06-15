@@ -13,6 +13,7 @@ import type {
   ExplorerAnalyticsResponse,
   HeatmapItem,
   ImportDetailsResponse,
+  ImportDatabaseBackupResponse,
   ImportJob,
   ImportProcessedRowsUpdateResponse,
   ImportReconciliationResolutionResponse,
@@ -48,6 +49,7 @@ export type ApiRequest = <T>(path: string, options?: {
   auth?: boolean;
   body?: BodyInit | object | null;
   responseType?: "json" | "blob";
+  headers?: Record<string, string>;
 }) => Promise<T>;
 
 type QueryValue =
@@ -90,6 +92,15 @@ export const systemApi = {
     request<DatabaseBackupsResponse>("/v1/system/backups"),
   createBackup: (request: ApiRequest) =>
     request<CreateDatabaseBackupResponse>("/v1/system/backups", { method: "POST" }),
+  importBackupArchive: (request: ApiRequest, file: File) =>
+    request<ImportDatabaseBackupResponse>("/v1/system/backups/import", {
+      method: "POST",
+      body: file,
+      headers: {
+        "Content-Type": "application/gzip",
+        "X-Minance-Backup-Filename": file.name
+      }
+    }),
   exportBackupArchive: (request: ApiRequest, id: string) =>
     request<Blob>(`/v1/system/backups/${encodeURIComponent(id)}/archive`, { responseType: "blob" }),
   restoreBackup: (request: ApiRequest, id: string, confirmation: string) =>

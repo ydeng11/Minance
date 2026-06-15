@@ -293,6 +293,147 @@ export function createBackupArchive(id: string, options?: BackupOptions): { file
 }
 
 /**
+ * Import a backup from an uploaded tar.gz archive buffer.
+ * Extracts, validates, and moves into the backup directory.
+ */
+export function importBackupArchive(
+  buffer: Buffer,
+  originalFilename: string,
+  options?: BackupOptions
+): CreateBackupResponse {
+  const { backupRoot } = resolveOptions(options);
+
+  fs.mkdirSync(TMP_DIR, { recursive: true });
+  const importStamp = `${Date.now()}`;
+  const tempTarPath = path.join(TMP_DIR, `import-${importStamp}.tar.gz`);
+  const tempExtractDir = path.join(TMP_DIR, `import-extract-${importStamp}`);
+
+  try {
+    // Write buffer to temp tar.gz file
+    fs.mkdirSync(TMP_DIR, { recursive: true });
+    fs.writeFileSync(tempTarPath, buffer);
+
+    // Extract to temp directory
+    fs.mkdirSync(tempExtractDir, { recursive: true });
+    const extractResult = spawnSync("tar", ["xzf", tempTarPath, "-C", tempExtractDir], {
+      encoding: "utf8",
+      maxBuffer: SQLITE_MAX_BUFFER
+    });
+
+    if (extractResult.status !== 0 || extractResult.error) {
+      const reason = extractResult.error?.message || extractResult.stderr || "tar extraction failed";
+      throw new Error(String(reason).trim());
+    }
+
+    // Find the extracted backup directory (should be the only directory)
+    const extractedEntries = fs.readdirSync(tempExtractDir, { withFileTypes: true });
+    const extractedDirs = extractedEntries.filter((e) => e.isDirectory() && isValidBackupId(e.name));
+
+    if (extractedDirs.length === 0) {
+      throw new Error("Archive does not contain a valid backup directory");
+    }
+
+    if (extractedDirs.length > 1) {
+      throw new Error("Archive contains multiple backup directories; expected exactly one");
+    }
+
+    const extractedDirName = extractedDirs[0].name;
+    const extractedBackupDir = path.join(tempExtractDir, extractedDirName);
+
+    // Validate manifest exists
+    const manifest = readBackupManifest(extractedBackupDir);
+    if (!manifest) {
+      throw new Error("Backup does not contain a valid manifest.json");
+    }
+
+    // Validate sqlite file exists
+    const extractedSqlite = path.join(extractedBackupDir, "minance.sqlite");
+    if (!fs.existsSync(extractedSqlite)) {
+      throw new Error("Backup does not contain a minance.sqlite file");
+    }
+
+    // Validate with quick_check
+    const quickCheckResult = runQuickCheck(extractedSqlite);
+    if (!quickCheckResult.includes("ok")) {
+      throw new Error(`Backup validation failed (PRAGMA quick_check): ${quickCheckResult}`);
+    }
+
+    // Verify sqlite checksum if present in manifest
+    const manifestChecksums = (manifest.checksums as Record<string, string>) || {};
+    if (manifestChecksums["minance.sqlite"]) {
+      const actualChecksum = checksumFile(extractedSqlite);
+      if (actualChecksum !== manifestChecksums["minance.sqlite"]) {
+        throw new Error("Backup sqlite checksum mismatch");
+      }
+    }
+
+    // Determine destination id
+    let destId = String(manifest.id || "");
+    if (!destId || !isValidBackupId(destId)) {
+      destId = extractedDirName;
+    }
+    if (!destId || !isValidBackupId(destId)) {
+      destId = `backup_imported_${importStamp}_${randomBytes(4).toString("hex")}`;
+    }
+
+    // Avoid overwriting existing backups
+    const destDir = path.resolve(backupRoot, destId);
+    if (fs.existsSync(destDir)) {
+      destId = `${destId}_imported_${randomBytes(4).toString("hex")}`;
+    }
+
+    const finalDestDir = path.resolve(backupRoot, destId);
+    if (!finalDestDir.startsWith(path.resolve(backupRoot))) {
+      throw new Error("Invalid backup destination");
+    }
+
+    // Move extracted backup to backup directory
+    fs.mkdirSync(backupRoot, { recursive: true });
+    fs.cpSync(extractedBackupDir, finalDestDir, { recursive: true });
+
+    // Rewrite manifest with import metadata
+    const finalManifest = {
+      ...manifest,
+      id: destId,
+      importedAt: nowIso(),
+      importedFrom: originalFilename || "unknown",
+      originalId: manifest.id || null
+    };
+    fs.writeFileSync(path.join(finalDestDir, "manifest.json"), JSON.stringify(finalManifest, null, 2));
+
+    // Recompute checksums for the final location
+    const finalChecksums: Record<string, string> = {};
+    const finalSqlite = path.join(finalDestDir, "minance.sqlite");
+    if (fs.existsSync(finalSqlite)) {
+      finalChecksums["minance.sqlite"] = checksumFile(finalSqlite);
+    }
+    const finalUploads = path.join(finalDestDir, "uploads");
+    if (fs.existsSync(finalUploads)) {
+      checksumTree(finalUploads, "uploads", finalChecksums);
+    }
+
+    const sqliteSizeBytes = fs.existsSync(finalSqlite) ? fs.statSync(finalSqlite).size : 0;
+    const hasUploads = fs.existsSync(finalUploads);
+
+    return {
+      backup: {
+        id: destId,
+        createdAt: String(finalManifest.createdAt || finalManifest.importedAt),
+        sizeBytes: directorySize(finalDestDir),
+        sqliteSizeBytes,
+        quickCheckResult,
+        hasUploads,
+        checksums: finalChecksums
+      }
+    };
+  } finally {
+    // Clean up temp files
+    try { fs.rmSync(tempTarPath, { force: true }); } catch { /* ignore */ }
+    try { fs.rmSync(tempExtractDir, { recursive: true, force: true }); } catch { /* ignore */ }
+  }
+}
+
+/**
  * Restore a backup: safety backup, validate, atomically replace DB, restore uploads, reload cache.
  */
 export function restoreDatabaseBackup(

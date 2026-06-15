@@ -20,12 +20,39 @@ test("computeDateRange uses UTC day boundaries", () => {
   assert.equal(range.end, utcDateYmd());
 });
 
-test("computeDateRange this_month starts on first day of UTC month", () => {
+test("computeDateRange 3m starts 3 months ago", () => {
   const now = new Date();
-  const expectedStart = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
-  const range = computeDateRange("this_month");
+  const expected = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, now.getUTCDate()));
+  const expectedStart = utcDateYmd(expected);
+  const range = computeDateRange("3m");
   assert.equal(range.start, expectedStart);
   assert.equal(range.end, utcDateYmd());
+});
+
+test("computeDateRange 6m starts 6 months ago", () => {
+  const now = new Date();
+  const expected = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 6, now.getUTCDate()));
+  const expectedStart = utcDateYmd(expected);
+  const range = computeDateRange("6m");
+  assert.equal(range.start, expectedStart);
+  assert.equal(range.end, utcDateYmd());
+});
+
+test("computeDateRange 12m starts 12 months ago", () => {
+  const now = new Date();
+  const expected = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 12, now.getUTCDate()));
+  const expectedStart = utcDateYmd(expected);
+  const range = computeDateRange("12m");
+  assert.equal(range.start, expectedStart);
+  assert.equal(range.end, utcDateYmd());
+});
+
+test("computeDateRange last_year spans full previous calendar year", () => {
+  const now = new Date();
+  const lastYear = now.getUTCFullYear() - 1;
+  const range = computeDateRange("last_year");
+  assert.equal(range.start, `${lastYear}-01-01`);
+  assert.equal(range.end, `${lastYear}-12-31`);
 });
 
 test("computeDateRange this_year matches year-to-start through today", () => {

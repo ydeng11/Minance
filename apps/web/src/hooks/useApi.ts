@@ -33,6 +33,7 @@ export function useApi() {
         storage: () => systemApi.storage(request),
         listBackups: () => systemApi.listBackups(request),
         createBackup: () => systemApi.createBackup(request),
+        importBackupArchive: systemApi.importBackupArchive.bind(null, request),
         exportBackupArchive: systemApi.exportBackupArchive.bind(null, request),
         restoreBackup: systemApi.restoreBackup.bind(null, request)
       },

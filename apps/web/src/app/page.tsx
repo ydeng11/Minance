@@ -44,7 +44,7 @@ export default function DashboardPage() {
   const api = useApi();
   const router = useRouter();
 
-  const [range, setRange] = useState("90d");
+  const [range, setRange] = useState("3m");
   const [categoryView, setCategoryView] = useState<"granular" | "coarse">("granular");
   const [hydrated, setHydrated] = useState(false);
   const [overview, setOverview] = useState<OverviewResponse | null>(null);

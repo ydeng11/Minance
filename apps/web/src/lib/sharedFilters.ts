@@ -24,7 +24,7 @@ const TRANSACTION_TYPE_VALUES = new Set<TransactionTypeFilter>(["expense", "inco
 
 export function createDefaultSharedFilterState(): SharedFilterState {
   return {
-    range: "90d",
+    range: "3m",
     start: "",
     end: "",
     categories: [],

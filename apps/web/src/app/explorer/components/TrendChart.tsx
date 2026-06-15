@@ -29,10 +29,9 @@ const MONTH_BUTTON_CLASS =
 const MONTH_BARS_BASE_CLASS = "flex w-full items-end gap-1 rounded-[24px] border px-3 pb-3 pt-5 transition";
 const MONTH_BARS_SELECTED_CLASS = "border-accent/35 bg-accent-soft";
 const MONTH_BARS_IDLE_CLASS = "border-border-subtle bg-surface-field/70 hover:border-border-strong hover:bg-surface-elevated";
-const SPEND_BAR_BASE_CLASS = "w-1/2 rounded-t-[14px] transition";
+const BAR_HALF_CLASS = "w-1/2 rounded-t-[14px] transition";
 const SPEND_BAR_SELECTED_CLASS = "bg-accent";
 const SPEND_BAR_IDLE_CLASS = "bg-accent/55 group-hover:bg-accent/70";
-const INCOME_BAR_BASE_CLASS = "w-1/2 rounded-t-[14px] transition";
 const INCOME_BAR_SELECTED_CLASS = "bg-text-primary";
 const INCOME_BAR_IDLE_CLASS = "bg-text-muted group-hover:bg-text-secondary";
 const MONTH_LABEL_CLASS = "text-[11px] font-medium uppercase tracking-[0.18em] group-hover:text-text-secondary";
@@ -50,24 +49,51 @@ const COMPOSITION_CATEGORY_CLASS = "truncate text-text-secondary";
 const COMPOSITION_AMOUNT_CLASS = "text-right text-text-primary";
 const EMPTY_COMPOSITION_CLASS = "text-sm text-text-muted";
 
-function formatMonthLabel(month: string, includeYear: boolean) {
-  const [year, monthNumber] = month.split("-").map(Number);
-  const date = new Date(Date.UTC(year, monthNumber - 1, 1));
+function CompositionCard({ title, items, emptyMessage, itemKeyPrefix }: {
+  title: string;
+  items: Array<{ category: string; amount: number; share: number; emoji?: string }>;
+  emptyMessage: string;
+  itemKeyPrefix: string;
+}) {
+  return (
+    <div className={COMPOSITION_CARD_CLASS}>
+      <div className={COMPOSITION_TITLE_CLASS}>{title}</div>
+      <div className="mt-3 space-y-2">
+        {items.length ? items.map((entry) => (
+          <div key={`${itemKeyPrefix}-${entry.category}`} className="flex items-center justify-between gap-3 text-sm">
+            <span className={COMPOSITION_CATEGORY_CLASS}>
+              {entry.emoji ? `${entry.emoji} ` : ""}
+              {entry.category}
+            </span>
+            <span className={COMPOSITION_AMOUNT_CLASS}>
+              {money(entry.amount)} · {entry.share.toFixed(1)}%
+            </span>
+          </div>
+        )) : (
+          <p className={EMPTY_COMPOSITION_CLASS}>{emptyMessage}</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
+function parseMonthDate(month: string) {
+  const [year, monthNumber] = month.split("-").map(Number);
+  return new Date(Date.UTC(year, monthNumber - 1, 1));
+}
+
+function formatMonthLabel(month: string, includeYear: boolean) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     ...(includeYear ? { year: "2-digit" } : {})
-  }).format(date);
+  }).format(parseMonthDate(month));
 }
 
 function formatMonthDetailLabel(month: string) {
-  const [year, monthNumber] = month.split("-").map(Number);
-  const date = new Date(Date.UTC(year, monthNumber - 1, 1));
-
   return new Intl.DateTimeFormat("en-US", {
     month: "long",
     year: "numeric"
-  }).format(date);
+  }).format(parseMonthDate(month));
 }
 
 export function TrendChart({
@@ -124,7 +150,7 @@ export function TrendChart({
   if (loading) {
     return (
       <div className={BOARD_CLASS} data-testid="explorer-trend-board">
-        <h3 className={LOADING_TITLE_CLASS}>Spending Trend</h3>
+        <h3 className={LOADING_TITLE_CLASS}>Money Flow</h3>
         <div className="mt-4 flex h-64 items-end gap-3">
           {Array.from({ length: 6 }).map((_, index) => (
             <div key={index} className={SKELETON_BAR_CLASS} />
@@ -137,7 +163,7 @@ export function TrendChart({
   if (trendBars.length === 0) {
     return (
       <div className={BOARD_CLASS} data-testid="explorer-trend-board">
-        <h3 className={LOADING_TITLE_CLASS}>Spending Trend</h3>
+        <h3 className={LOADING_TITLE_CLASS}>Money Flow</h3>
         <p className="mt-8 text-sm text-text-secondary">No trend data available.</p>
       </div>
     );
@@ -148,9 +174,9 @@ export function TrendChart({
       <div className="flex items-end justify-between gap-4">
         <div>
           <div className={EYEBROW_CLASS}>Trend board</div>
-          <h3 className={TITLE_CLASS}>Spending Trend</h3>
+          <h3 className={TITLE_CLASS}>Money Flow</h3>
           <p className={DESCRIPTION_CLASS}>
-            Follow spend and income momentum across the selected range.
+            Follow money flow momentum across the selected range.
           </p>
         </div>
         <div className={RANGE_PILL_CLASS}>
@@ -179,7 +205,7 @@ export function TrendChart({
                 >
                   <div
                     className={cn(
-                      SPEND_BAR_BASE_CLASS,
+                      BAR_HALF_CLASS,
                       isSelected ? SPEND_BAR_SELECTED_CLASS : SPEND_BAR_IDLE_CLASS
                     )}
                     style={{ height: item.spendHeight }}
@@ -187,7 +213,7 @@ export function TrendChart({
                   />
                   <div
                     className={cn(
-                      INCOME_BAR_BASE_CLASS,
+                      BAR_HALF_CLASS,
                       isSelected ? INCOME_BAR_SELECTED_CLASS : INCOME_BAR_IDLE_CLASS
                     )}
                     style={{ height: item.incomeHeight }}
@@ -249,42 +275,8 @@ export function TrendChart({
           </div>
 
           <div className="mt-5 grid gap-4 xl:grid-cols-2">
-            <div className={COMPOSITION_CARD_CLASS}>
-              <div className={COMPOSITION_TITLE_CLASS}>Spend composition</div>
-              <div className="mt-3 space-y-2">
-                {selectedTrend.spendComposition.length ? selectedTrend.spendComposition.map((entry) => (
-                  <div key={`spend-${entry.category}`} className="flex items-center justify-between gap-3 text-sm">
-                    <span className={COMPOSITION_CATEGORY_CLASS}>
-                      {entry.emoji ? `${entry.emoji} ` : ""}
-                      {entry.category}
-                    </span>
-                    <span className={COMPOSITION_AMOUNT_CLASS}>
-                      {money(entry.amount)} · {entry.share.toFixed(1)}%
-                    </span>
-                  </div>
-                )) : (
-                  <p className={EMPTY_COMPOSITION_CLASS}>No spend in this month.</p>
-                )}
-              </div>
-            </div>
-            <div className={COMPOSITION_CARD_CLASS}>
-              <div className={COMPOSITION_TITLE_CLASS}>Income composition</div>
-              <div className="mt-3 space-y-2">
-                {selectedTrend.incomeComposition.length ? selectedTrend.incomeComposition.map((entry) => (
-                  <div key={`income-${entry.category}`} className="flex items-center justify-between gap-3 text-sm">
-                    <span className={COMPOSITION_CATEGORY_CLASS}>
-                      {entry.emoji ? `${entry.emoji} ` : ""}
-                      {entry.category}
-                    </span>
-                    <span className={COMPOSITION_AMOUNT_CLASS}>
-                      {money(entry.amount)} · {entry.share.toFixed(1)}%
-                    </span>
-                  </div>
-                )) : (
-                  <p className={EMPTY_COMPOSITION_CLASS}>No income in this month.</p>
-                )}
-              </div>
-            </div>
+            <CompositionCard title="Spend composition" items={selectedTrend.spendComposition} emptyMessage="No spend in this month." itemKeyPrefix="spend" />
+            <CompositionCard title="Income composition" items={selectedTrend.incomeComposition} emptyMessage="No income in this month." itemKeyPrefix="income" />
           </div>
         </div>
       ) : null}

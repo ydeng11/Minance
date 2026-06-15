@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BadgeDollarSign, Layers3 } from "lucide-react";
+import { Layers3 } from "lucide-react";
 import { cn, money } from "@/lib/utils";
 import type { ExplorerAnalyticsResponse, OverviewResponse } from "@/lib/api/types";
 import { ExplorerCard } from "./ExplorerCard";
-import { CategoryWeekdayHeatmap } from "./CategoryWeekdayHeatmap";
 import { MerchantAnalysis } from "./MerchantAnalysis";
-import { TrendChart } from "./TrendChart";
+import { SpendCompositionChart } from "./SpendCompositionChart";
 
 interface CategoryPerspectiveProps {
   overview: OverviewResponse | null;
@@ -34,16 +33,6 @@ const CATEGORY_ICON_CLASS = "mt-0.5 h-4 w-4 text-text-muted";
 const CATEGORY_STAT_LABEL_CLASS = "text-text-secondary";
 const CATEGORY_STAT_VALUE_CLASS = "font-semibold text-text-primary";
 const CATEGORY_INCOME_VALUE_CLASS = "font-semibold text-accent";
-const DETAIL_PANEL_CLASS = "mt-4 rounded-3xl border border-accent/25 bg-accent-soft/70 p-4";
-const DETAIL_HEADING_CLASS = "flex items-center gap-2 text-sm font-semibold text-accent";
-const DETAIL_COPY_CLASS = "mt-2 text-sm text-text-secondary";
-const NET_BADGE_CLASS = "rounded-full bg-surface-field px-3 py-1 text-sm font-medium text-text-primary";
-const DETAIL_STAT_CARD_CLASS = "rounded-2xl border border-border-subtle bg-surface-field/80 px-4 py-3";
-const DETAIL_STAT_LABEL_CLASS = "text-xs uppercase tracking-[0.18em] text-text-muted";
-const DETAIL_STAT_VALUE_CLASS = "mt-2 text-xl font-semibold text-text-primary";
-const DETAIL_STAT_HELPER_CLASS = "mt-1 text-sm text-text-secondary";
-const APPLY_FILTER_BUTTON_CLASS =
-  `rounded-full border border-accent/35 bg-accent-soft px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-accent transition hover:bg-accent-soft/80 ${FOCUS_RING_CLASS}`;
 const EMPTY_MESSAGE_CLASS =
   "mt-4 rounded-2xl border border-border-subtle bg-surface-panel/70 px-4 py-3 text-sm text-text-secondary";
 
@@ -58,9 +47,8 @@ export function CategoryPerspective({
   onMerchantClick,
   loading
 }: CategoryPerspectiveProps) {
-  const defaultInspectedCategory = categoryWeekdayHeatmap[0]?.category || categories[0]?.category || "";
   const [inspectedCategory, setInspectedCategory] = useState(
-    selectedCategories[0] || defaultInspectedCategory
+    selectedCategories[0] || categoryWeekdayHeatmap[0]?.category || categories[0]?.category || ""
   );
   const prevSelectedCategoriesRef = useRef(selectedCategories);
 
@@ -68,17 +56,16 @@ export function CategoryPerspective({
     const prevSelectedCategories = prevSelectedCategoriesRef.current;
     prevSelectedCategoriesRef.current = selectedCategories;
 
-    // Only update if selectedCategories actually changed
     if (prevSelectedCategories === selectedCategories) {
       return;
     }
 
     if (selectedCategories.length === 1) {
-      // Defer state update to avoid synchronous setState in effect
       queueMicrotask(() => setInspectedCategory(selectedCategories[0]));
       return;
     }
 
+    const fallback = categoryWeekdayHeatmap[0]?.category || categories[0]?.category || "";
     const availableCategories = new Set([
       ...categoryWeekdayHeatmap.map((entry) => entry.category),
       ...categories.map((entry) => entry.category)
@@ -94,11 +81,10 @@ export function CategoryPerspective({
         if (current && availableCategories.has(current)) {
           return current;
         }
-
-        return defaultInspectedCategory;
+        return fallback;
       });
     });
-  }, [selectedCategories, defaultInspectedCategory, categoryWeekdayHeatmap, categories]);
+  }, [selectedCategories, categoryWeekdayHeatmap, categories]);
 
   const activeCategory = categories.find((entry) => entry.category === inspectedCategory) || null;
   const selectedSet = new Set(selectedCategories);
@@ -155,94 +141,28 @@ export function CategoryPerspective({
                     <span className={CATEGORY_STAT_LABEL_CLASS}>Income</span>
                     <span className={CATEGORY_INCOME_VALUE_CLASS}>{money(entry.income)}</span>
                   </div>
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <span className={CATEGORY_STAT_LABEL_CLASS}>Netflow</span>
+                    <span className={cn("font-semibold", entry.net >= 0 ? "text-accent" : "text-danger")}>{money(entry.net)}</span>
+                  </div>
                 </div>
               </button>
             ))}
           </div>
         )}
-        {!loading && activeCategory ? (
-          <div
-            className={DETAIL_PANEL_CLASS}
-            data-testid="explorer-category-lens-detail"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className={DETAIL_HEADING_CLASS}>
-                  <BadgeDollarSign className="h-4 w-4" />
-                  {activeCategory.emoji ? `${activeCategory.emoji} ` : ""}
-                  {activeCategory.category}
-                </div>
-                <p className={DETAIL_COPY_CLASS}>
-                  Spend and income context for the current Explorer filters.
-                </p>
-              </div>
-              <div className={NET_BADGE_CLASS}>
-                Net {money(activeCategory.net)}
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div className={DETAIL_STAT_CARD_CLASS}>
-                <div className={DETAIL_STAT_LABEL_CLASS}>Spend</div>
-                <div className={DETAIL_STAT_VALUE_CLASS}>{money(activeCategory.spend)}</div>
-                <div className={DETAIL_STAT_HELPER_CLASS}>{activeCategory.spendShare.toFixed(1)}% of total spend</div>
-              </div>
-              <div className={DETAIL_STAT_CARD_CLASS}>
-                <div className={DETAIL_STAT_LABEL_CLASS}>Income</div>
-                <div className={DETAIL_STAT_VALUE_CLASS}>{money(activeCategory.income)}</div>
-                <div className={DETAIL_STAT_HELPER_CLASS}>{activeCategory.incomeShare.toFixed(1)}% of total income</div>
-              </div>
-              <div className={DETAIL_STAT_CARD_CLASS}>
-                <div className={DETAIL_STAT_LABEL_CLASS}>Net</div>
-                <div className={DETAIL_STAT_VALUE_CLASS}>{money(activeCategory.net)}</div>
-                <div className={DETAIL_STAT_HELPER_CLASS}>Income minus spend</div>
-              </div>
-              <div className={DETAIL_STAT_CARD_CLASS}>
-                <div className={DETAIL_STAT_LABEL_CLASS}>Transactions</div>
-                <div className={DETAIL_STAT_VALUE_CLASS}>{activeCategory.transactionCount}</div>
-                <div className={DETAIL_STAT_HELPER_CLASS}>Activity in the selected range</div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={() => onCategoryClick(inspectedCategory)}
-                className={APPLY_FILTER_BUTTON_CLASS}
-                data-testid="explorer-category-apply-filter"
-              >
-                {selectedCategories[0] === inspectedCategory
-                  ? `Filtered to ${inspectedCategory}`
-                  : `Filter Explorer to ${inspectedCategory}`}
-              </button>
-            </div>
-          </div>
-        ) : !loading && selectedCategories.length > 1 ? (
+        {!loading && !activeCategory && selectedCategories.length > 1 && (
           <div className={EMPTY_MESSAGE_CLASS}>
             Multiple categories are active. Select a single category to inspect its spend, income, net, and transaction mix.
           </div>
-        ) : !loading && categories.length > 0 ? (
+        )}
+        {!loading && !activeCategory && selectedCategories.length <= 1 && categories.length > 0 && (
           <div className={EMPTY_MESSAGE_CLASS}>
             Select a category above to inspect its spend, income, net, and transaction mix.
           </div>
-        ) : null}
+        )}
       </ExplorerCard>
 
-      <CategoryWeekdayHeatmap
-        rows={categoryWeekdayHeatmap}
-        selectedCategory={inspectedCategory}
-        onCategorySelect={setInspectedCategory}
-        loading={loading}
-      />
-
-      <div data-testid="explorer-category-trend">
-        <TrendChart
-          overview={overview}
-          trend={trend}
-          onApplyMonthFilter={onApplyMonthFilter}
-          loading={loading}
-        />
-      </div>
+      <SpendCompositionChart trend={trend} loading={loading} />
 
       <div data-testid="explorer-category-merchants">
         <MerchantAnalysis overview={overview} onMerchantClick={onMerchantClick} loading={loading} />

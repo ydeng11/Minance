@@ -21,7 +21,7 @@ const mockSessionStorage = (() => {
 test("createDefaultSharedFilterState returns expected defaults", () => {
   const defaults = createDefaultSharedFilterState();
   assert.deepEqual(defaults, {
-    range: "90d",
+    range: "3m",
     start: "",
     end: "",
     categories: [],
@@ -88,14 +88,14 @@ test("setSharedFilters merges with existing filters", () => {
   const originalWindow = global.window;
   global.window = { sessionStorage: mockSessionStorage } as any;
 
-  setSharedFilters({ transactionTypes: ["expense"], range: "30d" });
+  setSharedFilters({ transactionTypes: ["expense"], range: "6m" });
 
   setSharedFilters({ categories: ["Food"] });
 
   const filters = getSharedFilters();
   assert.deepEqual(filters.transactionTypes, ["expense"]);
   assert.deepEqual(filters.categories, ["Food"]);
-  assert.equal(filters.range, "30d");
+  assert.equal(filters.range, "6m");
 
   global.window = originalWindow;
 });

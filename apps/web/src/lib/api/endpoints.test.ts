@@ -88,7 +88,7 @@ test("analyticsApi.explorer includes perspective and compare query params", asyn
   await analyticsApi.explorer(request, {
     range: "90d",
     category_view: "granular",
-    perspective: "account",
+    perspective: "category",
     compare: "previous",
     account: "acct_card"
   });
@@ -96,7 +96,7 @@ test("analyticsApi.explorer includes perspective and compare query params", asyn
   assert.equal(calls.length, 1);
   assert.equal(
     calls[0].path,
-    "/v1/analytics/explorer?range=90d&category_view=granular&perspective=account&compare=previous&account=acct_card"
+    "/v1/analytics/explorer?range=90d&category_view=granular&perspective=category&compare=previous&account=acct_card"
   );
 });
 

@@ -3,7 +3,7 @@ import { RANGE_OPTIONS } from "@/lib/constants";
 export type ExplorerCategoryView = "granular" | "coarse";
 export type ExplorerTransactionType = "expense" | "income" | "transfer";
 export type ExplorerDirectionFilter = "all" | "outflow" | "inflow";
-export type ExplorerPerspective = "overview" | "category" | "account";
+export type ExplorerPerspective = "overview" | "category";
 export type ExplorerCompareMode = "none" | "previous";
 
 export interface ExplorerFilterState {
@@ -52,11 +52,11 @@ export interface ExplorerAnalyticsApiParams {
   recurring_rule_id?: string;
 }
 
-const RANGE_VALUES: Set<string> = new Set(RANGE_OPTIONS.map((option) => option.value));
+const RANGE_VALUES: Set<string> = new Set([...RANGE_OPTIONS.map((option) => option.value), "custom"]);
 const CATEGORY_VIEW_VALUES = new Set<ExplorerCategoryView>(["granular", "coarse"]);
 const TRANSACTION_TYPE_VALUES = new Set<ExplorerTransactionType>(["expense", "income", "transfer"]);
 const DIRECTION_VALUES = new Set<ExplorerDirectionFilter>(["all", "outflow", "inflow"]);
-const PERSPECTIVE_VALUES = new Set<ExplorerPerspective>(["overview", "category", "account"]);
+const PERSPECTIVE_VALUES = new Set<ExplorerPerspective>(["overview", "category"]);
 const COMPARE_VALUES = new Set<ExplorerCompareMode>(["none", "previous"]);
 
 interface SearchParamsLike {
@@ -122,7 +122,7 @@ export function createDefaultExplorerFilterState(): ExplorerFilterState {
     categories: [],
     invertCategories: false,
     account: "",
-    range: "90d",
+    range: "3m",
     start: "",
     end: "",
     categoryView: "granular",
@@ -300,7 +300,7 @@ export function toValidExplorerFilterState(filters: ExplorerFilterState): Explor
   next.perspective = readEnumValue(next.perspective, PERSPECTIVE_VALUES, "overview");
   next.compare = readEnumValue(next.compare, COMPARE_VALUES, "none");
   if (!RANGE_VALUES.has(next.range)) {
-    next.range = "90d";
+    next.range = "3m";
   }
   next.categoryView = readEnumValue(next.categoryView, CATEGORY_VIEW_VALUES, "granular");
   next.direction = readEnumValue(next.direction, DIRECTION_VALUES, "all");

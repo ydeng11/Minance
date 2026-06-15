@@ -4,7 +4,7 @@ import http from "node:http";
 import { URL } from "node:url";
 
 import { PORT, WEB_DIR, STORE_BACKEND } from "./config.ts";
-import { sendJson, sendError, sendNoContent, parseJsonBody } from "./utils.ts";
+import { sendJson, sendError, sendNoContent, parseJsonBody, parseBinaryBody } from "./utils.ts";
 import { signup, login, refresh, requireAuth, deleteUser, ensureDevTestAccount } from "./auth.ts";
 import {
   getProviderCatalog,
@@ -101,6 +101,7 @@ import {
   listDatabaseBackups,
   createDatabaseBackup,
   createBackupArchive,
+  importBackupArchive,
   restoreDatabaseBackup
 } from "./system-backups.ts";
 import {
@@ -376,6 +377,36 @@ async function handleApiRequest(req, res, url) {
     if (req.method === "POST" && pathname === "/v1/system/backups") {
       requireUser(req);
       const result = createDatabaseBackup();
+      sendJson(res, 201, result);
+      return;
+    }
+
+    if (req.method === "POST" && pathname === "/v1/system/backups/import") {
+      const contentType = String(req.headers["content-type"] || "").toLowerCase();
+      const filename = String(req.headers["x-minance-backup-filename"] || "backup.tar.gz");
+      let buffer;
+      try {
+        buffer = await parseBinaryBody(req);
+      } catch (error) {
+        apiError(res, error);
+        return;
+      }
+      requireUser(req);
+      if (!buffer || buffer.length === 0) {
+        sendError(res, 400, "Empty upload body");
+        return;
+      }
+      if (!contentType.includes("gzip") && !contentType.includes("octet-stream") && !contentType.includes("tar")) {
+        sendError(res, 400, "Expected a gzip or tar archive (Content-Type: application/gzip, application/x-gzip, or application/octet-stream)");
+        return;
+      }
+      let result;
+      try {
+        result = importBackupArchive(buffer, filename);
+      } catch (error) {
+        apiError(res, error);
+        return;
+      }
       sendJson(res, 201, result);
       return;
     }
