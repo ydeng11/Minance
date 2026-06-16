@@ -845,10 +845,23 @@ test("explorer selector rollups stay populated while category or account is focu
 
   resetStoreForTests(store);
 
+  const overviewFocused = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "granular",
+    perspective: "overview",
+    category: "Groceries"
+  });
+  assert.deepEqual(
+    overviewFocused.categories.items.map((entry) => entry.category),
+    ["Groceries"]
+  );
+
   const categoryFocused = getExplorerAnalytics("user_1", {
     start: "2026-01-01",
     end: "2026-01-31",
     category_view: "granular",
+    perspective: "category",
     category: "Groceries"
   });
   assert.ok(categoryFocused.categories.items.some((entry) => entry.category === "Transport"));

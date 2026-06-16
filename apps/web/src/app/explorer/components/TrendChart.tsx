@@ -30,10 +30,10 @@ const MONTH_BARS_BASE_CLASS = "flex w-full items-end gap-1 rounded-[24px] border
 const MONTH_BARS_SELECTED_CLASS = "border-accent/35 bg-accent-soft";
 const MONTH_BARS_IDLE_CLASS = "border-border-subtle bg-surface-field/70 hover:border-border-strong hover:bg-surface-elevated";
 const BAR_HALF_CLASS = "w-1/2 rounded-t-[14px] transition";
-const SPEND_BAR_SELECTED_CLASS = "bg-accent";
-const SPEND_BAR_IDLE_CLASS = "bg-accent/55 group-hover:bg-accent/70";
-const INCOME_BAR_SELECTED_CLASS = "bg-text-primary";
-const INCOME_BAR_IDLE_CLASS = "bg-text-muted group-hover:bg-text-secondary";
+const SPEND_BAR_SELECTED_CLASS = "bg-[oklch(0.62_0.075_35)]";
+const SPEND_BAR_IDLE_CLASS = "bg-[oklch(0.50_0.050_35)] group-hover:bg-[oklch(0.57_0.065_35)]";
+const INCOME_BAR_SELECTED_CLASS = "bg-[oklch(0.66_0.070_165)]";
+const INCOME_BAR_IDLE_CLASS = "bg-[oklch(0.52_0.050_165)] group-hover:bg-[oklch(0.60_0.060_165)]";
 const MONTH_LABEL_CLASS = "text-[11px] font-medium uppercase tracking-[0.18em] group-hover:text-text-secondary";
 const DETAIL_PANEL_CLASS = "mt-6 rounded-[24px] border border-border-subtle bg-surface-panel/70 p-5";
 const DETAIL_EYEBROW_CLASS = "text-xs uppercase tracking-[0.18em] text-text-muted";
@@ -111,6 +111,7 @@ export function TrendChart({
 
     const maxSpend = Math.max(1, ...sourceTrend.map((item) => item.spend));
     const maxIncome = Math.max(1, ...sourceTrend.map((item) => item.income));
+    const sharedMax = Math.max(maxSpend, maxIncome);
     const includeYear = sourceTrend.length > 12;
 
     return sourceTrend.map((entry) => ({
@@ -120,8 +121,8 @@ export function TrendChart({
       ariaLabel: `${formatMonthDetailLabel(entry.month)} trend summary: spend ${money(entry.spend)}, income ${money(entry.income)}, net ${money(entry.net)}`,
       spendComposition: "spendComposition" in entry && Array.isArray(entry.spendComposition) ? entry.spendComposition : [],
       incomeComposition: "incomeComposition" in entry && Array.isArray(entry.incomeComposition) ? entry.incomeComposition : [],
-      spendHeight: Math.max(24, Math.round((entry.spend / maxSpend) * 220)),
-      incomeHeight: Math.max(16, Math.round((entry.income / maxIncome) * 168))
+      spendHeight: Math.max(24, Math.round((entry.spend / sharedMax) * 220)),
+      incomeHeight: Math.max(16, Math.round((entry.income / sharedMax) * 220))
     }));
   }, [overview, trend]);
 
@@ -262,11 +263,11 @@ export function TrendChart({
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className={METRIC_CARD_CLASS}>
               <div className={METRIC_LABEL_CLASS}>Spend</div>
-              <div className={METRIC_VALUE_CLASS}>{money(selectedTrend.spend)}</div>
+              <div className="mt-2 text-xl font-semibold text-[oklch(0.68_0.085_35)]">{money(selectedTrend.spend)}</div>
             </div>
             <div className={METRIC_CARD_CLASS}>
               <div className={METRIC_LABEL_CLASS}>Income</div>
-              <div className={METRIC_VALUE_CLASS}>{money(selectedTrend.income)}</div>
+              <div className="mt-2 text-xl font-semibold text-[oklch(0.72_0.080_165)]">{money(selectedTrend.income)}</div>
             </div>
             <div className={METRIC_CARD_CLASS}>
               <div className={METRIC_LABEL_CLASS}>Net</div>

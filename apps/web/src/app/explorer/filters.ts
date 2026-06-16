@@ -135,6 +135,11 @@ export function createDefaultExplorerFilterState(): ExplorerFilterState {
   };
 }
 
+export function buildExplorerCategoryFilterLabel(categories: string[], invertCategories: boolean) {
+  const mode = invertCategories ? "Excluded" : "Included";
+  return `${mode} categories: ${categories.join(", ")}`;
+}
+
 export function parseExplorerFilterState(searchParams: SearchParamsLike): ExplorerFilterState {
   const defaults = createDefaultExplorerFilterState();
 

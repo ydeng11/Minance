@@ -13,6 +13,7 @@ import {
 } from "../transactions/filters";
 import { StatusMessage } from "@/components/feedback/StatusMessage";
 import {
+  buildExplorerCategoryFilterLabel,
   buildExplorerFilterSearchParams,
   parseExplorerFilterState,
   savedExplorerFiltersToState,
@@ -324,7 +325,7 @@ export default function ExplorerPage() {
     if (filters.categories.length) {
       items.push({
         key: "category",
-        label: `Categories: ${filters.categories.join(", ")}`,
+        label: buildExplorerCategoryFilterLabel(filters.categories, filters.invertCategories),
         clear: () => updateFilters({ categories: [] })
       });
     }
@@ -483,8 +484,6 @@ export default function ExplorerPage() {
           <OverviewPerspective
             overview={overview}
             trend={explorer?.trend.items || []}
-            weekdaySummary={explorer?.weekdaySummary.items || []}
-            anomalies={explorer?.anomalies.items || []}
             trendRangeLabel={dateRangeDisplay}
             onApplyMonthFilter={handleApplyMonthFilter}
             onCategoryClick={handleCategoryClick}
@@ -497,10 +496,10 @@ export default function ExplorerPage() {
             categories={explorer?.categories.items || []}
             categoryWeekdayHeatmap={explorer?.categoryWeekdayHeatmap.items || []}
             selectedCategories={filters.categories}
+            invertCategories={filters.invertCategories}
             onCategoryClick={handleCategoryClick}
             trend={explorer?.trend.items || []}
             onApplyMonthFilter={handleApplyMonthFilter}
-            onMerchantClick={handleMerchantClick}
             loading={loading}
           />
         ) : (

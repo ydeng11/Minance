@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildExplorerCategoryFilterLabel,
   buildExplorerFilterSearchParams,
   createDefaultExplorerFilterState,
   parseExplorerFilterState,
@@ -69,6 +70,17 @@ test("buildExplorerFilterSearchParams writes repeated category and type params",
 
   assert.deepEqual(params.getAll("category"), ["Food", "Travel"]);
   assert.deepEqual(params.getAll("type"), ["expense", "transfer"]);
+});
+
+test("buildExplorerCategoryFilterLabel names include and exclude category filters", () => {
+  assert.equal(
+    buildExplorerCategoryFilterLabel(["Mortgage & Loan", "Investment Income"], false),
+    "Included categories: Mortgage & Loan, Investment Income"
+  );
+  assert.equal(
+    buildExplorerCategoryFilterLabel(["Mortgage & Loan", "Investment Income"], true),
+    "Excluded categories: Mortgage & Loan, Investment Income"
+  );
 });
 
 test("parseExplorerFilterState reads recurring parameter", () => {

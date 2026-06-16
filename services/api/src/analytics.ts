@@ -799,7 +799,10 @@ export function getAnomalies(userId, filters = {}) {
   const { effectiveFilters, categoryView } = normalizeAnalyticsFilters(filters);
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
-  const txns = filterUserTransactions(userId, effectiveFilters).filter((txn) => txn.direction === "outflow");
+  const allOutflows = filterUserTransactions(userId, effectiveFilters).filter((txn) => txn.direction === "outflow");
+  // Exclude transactions linked to a recurring rule — mortgage, rent, subscriptions
+  // are predictable spend, not anomalies.
+  const txns = allOutflows.filter((txn) => !txn.recurring_rule_id);
   if (!txns.length) {
     return [];
   }
@@ -885,6 +888,9 @@ export function getExplorerAnalytics(userId, filters = {}) {
     ...effectiveFilters,
     category: null
   };
+  const categoryRollupFilters = filters.perspective === "overview"
+    ? effectiveFilters
+    : categorySelectorFilters;
   const accountSelectorFilters = {
     ...effectiveFilters,
     account: null
@@ -909,7 +915,7 @@ export function getExplorerAnalytics(userId, filters = {}) {
     categories: {
       items: buildExplorerCategoryRollupFromTransactions(
         filterUserTransactions(userId, {
-          ...categorySelectorFilters,
+          ...categoryRollupFilters,
           category_view: categoryView
         }),
         resolveCategory,
