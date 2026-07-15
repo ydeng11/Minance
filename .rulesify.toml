@@ -9,3 +9,10 @@ added = "2026-05-21"
 source = "https://github.com/mattpocock/skills/tree/main/skills/productivity/handoff"
 commit_sha = "b6250ed602f8a2b401d49274eb31e15695a0637f"
 scope = "project"
+
+[installed_skills.grill-with-docs]
+added = "2026-06-16"
+source = "https://github.com/mattpocock/skills/tree/main/skills/engineering/grill-with-docs"
+commit_sha = "e3b90b5238f38cdea5996e16861dcae28ef52eda"
+scope = "project"
+covered_tools = ["pi"]
