@@ -53,6 +53,21 @@ docker-nightly:
       .
     echo "✅ Image built and pushed: ydeng11/minance:nightly (amd64 + arm64)"
 
+# Build and push versioned release image (test → buildx → push)
+# Usage: just docker-release VERSION
+# Example: just docker-release 2.0.0
+docker-release VERSION:
+    just test
+    docker buildx build \
+      --platform linux/amd64,linux/arm64 \
+      -t ydeng11/minance:{{VERSION}} \
+      -t ydeng11/minance:latest \
+      -f deploy/docker/Dockerfile.combined \
+      --builder multi-builder \
+      --push \
+      .
+    echo "✅ Image built and pushed: ydeng11/minance:{{VERSION}} + ydeng11/minance:latest"
+
 # Run the project guardrails
 guardrails:
     pnpm guardrails

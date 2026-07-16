@@ -2,16 +2,30 @@
 
 Minance Next is a privacy-first personal finance web app built from the PRD/implementation plan in this repository.
 
+## Project structure
+
+```
+minance/
+├── apps/web/          # Next.js frontend
+├── services/api/      # API server (Node.js + SQLite)
+├── packages/domain/   # Shared domain logic
+├── scripts/           # Build, seed, and utility scripts
+└── docs/              # Design docs, runbooks, and API reference
+```
+
 ## What is implemented
 - Auth (`signup`, `login`, `refresh`, `/me`, user delete)
-- CSV import flow with mapping suggestions, diagnostics, normalization, and dedupe
+- CSV import flow with mapping suggestions, diagnostics, normalization, dedupe, and bank category alias matching
 - Manual transaction CRUD
-- AI BYOK settings with 4 providers (OpenAI, OpenRouter, Anthropic, Google), encrypted key storage, preferences, and failover order
+- AI BYOK settings with 4 providers (OpenAI, OpenRouter, Anthropic, Google), encrypted key storage, custom model input, preferences, and failover order
 - Multi-stage categorization (rules -> merchant memory -> model fallback) with confidence thresholds
 - Dashboard + analytics APIs (overview, categories, merchants, heatmap, anomalies)
+- Explorer page with spend composition chart and category filters
 - Conversational assistant endpoint with explainable output and drill-down filters
+- Database backup and reload feature
+- Help center for self-host UX
 - Legacy Minance API loader script for dev database seeding
-- Responsive web UI covering dashboard, imports, transactions, analytics, assistant, and settings
+- Responsive web UI covering dashboard, explorer, imports, transactions, analytics, assistant, help, and settings
 - Saved views/bookmarks
 
 ## Under consideration
@@ -142,6 +156,5 @@ docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 - Set `IMPORT_PROCESSING_LOGS_ENABLED=true` in `.env.local` to print import-processing logs (including whether LLM categorization was attempted/succeeded/failed).
 - AI key encryption uses `AI_CREDENTIAL_SECRET` (set in environment for non-local use).
 - Account provider abstraction is exposed via `GET /v1/accounts/providers` and `GET /v1/accounts/providers/:providerId` (self-host default provider is `manual_csv`; direct-link actions return explicit unsupported-action errors).
-- Categorization training can load backup priors from `backup_2026-02-26_00-00-03.db` (or `MINANCE_TRAINING_DB_PATH`).
 - CrewAI analysis agent script lives at `services/agents/crewai_analysis_agent.py` (enable/disable with `AI_CREW_ANALYSIS_ENABLED`; install Python deps from `services/agents/requirements.txt`).
 - SQLite migration requires `sqlite3` CLI installed on the host machine.
