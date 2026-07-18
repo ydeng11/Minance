@@ -8,7 +8,12 @@ install:
 
 # Install dependencies and start both development servers
 dev:
+    just --dotenv-filename .env.development _dev
+
+[private]
+_dev:
     pnpm install
+    just _prepare-dev-data
     pnpm exec tsx scripts/run-with-open-ports.ts dev
 
 # Start the Next.js app in development mode
@@ -17,7 +22,20 @@ dev-web:
 
 # Start the API server in development mode
 dev-api:
+    just --dotenv-filename .env.development _dev-api
+
+[private]
+_dev-api:
+    just _prepare-dev-data
     pnpm dev:api
+
+[private]
+_prepare-dev-data:
+    pnpm migrate:sqlite -- --source services/api/test/fixtures/deterministic-financial-store.json --db services/api/data/development-minance.sqlite
+
+[private]
+_prepare-test-data:
+    pnpm migrate:sqlite -- --source services/api/test/fixtures/deterministic-financial-store.json --db services/api/data/test-minance.sqlite
 
 # Build the web app
 build-web:
@@ -25,6 +43,10 @@ build-web:
 
 # Start both production servers
 start:
+    just --dotenv-filename .env.production _start
+
+[private]
+_start:
     pnpm exec tsx scripts/run-with-open-ports.ts start
 
 # Start the Next.js app in production mode
@@ -33,6 +55,10 @@ start-web:
 
 # Start the API server in production mode
 start-api:
+    just --dotenv-filename .env.production _start-api
+
+[private]
+_start-api:
     pnpm start:api
 
 # Build the nightly image for the host arch (test → build → load)
@@ -74,14 +100,27 @@ guardrails:
 
 # Run the full test suite
 test:
+    just --dotenv-filename .env.test _test
+
+[private]
+_test:
+    just _prepare-test-data
     pnpm test
 
 # Run guardrails and tests
 check:
+    just --dotenv-filename .env.test _check
+
+[private]
+_check:
     pnpm check
 
 # Run Playwright end-to-end tests
 e2e:
+    just --dotenv-filename .env.test _e2e
+
+[private]
+_e2e:
     pnpm e2e
 
 # Run headed Playwright tests for local debugging
@@ -97,17 +136,31 @@ docs-api:
     pnpm docs:api
 
 # Migrate JSON data into SQLite
-migrate-sqlite:
+migrate-sqlite ENV="development":
+    just --dotenv-filename .env.{{ENV}} _migrate-sqlite
+
+[private]
+_migrate-sqlite:
     pnpm migrate:sqlite
 
 # Validate JSON and SQLite parity
-validate-sqlite:
+validate-sqlite ENV="development":
+    just --dotenv-filename .env.{{ENV}} _validate-sqlite
+
+[private]
+_validate-sqlite:
     pnpm validate:sqlite
 
 # Seed the deterministic fixture dataset
 seed-fixture:
     pnpm seed:fixture -- --target services/api/test/fixtures/deterministic-financial-store.json
+    just _prepare-dev-data
+    just _prepare-test-data
 
 # Load data from the legacy API into the dev database
 seed-legacy-api:
+    just --dotenv-filename .env.development _seed-legacy-api
+
+[private]
+_seed-legacy-api:
     pnpm seed:legacy-api -- --base-url http://10.0.0.20:18080 --start 2024-01-01 --end 2026-12-31

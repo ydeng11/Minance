@@ -204,6 +204,23 @@ test(
         `explicit fixture migration failed\nstdout:\n${migrateResult.stdout}\nstderr:\n${migrateResult.stderr}`
       );
 
+      assert.deepEqual(querySqliteJson(temp.dbPath, "SELECT id FROM recurring_rules ORDER BY id;"), [
+        { id: "rr_fixture_energy" },
+        { id: "rr_fixture_groceries" },
+        { id: "rr_fixture_insurance" },
+        { id: "rr_fixture_payroll" },
+        { id: "rr_fixture_rent" },
+        { id: "rr_fixture_streaming" }
+      ]);
+      assert.equal(
+        querySqliteJson(temp.dbPath, "SELECT COUNT(*) AS count FROM investment_holdings;")[0]?.count,
+        2
+      );
+      assert.equal(
+        querySqliteJson(temp.dbPath, "SELECT COUNT(*) AS count FROM investment_snapshots;")[0]?.count,
+        19
+      );
+
       const validateResult = runTsxScript([
         "scripts/validate-json-vs-sqlite.ts",
         "--source",

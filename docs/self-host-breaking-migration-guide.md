@@ -61,7 +61,7 @@ Validation must complete without mismatched totals/counts before cutover.
 For the stock `docker-compose.selfhost.yml` stack, the published image `ydeng11/minance:nightly` already runs with:
 
 - `MINANCE_STORE_BACKEND=sqlite`
-- `MINANCE_SQLITE_FILE=/var/lib/minance/minance.sqlite`
+- `MINANCE_SQLITE_FILE=/var/lib/minance/production-minance.sqlite`
 - `MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql`
 - `MINANCE_SQLITE_AUTO_INIT=true`
 

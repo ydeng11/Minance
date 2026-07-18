@@ -1,7 +1,13 @@
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { getEnvFileName, resolveRuntimePaths, resolveStoreBackend } from "./runtime-env.ts";
+import {
+  getDefaultSqliteFile,
+  getEnvFileName,
+  isTestEnvironment,
+  resolveRuntimePaths,
+  resolveStoreBackend
+} from "./runtime-env.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,6 +100,17 @@ const runtimePaths = resolveRuntimePaths({
   env: process.env,
   nodeEnv: process.env.NODE_ENV
 });
+
+if (isTestEnvironment(process.env.NODE_ENV) && !process.env.MINANCE_SQLITE_FILE_TEST) {
+  const trackedTestDatabase = path.join(ROOT_DIR, getDefaultSqliteFile("test"));
+  if (!fs.existsSync(trackedTestDatabase)) {
+    throw new Error(`Tracked test database not found: ${trackedTestDatabase}`);
+  }
+  if (!fs.existsSync(runtimePaths.sqliteFile)) {
+    fs.mkdirSync(path.dirname(runtimePaths.sqliteFile), { recursive: true });
+    fs.copyFileSync(trackedTestDatabase, runtimePaths.sqliteFile);
+  }
+}
 
 export const DATA_FILE = runtimePaths.dataFile;
 export const SQLITE_FILE = runtimePaths.sqliteFile;

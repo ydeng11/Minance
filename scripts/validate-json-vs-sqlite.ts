@@ -9,6 +9,10 @@ import {
   getRowsForSpec,
   stableStringify
 } from "./sqlite-cutover-lib.ts";
+import {
+  getConfiguredSqliteFile,
+  getDefaultSqliteFile
+} from "../services/api/src/runtime-env.ts";
 
 const DEFAULT_SOURCE_PATH = "services/api/data/store.json";
 
@@ -17,7 +21,7 @@ function printHelp() {
 
 Options:
   --source       Source JSON store path (default: MINANCE_DATA_FILE or ${DEFAULT_SOURCE_PATH})
-  --db           SQLite file path to validate (default: MINANCE_SQLITE_FILE or services/api/data/minance.sqlite)
+  --db           SQLite file path to validate (default: environment override or {NODE_ENV}-minance.sqlite)
   --sample-size  Number of deterministic sample rows per table (default: 10)
   --fail-fast    Stop at first mismatch (default: true)
   --help         Show this help message
@@ -143,7 +147,10 @@ function main() {
   }
 
   const sourcePath = resolvePathFromRoot(args.source || process.env.MINANCE_DATA_FILE, DEFAULT_SOURCE_PATH);
-  const dbPath = resolvePathFromRoot(args.db || process.env.MINANCE_SQLITE_FILE, "services/api/data/minance.sqlite");
+  const dbPath = resolvePathFromRoot(
+    args.db || getConfiguredSqliteFile(process.env, process.env.NODE_ENV),
+    getDefaultSqliteFile(process.env.NODE_ENV)
+  );
   const sampleSize = Math.max(1, Number.parseInt(String(args["sample-size"] || "10"), 10));
   const failFast = String(args["fail-fast"] ?? "true").toLowerCase() !== "false";
 

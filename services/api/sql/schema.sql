@@ -203,6 +203,50 @@ CREATE TABLE IF NOT EXISTS saved_views (
   payload_json TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS recurring_rules (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  cadence TEXT,
+  amount REAL,
+  direction TEXT,
+  category_final TEXT,
+  account_id TEXT,
+  merchant_pattern TEXT,
+  status TEXT,
+  next_run_at TEXT,
+  created_at TEXT,
+  updated_at TEXT,
+  payload_json TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS investment_holdings (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  account_id TEXT,
+  symbol TEXT,
+  quantity REAL,
+  avg_cost REAL,
+  currency TEXT,
+  as_of_date TEXT,
+  created_at TEXT,
+  updated_at TEXT,
+  payload_json TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS investment_snapshots (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  account_id TEXT,
+  snapshot_date TEXT,
+  market_value REAL,
+  total_cost REAL,
+  unrealized_pnl REAL,
+  created_at TEXT,
+  updated_at TEXT,
+  payload_json TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS migration_runs (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -271,6 +315,15 @@ CREATE INDEX IF NOT EXISTS idx_assistant_queries_user_id
 
 CREATE INDEX IF NOT EXISTS idx_saved_views_user_id
   ON saved_views(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_recurring_rules_user_status
+  ON recurring_rules(user_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_investment_holdings_user_id
+  ON investment_holdings(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_investment_snapshots_user_date
+  ON investment_snapshots(user_id, snapshot_date);
 
 CREATE INDEX IF NOT EXISTS idx_audit_events_user_created_at
   ON audit_events(user_id, created_at);

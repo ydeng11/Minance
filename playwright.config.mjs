@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 const E2E_HOST = "localhost";
 const E2E_FRONTEND_PORT = 4173;
 const E2E_API_PORT = 4174;
-const E2E_SQLITE_FILE = "services/api/tmp/e2e-minance.sqlite";
+const E2E_SQLITE_FILE = "services/api/tmp/e2e/test-minance.sqlite";
 
 export default defineConfig({
   testDir: path.join(__dirname, "e2e/specs"),
