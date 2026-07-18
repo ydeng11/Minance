@@ -8,7 +8,7 @@ Usage: scripts/selfhost-backup.sh [--stamp <UTC stamp>]
 Environment overrides:
   MINANCE_BACKUP_ROOT      Default: ./backups
   MINANCE_RUNTIME_DATA_DIR Default: ./services/api/data
-  MINANCE_SQLITE_FILE      Default: <MINANCE_RUNTIME_DATA_DIR>/minance.sqlite
+  MINANCE_SQLITE_FILE      Default: <MINANCE_RUNTIME_DATA_DIR>/production-minance.sqlite
   MINANCE_DATA_FILE        Default: <MINANCE_RUNTIME_DATA_DIR>/store.json (optional JSON fixture/input file)
   MINANCE_UPLOAD_DIR       Default: <MINANCE_RUNTIME_DATA_DIR>/uploads
 USAGE
@@ -48,7 +48,7 @@ done
 
 BACKUP_ROOT="${MINANCE_BACKUP_ROOT:-./backups}"
 RUNTIME_DATA_DIR="${MINANCE_RUNTIME_DATA_DIR:-./services/api/data}"
-SQLITE_FILE="${MINANCE_SQLITE_FILE:-${RUNTIME_DATA_DIR}/minance.sqlite}"
+SQLITE_FILE="${MINANCE_SQLITE_FILE:-${RUNTIME_DATA_DIR}/production-minance.sqlite}"
 JSON_FILE="${MINANCE_DATA_FILE:-${RUNTIME_DATA_DIR}/store.json}"
 UPLOAD_DIR="${MINANCE_UPLOAD_DIR:-${RUNTIME_DATA_DIR}/uploads}"
 

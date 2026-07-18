@@ -6,6 +6,8 @@ node_modules
 .env.selfhost
 services/api/data/store.json
 services/api/data/*.sqlite*
+!services/api/data/development-minance.sqlite
+!services/api/data/test-minance.sqlite
 services/api/tmp/*
 target/
 coverage

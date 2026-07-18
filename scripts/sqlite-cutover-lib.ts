@@ -288,6 +288,65 @@ export const STORE_TABLE_SPECS = [
     })
   },
   {
+    storeKey: "recurringRules",
+    tableName: "recurring_rules",
+    keyColumns: ["id"],
+    sampleKey: { source: "id", table: "id" },
+    mapRow: (row) => ({
+      id: row.id ?? null,
+      user_id: row.userId ?? row.user_id ?? null,
+      name: row.name ?? null,
+      cadence: row.cadence ?? null,
+      amount: toFiniteNumber(row.amount),
+      direction: row.direction ?? null,
+      category_final: row.categoryFinal ?? row.category_final ?? row.category ?? null,
+      account_id: row.accountId ?? row.account_id ?? null,
+      merchant_pattern: row.merchantPattern ?? row.merchant_pattern ?? null,
+      status: row.status ?? null,
+      next_run_at: row.nextRunAt ?? row.next_run_at ?? null,
+      created_at: row.createdAt ?? row.created_at ?? null,
+      updated_at: row.updatedAt ?? row.updated_at ?? null,
+      payload_json: JSON.stringify(row ?? {})
+    })
+  },
+  {
+    storeKey: "investmentHoldings",
+    tableName: "investment_holdings",
+    keyColumns: ["id"],
+    sampleKey: { source: "id", table: "id" },
+    mapRow: (row) => ({
+      id: row.id ?? null,
+      user_id: row.userId ?? row.user_id ?? null,
+      account_id: row.accountId ?? row.account_id ?? null,
+      symbol: row.symbol ?? null,
+      quantity: toFiniteNumber(row.quantity),
+      avg_cost: toFiniteNumber(row.avgCost ?? row.avg_cost),
+      currency: row.currency ?? null,
+      as_of_date: row.asOfDate ?? row.as_of_date ?? null,
+      created_at: row.createdAt ?? row.created_at ?? null,
+      updated_at: row.updatedAt ?? row.updated_at ?? null,
+      payload_json: JSON.stringify(row ?? {})
+    })
+  },
+  {
+    storeKey: "investmentSnapshots",
+    tableName: "investment_snapshots",
+    keyColumns: ["id"],
+    sampleKey: { source: "id", table: "id" },
+    mapRow: (row) => ({
+      id: row.id ?? null,
+      user_id: row.userId ?? row.user_id ?? null,
+      account_id: row.accountId ?? row.account_id ?? null,
+      snapshot_date: row.snapshotDate ?? row.snapshot_date ?? null,
+      market_value: toFiniteNumber(row.marketValue ?? row.market_value),
+      total_cost: toFiniteNumber(row.totalCost ?? row.total_cost),
+      unrealized_pnl: toFiniteNumber(row.unrealizedPnl ?? row.unrealized_pnl),
+      created_at: row.createdAt ?? row.created_at ?? null,
+      updated_at: row.updatedAt ?? row.updated_at ?? null,
+      payload_json: JSON.stringify(row ?? {})
+    })
+  },
+  {
     storeKey: "migrationRuns",
     tableName: "migration_runs",
     keyColumns: ["id"],

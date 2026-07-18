@@ -2,11 +2,9 @@ import path from "node:path";
 import { threadId } from "node:worker_threads";
 
 const DEFAULT_DATA_FILE = "services/api/data/store.json";
-const DEFAULT_SQLITE_FILE = "services/api/data/minance.sqlite";
 const DEFAULT_SQLITE_SCHEMA_FILE = "services/api/sql/schema.sql";
-const TEST_RUNTIME_SUFFIX = `${process.pid}-${threadId}`;
-const DEFAULT_TEST_DATA_FILE = `services/api/tmp/test-store-${TEST_RUNTIME_SUFFIX}.json`;
-const DEFAULT_TEST_SQLITE_FILE = `services/api/tmp/test-minance-${TEST_RUNTIME_SUFFIX}.sqlite`;
+const DEFAULT_TEST_DATA_FILE = `services/api/tmp/test-store-${process.pid}-${threadId}.json`;
+const DEFAULT_TEST_SQLITE_FILE = `services/api/tmp/test-runtime-${process.pid}-${threadId}/test-minance.sqlite`;
 
 export function normalizeStoreBackend(value: string | undefined) {
   const normalized = String(value || "json").trim().toLowerCase();
@@ -25,8 +23,24 @@ export function isTestEnvironment(nodeEnv: string | undefined) {
   return String(nodeEnv || "").trim().toLowerCase() === "test";
 }
 
+export function getRuntimeEnvironment(nodeEnv: string | undefined) {
+  const normalized = String(nodeEnv || "production").trim().toLowerCase();
+  if (!/^[a-z0-9_-]+$/.test(normalized)) {
+    throw new Error(`Invalid runtime environment: ${nodeEnv}`);
+  }
+  return normalized;
+}
+
+export function getDefaultSqliteFile(nodeEnv: string | undefined) {
+  return `services/api/data/${getRuntimeEnvironment(nodeEnv)}-minance.sqlite`;
+}
+
+export function getConfiguredSqliteFile(env: NodeJS.ProcessEnv, nodeEnv: string | undefined) {
+  return isTestEnvironment(nodeEnv) ? env.MINANCE_SQLITE_FILE_TEST : env.MINANCE_SQLITE_FILE;
+}
+
 export function getEnvFileName(nodeEnv: string | undefined) {
-  return isTestEnvironment(nodeEnv) ? ".env.test" : ".env.local";
+  return `.env.${getRuntimeEnvironment(nodeEnv)}`;
 }
 
 export function resolveStoreBackend({
@@ -55,11 +69,10 @@ export function resolveRuntimePaths({
   const testMode = isTestEnvironment(nodeEnv);
 
   const configuredDataFile = testMode ? env.MINANCE_DATA_FILE_TEST : env.MINANCE_DATA_FILE;
-  const configuredSqliteFile = testMode ? env.MINANCE_SQLITE_FILE_TEST : env.MINANCE_SQLITE_FILE;
+  const configuredSqliteFile = getConfiguredSqliteFile(env, nodeEnv);
   const configuredSqliteSchema = testMode
     ? env.MINANCE_SQLITE_SCHEMA_FILE_TEST
     : env.MINANCE_SQLITE_SCHEMA_FILE;
-
   return {
     envFileName: getEnvFileName(nodeEnv),
     dataFile: resolvePathFromRoot(
@@ -70,7 +83,7 @@ export function resolveRuntimePaths({
     sqliteFile: resolvePathFromRoot(
       rootDir,
       configuredSqliteFile,
-      testMode ? DEFAULT_TEST_SQLITE_FILE : DEFAULT_SQLITE_FILE
+      testMode ? DEFAULT_TEST_SQLITE_FILE : getDefaultSqliteFile(nodeEnv)
     ),
     sqliteSchemaFile: resolvePathFromRoot(rootDir, configuredSqliteSchema, DEFAULT_SQLITE_SCHEMA_FILE)
   };

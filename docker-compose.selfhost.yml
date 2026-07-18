@@ -10,7 +10,7 @@ services:
       MINANCE_INTERNAL_API_PORT: 3001
       MINANCE_STORE_BACKEND: sqlite
       MINANCE_DATA_FILE: /var/lib/minance/store.json
-      MINANCE_SQLITE_FILE: /var/lib/minance/minance.sqlite
+      MINANCE_SQLITE_FILE: /var/lib/minance/production-minance.sqlite
       MINANCE_SQLITE_SCHEMA_FILE: /app/services/api/sql/schema.sql
       MINANCE_SQLITE_AUTO_INIT: "true"
       MINANCE_SEED_TEST_ACCOUNT: "false"

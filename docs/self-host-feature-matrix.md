@@ -13,7 +13,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
 | Area | Copilot-style expectation | Self-host decision | Current implementation (2026-03-03) | Fallback / Notes |
 |---|---|---|---|---|
 | Authentication and sessions | Email/password auth, session refresh, user profile | Supported | `POST /v1/auth/signup`, `POST /v1/auth/login`, `POST /v1/auth/refresh`, `GET/DELETE /v1/users/me` | Local session/token storage in SQLite runtime data. |
-| Canonical data store | Durable relational storage | Supported | SQLite runtime store (`services/api/data/minance.sqlite`) is active, with foundation/bootstrap status exposed at `GET /v1/system/storage` | JSON fixtures remain only for explicit test or fixture-import flows; see [JSON-to-SQLite runbook](./json-to-sqlite-migration-runbook.md). |
+| Canonical data store | Durable relational storage | Supported | Production SQLite runtime store (`services/api/data/production-minance.sqlite`) is active, with foundation/bootstrap status exposed at `GET /v1/system/storage` | JSON fixtures remain only for explicit test or fixture-import flows; see [JSON-to-SQLite runbook](./json-to-sqlite-migration-runbook.md). |
 | CSV import and mapping | Bank CSV ingestion with review, mapping, diagnostics | Supported | Implemented import workflow (`/v1/imports*`) with processed-row editor and dedupe | Deterministic parser + manual mapping/editing when heuristics/AI confidence is low. |
 | Legacy Minance migration | Import from legacy Minance SQLite DB | Supported | `POST /v1/migrations/minance/sqlite` and migration report endpoint are implemented | Requires host `sqlite3` CLI. If unavailable, operator uses CSV import path. |
 | Transactions lifecycle | Create/edit/delete and filter transactions | Partially supported | Manual CRUD and query filters are implemented (`/v1/transactions*`) with canonical day-boundary semantics documented in [`transaction-date-day-boundary-semantics.md`](./transaction-date-day-boundary-semantics.md) | Bulk operations, review workflows, and parity details tracked by open parity tasks. |
@@ -44,7 +44,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
 ## Default Self-Host Behavior
 
 - Runtime SQLite defaults:
-  - `MINANCE_SQLITE_FILE=services/api/data/minance.sqlite`
+  - `MINANCE_SQLITE_FILE=services/api/data/production-minance.sqlite`
   - `MINANCE_SQLITE_SCHEMA_FILE=services/api/sql/schema.sql`
   - startup auto-init enabled unless `MINANCE_SQLITE_AUTO_INIT=false`
 - JSON fixture override exists only for explicit migration/setup flows:

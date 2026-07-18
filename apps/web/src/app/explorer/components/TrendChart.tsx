@@ -79,7 +79,10 @@ function CompositionCard({ title, items, emptyMessage, itemKeyPrefix }: {
 
 function parseMonthDate(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
-  return new Date(Date.UTC(year, monthNumber - 1, 1));
+  // Use local date so Intl.DateTimeFormat shows the correct month regardless
+  // of timezone offset (UTC midnight rolls into the prior month in negative
+  // offsets, e.g., ET: 00:00 UTC = 19:00 previous day).
+  return new Date(year, monthNumber - 1, 1);
 }
 
 function formatMonthLabel(month: string, includeYear: boolean) {
@@ -119,8 +122,8 @@ export function TrendChart({
       label: formatMonthLabel(entry.month, includeYear),
       detailLabel: formatMonthDetailLabel(entry.month),
       ariaLabel: `${formatMonthDetailLabel(entry.month)} trend summary: spend ${money(entry.spend)}, income ${money(entry.income)}, net ${money(entry.net)}`,
-      spendComposition: "spendComposition" in entry && Array.isArray(entry.spendComposition) ? entry.spendComposition : [],
-      incomeComposition: "incomeComposition" in entry && Array.isArray(entry.incomeComposition) ? entry.incomeComposition : [],
+      spendComposition: Array.isArray(entry.spendComposition) ? entry.spendComposition : [],
+      incomeComposition: Array.isArray(entry.incomeComposition) ? entry.incomeComposition : [],
       spendHeight: Math.max(24, Math.round((entry.spend / sharedMax) * 220)),
       incomeHeight: Math.max(16, Math.round((entry.income / sharedMax) * 220))
     }));
@@ -130,17 +133,15 @@ export function TrendChart({
 
   useEffect(() => {
     if (trendBars.length === 0) {
-      queueMicrotask(() => setSelectedMonth(null));
+      setSelectedMonth(null);
       return;
     }
 
-    queueMicrotask(() => {
-      setSelectedMonth((current) =>
-        current && trendBars.some((entry) => entry.month === current)
-          ? current
-          : trendBars[trendBars.length - 1]?.month ?? null
-      );
-    });
+    setSelectedMonth((current) =>
+      current && trendBars.some((entry) => entry.month === current)
+        ? current
+        : trendBars[trendBars.length - 1]?.month ?? null
+    );
   }, [trendBars]);
 
   const selectedTrend = useMemo(

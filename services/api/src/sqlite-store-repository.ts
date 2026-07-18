@@ -222,6 +222,16 @@ function withRequiredColumns(spec, mapped, row, rowIndex) {
   } else if (spec.tableName === "saved_views") {
     ensured.id = ensureText(ensured.id, `saved_view_${rowIndex}`);
     ensured.user_id = ensureText(ensured.user_id, "unknown_user");
+  } else if (spec.tableName === "recurring_rules") {
+    ensured.id = ensureText(ensured.id, `recurring_rule_${rowIndex}`);
+    ensured.user_id = ensureText(ensured.user_id, "unknown_user");
+    ensured.name = ensureText(ensured.name, "Unnamed recurring rule");
+  } else if (spec.tableName === "investment_holdings") {
+    ensured.id = ensureText(ensured.id, `investment_holding_${rowIndex}`);
+    ensured.user_id = ensureText(ensured.user_id, "unknown_user");
+  } else if (spec.tableName === "investment_snapshots") {
+    ensured.id = ensureText(ensured.id, `investment_snapshot_${rowIndex}`);
+    ensured.user_id = ensureText(ensured.user_id, "unknown_user");
   } else if (spec.tableName === "migration_runs") {
     ensured.id = ensureText(ensured.id, `migration_${rowIndex}`);
     ensured.user_id = ensureText(ensured.user_id, "unknown_user");
