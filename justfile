@@ -8,7 +8,12 @@ install:
 
 # Install dependencies and start both development servers
 dev:
+    just --dotenv-filename .env.development _dev
+
+[private]
+_dev:
     pnpm install
+    just _prepare-dev-data
     pnpm exec tsx scripts/run-with-open-ports.ts dev
 
 # Start the Next.js app in development mode
@@ -17,7 +22,16 @@ dev-web:
 
 # Start the API server in development mode
 dev-api:
+    just --dotenv-filename .env.development _dev-api
+
+[private]
+_dev-api:
+    just _prepare-dev-data
     pnpm dev:api
+
+[private]
+_prepare-dev-data:
+    pnpm migrate:sqlite -- --source services/api/test/fixtures/deterministic-financial-store.json --db services/api/tmp/dev-minance.sqlite
 
 # Build the web app
 build-web:
@@ -74,14 +88,26 @@ guardrails:
 
 # Run the full test suite
 test:
+    just --dotenv-filename .env.test _test
+
+[private]
+_test:
     pnpm test
 
 # Run guardrails and tests
 check:
+    just --dotenv-filename .env.test _check
+
+[private]
+_check:
     pnpm check
 
 # Run Playwright end-to-end tests
 e2e:
+    just --dotenv-filename .env.test _e2e
+
+[private]
+_e2e:
     pnpm e2e
 
 # Run headed Playwright tests for local debugging
@@ -107,6 +133,7 @@ validate-sqlite:
 # Seed the deterministic fixture dataset
 seed-fixture:
     pnpm seed:fixture -- --target services/api/test/fixtures/deterministic-financial-store.json
+    just _prepare-dev-data
 
 # Load data from the legacy API into the dev database
 seed-legacy-api:

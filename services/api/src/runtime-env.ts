@@ -3,6 +3,7 @@ import { threadId } from "node:worker_threads";
 
 const DEFAULT_DATA_FILE = "services/api/data/store.json";
 const DEFAULT_SQLITE_FILE = "services/api/data/minance.sqlite";
+const DEFAULT_DEV_SQLITE_FILE = "services/api/tmp/dev-minance.sqlite";
 const DEFAULT_SQLITE_SCHEMA_FILE = "services/api/sql/schema.sql";
 const TEST_RUNTIME_SUFFIX = `${process.pid}-${threadId}`;
 const DEFAULT_TEST_DATA_FILE = `services/api/tmp/test-store-${TEST_RUNTIME_SUFFIX}.json`;
@@ -25,8 +26,15 @@ export function isTestEnvironment(nodeEnv: string | undefined) {
   return String(nodeEnv || "").trim().toLowerCase() === "test";
 }
 
+export function isDevelopmentEnvironment(nodeEnv: string | undefined) {
+  return String(nodeEnv || "").trim().toLowerCase() === "development";
+}
+
 export function getEnvFileName(nodeEnv: string | undefined) {
-  return isTestEnvironment(nodeEnv) ? ".env.test" : ".env.local";
+  if (isTestEnvironment(nodeEnv)) {
+    return ".env.test";
+  }
+  return isDevelopmentEnvironment(nodeEnv) ? ".env.development" : ".env.local";
 }
 
 export function resolveStoreBackend({
@@ -53,13 +61,13 @@ export function resolveRuntimePaths({
   nodeEnv?: string | undefined;
 }) {
   const testMode = isTestEnvironment(nodeEnv);
+  const developmentMode = isDevelopmentEnvironment(nodeEnv);
 
   const configuredDataFile = testMode ? env.MINANCE_DATA_FILE_TEST : env.MINANCE_DATA_FILE;
   const configuredSqliteFile = testMode ? env.MINANCE_SQLITE_FILE_TEST : env.MINANCE_SQLITE_FILE;
   const configuredSqliteSchema = testMode
     ? env.MINANCE_SQLITE_SCHEMA_FILE_TEST
     : env.MINANCE_SQLITE_SCHEMA_FILE;
-
   return {
     envFileName: getEnvFileName(nodeEnv),
     dataFile: resolvePathFromRoot(
@@ -70,7 +78,7 @@ export function resolveRuntimePaths({
     sqliteFile: resolvePathFromRoot(
       rootDir,
       configuredSqliteFile,
-      testMode ? DEFAULT_TEST_SQLITE_FILE : DEFAULT_SQLITE_FILE
+      testMode ? DEFAULT_TEST_SQLITE_FILE : developmentMode ? DEFAULT_DEV_SQLITE_FILE : DEFAULT_SQLITE_FILE
     ),
     sqliteSchemaFile: resolvePathFromRoot(rootDir, configuredSqliteSchema, DEFAULT_SQLITE_SCHEMA_FILE)
   };

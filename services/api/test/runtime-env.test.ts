@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import { threadId } from "node:worker_threads";
 
-import { getEnvFileName, resolveRuntimePaths, resolveStoreBackend } from "../src/runtime-env.ts";
+import {
+  getEnvFileName,
+  resolveRuntimePaths,
+  resolveStoreBackend
+} from "../src/runtime-env.ts";
 
 const ROOT_DIR = "/tmp/minance-root";
 
@@ -58,23 +62,31 @@ test("test mode still honors explicit JSON backend selection", () => {
   );
 });
 
-test("non-test mode uses regular env vars and env.local", () => {
+test("development mode uses the ignored working database prepared by just", () => {
   const runtime = resolveRuntimePaths({
     rootDir: ROOT_DIR,
     nodeEnv: "development",
     env: {
-      MINANCE_DATA_FILE: "services/api/data/live-store.json",
-      MINANCE_SQLITE_FILE: "services/api/data/live.sqlite",
-      MINANCE_SQLITE_SCHEMA_FILE: "services/api/sql/live-schema.sql",
       MINANCE_DATA_FILE_TEST: "services/api/tmp/ignored.json",
       MINANCE_SQLITE_FILE_TEST: "services/api/tmp/ignored.sqlite"
     }
   });
 
-  assert.equal(getEnvFileName("development"), ".env.local");
-  assert.equal(runtime.dataFile, path.join(ROOT_DIR, "services/api/data/live-store.json"));
+  assert.equal(getEnvFileName("development"), ".env.development");
+  assert.equal(runtime.dataFile, path.join(ROOT_DIR, "services/api/data/store.json"));
+  assert.equal(runtime.sqliteFile, path.join(ROOT_DIR, "services/api/tmp/dev-minance.sqlite"));
+  assert.equal(runtime.sqliteSchemaFile, path.join(ROOT_DIR, "services/api/sql/schema.sql"));
+});
+
+test("production mode keeps the configured live database path", () => {
+  const runtime = resolveRuntimePaths({
+    rootDir: ROOT_DIR,
+    nodeEnv: "production",
+    env: { MINANCE_SQLITE_FILE: "services/api/data/live.sqlite" }
+  });
+
+  assert.equal(getEnvFileName("production"), ".env.local");
   assert.equal(runtime.sqliteFile, path.join(ROOT_DIR, "services/api/data/live.sqlite"));
-  assert.equal(runtime.sqliteSchemaFile, path.join(ROOT_DIR, "services/api/sql/live-schema.sql"));
 });
 
 test("non-test mode forces sqlite backend even when JSON is requested", () => {

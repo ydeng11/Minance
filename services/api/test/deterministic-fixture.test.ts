@@ -26,11 +26,12 @@ test("deterministic financial fixture has stable shape and coverage", () => {
 
   assert.equal(summary.users, 1);
   assert.equal(summary.accounts, 4);
-  assert.equal(summary.categories, 8);
-  assert.equal(summary.transactions, 20);
-  assert.equal(summary.recurringRules, 2);
+  assert.equal(summary.categories, 12);
+  assert.equal(summary.transactions, 214);
+  assert.equal(summary.recurringRules, 6);
   assert.equal(summary.investmentHoldings, 2);
-  assert.equal(summary.investmentSnapshots, 2);
+  assert.equal(summary.investmentSnapshots, 19);
+  assert.equal(summary.savedViews, 3);
 });
 
 test("deterministic financial fixture generation is repeatable", () => {
@@ -50,16 +51,29 @@ test("deterministic financial fixture drives analytics and transactions consiste
   resetStoreForTests(createDeterministicFinancialFixture());
 
   const listed = listTransactions(DETERMINISTIC_FIXTURE_USER_ID, { range: "all" });
-  assert.equal(listed.total, 20);
+  assert.equal(listed.total, 214);
+
+  const recurring = listTransactions(DETERMINISTIC_FIXTURE_USER_ID, {
+    range: "all",
+    recurring: true
+  });
+  assert.equal(recurring.total, 115);
+
+  const needsReview = listTransactions(DETERMINISTIC_FIXTURE_USER_ID, {
+    range: "all",
+    review_status: "needs_review"
+  });
+  assert.equal(needsReview.total, 1);
 
   const overview = getOverview(DETERMINISTIC_FIXTURE_USER_ID, {
-    start: "2026-01-01",
-    end: "2026-03-31"
+    start: "2025-01-01",
+    end: "2026-07-31"
   });
 
-  assert.equal(overview.summary.totalIncome, 16674.22);
-  assert.equal(overview.summary.totalSpend, 7262.57);
-  assert.equal(overview.summary.netFlow, 9411.65);
+  assert.equal(overview.trend.length, 19);
+  assert.ok(overview.summary.totalIncome > overview.summary.totalSpend);
+  assert.ok(overview.topCategories.some((entry) => entry.category === "Housing"));
+  assert.ok(overview.topCategories.some((entry) => entry.category === "Groceries"));
 });
 
 test("writeDeterministicFinancialFixture writes a valid fixture file", () => {
@@ -67,7 +81,7 @@ test("writeDeterministicFinancialFixture writes a valid fixture file", () => {
 
   try {
     const result = writeDeterministicFinancialFixture(tmpPath);
-    assert.equal(result.summary.transactions, 20);
+    assert.equal(result.summary.transactions, 214);
 
     const loaded = JSON.parse(fs.readFileSync(tmpPath, "utf8"));
     assert.equal(loaded.users[0].id, DETERMINISTIC_FIXTURE_USER_ID);

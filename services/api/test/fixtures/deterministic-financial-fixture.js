@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export const DETERMINISTIC_FINANCIAL_FIXTURE_VERSION = "2026-03-02";
+export const DETERMINISTIC_FINANCIAL_FIXTURE_VERSION = "2026-07-18";
 export const DETERMINISTIC_FIXTURE_USER_ID = "usr_fixture_001";
 
 const CREATED_AT = "2026-01-01T00:00:00.000Z";
@@ -51,47 +51,68 @@ const ACCOUNTS = [
 ];
 
 const CATEGORIES = [
-  ["Housing", "house", "essential"],
-  ["Utilities", "light", "essential"],
-  ["Groceries", "cart", "essential"],
-  ["Dining", "meal", "extra"],
-  ["Transport", "car", "essential"],
-  ["Income", "income", "income"],
-  ["Investments", "chart", "investments"],
-  ["Transfer", "transfer", "neutral"]
-].map(([name, emoji, coarseKey], index) => ({
+  ["Housing", "house", "essential", "expense"],
+  ["Utilities", "light", "essential", "expense"],
+  ["Groceries", "cart", "essential", "expense"],
+  ["Healthcare", "health", "essential", "expense"],
+  ["Dining", "meal", "extra", "expense"],
+  ["Entertainment", "ticket", "extra", "expense"],
+  ["Travel", "plane", "extra", "expense"],
+  ["Fees", "fee", "extra", "expense"],
+  ["Income", "income", "income", "income"],
+  ["Refunds", "refund", "income", "income"],
+  ["Investments", "chart", "investments", "transfer"],
+  ["Transfer", "transfer", "neutral", "transfer"]
+].map(([name, emoji, coarseKey, type], index) => ({
   id: `cat_fixture_${String(index + 1).padStart(3, "0")}`,
   userId: DETERMINISTIC_FIXTURE_USER_ID,
   name,
   emoji,
   coarseKey,
+  type,
   isSystem: false,
   createdAt: CREATED_AT,
   updatedAt: UPDATED_AT
 }));
 
-const TRANSACTIONS = [
-  ["2026-01-01", "Fixture Employer", "Payroll", 5200, "credit", "Income", "income", "acct_fixture_checking"],
-  ["2026-01-03", "Green Market", "Weekly groceries", 128.45, "debit", "Groceries", "essential", "acct_fixture_checking"],
-  ["2026-01-05", "Sunset Apartments", "Monthly rent", 1850, "debit", "Housing", "essential", "acct_fixture_checking"],
-  ["2026-01-08", "Fixture Energy", "Electric bill", 92.31, "debit", "Utilities", "essential", "acct_fixture_checking"],
-  ["2026-01-11", "Metro Transit", "Transit reload", 60, "debit", "Transport", "essential", "acct_fixture_credit"],
-  ["2026-01-14", "Cafe Brisk", "Lunch", 24.8, "debit", "Dining", "extra", "acct_fixture_credit"],
-  ["2026-01-16", "Broker Transfer", "Investment contribution", 500, "debit", "Investments", "investments", "acct_fixture_checking"],
-  ["2026-01-16", "Broker Transfer", "Investment contribution", 500, "credit", "Transfer", "neutral", "acct_fixture_brokerage"],
-  ["2026-02-01", "Fixture Employer", "Payroll", 5200, "credit", "Income", "income", "acct_fixture_checking"],
-  ["2026-02-03", "Green Market", "Weekly groceries", 132.1, "debit", "Groceries", "essential", "acct_fixture_checking"],
-  ["2026-02-05", "Sunset Apartments", "Monthly rent", 1850, "debit", "Housing", "essential", "acct_fixture_checking"],
-  ["2026-02-08", "Fixture Energy", "Electric bill", 89.77, "debit", "Utilities", "essential", "acct_fixture_checking"],
-  ["2026-02-10", "Cafe Brisk", "Lunch", 28.15, "debit", "Dining", "extra", "acct_fixture_credit"],
-  ["2026-02-16", "Broker Transfer", "Investment contribution", 500, "debit", "Investments", "investments", "acct_fixture_checking"],
-  ["2026-02-16", "Broker Transfer", "Investment contribution", 500, "credit", "Transfer", "neutral", "acct_fixture_brokerage"],
-  ["2026-02-20", "Dividend Fund", "Dividend payout", 74.22, "credit", "Income", "income", "acct_fixture_brokerage"],
-  ["2026-03-01", "Fixture Employer", "Payroll", 5200, "credit", "Income", "income", "acct_fixture_checking"],
-  ["2026-03-03", "Green Market", "Weekly groceries", 130.64, "debit", "Groceries", "essential", "acct_fixture_checking"],
-  ["2026-03-05", "Sunset Apartments", "Monthly rent", 1850, "debit", "Housing", "essential", "acct_fixture_checking"],
-  ["2026-03-09", "Cafe Brisk", "Lunch", 26.35, "debit", "Dining", "extra", "acct_fixture_credit"]
-].map(([date, merchant, description, amount, direction, category, categoryCoarse, accountId], index) => {
+const MONTHS = [
+  "2025-01", "2025-02", "2025-03", "2025-04", "2025-05", "2025-06",
+  "2025-07", "2025-08", "2025-09", "2025-10", "2025-11", "2025-12",
+  "2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06",
+  "2026-07"
+];
+
+const TRANSACTION_INPUTS = MONTHS.flatMap((month, monthIndex) => {
+  const energyAmount = [142, 133, 96, 78, 74, 92, 128, 136, 101, 84, 81, 109][monthIndex % 12];
+  const groceryBase = 112 + monthIndex * 2.35;
+  const investmentAmount = monthIndex % 3 === 2 ? 750 : 500;
+  return [
+    [`${month}-01`, "Fixture Employer", "Payroll", 5200, "credit", "Income", "income", "acct_fixture_checking", "income", ["recurring", "payroll"], "rr_fixture_payroll"],
+    [`${month}-03`, "Green Market", "Weekly groceries", groceryBase, "debit", "Groceries", "essential", "acct_fixture_checking", "expense", ["recurring", "groceries"], "rr_fixture_groceries"],
+    [`${month}-10`, "Neighborhood Foods", "Weekly groceries", groceryBase + 18.75, "debit", "Groceries", "essential", "acct_fixture_credit", "expense", ["recurring", "groceries"], "rr_fixture_groceries"],
+    [`${month}-05`, "Sunset Apartments", "Monthly rent", 1850, "debit", "Housing", "essential", "acct_fixture_checking", "expense", ["recurring", "fixed"], "rr_fixture_rent"],
+    [`${month}-08`, "Fixture Energy", "Electric bill", energyAmount, "debit", "Utilities", "essential", "acct_fixture_checking", "expense", ["recurring", "utilities"], "rr_fixture_energy"],
+    [`${month}-12`, "Stream Box", "Video subscription", 15.99, "debit", "Entertainment", "extra", "acct_fixture_credit", "expense", ["recurring", "subscription"], "rr_fixture_streaming"],
+    [`${month}-14`, "Cafe Brisk", "Dinner", 32 + monthIndex * 1.8, "debit", "Dining", "extra", "acct_fixture_credit", "expense", ["dining"], null],
+    [`${month}-16`, "Savings Transfer", "Monthly savings", 400, "debit", "Transfer", "neutral", "acct_fixture_checking", "transfer", ["transfer"], null],
+    [`${month}-16`, "Savings Transfer", "Monthly savings", 400, "credit", "Transfer", "neutral", "acct_fixture_savings", "transfer", ["transfer"], null],
+    [`${month}-18`, "Broker Transfer", "Investment contribution", investmentAmount, "debit", "Investments", "investments", "acct_fixture_checking", "transfer", ["transfer", "investment"], null],
+    [`${month}-18`, "Broker Transfer", "Investment contribution", investmentAmount, "credit", "Transfer", "neutral", "acct_fixture_brokerage", "transfer", ["transfer", "investment"], null]
+  ];
+});
+
+TRANSACTION_INPUTS.push(
+  ["2025-10-18", "Fixture Health Clinic", "Annual checkup", 180, "debit", "Healthcare", "essential", "acct_fixture_credit", "expense", ["health"], null],
+  ["2025-12-22", "Northwind Airlines", "Holiday trip", 845.5, "debit", "Travel", "extra", "acct_fixture_credit", "expense", ["travel"], null],
+  ["2026-01-02", "Northwind Airlines", "Fare adjustment refund", 125, "credit", "Refunds", "income", "acct_fixture_credit", "income", ["refund", "travel"], null],
+  ["2026-04-21", "Fixture Insurance", "Annual premium", 720, "debit", "Utilities", "essential", "acct_fixture_checking", "expense", ["recurring", "annual"], "rr_fixture_insurance"],
+  ["2026-06-27", "Fixture Bank", "Service fee needs review", 35, "debit", "Fees", "extra", "acct_fixture_checking", "expense", ["fee"], null, true]
+);
+
+const TRANSACTIONS = TRANSACTION_INPUTS.map(([
+  date, merchant, description, amount, direction, category, categoryCoarse, accountId,
+  transactionType, tags, recurringRuleId, needsReview = false
+], index) => {
   const transactionId = `txn_fixture_${String(index + 1).padStart(3, "0")}`;
   const merchantNormalized = String(merchant).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   return {
@@ -109,13 +130,17 @@ const TRANSACTIONS = [
     amount,
     currency: "USD",
     direction,
+    transaction_type: transactionType,
     category_raw: category,
     category_final: category,
     category_coarse: categoryCoarse,
     category_emoji: CATEGORIES.find((entry) => entry.name === category)?.emoji || "",
     category_confidence: 1,
     category_strategy: "fixture_seed",
-    needs_category_review: false,
+    needs_category_review: needsReview,
+    review_status: needsReview ? "needs_review" : "reviewed",
+    tags,
+    recurring_rule_id: recurringRuleId,
     memo: `fixture-seed-${index + 1}`,
     dedupe_fingerprint: `fixture-fingerprint-${String(index + 1).padStart(3, "0")}`,
     created_at: CREATED_AT,
@@ -130,11 +155,11 @@ const RECURRING_RULES = [
     name: "Monthly Rent",
     cadence: "monthly",
     amount: 1850,
-    direction: "debit",
+    direction: "outflow",
     category: "Housing",
     accountId: "acct_fixture_checking",
     merchantPattern: "Sunset Apartments",
-    nextRunAt: "2026-04-05",
+    nextRunAt: "2026-08-05",
     status: "active",
     createdAt: CREATED_AT,
     updatedAt: UPDATED_AT
@@ -145,16 +170,80 @@ const RECURRING_RULES = [
     name: "Monthly Payroll",
     cadence: "monthly",
     amount: 5200,
-    direction: "credit",
+    direction: "inflow",
     category: "Income",
     accountId: "acct_fixture_checking",
     merchantPattern: "Fixture Employer",
-    nextRunAt: "2026-04-01",
+    nextRunAt: "2026-08-01",
+    status: "active",
+    createdAt: CREATED_AT,
+    updatedAt: UPDATED_AT
+  },
+  {
+    id: "rr_fixture_groceries",
+    userId: DETERMINISTIC_FIXTURE_USER_ID,
+    name: "Weekly Groceries",
+    cadence: "weekly",
+    amount: 135,
+    direction: "outflow",
+    category: "Groceries",
+    merchantPattern: "Market",
+    nextRunAt: "2026-07-21",
+    status: "active",
+    createdAt: CREATED_AT,
+    updatedAt: UPDATED_AT
+  },
+  {
+    id: "rr_fixture_energy",
+    userId: DETERMINISTIC_FIXTURE_USER_ID,
+    name: "Electric Bill",
+    cadence: "monthly",
+    amount: 100,
+    direction: "outflow",
+    category: "Utilities",
+    accountId: "acct_fixture_checking",
+    merchantPattern: "Fixture Energy",
+    nextRunAt: "2026-08-08",
+    status: "active",
+    createdAt: CREATED_AT,
+    updatedAt: UPDATED_AT
+  },
+  {
+    id: "rr_fixture_streaming",
+    userId: DETERMINISTIC_FIXTURE_USER_ID,
+    name: "Streaming Subscription",
+    cadence: "monthly",
+    amount: 15.99,
+    direction: "outflow",
+    category: "Entertainment",
+    accountId: "acct_fixture_credit",
+    merchantPattern: "Stream Box",
+    nextRunAt: "2026-08-12",
+    status: "paused",
+    createdAt: CREATED_AT,
+    updatedAt: UPDATED_AT
+  },
+  {
+    id: "rr_fixture_insurance",
+    userId: DETERMINISTIC_FIXTURE_USER_ID,
+    name: "Annual Insurance",
+    cadence: "yearly",
+    amount: 720,
+    direction: "outflow",
+    category: "Utilities",
+    accountId: "acct_fixture_checking",
+    merchantPattern: "Fixture Insurance",
+    nextRunAt: "2027-04-21",
     status: "active",
     createdAt: CREATED_AT,
     updatedAt: UPDATED_AT
   }
-];
+].map((rule) => ({
+  ...rule,
+  linked_transaction_ids: TRANSACTIONS
+    .filter((transaction) => transaction.recurring_rule_id === rule.id)
+    .map((transaction) => transaction.id)
+}));
 
 const INVESTMENT_HOLDINGS = [
   {
@@ -165,7 +254,7 @@ const INVESTMENT_HOLDINGS = [
     quantity: 14,
     avgCost: 436.12,
     currency: "USD",
-    asOfDate: "2026-03-01",
+    asOfDate: "2026-07-15",
     createdAt: CREATED_AT,
     updatedAt: UPDATED_AT
   },
@@ -177,49 +266,40 @@ const INVESTMENT_HOLDINGS = [
     quantity: 20,
     avgCost: 71.45,
     currency: "USD",
-    asOfDate: "2026-03-01",
+    asOfDate: "2026-07-15",
     createdAt: CREATED_AT,
     updatedAt: UPDATED_AT
   }
 ];
 
-const INVESTMENT_SNAPSHOTS = [
-  {
-    id: "inv_snap_2026_01",
+const INVESTMENT_SNAPSHOTS = MONTHS.map((month, index) => {
+  const totalCost = 5600 + index * 500;
+  const marketValue = totalCost + [120, 165, 142, 230, 190, 275, 310, 288, 355, 420, 385, 470][index % 12];
+  return {
+    id: `inv_snap_${month.replace("-", "_")}`,
     userId: DETERMINISTIC_FIXTURE_USER_ID,
     accountId: "acct_fixture_brokerage",
-    snapshotDate: "2026-01-31",
-    marketValue: 6480.52,
-    totalCost: 6210.0,
-    unrealizedPnl: 270.52,
+    snapshotDate: `${month}-15`,
+    marketValue,
+    totalCost,
+    unrealizedPnl: marketValue - totalCost,
     createdAt: UPDATED_AT,
     updatedAt: UPDATED_AT
-  },
-  {
-    id: "inv_snap_2026_02",
-    userId: DETERMINISTIC_FIXTURE_USER_ID,
-    accountId: "acct_fixture_brokerage",
-    snapshotDate: "2026-02-28",
-    marketValue: 6894.13,
-    totalCost: 6710.0,
-    unrealizedPnl: 184.13,
-    createdAt: UPDATED_AT,
-    updatedAt: UPDATED_AT
-  }
-];
+  };
+});
 
 const FIXTURE_STORE = {
   fixtureMeta: {
     key: "deterministic-financial",
     version: DETERMINISTIC_FINANCIAL_FIXTURE_VERSION,
-    generatedAt: "2026-03-02T00:00:00.000Z"
+    generatedAt: "2026-07-18T00:00:00.000Z"
   },
   users: [
     {
       id: DETERMINISTIC_FIXTURE_USER_ID,
-      email: "fixture.user@minance.local",
+      email: "dev@minance.local",
       passwordHash:
-        "ad78acfd8ac9fd8c57ac96f89fe260c5b07c8cf3a2e9909fd80a3235a2f96d5415751a0d576746f8b5a4294f52ca5aaabf0f17472d3f1689be299ca51c325574",
+        "d758d1a6c26919c5dbb416b9d0835b23eb77b66fd24a0f2b7e54d41d284af037d7311bf0b5adba156ad5bc315210ad0f1d4816afc5cf151b368a9e5b41a7dc7d",
       passwordSalt: "minance-fixture-salt-001",
       createdAt: CREATED_AT,
       updatedAt: UPDATED_AT
@@ -282,7 +362,7 @@ const FIXTURE_STORE = {
     {
       id: "saved_view_fixture_001",
       userId: DETERMINISTIC_FIXTURE_USER_ID,
-      name: "Fixture 90d Spend",
+      name: "Last 90 Days Spend",
       filters: {
         range: "90d",
         category_view: "granular"
@@ -290,6 +370,29 @@ const FIXTURE_STORE = {
       layout: {
         cards: ["summary", "categories", "merchants"]
       },
+      createdAt: CREATED_AT,
+      updatedAt: UPDATED_AT
+    },
+    {
+      id: "saved_view_fixture_002",
+      userId: DETERMINISTIC_FIXTURE_USER_ID,
+      name: "Recurring Essentials",
+      filters: {
+        range: "last_year",
+        category_view: "coarse",
+        category: ["Essential"],
+        recurring: true
+      },
+      layout: { cards: ["trend", "categories", "merchants"] },
+      createdAt: CREATED_AT,
+      updatedAt: UPDATED_AT
+    },
+    {
+      id: "saved_view_fixture_003",
+      userId: DETERMINISTIC_FIXTURE_USER_ID,
+      name: "Needs Review",
+      filters: { range: "all", review_status: "needs_review" },
+      layout: { cards: ["transactions"] },
       createdAt: CREATED_AT,
       updatedAt: UPDATED_AT
     }
@@ -323,7 +426,8 @@ export function summarizeDeterministicFinancialFixture(store = FIXTURE_STORE) {
     transactions: store.transactions.length,
     recurringRules: (store.recurringRules || []).length,
     investmentHoldings: (store.investmentHoldings || []).length,
-    investmentSnapshots: (store.investmentSnapshots || []).length
+    investmentSnapshots: (store.investmentSnapshots || []).length,
+    savedViews: (store.savedViews || []).length
   };
 }
 
