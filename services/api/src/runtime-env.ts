@@ -3,7 +3,7 @@ import { threadId } from "node:worker_threads";
 
 const DEFAULT_DATA_FILE = "services/api/data/store.json";
 const DEFAULT_SQLITE_FILE = "services/api/data/minance.sqlite";
-const DEFAULT_DEV_SQLITE_FILE = "services/api/tmp/dev-minance.sqlite";
+const DEFAULT_DEV_SQLITE_FILE = "services/api/data/development-minance.sqlite";
 const DEFAULT_SQLITE_SCHEMA_FILE = "services/api/sql/schema.sql";
 const TEST_RUNTIME_SUFFIX = `${process.pid}-${threadId}`;
 const DEFAULT_TEST_DATA_FILE = `services/api/tmp/test-store-${TEST_RUNTIME_SUFFIX}.json`;

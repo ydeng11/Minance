@@ -62,7 +62,7 @@ test("test mode still honors explicit JSON backend selection", () => {
   );
 });
 
-test("development mode uses the ignored working database prepared by just", () => {
+test("development mode resolves the tracked environment-prefixed database", () => {
   const runtime = resolveRuntimePaths({
     rootDir: ROOT_DIR,
     nodeEnv: "development",
@@ -74,11 +74,19 @@ test("development mode uses the ignored working database prepared by just", () =
 
   assert.equal(getEnvFileName("development"), ".env.development");
   assert.equal(runtime.dataFile, path.join(ROOT_DIR, "services/api/data/store.json"));
-  assert.equal(runtime.sqliteFile, path.join(ROOT_DIR, "services/api/tmp/dev-minance.sqlite"));
+  assert.equal(
+    runtime.sqliteFile,
+    path.join(ROOT_DIR, "services/api/data/development-minance.sqlite")
+  );
   assert.equal(runtime.sqliteSchemaFile, path.join(ROOT_DIR, "services/api/sql/schema.sql"));
 });
 
-test("production mode keeps the configured live database path", () => {
+test("production mode remains distinct from the environment-prefixed development database", () => {
+  const defaultRuntime = resolveRuntimePaths({
+    rootDir: ROOT_DIR,
+    nodeEnv: "production",
+    env: {}
+  });
   const runtime = resolveRuntimePaths({
     rootDir: ROOT_DIR,
     nodeEnv: "production",
@@ -86,6 +94,10 @@ test("production mode keeps the configured live database path", () => {
   });
 
   assert.equal(getEnvFileName("production"), ".env.local");
+  assert.equal(
+    defaultRuntime.sqliteFile,
+    path.join(ROOT_DIR, "services/api/data/minance.sqlite")
+  );
   assert.equal(runtime.sqliteFile, path.join(ROOT_DIR, "services/api/data/live.sqlite"));
 });
 

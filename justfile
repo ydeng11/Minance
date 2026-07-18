@@ -31,7 +31,7 @@ _dev-api:
 
 [private]
 _prepare-dev-data:
-    pnpm migrate:sqlite -- --source services/api/test/fixtures/deterministic-financial-store.json --db services/api/tmp/dev-minance.sqlite
+    pnpm migrate:sqlite -- --source services/api/test/fixtures/deterministic-financial-store.json --db services/api/data/development-minance.sqlite
 
 # Build the web app
 build-web:

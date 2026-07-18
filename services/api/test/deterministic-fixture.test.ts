@@ -19,6 +19,10 @@ const FIXTURE_FILE_PATH = path.resolve(
   "fixtures/deterministic-financial-store.json"
 );
 const ROOT_DIR = path.resolve(import.meta.dirname, "../..");
+const DEVELOPMENT_DATABASE_PATH = path.resolve(
+  import.meta.dirname,
+  "../data/development-minance.sqlite"
+);
 
 test("deterministic financial fixture has stable shape and coverage", () => {
   const fixture = createDeterministicFinancialFixture();
@@ -45,6 +49,29 @@ test("deterministic financial fixture file stays aligned with generator", () => 
   const fileContents = JSON.parse(fs.readFileSync(FIXTURE_FILE_PATH, "utf8"));
 
   assert.deepEqual(fileContents, generated);
+});
+
+test("tracked development database contains the deterministic 2025 and 2026 dataset", () => {
+  assert.equal(fs.existsSync(DEVELOPMENT_DATABASE_PATH), true);
+
+  const result = spawnSync(
+    "sqlite3",
+    [
+      "-json",
+      DEVELOPMENT_DATABASE_PATH,
+      "SELECT COUNT(*) AS transactions, MIN(transaction_date) AS first_date, MAX(transaction_date) AS last_date FROM transactions;"
+    ],
+    { encoding: "utf8" }
+  );
+
+  assert.equal(result.status, 0, result.stderr || "development fixture query failed");
+  assert.deepEqual(JSON.parse(result.stdout), [
+    {
+      transactions: 214,
+      first_date: "2025-01-01",
+      last_date: "2026-07-18"
+    }
+  ]);
 });
 
 test("deterministic financial fixture drives analytics and transactions consistently", () => {
