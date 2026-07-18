@@ -10,7 +10,7 @@ This runbook defines a deterministic, idempotent path for loading a JSON fixture
 
 ## Current Baseline
 
-- Runtime store: `services/api/data/minance.sqlite` (or `MINANCE_SQLITE_FILE` override).
+- Runtime store: `services/api/data/{env}-minance.sqlite` (or the environment-specific override).
 - Default JSON fixture input: `services/api/test/fixtures/deterministic-financial-store.json` (or `MINANCE_DATA_FILE` override).
 - SQLite foundation bootstrap exists in API startup (`MINANCE_SQLITE_FILE`, `MINANCE_SQLITE_SCHEMA_FILE`, `MINANCE_SQLITE_AUTO_INIT`) and status is observable via `GET /v1/system/storage`.
 - Active write paths: auth, imports, transactions, categories/rules, AI settings, assistant queries, saved views, migration runs, audit events.
@@ -70,7 +70,7 @@ shasum -a 256 "$SOURCE_JSON" > "$BACKUP_DIR/store-$STAMP.sha256"
 
 ### 2) Build/Apply SQLite Schema
 
-1. Create `minance.sqlite` in data directory.
+1. Create `{env}-minance.sqlite` in the data directory.
 2. Apply schema DDL and indexes in a single migration transaction where possible.
 3. Record schema version in a migration metadata table (for example `schema_migrations`).
 
@@ -118,7 +118,7 @@ If any check fails, do not cut over.
 
 ### 5) Load/Refresh SQLite Fixture Data
 
-1. Point the loader at the target SQLite file (recommended env: `MINANCE_SQLITE_FILE=services/api/data/minance.sqlite`).
+1. Set `NODE_ENV` so the loader selects `services/api/data/{env}-minance.sqlite`, or provide the matching SQLite override.
 2. Run the migration script against the JSON fixture.
 3. Run validation before using the resulting SQLite file in tests or staging flows.
 

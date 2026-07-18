@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "..");
 
 export default async function globalSetup() {
-  const sqliteFile = path.join(ROOT_DIR, "services/api/tmp/e2e-minance.sqlite");
+  const sqliteFile = path.join(ROOT_DIR, "services/api/tmp/e2e/test-minance.sqlite");
   const schemaFile = path.join(ROOT_DIR, "services/api/sql/schema.sql");
   const reportDir = path.join(ROOT_DIR, "output/playwright/report");
   const testResultsDir = path.join(ROOT_DIR, "output/playwright/test-results");

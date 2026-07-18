@@ -128,27 +128,27 @@ docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 ```
 
 ## Notes
-- Runtime data uses SQLite at `services/api/data/minance.sqlite`.
+- Runtime data uses an environment-prefixed SQLite file: `development-minance.sqlite`, `test-minance.sqlite`, or `production-minance.sqlite`.
 - SQLite foundation bootstrap is active at startup:
   - runtime uses SQLite in non-test execution
-  - `MINANCE_SQLITE_FILE` selects the SQLite file path (default `services/api/data/minance.sqlite`)
+  - `NODE_ENV` selects `services/api/data/{env}-minance.sqlite`; `MINANCE_SQLITE_FILE` overrides the path outside tests and `MINANCE_SQLITE_FILE_TEST` overrides it in tests
   - `MINANCE_SQLITE_SCHEMA_FILE` selects the schema file (default `services/api/sql/schema.sql`)
   - `MINANCE_SQLITE_AUTO_INIT=false` disables startup schema initialization
 - The stock `docker-compose.selfhost.yml` stack already sets the combined app container's internal SQLite paths. Only add `MINANCE_SQLITE_FILE` or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize that compose file or run Minance outside the stock stack.
 - The stock self-host stack runs the published Docker image `ydeng11/minance:nightly`.
 - `MINANCE_RUNTIME_DATA_SOURCE` controls how `/var/lib/minance` is mounted in the app container:
   - unset: Docker-managed named volume `minance_data`
-  - `./services/api/data`: bind-mount the repo runtime data directory and reuse the existing `services/api/data/minance.sqlite`
+  - `./services/api/data`: bind-mount the repo runtime data directory and reuse `services/api/data/production-minance.sqlite`
 - The backup and restore scripts already target `services/api/data` by default, so no script changes are required when using `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`.
 - Authenticated storage status can be inspected via `GET /v1/system/storage`.
 - Authenticated metrics snapshot can be inspected via `GET /v1/system/metrics`.
 - Generated import API reference lives at `docs/api/imports.md`.
 - The stock self-host compose stack publishes only `MINANCE_WEB_PORT`. Docker container health uses the internal API readiness probe, while `/v1/system/storage` and `/v1/system/metrics` remain reachable through the published web origin.
-- E2E runs use isolated storage via `MINANCE_SQLITE_FILE_TEST=services/api/tmp/e2e-minance.sqlite`.
+- E2E runs use isolated storage at `services/api/tmp/e2e/test-minance.sqlite`.
 - `just dev` and `just dev-api` load `.env.development`; `just test`, `just check`, and `just e2e` load `.env.test`.
 - Development uses the tracked, environment-prefixed `services/api/data/development-minance.sqlite`; `just dev`, `just dev-api`, and `just seed-fixture` rebuild it from the deterministic JSON fixture.
-- Tests use process-isolated empty SQLite files by default; integration tests load the tracked JSON fixture explicitly.
-- Production continues to read `services/api/data/minance.sqlite` (or its `MINANCE_SQLITE_FILE` override) and never loads the development-prefixed fixture.
+- Tests copy tracked `services/api/data/test-minance.sqlite` into an isolated runtime directory while preserving the exact `test-minance.sqlite` filename; integration tests may still provide explicit temporary paths.
+- Production reads `services/api/data/production-minance.sqlite` (or its `MINANCE_SQLITE_FILE` override) and never loads development or test data.
 - JSON fixtures are retained only for explicit migration/import setup tests, with the committed fixture at `services/api/test/fixtures/deterministic-financial-store.json`.
 - Dev/test account is auto-seeded when `NODE_ENV` is not `production`:
   - Email: `dev@minance.local` (override with `DEV_TEST_ACCOUNT_EMAIL`)

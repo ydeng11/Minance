@@ -19,10 +19,12 @@ const FIXTURE_FILE_PATH = path.resolve(
   "fixtures/deterministic-financial-store.json"
 );
 const ROOT_DIR = path.resolve(import.meta.dirname, "../..");
+const PROJECT_ROOT = path.resolve(import.meta.dirname, "../../..");
 const DEVELOPMENT_DATABASE_PATH = path.resolve(
   import.meta.dirname,
   "../data/development-minance.sqlite"
 );
+const TEST_DATABASE_PATH = path.resolve(import.meta.dirname, "../data/test-minance.sqlite");
 
 test("deterministic financial fixture has stable shape and coverage", () => {
   const fixture = createDeterministicFinancialFixture();
@@ -51,27 +53,59 @@ test("deterministic financial fixture file stays aligned with generator", () => 
   assert.deepEqual(fileContents, generated);
 });
 
-test("tracked development database contains the deterministic 2025 and 2026 dataset", () => {
-  assert.equal(fs.existsSync(DEVELOPMENT_DATABASE_PATH), true);
+for (const [environment, databasePath] of [
+  ["development", DEVELOPMENT_DATABASE_PATH],
+  ["test", TEST_DATABASE_PATH]
+]) {
+  test(`tracked ${environment} database contains the deterministic 2025 and 2026 dataset`, () => {
+    assert.equal(fs.existsSync(databasePath), true);
 
+    const result = spawnSync(
+      "sqlite3",
+      [
+        "-json",
+        databasePath,
+        "SELECT COUNT(*) AS transactions, MIN(transaction_date) AS first_date, MAX(transaction_date) AS last_date FROM transactions;"
+      ],
+      { encoding: "utf8" }
+    );
+
+    assert.equal(result.status, 0, result.stderr || `${environment} fixture query failed`);
+    assert.deepEqual(JSON.parse(result.stdout), [
+      {
+        transactions: 214,
+        first_date: "2025-01-01",
+        last_date: "2026-07-18"
+      }
+    ]);
+  });
+}
+
+test("test runtime loads the tracked seed into an isolated test-minance.sqlite", () => {
   const result = spawnSync(
-    "sqlite3",
+    "pnpm",
     [
-      "-json",
-      DEVELOPMENT_DATABASE_PATH,
-      "SELECT COUNT(*) AS transactions, MIN(transaction_date) AS first_date, MAX(transaction_date) AS last_date FROM transactions;"
+      "exec",
+      "tsx",
+      "-e",
+      "void (async () => { const { SQLITE_FILE } = await import('./services/api/src/config.ts'); const { loadStore } = await import('./services/api/src/store.ts'); console.log(JSON.stringify({ sqliteFile: SQLITE_FILE, transactions: loadStore().transactions.length })); })();"
     ],
-    { encoding: "utf8" }
+    {
+      cwd: PROJECT_ROOT,
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        NODE_ENV: "test",
+        MINANCE_SQLITE_FILE_TEST: ""
+      }
+    }
   );
 
-  assert.equal(result.status, 0, result.stderr || "development fixture query failed");
-  assert.deepEqual(JSON.parse(result.stdout), [
-    {
-      transactions: 214,
-      first_date: "2025-01-01",
-      last_date: "2026-07-18"
-    }
-  ]);
+  assert.equal(result.status, 0, result.stderr || "test runtime fixture load failed");
+  const payload = JSON.parse(result.stdout.trim());
+  assert.equal(path.basename(payload.sqliteFile), "test-minance.sqlite");
+  assert.match(payload.sqliteFile, /services\/api\/tmp\/test-runtime-/);
+  assert.equal(payload.transactions, 214);
 });
 
 test("deterministic financial fixture drives analytics and transactions consistently", () => {

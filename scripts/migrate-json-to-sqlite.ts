@@ -10,6 +10,10 @@ import {
 } from "./sqlite-cutover-lib.ts";
 import { ensureSqliteFoundation } from "../services/api/src/sqlite-foundation.ts";
 import { writeStoreCollectionsToSqlite } from "../services/api/src/sqlite-store-repository.ts";
+import {
+  getConfiguredSqliteFile,
+  getDefaultSqliteFile
+} from "../services/api/src/runtime-env.ts";
 
 const DEFAULT_SOURCE_PATH = "services/api/data/store.json";
 
@@ -18,7 +22,7 @@ function printHelp() {
 
 Options:
   --source   Source JSON store path (default: MINANCE_DATA_FILE or ${DEFAULT_SOURCE_PATH})
-  --db       Target SQLite file path (default: MINANCE_SQLITE_FILE or services/api/data/minance.sqlite)
+  --db       Target SQLite file path (default: environment override or {NODE_ENV}-minance.sqlite)
   --schema   SQLite schema SQL file (default: MINANCE_SQLITE_SCHEMA_FILE or services/api/sql/schema.sql)
   --help     Show this help message
 `);
@@ -54,7 +58,10 @@ function main() {
   }
 
   const sourcePath = resolvePathFromRoot(args.source || process.env.MINANCE_DATA_FILE, DEFAULT_SOURCE_PATH);
-  const dbPath = resolvePathFromRoot(args.db || process.env.MINANCE_SQLITE_FILE, "services/api/data/minance.sqlite");
+  const dbPath = resolvePathFromRoot(
+    args.db || getConfiguredSqliteFile(process.env, process.env.NODE_ENV),
+    getDefaultSqliteFile(process.env.NODE_ENV)
+  );
   const schemaPath = resolvePathFromRoot(
     args.schema || process.env.MINANCE_SQLITE_SCHEMA_FILE,
     "services/api/sql/schema.sql"

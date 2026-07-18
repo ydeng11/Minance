@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 import { threadId } from "node:worker_threads";
-
 import {
+  getDefaultSqliteFile,
   getEnvFileName,
   resolveRuntimePaths,
   resolveStoreBackend
@@ -29,7 +29,10 @@ test("test mode ignores live storage env vars and uses isolated defaults", () =>
   );
   assert.equal(
     runtime.sqliteFile,
-    path.join(ROOT_DIR, `services/api/tmp/test-minance-${process.pid}-${threadId}.sqlite`)
+    path.join(
+      ROOT_DIR,
+      `services/api/tmp/test-runtime-${process.pid}-${threadId}/test-minance.sqlite`
+    )
   );
   assert.equal(runtime.sqliteSchemaFile, path.join(ROOT_DIR, "services/api/sql/schema.sql"));
 });
@@ -81,7 +84,7 @@ test("development mode resolves the tracked environment-prefixed database", () =
   assert.equal(runtime.sqliteSchemaFile, path.join(ROOT_DIR, "services/api/sql/schema.sql"));
 });
 
-test("production mode remains distinct from the environment-prefixed development database", () => {
+test("production mode resolves the production-prefixed database", () => {
   const defaultRuntime = resolveRuntimePaths({
     rootDir: ROOT_DIR,
     nodeEnv: "production",
@@ -93,12 +96,18 @@ test("production mode remains distinct from the environment-prefixed development
     env: { MINANCE_SQLITE_FILE: "services/api/data/live.sqlite" }
   });
 
-  assert.equal(getEnvFileName("production"), ".env.local");
+  assert.equal(getEnvFileName("production"), ".env.production");
   assert.equal(
     defaultRuntime.sqliteFile,
-    path.join(ROOT_DIR, "services/api/data/minance.sqlite")
+    path.join(ROOT_DIR, "services/api/data/production-minance.sqlite")
   );
   assert.equal(runtime.sqliteFile, path.join(ROOT_DIR, "services/api/data/live.sqlite"));
+});
+
+test("default SQLite datasets are named from their runtime environment", () => {
+  assert.equal(getDefaultSqliteFile("development"), "services/api/data/development-minance.sqlite");
+  assert.equal(getDefaultSqliteFile("test"), "services/api/data/test-minance.sqlite");
+  assert.equal(getDefaultSqliteFile("production"), "services/api/data/production-minance.sqlite");
 });
 
 test("non-test mode forces sqlite backend even when JSON is requested", () => {

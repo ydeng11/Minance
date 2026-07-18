@@ -11,7 +11,7 @@
     "build:web": "pnpm --filter @minance/web build",
     "start": "concurrently -k \"pnpm start:api\" \"pnpm start:web\"",
     "start:web": "pnpm --filter @minance/web start --port 3000",
-    "start:api": "env PORT=3001 tsx services/api/src/server.ts",
+    "start:api": "env NODE_ENV=production PORT=3001 tsx services/api/src/server.ts",
     "migrate:sqlite": "tsx scripts/migrate-json-to-sqlite.ts",
     "validate:sqlite": "tsx scripts/validate-json-vs-sqlite.ts",
     "seed:fixture": "tsx scripts/seed-deterministic-fixture.ts",
