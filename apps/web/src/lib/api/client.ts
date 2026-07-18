@@ -55,9 +55,11 @@ function buildBody(body: RequestOptions["body"]) {
 }
 
 export function createApiClient(context: ApiClientContext) {
-  async function refreshAccessToken(tokens: Tokens): Promise<boolean> {
+  let refreshPromise: Promise<Tokens | null> | null = null;
+
+  async function requestRefreshedTokens(tokens: Tokens): Promise<Tokens | null> {
     if (!tokens.refreshToken) {
-      return false;
+      return null;
     }
 
     const response = await fetch("/v1/auth/refresh", {
@@ -69,26 +71,36 @@ export function createApiClient(context: ApiClientContext) {
     });
 
     if (!response.ok) {
-      return false;
+      return null;
     }
 
     const payload = (await parsePayload<{ accessToken: string; accessExpiresAt: string }>(response)) || null;
     if (!payload?.accessToken || !payload.accessExpiresAt) {
-      return false;
+      return null;
     }
 
-    context.setTokens({
+    const refreshedTokens = {
       ...tokens,
       accessToken: payload.accessToken,
       accessExpiresAt: payload.accessExpiresAt
-    });
+    };
+    context.setTokens(refreshedTokens);
 
-    return true;
+    return refreshedTokens;
   }
 
-  async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  function refreshAccessToken(tokens: Tokens): Promise<Tokens | null> {
+    if (!refreshPromise) {
+      refreshPromise = requestRefreshedTokens(tokens).finally(() => {
+        refreshPromise = null;
+      });
+    }
+    return refreshPromise;
+  }
+
+  async function request<T>(path: string, options: RequestOptions = {}, tokenOverride: Tokens | null = null): Promise<T> {
     const { auth = true, retry = true, body, headers, responseType = "json", ...rest } = options;
-    const tokens = context.getTokens();
+    const tokens = tokenOverride || context.getTokens();
 
     const requestHeaders = new Headers(headers || {});
     const requestBody = buildBody(body);
@@ -108,9 +120,9 @@ export function createApiClient(context: ApiClientContext) {
 
     if (response.status === 401 && auth) {
       if (retry && tokens?.refreshToken) {
-        const refreshed = await refreshAccessToken(tokens);
-        if (refreshed) {
-          return request<T>(path, { ...options, retry: false });
+        const refreshedTokens = await refreshAccessToken(tokens);
+        if (refreshedTokens) {
+          return request<T>(path, { ...options, retry: false }, refreshedTokens);
         }
       }
       context.setTokens(null);
