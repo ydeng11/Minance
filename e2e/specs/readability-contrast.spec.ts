@@ -292,11 +292,6 @@ test("@core major tab text and input contrast meets dark-theme thresholds", asyn
   });
 
   await gotoView(page, "settings");
-  await expectContrast(page.getByTestId("settings-section-map").locator("p").first(), {
-    label: "settings section map description text",
-    minRatio: CONTRAST_TARGETS.body
-  });
-
   await expectContrast(page.getByTestId("settings-data-controls").locator("p").first(), {
     label: "settings data controls description text",
     minRatio: CONTRAST_TARGETS.body

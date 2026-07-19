@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { loginWithSeedAccount } from "./helpers.ts";
 
-test("@core AI settings are available in the settings menu", async ({ page }) => {
+test("@core AI settings are available without a global help menu", async ({ page }) => {
   await loginWithSeedAccount(page);
 
   const primaryNav = page.getByTestId("primary-nav");
@@ -19,12 +19,7 @@ test("@core AI settings are available in the settings menu", async ({ page }) =>
 
   await expect(page.getByTestId("settings-menu-migration")).toHaveCount(0);
 
-  const helpMenuToggle = page.getByTestId("help-menu-toggle");
-  await expect(helpMenuToggle).toBeVisible();
-  await helpMenuToggle.click();
-  await expect(page.getByTestId("help-menu-panel")).toBeVisible();
-  await page.getByTestId("help-menu-link-operator-guide").click();
-  await expect(page.getByTestId("help-page")).toBeVisible();
+  await expect(page.getByTestId("help-menu-toggle")).toHaveCount(0);
 });
 
 test("@core mobile more navigation exposes secondary routes", async ({ page }) => {

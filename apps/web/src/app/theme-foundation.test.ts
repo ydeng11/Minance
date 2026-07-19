@@ -314,17 +314,22 @@ test("explorer summary band uses semantic tokens instead of hard-coded dark char
   assert.doesNotMatch(explorerSummaryBandSource, /rgba\(/);
 });
 
-test("settings page exposes explicit theme controls", () => {
-  assert.match(settingsPageSource, /data-testid="settings-appearance"/);
-  assert.match(settingsPageSource, /testId: "settings-theme-dark"/);
-  assert.match(settingsPageSource, /testId: "settings-theme-light"/);
+test("shell exposes the persistent light and dark mode switch", () => {
+  assert.match(shellSource, /useAppTheme/);
+  assert.match(shellSource, /data-testid="theme-toggle"/);
+  assert.match(shellSource, /role="switch"/);
+  assert.match(shellSource, /aria-checked=\{theme === "light"\}/);
+  assert.match(shellSource, /setTheme\(theme === "dark" \? "light" : "dark"\)/);
 });
 
-test("settings theme selector active badge uses accent color for WCAG contrast", () => {
-  assert.match(
-    settingsPageSource,
-    /\$\{isActive \? "text-accent" : "text-text-muted"\}/
-  );
+test("settings omits navigation, appearance, help, and integrations cards", () => {
+  assert.doesNotMatch(settingsPageSource, /settings-section-map/);
+  assert.doesNotMatch(settingsPageSource, /Section Map/);
+  assert.doesNotMatch(settingsPageSource, /settings-appearance/);
+  assert.doesNotMatch(settingsPageSource, /settings-help-link/);
+  assert.doesNotMatch(settingsPageSource, /Help &amp; support links/);
+  assert.doesNotMatch(settingsPageSource, /settings-integrations/);
+  assert.doesNotMatch(settingsPageSource, /settings-ai-settings-link/);
 });
 
 test("settings routes use semantic token-backed surfaces so both themes stay legible", () => {

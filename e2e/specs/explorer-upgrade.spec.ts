@@ -103,6 +103,8 @@ test("spending trend inspects a month before filtering explorer", async ({ page 
 
   const trend = page.getByTestId("explorer-overview-trend");
   await expect(trend).toBeVisible();
+  await expect(page.getByTestId("explorer-trend-spend-axis")).toHaveAttribute("aria-label", /^Spend y axis from zero to \$/);
+  await expect(page.getByTestId("explorer-trend-income-axis")).toHaveAttribute("aria-label", /^Income y axis from zero to \$/);
   await expect(page.getByTestId("explorer-trend-detail")).toContainText("Spend composition");
   await expect(page.getByTestId("explorer-trend-detail")).toContainText("Income composition");
 

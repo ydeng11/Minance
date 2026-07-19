@@ -30,10 +30,10 @@ const MONTH_BARS_BASE_CLASS = "flex w-full items-end gap-1 rounded-[24px] border
 const MONTH_BARS_SELECTED_CLASS = "border-accent/35 bg-accent-soft";
 const MONTH_BARS_IDLE_CLASS = "border-border-subtle bg-surface-field/70 hover:border-border-strong hover:bg-surface-elevated";
 const BAR_HALF_CLASS = "w-1/2 rounded-t-[14px] transition";
-const SPEND_BAR_SELECTED_CLASS = "bg-[oklch(0.62_0.075_35)]";
-const SPEND_BAR_IDLE_CLASS = "bg-[oklch(0.50_0.050_35)] group-hover:bg-[oklch(0.57_0.065_35)]";
-const INCOME_BAR_SELECTED_CLASS = "bg-[oklch(0.66_0.070_165)]";
-const INCOME_BAR_IDLE_CLASS = "bg-[oklch(0.52_0.050_165)] group-hover:bg-[oklch(0.60_0.060_165)]";
+const SPEND_BAR_SELECTED_CLASS = "bg-[oklch(0.68_0.16_25)]";
+const SPEND_BAR_IDLE_CLASS = "bg-[oklch(0.52_0.10_25)] group-hover:bg-[oklch(0.61_0.14_25)]";
+const INCOME_BAR_SELECTED_CLASS = "bg-[oklch(0.70_0.14_240)]";
+const INCOME_BAR_IDLE_CLASS = "bg-[oklch(0.54_0.09_240)] group-hover:bg-[oklch(0.63_0.12_240)]";
 const MONTH_LABEL_CLASS = "text-[11px] font-medium uppercase tracking-[0.18em] group-hover:text-text-secondary";
 const DETAIL_PANEL_CLASS = "mt-6 rounded-[24px] border border-border-subtle bg-surface-panel/70 p-5";
 const DETAIL_EYEBROW_CLASS = "text-xs uppercase tracking-[0.18em] text-text-muted";
@@ -99,6 +99,46 @@ function formatMonthDetailLabel(month: string) {
   }).format(parseMonthDate(month));
 }
 
+function formatAxisValue(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    notation: "compact",
+    maximumFractionDigits: 1
+  }).format(value);
+}
+
+function TrendAxis({
+  label,
+  max,
+  side
+}: {
+  label: "Spend" | "Income";
+  max: number;
+  side: "left" | "right";
+}) {
+  const colorClass = label === "Spend"
+    ? "text-[oklch(0.68_0.16_25)]"
+    : "text-[oklch(0.70_0.14_240)]";
+
+  return (
+    <div
+      data-testid={`explorer-trend-${label.toLowerCase()}-axis`}
+      aria-label={`${label} y axis from zero to ${money(max)}`}
+      className={cn(
+        "relative flex h-[280px] min-w-14 flex-col justify-between pb-10 text-[10px] font-semibold tabular-nums",
+        side === "right" ? "items-end text-right" : "items-start",
+        colorClass
+      )}
+    >
+      <span className="absolute -top-5 uppercase tracking-[0.16em]">{label}</span>
+      <span>{formatAxisValue(max)}</span>
+      <span>{formatAxisValue(max / 2)}</span>
+      <span>{formatAxisValue(0)}</span>
+    </div>
+  );
+}
+
 export function TrendChart({
   overview,
   trend,
@@ -114,7 +154,6 @@ export function TrendChart({
 
     const maxSpend = Math.max(1, ...sourceTrend.map((item) => item.spend));
     const maxIncome = Math.max(1, ...sourceTrend.map((item) => item.income));
-    const sharedMax = Math.max(maxSpend, maxIncome);
     const includeYear = sourceTrend.length > 12;
 
     return sourceTrend.map((entry) => ({
@@ -124,10 +163,13 @@ export function TrendChart({
       ariaLabel: `${formatMonthDetailLabel(entry.month)} trend summary: spend ${money(entry.spend)}, income ${money(entry.income)}, net ${money(entry.net)}`,
       spendComposition: Array.isArray(entry.spendComposition) ? entry.spendComposition : [],
       incomeComposition: Array.isArray(entry.incomeComposition) ? entry.incomeComposition : [],
-      spendHeight: Math.max(24, Math.round((entry.spend / sharedMax) * 220)),
-      incomeHeight: Math.max(16, Math.round((entry.income / sharedMax) * 220))
+      spendHeight: Math.max(24, Math.round((entry.spend / maxSpend) * 220)),
+      incomeHeight: Math.max(16, Math.round((entry.income / maxIncome) * 220))
     }));
   }, [overview, trend]);
+
+  const maxSpend = Math.max(1, ...trendBars.map((item) => item.spend));
+  const maxIncome = Math.max(1, ...trendBars.map((item) => item.income));
 
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
 
@@ -185,55 +227,59 @@ export function TrendChart({
           {rangeLabel}
         </div>
       </div>
-      <div className="mt-8 overflow-x-auto pb-2">
-        <div className="flex min-h-[260px] min-w-full items-end gap-4">
-          {trendBars.map((item) => {
-            const isSelected = selectedTrend?.month === item.month;
+      <div className="mt-8 grid grid-cols-[auto_minmax(0,1fr)_auto] items-end gap-3">
+        <TrendAxis label="Spend" max={maxSpend} side="left" />
+        <div className="overflow-x-auto pb-2">
+          <div className="flex min-h-[260px] min-w-full items-end gap-4">
+            {trendBars.map((item) => {
+              const isSelected = selectedTrend?.month === item.month;
 
-            return (
-              <button
-                key={item.month}
-                type="button"
-                onClick={() => setSelectedMonth(item.month)}
-                data-testid={`explorer-trend-month-${item.month}`}
-                aria-label={item.ariaLabel}
-                className={MONTH_BUTTON_CLASS}
-              >
-                <div
-                  className={cn(
-                    MONTH_BARS_BASE_CLASS,
-                    isSelected ? MONTH_BARS_SELECTED_CLASS : MONTH_BARS_IDLE_CLASS
-                  )}
+              return (
+                <button
+                  key={item.month}
+                  type="button"
+                  onClick={() => setSelectedMonth(item.month)}
+                  data-testid={`explorer-trend-month-${item.month}`}
+                  aria-label={item.ariaLabel}
+                  className={MONTH_BUTTON_CLASS}
                 >
                   <div
                     className={cn(
-                      BAR_HALF_CLASS,
-                      isSelected ? SPEND_BAR_SELECTED_CLASS : SPEND_BAR_IDLE_CLASS
+                      MONTH_BARS_BASE_CLASS,
+                      isSelected ? MONTH_BARS_SELECTED_CLASS : MONTH_BARS_IDLE_CLASS
                     )}
-                    style={{ height: item.spendHeight }}
-                    title={`Spend: ${money(item.spend)}`}
-                  />
+                  >
+                    <div
+                      className={cn(
+                        BAR_HALF_CLASS,
+                        isSelected ? SPEND_BAR_SELECTED_CLASS : SPEND_BAR_IDLE_CLASS
+                      )}
+                      style={{ height: item.spendHeight }}
+                      title={`Spend: ${money(item.spend)}`}
+                    />
+                    <div
+                      className={cn(
+                        BAR_HALF_CLASS,
+                        isSelected ? INCOME_BAR_SELECTED_CLASS : INCOME_BAR_IDLE_CLASS
+                      )}
+                      style={{ height: item.incomeHeight }}
+                      title={`Income: ${money(item.income)}`}
+                    />
+                  </div>
                   <div
                     className={cn(
-                      BAR_HALF_CLASS,
-                      isSelected ? INCOME_BAR_SELECTED_CLASS : INCOME_BAR_IDLE_CLASS
+                      MONTH_LABEL_CLASS,
+                      isSelected ? "text-text-primary" : "text-text-muted"
                     )}
-                    style={{ height: item.incomeHeight }}
-                    title={`Income: ${money(item.income)}`}
-                  />
-                </div>
-                <div
-                  className={cn(
-                    MONTH_LABEL_CLASS,
-                    isSelected ? "text-text-primary" : "text-text-muted"
-                  )}
-                >
-                  {item.label}
-                </div>
-              </button>
-            );
-          })}
+                  >
+                    {item.label}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
+        <TrendAxis label="Income" max={maxIncome} side="right" />
       </div>
       {selectedTrend ? (
         <div
@@ -264,11 +310,11 @@ export function TrendChart({
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className={METRIC_CARD_CLASS}>
               <div className={METRIC_LABEL_CLASS}>Spend</div>
-              <div className="mt-2 text-xl font-semibold text-[oklch(0.68_0.085_35)]">{money(selectedTrend.spend)}</div>
+              <div className="mt-2 text-xl font-semibold text-[oklch(0.68_0.16_25)]">{money(selectedTrend.spend)}</div>
             </div>
             <div className={METRIC_CARD_CLASS}>
               <div className={METRIC_LABEL_CLASS}>Income</div>
-              <div className="mt-2 text-xl font-semibold text-[oklch(0.72_0.080_165)]">{money(selectedTrend.income)}</div>
+              <div className="mt-2 text-xl font-semibold text-[oklch(0.70_0.14_240)]">{money(selectedTrend.income)}</div>
             </div>
             <div className={METRIC_CARD_CLASS}>
               <div className={METRIC_LABEL_CLASS}>Net</div>

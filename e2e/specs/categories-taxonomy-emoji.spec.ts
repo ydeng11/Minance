@@ -75,11 +75,19 @@ test("@core settings no longer exposes taxonomy editing controls", async ({ page
   await gotoView(page, "settings");
 
   await expect(page.getByTestId("settings-page")).toBeVisible();
-  await expect(page.getByTestId("settings-section-map")).toBeVisible();
+  await expect(page.getByTestId("settings-section-map")).toHaveCount(0);
+  await expect(page.getByTestId("settings-appearance")).toHaveCount(0);
   await expect(page.getByTestId("settings-data-controls")).toBeVisible();
-  await expect(page.getByTestId("settings-integrations")).toBeVisible();
-  await expect(page.getByTestId("settings-ai-settings-link")).toBeVisible();
+  await expect(page.getByTestId("settings-integrations")).toHaveCount(0);
+  await expect(page.getByTestId("settings-ai-settings-link")).toHaveCount(0);
+  await expect(page.getByTestId("settings-help-link")).toHaveCount(0);
   await expect(page.getByTestId("settings-import-open")).toBeVisible();
+
+  const themeToggle = page.getByTestId("theme-toggle");
+  await expect(themeToggle).toBeVisible();
+  const initialTheme = await page.locator("html").getAttribute("data-theme");
+  await themeToggle.click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", initialTheme === "light" ? "dark" : "light");
 
   await expect(page.getByTestId("settings-page")).not.toContainText("Category taxonomy saved.");
   await expect(page.getByTestId("settings-page")).not.toContainText("Add a category");

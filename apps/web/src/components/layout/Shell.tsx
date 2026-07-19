@@ -2,15 +2,15 @@
 
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare, SlidersHorizontal } from "lucide-react";
+import { MessageSquare, Moon, SlidersHorizontal, Sun } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AssistantConversation } from "@/components/assistant/AssistantConversation";
-import { HelpMenu } from "@/components/layout/HelpMenu";
 import { getShellContentWidthClass } from "@/components/layout/shellWidth";
 import { ViewDialog } from "@/components/view/ViewDialog";
 import { useViewController } from "@/components/view/ViewController";
 import { isViewRoute } from "@/components/view/viewRoutes";
+import { useAppTheme } from "@/components/providers/ThemeProvider";
 import { useSession } from "@/lib/session";
 
 const ASSISTANT_FOCUSABLE_SELECTOR = [
@@ -27,6 +27,7 @@ const ASSISTANT_FOCUSABLE_SELECTOR = [
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useSession();
+  const { theme, setTheme } = useAppTheme();
   const { isViewOpen, toggleView, view } = useViewController();
   const appEnv = process.env.NEXT_PUBLIC_APP_ENV || "local";
   const shellContentWidthClass = getShellContentWidthClass(pathname);
@@ -190,7 +191,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <p className="mt-2 text-sm text-text-secondary" data-testid="user-email">{user?.email ?? ""}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <HelpMenu />
               {showViewToggle ? (
                 <button
                   type="button"
@@ -214,6 +214,23 @@ export function Shell({ children }: { children: React.ReactNode }) {
               >
                 <MessageSquare className="h-4 w-4" aria-hidden="true" />
                 AI Assistant
+              </button>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={theme === "light"}
+                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                data-testid="theme-toggle"
+                className="relative inline-flex h-9 w-[68px] items-center justify-between rounded-xl border border-border-subtle bg-surface-field p-1 text-text-muted transition hover:border-border-strong hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`absolute left-1 top-1 h-7 w-7 rounded-lg bg-accent-soft shadow-sm transition-transform ${theme === "light" ? "translate-x-8" : "translate-x-0"}`}
+                />
+                <Moon className={`relative z-10 h-4 w-4 ${theme === "dark" ? "text-accent" : "text-text-muted"}`} aria-hidden="true" />
+                <Sun className={`relative z-10 h-4 w-4 ${theme === "light" ? "text-accent" : "text-text-muted"}`} aria-hidden="true" />
               </button>
               <button
                 type="button"

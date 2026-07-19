@@ -67,6 +67,16 @@ test("explorer uses differentiated analytics shells instead of repeated clone ca
   assert.match(anomaliesSource, /analytics-anomaly-ledger/);
 });
 
+test("explorer money flow gives spend and income separate color-coded y axes", () => {
+  assert.match(trendChartSource, /data-testid=\{`explorer-trend-\$\{label\.toLowerCase\(\)\}-axis`\}/);
+  assert.match(trendChartSource, /<TrendAxis label="Spend" max=\{maxSpend\} side="left"/);
+  assert.match(trendChartSource, /<TrendAxis label="Income" max=\{maxIncome\} side="right"/);
+  assert.match(trendChartSource, /entry\.spend \/ maxSpend/);
+  assert.match(trendChartSource, /entry\.income \/ maxIncome/);
+  assert.match(trendChartSource, /text-\[oklch\(0\.68_0\.16_25\)\]/);
+  assert.match(trendChartSource, /text-\[oklch\(0\.70_0\.14_240\)\]/);
+});
+
 test("visual shells use semantic tokens and avoid repeated gradient card tells", () => {
   const supportKpiButtonClass = readConstAssignment(dashboardPageSource, "SUPPORT_KPI_BUTTON_CLASS");
   const panelClass = readConstAssignment(dashboardPageSource, "PANEL_CLASS");
