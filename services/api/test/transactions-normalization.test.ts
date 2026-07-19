@@ -52,7 +52,7 @@ const BASE_STORE = {
   accounts: [],
   transactions: [
     {
-      id: "txn_imported_neg",
+      id: "txn_imported_outflow",
       user_id: "user_1",
       account_id: "acct_1",
       account_key: "checking",
@@ -63,7 +63,7 @@ const BASE_STORE = {
       merchant_raw: "COSTCO WHSE #00",
       merchant_normalized: "costco whse 00",
       description: "General PayPal Debit Card Transaction",
-      amount: -120.45,
+      amount: 120.45,
       currency: "USD",
       direction: "outflow",
       transaction_type: "expense",
@@ -76,36 +76,36 @@ const BASE_STORE = {
       tags: [],
       recurring_rule_id: null,
       memo: null,
-      dedupe_fingerprint: "fp_imported_neg",
+      dedupe_fingerprint: "fp_imported_outflow",
       created_at: "2026-01-03T00:00:00.000Z",
       updated_at: "2026-01-03T00:00:00.000Z"
     },
     {
-      id: "txn_legacy_neg",
+      id: "txn_imported_second_outflow",
       user_id: "user_1",
       account_id: "acct_1",
       account_key: "checking",
-      source_type: "legacy_api",
+      source_type: "imported",
       source_file_id: null,
       transaction_date: "2026-01-04",
       post_date: null,
       merchant_raw: "ENSON MARKET",
       merchant_normalized: "enson market",
       description: "General PayPal Debit Card Transaction",
-      amount: -56.1,
+      amount: 56.1,
       currency: "USD",
       direction: "outflow",
       transaction_type: "expense",
       category_raw: "Groceries",
       category_final: "Groceries",
       category_confidence: 1,
-      category_strategy: "legacy_api_mapping",
+      category_strategy: "import_override",
       needs_category_review: false,
       review_status: "reviewed",
       tags: [],
       recurring_rule_id: null,
       memo: null,
-      dedupe_fingerprint: "fp_legacy_neg",
+      dedupe_fingerprint: "fp_imported_second_outflow",
       created_at: "2026-01-04T00:00:00.000Z",
       updated_at: "2026-01-04T00:00:00.000Z"
     },
@@ -153,23 +153,22 @@ const BASE_STORE = {
   aiProviderPreferences: [],
   assistantQueries: [],
   savedViews: [],
-  migrationRuns: [],
   auditEvents: []
 };
 
-test("listTransactions normalizes negative outflow amounts to positive expense amounts", () => {
+test("listTransactions preserves canonical positive outflow amounts", () => {
   resetStoreForTests(structuredClone(BASE_STORE));
 
   const listed = listTransactions("user_1", { range: "all", limit: 50, offset: 0 });
   const byId = new Map(listed.items.map((entry) => [entry.id, entry]));
 
-  assert.equal(byId.get("txn_imported_neg")?.direction, "outflow");
-  assert.equal(byId.get("txn_imported_neg")?.amount, 120.45);
-  assert.equal(byId.get("txn_legacy_neg")?.direction, "outflow");
-  assert.equal(byId.get("txn_legacy_neg")?.amount, 56.1);
+  assert.equal(byId.get("txn_imported_outflow")?.direction, "outflow");
+  assert.equal(byId.get("txn_imported_outflow")?.amount, 120.45);
+  assert.equal(byId.get("txn_imported_second_outflow")?.direction, "outflow");
+  assert.equal(byId.get("txn_imported_second_outflow")?.amount, 56.1);
 });
 
-test("overview spend remains positive even if persisted outflow rows are signed negative", () => {
+test("overview spend uses canonical positive outflow amounts", () => {
   resetStoreForTests(structuredClone(BASE_STORE));
 
   const overview = getOverview("user_1", { start: "2026-01-01", end: "2026-01-31" });
@@ -252,6 +251,34 @@ test("createManualTransaction returns the normalized transaction contract", () =
   });
 
   assert.deepEqual(sortedKeys(created), NORMALIZED_TRANSACTION_KEYS);
+});
+
+test("createManualTransaction rejects pre-refactor direction values", () => {
+  const store = structuredClone(BASE_STORE);
+  store.categories = [
+    {
+      id: "cat_groceries",
+      userId: "user_1",
+      name: "Groceries",
+      type: "expense",
+      isSystem: false,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    }
+  ];
+  resetStoreForTests(store);
+
+  assert.throws(
+    () => createManualTransaction("user_1", {
+      transaction_date: "2026-01-11",
+      description: "Legacy debit",
+      amount: 45,
+      direction: "debit",
+      category_final: "Groceries",
+      account_name: "checking"
+    }),
+    /Invalid transaction direction/
+  );
 });
 
 test("createManualTransaction reuses account selected by display identifier label", () => {
@@ -365,7 +392,7 @@ test("listTransactions filters by minimum and maximum absolute amount", () => {
     offset: 0
   });
 
-  assert.deepEqual(listed.items.map((entry) => entry.id), ["txn_imported_neg"]);
+  assert.deepEqual(listed.items.map((entry) => entry.id), ["txn_imported_outflow"]);
 });
 
 test("listTransactions keeps custom transfer categories when filtering by transfer type", () => {

@@ -13,8 +13,7 @@ This runbook defines a deterministic, idempotent path for loading a JSON fixture
 - Runtime store: `services/api/data/{env}-minance.sqlite` (or the environment-specific override).
 - Default JSON fixture input: `services/api/test/fixtures/deterministic-financial-store.json` (or `MINANCE_DATA_FILE` override).
 - SQLite foundation bootstrap exists in API startup (`MINANCE_SQLITE_FILE`, `MINANCE_SQLITE_SCHEMA_FILE`, `MINANCE_SQLITE_AUTO_INIT`) and status is observable via `GET /v1/system/storage`.
-- Active write paths: auth, imports, transactions, categories/rules, AI settings, assistant queries, saved views, migration runs, audit events.
-- Legacy Minance SQLite import endpoint already exists (`/v1/migrations/minance/sqlite`) and is separate from this JSON-to-SQLite cutover.
+- Active write paths: auth, imports, transactions, categories/rules, AI settings, assistant queries, saved views, and audit events.
 
 ## Target SQLite Schema (Canonical Tables)
 
@@ -35,7 +34,6 @@ Use one table per top-level JSON collection (from `services/api/src/store.js`):
 - `ai_provider_preferences`
 - `assistant_queries`
 - `saved_views`
-- `migration_runs`
 - `audit_events`
 
 Recommended constraints/indexes:
@@ -85,7 +83,7 @@ Insert in dependency order:
 5. `transactions`
 6. `ai_provider_credentials`, `ai_provider_preferences`
 7. `assistant_queries`, `saved_views`
-8. `migration_runs`, `audit_events`
+8. `audit_events`
 
 Use idempotent writes:
 

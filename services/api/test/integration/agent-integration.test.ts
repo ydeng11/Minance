@@ -236,7 +236,6 @@ function createBaseStore() {
     aiProviderPreferences: [],
     assistantQueries: [],
     savedViews: [],
-    migrationRuns: [],
     auditEvents: []
   };
 }

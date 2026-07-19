@@ -15,7 +15,6 @@ This document defines how Minance Next maps Copilot-style product expectations t
 | Authentication and sessions | Email/password auth, session refresh, user profile | Supported | `POST /v1/auth/signup`, `POST /v1/auth/login`, `POST /v1/auth/refresh`, `GET/DELETE /v1/users/me` | Local session/token storage in SQLite runtime data. |
 | Canonical data store | Durable relational storage | Supported | Production SQLite runtime store (`services/api/data/production-minance.sqlite`) is active, with foundation/bootstrap status exposed at `GET /v1/system/storage` | JSON fixtures remain only for explicit test or fixture-import flows; see [JSON-to-SQLite runbook](./json-to-sqlite-migration-runbook.md). |
 | CSV import and mapping | Bank CSV ingestion with review, mapping, diagnostics | Supported | Implemented import workflow (`/v1/imports*`) with processed-row editor and dedupe | Deterministic parser + manual mapping/editing when heuristics/AI confidence is low. |
-| Legacy Minance migration | Import from legacy Minance SQLite DB | Supported | `POST /v1/migrations/minance/sqlite` and migration report endpoint are implemented | Requires host `sqlite3` CLI. If unavailable, operator uses CSV import path. |
 | Transactions lifecycle | Create/edit/delete and filter transactions | Partially supported | Manual CRUD and query filters are implemented (`/v1/transactions*`) with canonical day-boundary semantics documented in [`transaction-date-day-boundary-semantics.md`](./transaction-date-day-boundary-semantics.md) | Bulk operations, review workflows, and parity details tracked by open parity tasks. |
 | Categories and rules | Category CRUD, strategy tuning, mapping rules | Partially supported | Category list/create/update/delete, rules create, strategy get/update implemented | Group/type/budget parity and full Categories-tab parity are tracked separately. |
 | Accounts workflows | Dedicated accounts onboarding/settings flows | Partially supported | Accounts API create/update/list, supported-type, balance-history, and manual-adjustment endpoints are implemented (`/v1/accounts*`), while the Accounts tab UI is still placeholder | Manual/CSV provider fallback remains default; deeper account UX/settings/archive flows are tracked by open tasks. |
@@ -34,7 +33,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
 - Required runtime dependencies:
   - Node.js runtime for web/API.
 - Optional dependencies:
-  - `sqlite3` CLI for legacy migration flow and SQLite foundation bootstrap/validation.
+  - `sqlite3` CLI for SQLite foundation bootstrap/validation.
   - AI provider APIs (OpenAI/OpenRouter/Anthropic/Google) only when the operator/user configures BYOK keys.
 - Explicitly non-required for baseline operation:
   - Proprietary bank-link providers.
@@ -55,7 +54,7 @@ This document defines how Minance Next maps Copilot-style product expectations t
   - [`self-host-operations-runbook.md`](./self-host-operations-runbook.md)
   - [`self-host-breaking-migration-guide.md`](./self-host-breaking-migration-guide.md)
 - App remains usable without any AI keys:
-  - import, manual transaction CRUD, analytics, categories, and migration UI continue to function.
+  - import, manual transaction CRUD, analytics, and categories continue to function.
 - Development defaults:
   - optional dev/test account seeding (can be disabled via env).
 

@@ -17,7 +17,7 @@ test("categorizeTransaction prioritizes rule over other strategies", () => {
     merchant_normalized: "coffee123",
     description: "Coffee House",
     memo: "",
-    direction: "debit"
+    direction: "outflow"
   };
 
   const result = categorizeTransaction({
@@ -35,7 +35,7 @@ test("merchant memory is used when rules do not match", () => {
     merchant_normalized: "safe_market",
     description: "safe market",
     memo: "",
-    direction: "debit"
+    direction: "outflow"
   };
 
   const result = categorizeTransaction({
@@ -63,7 +63,7 @@ test("categorizeTransaction maps Jeep/Honda merchants to Auto", () => {
     merchant_normalized: "american honda finance",
     description: "Honda Financial Services",
     memo: "",
-    direction: "debit",
+    direction: "outflow",
     category_raw: "Automotive"
   };
 
@@ -82,7 +82,7 @@ test("categorizeTransactionWithAgent prioritizes rules over agent", async () => 
     merchant_normalized: "coffee123",
     description: "Coffee House",
     memo: "",
-    direction: "debit"
+    direction: "outflow"
   };
 
   const result = await categorizeTransactionWithAgent({
@@ -101,7 +101,7 @@ test("categorizeTransactionWithAgent prioritizes merchant memory over agent", as
     merchant_normalized: "safe_market",
     description: "safe market",
     memo: "",
-    direction: "debit"
+    direction: "outflow"
   };
 
   const result = await categorizeTransactionWithAgent({
@@ -121,7 +121,7 @@ test("categorizeTransactionWithAgent calls agent when rules and memory do not ma
     merchant_normalized: "unknown_merchant",
     description: "Unknown Store",
     memo: "",
-    direction: "debit",
+    direction: "outflow",
     category_raw: "Food & Drink",
     amount: 50
   };
@@ -153,7 +153,7 @@ test("categorizeTransactionWithAgent uses agent_history strategy when source is 
     merchant_normalized: "starbucks",
     description: "Starbucks Coffee",
     memo: "",
-    direction: "debit",
+    direction: "outflow",
     amount: 15
   };
 
@@ -180,7 +180,7 @@ test("categorizeTransactionWithAgent falls back to keyword model when agent fail
     merchant_normalized: "xyzzy_plugh",
     description: "Xyzzy Plugh",
     memo: "",
-    direction: "debit",
+    direction: "outflow",
     amount: 45
   };
 
@@ -204,7 +204,7 @@ test("categorizeTransactionWithAgent falls back to keyword model when agent retu
     merchant_normalized: "xyzzy_plugh",
     description: "Xyzzy Plugh",
     memo: "",
-    direction: "debit",
+    direction: "outflow",
     amount: 45
   };
 
@@ -229,7 +229,7 @@ test("categorizeTransactionWithAgent skips agent when flag is disabled", async (
     merchant_normalized: "xyzzy_plugh",
     description: "Xyzzy Plugh",
     memo: "",
-    direction: "debit",
+    direction: "outflow",
     amount: 50
   };
 
@@ -256,7 +256,7 @@ test("categorizeTransactionWithAgent handles agent exceptions gracefully", async
     merchant_normalized: "xyzzy_plugh",
     description: "Xyzzy Plugh",
     memo: "",
-    direction: "debit",
+    direction: "outflow",
     amount: 50
   };
 

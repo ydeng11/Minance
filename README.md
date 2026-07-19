@@ -24,7 +24,6 @@ minance/
 - Conversational assistant endpoint with explainable output and drill-down filters
 - Database backup and reload feature
 - Help center for self-host UX
-- Legacy Minance API loader script for dev database seeding
 - Responsive web UI covering dashboard, explorer, imports, transactions, analytics, assistant, help, and settings
 - Saved views/bookmarks
 
@@ -79,14 +78,6 @@ Dry-run summary:
 
 ```bash
 pnpm seed:fixture -- --dry-run
-```
-
-## Legacy API seed (dev)
-
-Load accounts + transactions from legacy Minance API into the current dev database (mapped category as tier-2, inferred tier-1 group):
-
-```bash
-pnpm seed:legacy-api -- --base-url http://10.0.0.20:18080 --start 2024-01-01 --end 2026-12-31
 ```
 
 Fixture source of truth:
@@ -159,4 +150,4 @@ docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 - AI key encryption uses `AI_CREDENTIAL_SECRET` (set in environment for non-local use).
 - Account provider abstraction is exposed via `GET /v1/accounts/providers` and `GET /v1/accounts/providers/:providerId` (self-host default provider is `manual_csv`; direct-link actions return explicit unsupported-action errors).
 - CrewAI analysis agent script lives at `services/agents/crewai_analysis_agent.py` (enable/disable with `AI_CREW_ANALYSIS_ENABLED`; install Python deps from `services/agents/requirements.txt`).
-- SQLite migration requires `sqlite3` CLI installed on the host machine.
+- SQLite storage requires the `sqlite3` CLI on the host machine.

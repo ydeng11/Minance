@@ -37,7 +37,6 @@ const EMPTY_STORE = {
   aiProviderPreferences: [],
   assistantQueries: [],
   savedViews: [],
-  migrationRuns: [],
   auditEvents: [],
   userRecurringScanState: [],
   scanRunState: {

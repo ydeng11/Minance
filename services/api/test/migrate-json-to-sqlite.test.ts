@@ -78,22 +78,22 @@ test(
       transactions: [
         {
           id: "txn_stale",
-          userId: "user_stale",
-          accountId: "acct_stale",
-          sourceType: "manual",
-          transactionDate: "2026-02-01",
-          merchantRaw: "Stale Merchant",
-          merchantNormalized: "stale merchant",
+          user_id: "user_stale",
+          account_id: "acct_stale",
+          source_type: "manual",
+          transaction_date: "2026-02-01",
+          merchant_raw: "Stale Merchant",
+          merchant_normalized: "stale merchant",
           description: "stale row",
           amount: 1.25,
           currency: "USD",
-          direction: "debit",
-          categoryRaw: "Stale",
-          categoryFinal: "Stale",
-          dedupeFingerprint: "fp_stale",
+          direction: "outflow",
+          category_raw: "Stale",
+          category_final: "Stale",
+          dedupe_fingerprint: "fp_stale",
           needs_category_review: false,
-          createdAt: now,
-          updatedAt: now
+          created_at: now,
+          updated_at: now
         }
       ]
     };
@@ -132,7 +132,7 @@ test(
           description: "groceries",
           amount: 42.5,
           currency: "USD",
-          direction: "debit",
+          direction: "outflow",
           category_raw: "Groceries",
           category_final: "Groceries",
           category_strategy: "rule",

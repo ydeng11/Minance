@@ -105,9 +105,6 @@ function normalizeDirection(rawValue, fallback = null) {
     return fallback;
   }
   const direction = String(rawValue).trim().toLowerCase();
-  // Map legacy values
-  if (direction === "debit") return "outflow";
-  if (direction === "credit") return "inflow";
   if (!DIRECTION_VALUES.has(direction)) {
     throw new Error("Invalid recurring direction");
   }

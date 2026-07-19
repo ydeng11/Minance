@@ -280,7 +280,7 @@ function normalizeDirection(value, fallbackAmount = null, signConvention = "nega
   if (normalized === "outflow" || normalized === "inflow") {
     return normalized;
   }
-  // Map legacy values
+  // Map common bank-statement values.
   if (normalized === "debit") return "outflow";
   if (normalized === "credit") return "inflow";
   if (typeof fallbackAmount === "number") {

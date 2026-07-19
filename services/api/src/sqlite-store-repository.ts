@@ -232,9 +232,6 @@ function withRequiredColumns(spec, mapped, row, rowIndex) {
   } else if (spec.tableName === "investment_snapshots") {
     ensured.id = ensureText(ensured.id, `investment_snapshot_${rowIndex}`);
     ensured.user_id = ensureText(ensured.user_id, "unknown_user");
-  } else if (spec.tableName === "migration_runs") {
-    ensured.id = ensureText(ensured.id, `migration_${rowIndex}`);
-    ensured.user_id = ensureText(ensured.user_id, "unknown_user");
   } else if (spec.tableName === "audit_events") {
     ensured.id = ensureText(ensured.id, `audit_${rowIndex}`);
     ensured.user_id = ensureText(ensured.user_id, "unknown_user");

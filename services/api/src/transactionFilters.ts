@@ -160,17 +160,11 @@ function normalizeDirection(entry) {
   if (rawDirection === "inflow" || rawDirection === "outflow") {
     return rawDirection;
   }
-  if (rawDirection === "credit") {
-    return "inflow";
-  }
-  if (rawDirection === "debit") {
-    return "outflow";
-  }
   return rawAmount > 0 ? "inflow" : "outflow";
 }
 
 function resolveCategoryType(entry, categoryTypeLookup) {
-  const userId = String(entry?.user_id || entry?.userId || "").trim();
+  const userId = String(entry?.user_id || "").trim();
   const categoryName = normalizeText(entry?.category_final || "");
   if (!userId || !categoryName) {
     return null;

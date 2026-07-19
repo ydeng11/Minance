@@ -12,17 +12,6 @@ import { createCategoryResolver, ensureCategoryStrategyForUser } from "./categor
 import { ensureAccountIdentity } from "./account-identity.ts";
 
 const TRANSACTION_TYPE_VALUES = new Set(["expense", "income", "transfer"]);
-const TRANSACTION_TYPE_ALIASES = new Map(
-  Object.entries({
-    expense: "expense",
-    spending: "expense",
-    debit: "expense",
-    income: "income",
-    credit: "income",
-    transfer: "transfer",
-    internal_transfer: "transfer"
-  })
-);
 const REVIEW_STATUS_VALUES = new Set(["reviewed", "needs_review"]);
 const CATEGORY_VALUE_MAX_LENGTH = 120;
 const TAG_MAX_LENGTH = 40;
@@ -56,13 +45,13 @@ function ensureAccount(store, userId, accountId, accountName) {
 }
 
 function deriveDirection(rawDirection, rawAmount) {
-  const direction = String(rawDirection || "").toLowerCase();
+  const direction = String(rawDirection || "").trim().toLowerCase();
   if (direction === "outflow" || direction === "inflow") {
     return direction;
   }
-  // Map legacy values
-  if (direction === "debit") return "outflow";
-  if (direction === "credit") return "inflow";
+  if (direction) {
+    throw new Error("Invalid transaction direction");
+  }
   return rawAmount < 0 ? "outflow" : "inflow";
 }
 
@@ -121,10 +110,10 @@ function normalizeTransactionType(rawValue, direction, categoryFinal, categoryTy
   }
 
   const normalized = normalizeText(rawValue).replace(/\s+/g, "_");
-  const transactionType = TRANSACTION_TYPE_ALIASES.get(normalized);
-  if (!transactionType) {
+  if (!TRANSACTION_TYPE_VALUES.has(normalized)) {
     throw new Error("Invalid transaction type");
   }
+  const transactionType = normalized;
 
   if (transactionType === "expense" && direction === "inflow") {
     throw new Error("Invalid transaction type for inflow direction");
@@ -314,22 +303,13 @@ function normalizeRecurringRuleId(rawValue, fallback = null) {
 function normalizeTransactionRecord(transaction, store = null) {
   const tx = transaction || {};
   const rawAmount = Number(tx.amount ?? 0);
-  const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
+  const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
   const rawDirection = String(tx.direction || "").trim().toLowerCase();
-  let direction = "outflow";
-  if (rawDirection === "inflow" || rawDirection === "outflow") {
-    direction = rawDirection;
-  } else if (rawDirection === "credit") {
-    direction = "inflow";
-  } else if (rawDirection === "debit") {
-    direction = "outflow";
-  } else if (rawAmount > 0) {
-    direction = "inflow";
-  }
+  const direction = rawDirection === "inflow" ? "inflow" : "outflow";
 
   const fallbackCategoryFinal = direction === "inflow" ? "Income" : "Uncategorized";
   const categoryFinal = String(tx.category_final || fallbackCategoryFinal).trim() || fallbackCategoryFinal;
-  const category = findUserCategoryByName(store || loadStore(), tx.user_id || tx.userId || null, categoryFinal);
+  const category = findUserCategoryByName(store || loadStore(), tx.user_id || null, categoryFinal);
 
   let transactionType;
   try {
@@ -466,7 +446,7 @@ function resolveManualContractFields(
     throw new Error("Invalid category");
   }
 
-  const rawTransactionType = pickFirstDefined(payload, ["transaction_type", "type"]);
+  const rawTransactionType = pickFirstDefined(payload, ["transaction_type"]);
   const transactionType = normalizeTransactionType(
     rawTransactionType === undefined ? fallback?.transaction_type : rawTransactionType,
     normalizedInput.direction,
@@ -477,7 +457,7 @@ function resolveManualContractFields(
   const tags = normalizeTags(pickFirstDefined(payload, ["tags"]), fallback?.tags || []);
   const reviewState = normalizeReviewState(payload || {}, fallback?.needs_category_review || false);
   const recurringRuleId = normalizeRecurringRuleId(
-    pickFirstDefined(payload, ["recurring_rule_id", "recurringRuleId"]),
+    pickFirstDefined(payload, ["recurring_rule_id"]),
     fallback?.recurring_rule_id ?? null
   );
 

@@ -92,7 +92,6 @@ function createLargeStore() {
     aiProviderPreferences: [],
     assistantQueries: [],
     savedViews: [],
-    migrationRuns: [],
     auditEvents: []
   };
 }
