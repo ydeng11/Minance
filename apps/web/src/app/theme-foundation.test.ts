@@ -322,7 +322,7 @@ test("shell exposes the persistent light and dark mode switch", () => {
   assert.match(shellSource, /setTheme\(theme === "dark" \? "light" : "dark"\)/);
 });
 
-test("settings omits navigation, appearance, help, and integrations cards", () => {
+test("settings keeps database recovery focused by omitting unrelated data controls", () => {
   assert.doesNotMatch(settingsPageSource, /settings-section-map/);
   assert.doesNotMatch(settingsPageSource, /Section Map/);
   assert.doesNotMatch(settingsPageSource, /settings-appearance/);
@@ -330,6 +330,12 @@ test("settings omits navigation, appearance, help, and integrations cards", () =
   assert.doesNotMatch(settingsPageSource, /Help &amp; support links/);
   assert.doesNotMatch(settingsPageSource, /settings-integrations/);
   assert.doesNotMatch(settingsPageSource, /settings-ai-settings-link/);
+  assert.doesNotMatch(settingsPageSource, /settings-import-open/);
+  assert.doesNotMatch(settingsPageSource, /settings-export-snapshot/);
+  assert.doesNotMatch(settingsPageSource, /Default ingestion is CSV\/manual import/);
+  assert.doesNotMatch(settingsPageSource, /Hosted bank connectors are intentionally optional/);
+  assert.match(settingsPageSource, /settings-backup-create/);
+  assert.match(settingsPageSource, /settings-backup-upload/);
 });
 
 test("settings routes use semantic token-backed surfaces so both themes stay legible", () => {

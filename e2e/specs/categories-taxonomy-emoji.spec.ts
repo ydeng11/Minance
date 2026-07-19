@@ -81,7 +81,11 @@ test("@core settings no longer exposes taxonomy editing controls", async ({ page
   await expect(page.getByTestId("settings-integrations")).toHaveCount(0);
   await expect(page.getByTestId("settings-ai-settings-link")).toHaveCount(0);
   await expect(page.getByTestId("settings-help-link")).toHaveCount(0);
-  await expect(page.getByTestId("settings-import-open")).toBeVisible();
+  await expect(page.getByTestId("settings-import-open")).toHaveCount(0);
+  await expect(page.getByTestId("settings-export-snapshot")).toHaveCount(0);
+  await expect(page.getByText(/Default ingestion is CSV\/manual import/)).toHaveCount(0);
+  await expect(page.getByText(/Hosted bank connectors are intentionally optional/)).toHaveCount(0);
+  await expect(page.getByTestId("settings-backup-create")).toBeVisible();
 
   const themeToggle = page.getByTestId("theme-toggle");
   await expect(themeToggle).toBeVisible();

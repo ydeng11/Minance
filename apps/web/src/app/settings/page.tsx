@@ -1,20 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronRight,
   Database,
   Download,
-  FileSpreadsheet,
   HardDrive,
   Loader2,
   Upload
 } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
-import { useSession } from "@/lib/session";
-import type { Transaction, DatabaseBackupSummary } from "@/lib/api/types";
+import type { DatabaseBackupSummary } from "@/lib/api/types";
 import { StatusMessage } from "@/components/feedback/StatusMessage";
 import { SettingsMenu } from "@/components/settings/SettingsMenu";
 
@@ -23,11 +20,6 @@ const SETTINGS_SECTION_CLASS_NAME =
 
 export default function SettingsPage() {
   const api = useApi();
-  const { user } = useSession();
-  const appEnv = process.env.NEXT_PUBLIC_APP_ENV || "local";
-
-  const [isExporting, setIsExporting] = useState(false);
-  const [message, setMessage] = useState("");
 
   // Backup state
   const [backups, setBackups] = useState<DatabaseBackupSummary[]>([]);
@@ -40,35 +32,6 @@ export default function SettingsPage() {
   const [isUploadingBackup, setIsUploadingBackup] = useState(false);
   const [backupsListExpanded, setBackupsListExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  async function listAllTransactions() {
-    const pageSize = 250;
-    const all: Transaction[] = [];
-    let offset = 0;
-
-    for (let page = 0; page < 100; page += 1) {
-      const response = await api.transactions.list({ limit: pageSize, offset });
-      all.push(...response.items);
-
-      offset += response.items.length;
-      if (!response.items.length || offset >= response.total || response.items.length < pageSize) {
-        break;
-      }
-    }
-
-    return all;
-  }
-
-  function downloadExportBundle(payload: unknown) {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-    const objectUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = objectUrl;
-    anchor.download = `minance-export-${timestamp}.json`;
-    anchor.click();
-    URL.revokeObjectURL(objectUrl);
-  }
 
   async function fetchBackups() {
     setIsLoadingBackups(true);
@@ -163,51 +126,6 @@ export default function SettingsPage() {
     void fetchBackups();
   }, []);
 
-  async function exportDataSnapshot() {
-    setIsExporting(true);
-    setMessage("");
-
-    try {
-      const [categoryData, strategyData, importsData, savedViewsData, credentialData, transactions] =
-        await Promise.all([
-          api.categories.list(),
-          api.categories.getStrategy(),
-          api.imports.list(),
-          api.savedViews.list(),
-          api.ai.credentials(),
-          listAllTransactions()
-        ]);
-
-      downloadExportBundle({
-        exportedAt: new Date().toISOString(),
-        environment: appEnv,
-        user: {
-          id: user?.id || null,
-          email: user?.email || null
-        },
-        nonSaasFallbacks: {
-          bankAggregation: "csv_or_manual_import",
-          subscriptionFeatures: "not_required_for_self_host"
-        },
-        datasets: {
-          categories: categoryData.categories,
-          categoryStrategy: strategyData.strategy,
-          transactions,
-          imports: importsData.imports,
-          savedViews: savedViewsData.items,
-          aiPreferences: credentialData.preferences,
-          aiCredentialsMasked: credentialData.credentials
-        }
-      });
-
-      setMessage(`Export completed (${transactions.length} transactions).`);
-    } catch (error) {
-      setMessage(error instanceof ApiError ? error.message : "Failed to export settings data.");
-    } finally {
-      setIsExporting(false);
-    }
-  }
-
   return (
     <div className="space-y-6" data-testid="settings-page">
       <header>
@@ -217,46 +135,9 @@ export default function SettingsPage() {
 
       <SettingsMenu />
 
-      {message ? (
-        <StatusMessage>{message}</StatusMessage>
-      ) : null}
-
       <section id="settings-data-controls" className={SETTINGS_SECTION_CLASS_NAME} data-testid="settings-data-controls">
         <h3 className="text-sm font-medium text-text-primary">Data Controls</h3>
-        <p className="mt-1 text-xs text-text-secondary">
-          Default ingestion is CSV/manual import. Export produces a local JSON snapshot with masked credentials.
-        </p>
-
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <Link
-            href="/import"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border-subtle bg-surface-field px-4 py-2 text-sm text-text-primary transition hover:bg-surface-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-            data-testid="settings-import-open"
-          >
-            <FileSpreadsheet className="h-4 w-4 text-accent" aria-hidden="true" />
-            Open CSV Import
-          </Link>
-
-          <button
-            type="button"
-            onClick={() => void exportDataSnapshot()}
-            disabled={isExporting}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-accent/35 bg-accent-soft px-4 py-2 text-sm font-semibold text-accent transition hover:bg-accent-soft/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:cursor-not-allowed disabled:opacity-60"
-            data-testid="settings-export-snapshot"
-          >
-            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="h-4 w-4" aria-hidden="true" />}
-            Export Snapshot
-          </button>
-        </div>
-
-        <div className="mt-3 rounded-lg border border-border-subtle bg-surface-field p-3 text-xs text-text-secondary">
-          <p>
-            Hosted bank connectors are intentionally optional. If they are not configured, keep using CSV/manual import
-            workflows.
-          </p>
-        </div>
-
-        <div className="mt-4 border-t border-border-subtle pt-4">
+        <div className="mt-3">
           <h4 className="text-sm font-medium text-text-primary flex items-center gap-2">
             <HardDrive className="h-4 w-4 text-accent" aria-hidden="true" />
             Database backups
