@@ -27,10 +27,11 @@ import { CategoryPerspective } from "./components/CategoryPerspective";
 import { ExplorerPerspectiveTabs } from "./components/ExplorerPerspectiveTabs";
 import { ExplorerSummaryBand } from "./components/ExplorerSummaryBand";
 import { OverviewPerspective } from "./components/OverviewPerspective";
-import { SavedViews } from "./components/SavedViews";
+import { SavedViewsToolbar } from "./components/SavedViews";
 import { ExplorerViewContent } from "./components/ExplorerViewContent";
 import { VisualizationGrid } from "./components/VisualizationGrid";
 import { useViewController } from "@/components/view/ViewController";
+import { DEFAULT_SAVED_VIEW_ID, buildExplorerSavedViews, isDefaultSavedView } from "./savedViews";
 
 const FOCUS_RING_CLASS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
@@ -63,6 +64,7 @@ export default function ExplorerPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [explorer, setExplorer] = useState<ExplorerAnalyticsResponse | null>(null);
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
+  const [activeSavedViewId, setActiveSavedViewId] = useState(DEFAULT_SAVED_VIEW_ID);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
@@ -244,12 +246,20 @@ export default function ExplorerPage() {
   );
 
   // Saved views handlers
-  async function handleSaveView(name: string) {
+  const handleSaveView = useCallback(async (view: SavedView) => {
     try {
-      await api.savedViews.create(name, { ...filters });
-      setMessage("Saved view created.");
-      const viewsData = await api.savedViews.list();
-      setSavedViews(viewsData.items);
+      const response = view.id === DEFAULT_SAVED_VIEW_ID
+        ? await api.savedViews.create("Default", { ...filters })
+        : await api.savedViews.update(view.id, view.name, { ...filters });
+      setSavedViews((previous) => {
+        const withoutSavedView = previous.filter((entry) => entry.id !== response.view.id);
+        const remainingViews = isDefaultSavedView(response.view)
+          ? withoutSavedView.filter((entry) => !isDefaultSavedView(entry))
+          : withoutSavedView;
+        return [response.view, ...remainingViews];
+      });
+      setActiveSavedViewId(response.view.id);
+      setMessage(`Saved view: ${response.view.name}`);
     } catch (error) {
       if (error instanceof ApiError) {
         setMessage(error.message);
@@ -257,19 +267,46 @@ export default function ExplorerPage() {
         setMessage("Failed to save view.");
       }
     }
-  }
+  }, [api, filters]);
 
-  function handleApplyView(view: SavedView) {
+  const handleCreateView = useCallback(async (name: string) => {
+    if (name.trim().toLowerCase() === "default") {
+      await handleSaveView(buildExplorerSavedViews(savedViews)[0]);
+      return;
+    }
+    try {
+      const response = await api.savedViews.create(name, { ...filters });
+      setSavedViews((previous) => [response.view, ...previous]);
+      setActiveSavedViewId(response.view.id);
+      setMessage(`Saved view: ${response.view.name}`);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setMessage(error.message);
+      } else {
+        setMessage("Failed to save view.");
+      }
+    }
+  }, [api, filters, handleSaveView, savedViews]);
+
+  const handleApplyView = useCallback((view: SavedView) => {
     const nextFilters = savedExplorerFiltersToState(view.filters);
+    setActiveSavedViewId(view.id);
     syncFilters(nextFilters);
     setMessage(`Applied view: ${view.name}`);
-  }
+  }, [syncFilters]);
 
-  async function handleDeleteView(viewId: string) {
+  const handleDeleteView = useCallback(async (view: SavedView) => {
+    const resetToDefault = activeSavedViewId === view.id || isDefaultSavedView(view);
     try {
-      await api.savedViews.remove(viewId);
-      setSavedViews((previous) => previous.filter((view) => view.id !== viewId));
-      setMessage("Saved view removed.");
+      if (view.id !== DEFAULT_SAVED_VIEW_ID) {
+        await api.savedViews.remove(view.id);
+        setSavedViews((previous) => previous.filter((entry) => entry.id !== view.id));
+      }
+      if (resetToDefault) {
+        setActiveSavedViewId(DEFAULT_SAVED_VIEW_ID);
+        syncFilters(savedExplorerFiltersToState({}));
+      }
+      setMessage(isDefaultSavedView(view) ? "Default view reset." : "Saved view removed.");
     } catch (error) {
       if (error instanceof ApiError) {
         setMessage(error.message);
@@ -277,7 +314,7 @@ export default function ExplorerPage() {
         setMessage("Failed to delete view.");
       }
     }
-  }
+  }, [activeSavedViewId, api, syncFilters]);
 
   // Calculate date range display
   const dateRangeDisplay = useMemo(() => {
@@ -409,15 +446,39 @@ export default function ExplorerPage() {
     [accounts, categories, explorer?.meta?.amountBounds, explorer?.meta?.availableTags, filters, syncFilters]
   );
 
+  const savedViewsToolbar = useMemo(
+    () => (
+      <SavedViewsToolbar
+        savedViews={savedViews}
+        activeViewId={activeSavedViewId}
+        onSave={handleSaveView}
+        onCreate={handleCreateView}
+        onApply={handleApplyView}
+        onDelete={handleDeleteView}
+        loading={loading}
+      />
+    ),
+    [
+      activeSavedViewId,
+      handleApplyView,
+      handleCreateView,
+      handleDeleteView,
+      handleSaveView,
+      loading,
+      savedViews
+    ]
+  );
+
   useEffect(() => {
     registerView({
       title: "Explorer filters",
       description: "Adjust the analysis view from the shell without leaving the page.",
-      content: viewContent
+      content: viewContent,
+      toolbar: savedViewsToolbar
     });
 
     return () => registerView(null);
-  }, [registerView, viewContent]);
+  }, [registerView, savedViewsToolbar, viewContent]);
 
   return (
     <div className="space-y-8" data-testid="explorer-page">
@@ -515,12 +576,6 @@ export default function ExplorerPage() {
           />
         )}
 
-        <SavedViews
-          savedViews={savedViews}
-          onSave={handleSaveView}
-          onApply={handleApplyView}
-          onDelete={handleDeleteView}
-        />
       </main>
     </div>
   );

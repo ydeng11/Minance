@@ -13,6 +13,7 @@ export interface ViewRegistration {
   title: string;
   description?: string;
   content: ReactNode;
+  toolbar?: ReactNode;
 }
 
 export interface ViewActions {

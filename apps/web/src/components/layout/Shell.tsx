@@ -191,6 +191,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <p className="mt-2 text-sm text-text-secondary" data-testid="user-email">{user?.email ?? ""}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {showViewToggle ? view?.toolbar : null}
               {showViewToggle ? (
                 <button
                   type="button"

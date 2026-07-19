@@ -1,97 +1,157 @@
 "use client";
 
-import { useState } from "react";
-import { Save } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { ChevronDown, Plus, Save } from "lucide-react";
 import type { SavedView } from "@/lib/api/types";
+import {
+  DEFAULT_SAVED_VIEW_ID,
+  buildExplorerSavedViews,
+  isDefaultSavedView
+} from "../savedViews";
 
-interface SavedViewsProps {
+interface SavedViewsToolbarProps {
   savedViews: SavedView[];
-  onSave: (name: string) => void;
+  activeViewId: string;
+  onSave: (view: SavedView) => void;
+  onCreate: (name: string) => void;
   onApply: (view: SavedView) => void;
-  onDelete: (viewId: string) => void;
+  onDelete: (view: SavedView) => void;
   loading?: boolean;
 }
 
 const FOCUS_RING_CLASS =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg";
-const SECTION_CLASS = "rounded-xl border border-border-subtle bg-surface-panel/85 p-4 shadow-panel";
-const TITLE_CLASS = "text-xs font-semibold uppercase tracking-wide text-text-muted";
-const FIELD_CLASS =
-  `rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-text-primary placeholder:text-text-secondary outline-none transition focus:border-accent ${FOCUS_RING_CLASS}`;
-const PRIMARY_ACTION_CLASS =
-  `inline-flex items-center justify-center gap-2 rounded-lg border border-border-subtle bg-surface-field px-4 py-2 text-sm font-medium text-text-primary transition hover:bg-surface-elevated ${FOCUS_RING_CLASS}`;
-const VIEW_ROW_CLASS = "flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-field px-3 py-2 text-sm";
-const VIEW_ACTION_CLASS =
-  `rounded-md border border-border-subtle bg-surface-elevated px-3 py-1 text-xs text-text-primary transition hover:bg-surface-panel ${FOCUS_RING_CLASS}`;
+const CONTROL_CLASS =
+  `inline-flex min-h-9 items-center rounded-xl border border-border-subtle bg-surface-field text-sm text-text-secondary transition hover:border-border-strong hover:bg-surface-elevated hover:text-text-primary ${FOCUS_RING_CLASS}`;
 
-export function SavedViews({ savedViews, onSave, onApply, onDelete, loading }: SavedViewsProps) {
-  const [savedViewName, setSavedViewName] = useState("");
+export function SavedViewsToolbar({
+  savedViews,
+  activeViewId,
+  onSave,
+  onCreate,
+  onApply,
+  onDelete,
+  loading = false
+}: SavedViewsToolbarProps) {
+  const detailsRef = useRef<HTMLDetailsElement | null>(null);
+  const [newViewName, setNewViewName] = useState("");
+  const views = useMemo(() => buildExplorerSavedViews(savedViews), [savedViews]);
+  const selectedView = views.find((view) => view.id === activeViewId) || views[0];
 
-  function handleSave() {
-    if (!savedViewName.trim()) {
-      return;
-    }
-    onSave(savedViewName.trim());
-    setSavedViewName("");
+  function closeDropdown() {
+    detailsRef.current?.removeAttribute("open");
   }
 
-  if (loading) {
-    return (
-      <section className={SECTION_CLASS}>
-        <h4 className={TITLE_CLASS}>Saved Views</h4>
-        <div className="mt-3 h-24 animate-pulse rounded-md bg-surface-field" />
-      </section>
-    );
+  function handleCreate() {
+    const name = newViewName.trim();
+    if (!name) {
+      return;
+    }
+    onCreate(name);
+    setNewViewName("");
+    closeDropdown();
   }
 
   return (
-    <section className={SECTION_CLASS} data-testid="saved-views-section">
-      <h4 className={TITLE_CLASS}>Saved Views</h4>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-        <label className="grid flex-1 gap-1 text-sm text-text-secondary">
-          Name
-          <input
-            value={savedViewName}
-            onChange={(event) => setSavedViewName(event.target.value)}
-            data-testid="saved-view-name"
-            placeholder="Quarterly dining check"
-            className={FIELD_CLASS}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={handleSave}
-          data-testid="save-view-button"
-          className={PRIMARY_ACTION_CLASS}
-        >
-          <Save className="h-4 w-4" />
-          Save Current View
-        </button>
-      </div>
+    <div className="relative flex items-center gap-2" data-testid="saved-views-toolbar">
+      <button
+        type="button"
+        onClick={() => onSave(selectedView)}
+        disabled={loading}
+        aria-label="Save the View"
+        title="Save the View"
+        data-testid="save-view-button"
+        className={`${CONTROL_CLASS} justify-center px-2.5 text-accent disabled:cursor-wait disabled:opacity-50`}
+      >
+        <Save className="h-4 w-4" aria-hidden="true" />
+      </button>
 
-      <div className="mt-4 space-y-2" data-testid="saved-views-list">
-        {savedViews.map((view) => (
-          <div key={view.id} className={VIEW_ROW_CLASS}>
-            <span className="text-text-secondary">{view.name}</span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => onApply(view)}
-                className={VIEW_ACTION_CLASS}
-              >
-                Apply
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete(view.id)}
-                className={VIEW_ACTION_CLASS}
-              >
-                Delete
-              </button>
-            </div>
+      <details
+        ref={detailsRef}
+        className="group relative"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            closeDropdown();
+          }
+        }}
+      >
+        <summary
+          className={`${CONTROL_CLASS} min-w-36 cursor-pointer list-none justify-between gap-3 px-3 [&::-webkit-details-marker]:hidden`}
+          data-testid="saved-view-menu"
+          aria-label={`Saved view: ${selectedView.name}`}
+        >
+          <span className="max-w-32 truncate">{selectedView.name}</span>
+          <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
+
+        <div className="absolute right-0 z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-border-subtle bg-surface-panel p-2 shadow-dialog">
+          <p className="px-2 pb-2 pt-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-muted">
+            Saved views
+          </p>
+          <div className="max-h-64 space-y-1 overflow-y-auto" data-testid="saved-views-list">
+            {views.map((view) => {
+              const selected = view.id === selectedView.id;
+              const deleteLabel = isDefaultSavedView(view) ? "Reset Default" : `Delete ${view.name}`;
+              return (
+                <div
+                  key={view.id}
+                  className={`flex items-center gap-1 rounded-xl ${selected ? "bg-accent-soft" : "hover:bg-surface-field"}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onApply(view);
+                      closeDropdown();
+                    }}
+                    className={`min-h-10 min-w-0 flex-1 truncate px-3 text-left text-sm ${selected ? "font-semibold text-accent" : "text-text-secondary"} ${FOCUS_RING_CLASS}`}
+                    data-testid={`saved-view-apply-${view.id}`}
+                  >
+                    {view.name}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(view)}
+                    aria-label={deleteLabel}
+                    title={deleteLabel}
+                    data-testid={`saved-view-delete-${view.id}`}
+                    className={`mr-1 inline-flex h-9 w-9 items-center justify-center rounded-lg text-lg text-text-muted transition hover:bg-danger-soft hover:text-danger ${FOCUS_RING_CLASS}`}
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
-    </section>
+
+          <div className="mt-2 flex items-center gap-1 border-t border-border-subtle pt-2">
+            <label className="sr-only" htmlFor="saved-view-name">New view name</label>
+            <input
+              id="saved-view-name"
+              value={newViewName}
+              onChange={(event) => setNewViewName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  handleCreate();
+                }
+              }}
+              data-testid="saved-view-name"
+              placeholder="New view name"
+              className={`min-h-10 min-w-0 flex-1 rounded-xl border border-border-subtle bg-surface-field px-3 text-sm text-text-primary placeholder:text-text-muted ${FOCUS_RING_CLASS}`}
+            />
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={!newViewName.trim()}
+              aria-label="Add saved view"
+              title="Add saved view"
+              className={`inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent transition hover:bg-accent-soft/80 disabled:cursor-not-allowed disabled:opacity-40 ${FOCUS_RING_CLASS}`}
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </details>
+    </div>
   );
 }

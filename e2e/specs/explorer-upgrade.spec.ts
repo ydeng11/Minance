@@ -354,20 +354,26 @@ test("category lens shows richer inspection details", async ({ page }) => {
   await expect(page.getByTestId("explorer-category-merchants")).toBeVisible();
 });
 
-test("account perspective renders account analytics and saved views restore it", async ({ page }) => {
+test("saved views live in the shell and apply automatically", async ({ page }) => {
   await loginWithSeedAccount(page);
   await uploadAndCommitFixtureCsv(page, { editProcessedRows: false });
   await gotoView(page, "explorer");
 
-  await page.getByTestId("explorer-perspective-account").click();
-  await expect(page.getByTestId("explorer-account-view")).toBeVisible();
-  await expect(page.getByTestId("explorer-account-rankings")).toBeVisible();
+  await expect(page.getByTestId("saved-views-section")).toHaveCount(0);
+  await expect(page.getByTestId("saved-views-toolbar")).toBeVisible();
+  await expect(page.getByTestId("save-view-button")).toHaveAttribute("title", "Save the View");
 
+  await page.getByTestId("saved-view-menu").click();
+  await expect(page.getByTestId("saved-views-list")).toContainText("Default");
   await page.getByTestId("saved-view-name").fill("Credit card lens");
-  await page.getByTestId("save-view-button").click();
-  await page.getByRole("button", { name: "Apply" }).first().click();
+  await page.getByRole("button", { name: "Add saved view" }).click();
 
-  await expect(page.getByTestId("explorer-account-view")).toBeVisible();
+  await page.getByTestId("explorer-perspective-category").click();
+  await expect(page).toHaveURL(/perspective=category/);
+
+  await page.getByTestId("saved-view-menu").click();
+  await page.getByRole("button", { name: "Credit card lens" }).click();
+  await expect(page).not.toHaveURL(/perspective=category/);
 });
 
 test("category and account drill-down expand the explorer workspace in place", async ({ page }) => {

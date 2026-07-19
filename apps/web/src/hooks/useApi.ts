@@ -116,6 +116,7 @@ export function useApi() {
       savedViews: {
         list: () => savedViewsApi.list(request),
         create: savedViewsApi.create.bind(null, request),
+        update: savedViewsApi.update.bind(null, request),
         remove: savedViewsApi.remove.bind(null, request)
       }
     }),

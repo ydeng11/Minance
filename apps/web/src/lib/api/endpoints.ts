@@ -504,5 +504,7 @@ export const savedViewsApi = {
   list: (request: ApiRequest) => request<{ items: SavedView[] }>("/v1/saved-views"),
   create: (request: ApiRequest, name: string, filters: Record<string, unknown>) =>
     request<{ view: SavedView }>("/v1/saved-views", { method: "POST", body: { name, filters } }),
+  update: (request: ApiRequest, id: string, name: string, filters: Record<string, unknown>) =>
+    request<{ view: SavedView }>(`/v1/saved-views/${id}`, { method: "PUT", body: { name, filters } }),
   remove: (request: ApiRequest, id: string) => request<null>(`/v1/saved-views/${id}`, { method: "DELETE" })
 };

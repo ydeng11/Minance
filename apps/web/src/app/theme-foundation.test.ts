@@ -220,6 +220,15 @@ test("legacy explorer widgets use semantic tokens instead of hard-coded dark pal
   });
 });
 
+test("saved views use compact shell controls instead of a page section", () => {
+  assert.match(savedViewsSource, /Save the View/);
+  assert.match(savedViewsSource, /saved-view-menu/);
+  assert.match(savedViewsSource, /saved-view-delete-/);
+  assert.doesNotMatch(savedViewsSource, /saved-views-section/);
+  assert.doesNotMatch(explorerPageSource, /<SavedViews\s/);
+  assert.match(shellSource, /view\?\.toolbar/);
+});
+
 test("explorer perspective controls use semantic tokens instead of hard-coded dark palettes", () => {
   const perspectiveControlSources = [
     explorerPerspectiveTabsSource,

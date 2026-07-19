@@ -8,6 +8,7 @@ import {
   importsApi,
   investmentsApi,
   recurringsApi,
+  savedViewsApi,
   systemApi,
   transactionsApi,
   type ApiRequest
@@ -113,6 +114,19 @@ test("analyticsApi.explorer appends repeated category and type params", async ()
     calls[0].path,
     "/v1/analytics/explorer?category_view=granular&category=Food&category=Travel&transaction_type=expense&transaction_type=transfer"
   );
+});
+
+test("savedViewsApi.update persists the selected view in place", async () => {
+  const { calls, request } = createRecorder();
+  await savedViewsApi.update(request, "view_default", "Default", { range: "3m" });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].path, "/v1/saved-views/view_default");
+  assert.equal(calls[0].options?.method, "PUT");
+  assert.deepEqual(calls[0].options?.body, {
+    name: "Default",
+    filters: { range: "3m" }
+  });
 });
 
 test("categoriesApi strategy endpoints use expected routes and methods", async () => {
