@@ -87,26 +87,26 @@ const TRANSACTION_INPUTS = MONTHS.flatMap((month, monthIndex) => {
   const groceryBase = 112 + monthIndex * 2.35;
   const investmentAmount = monthIndex % 3 === 2 ? 750 : 500;
   return [
-    [`${month}-01`, "Fixture Employer", "Payroll", 5200, "credit", "Income", "income", "acct_fixture_checking", "income", ["recurring", "payroll"], "rr_fixture_payroll"],
-    [`${month}-03`, "Green Market", "Weekly groceries", groceryBase, "debit", "Groceries", "essential", "acct_fixture_checking", "expense", ["recurring", "groceries"], "rr_fixture_groceries"],
-    [`${month}-10`, "Neighborhood Foods", "Weekly groceries", groceryBase + 18.75, "debit", "Groceries", "essential", "acct_fixture_credit", "expense", ["recurring", "groceries"], "rr_fixture_groceries"],
-    [`${month}-05`, "Sunset Apartments", "Monthly rent", 1850, "debit", "Housing", "essential", "acct_fixture_checking", "expense", ["recurring", "fixed"], "rr_fixture_rent"],
-    [`${month}-08`, "Fixture Energy", "Electric bill", energyAmount, "debit", "Utilities", "essential", "acct_fixture_checking", "expense", ["recurring", "utilities"], "rr_fixture_energy"],
-    [`${month}-12`, "Stream Box", "Video subscription", 15.99, "debit", "Entertainment", "extra", "acct_fixture_credit", "expense", ["recurring", "subscription"], "rr_fixture_streaming"],
-    [`${month}-14`, "Cafe Brisk", "Dinner", 32 + monthIndex * 1.8, "debit", "Dining", "extra", "acct_fixture_credit", "expense", ["dining"], null],
-    [`${month}-16`, "Savings Transfer", "Monthly savings", 400, "debit", "Transfer", "neutral", "acct_fixture_checking", "transfer", ["transfer"], null],
-    [`${month}-16`, "Savings Transfer", "Monthly savings", 400, "credit", "Transfer", "neutral", "acct_fixture_savings", "transfer", ["transfer"], null],
-    [`${month}-18`, "Broker Transfer", "Investment contribution", investmentAmount, "debit", "Investments", "investments", "acct_fixture_checking", "transfer", ["transfer", "investment"], null],
-    [`${month}-18`, "Broker Transfer", "Investment contribution", investmentAmount, "credit", "Transfer", "neutral", "acct_fixture_brokerage", "transfer", ["transfer", "investment"], null]
+    [`${month}-01`, "Fixture Employer", "Payroll", 5200, "inflow", "Income", "income", "acct_fixture_checking", "income", ["recurring", "payroll"], "rr_fixture_payroll"],
+    [`${month}-03`, "Green Market", "Weekly groceries", groceryBase, "outflow", "Groceries", "essential", "acct_fixture_checking", "expense", ["recurring", "groceries"], "rr_fixture_groceries"],
+    [`${month}-10`, "Neighborhood Foods", "Weekly groceries", groceryBase + 18.75, "outflow", "Groceries", "essential", "acct_fixture_credit", "expense", ["recurring", "groceries"], "rr_fixture_groceries"],
+    [`${month}-05`, "Sunset Apartments", "Monthly rent", 1850, "outflow", "Housing", "essential", "acct_fixture_checking", "expense", ["recurring", "fixed"], "rr_fixture_rent"],
+    [`${month}-08`, "Fixture Energy", "Electric bill", energyAmount, "outflow", "Utilities", "essential", "acct_fixture_checking", "expense", ["recurring", "utilities"], "rr_fixture_energy"],
+    [`${month}-12`, "Stream Box", "Video subscription", 15.99, "outflow", "Entertainment", "extra", "acct_fixture_credit", "expense", ["recurring", "subscription"], "rr_fixture_streaming"],
+    [`${month}-14`, "Cafe Brisk", "Dinner", 32 + monthIndex * 1.8, "outflow", "Dining", "extra", "acct_fixture_credit", "expense", ["dining"], null],
+    [`${month}-16`, "Savings Transfer", "Monthly savings", 400, "outflow", "Transfer", "neutral", "acct_fixture_checking", "transfer", ["transfer"], null],
+    [`${month}-16`, "Savings Transfer", "Monthly savings", 400, "inflow", "Transfer", "neutral", "acct_fixture_savings", "transfer", ["transfer"], null],
+    [`${month}-18`, "Broker Transfer", "Investment contribution", investmentAmount, "outflow", "Investments", "investments", "acct_fixture_checking", "transfer", ["transfer", "investment"], null],
+    [`${month}-18`, "Broker Transfer", "Investment contribution", investmentAmount, "inflow", "Transfer", "neutral", "acct_fixture_brokerage", "transfer", ["transfer", "investment"], null]
   ];
 });
 
 TRANSACTION_INPUTS.push(
-  ["2025-10-18", "Fixture Health Clinic", "Annual checkup", 180, "debit", "Healthcare", "essential", "acct_fixture_credit", "expense", ["health"], null],
-  ["2025-12-22", "Northwind Airlines", "Holiday trip", 845.5, "debit", "Travel", "extra", "acct_fixture_credit", "expense", ["travel"], null],
-  ["2026-01-02", "Northwind Airlines", "Fare adjustment refund", 125, "credit", "Refunds", "income", "acct_fixture_credit", "income", ["refund", "travel"], null],
-  ["2026-04-21", "Fixture Insurance", "Annual premium", 720, "debit", "Utilities", "essential", "acct_fixture_checking", "expense", ["recurring", "annual"], "rr_fixture_insurance"],
-  ["2026-06-27", "Fixture Bank", "Service fee needs review", 35, "debit", "Fees", "extra", "acct_fixture_checking", "expense", ["fee"], null, true]
+  ["2025-10-18", "Fixture Health Clinic", "Annual checkup", 180, "outflow", "Healthcare", "essential", "acct_fixture_credit", "expense", ["health"], null],
+  ["2025-12-22", "Northwind Airlines", "Holiday trip", 845.5, "outflow", "Travel", "extra", "acct_fixture_credit", "expense", ["travel"], null],
+  ["2026-01-02", "Northwind Airlines", "Fare adjustment refund", 125, "inflow", "Refunds", "income", "acct_fixture_credit", "income", ["refund", "travel"], null],
+  ["2026-04-21", "Fixture Insurance", "Annual premium", 720, "outflow", "Utilities", "essential", "acct_fixture_checking", "expense", ["recurring", "annual"], "rr_fixture_insurance"],
+  ["2026-06-27", "Fixture Bank", "Service fee needs review", 35, "outflow", "Fees", "extra", "acct_fixture_checking", "expense", ["fee"], null, true]
 );
 
 const TRANSACTIONS = TRANSACTION_INPUTS.map(([
@@ -397,7 +397,6 @@ const FIXTURE_STORE = {
       updatedAt: UPDATED_AT
     }
   ],
-  migrationRuns: [],
   auditEvents: [
     {
       id: "audit_fixture_seed_001",

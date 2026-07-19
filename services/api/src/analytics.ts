@@ -55,19 +55,9 @@ function resolveTxnCategory(resolveCategory, txn) {
 
 function normalizeTransactionForAnalytics(txn) {
   const rawAmount = Number(txn?.amount ?? 0);
-  const amount = Number.isFinite(rawAmount) ? Math.abs(rawAmount) : 0;
+  const amount = Number.isFinite(rawAmount) ? rawAmount : 0;
   const rawDirection = String(txn?.direction || "").trim().toLowerCase();
-
-  let direction = "outflow";
-  if (rawDirection === "inflow" || rawDirection === "outflow") {
-    direction = rawDirection;
-  } else if (rawDirection === "credit") {
-    direction = "inflow";
-  } else if (rawDirection === "debit") {
-    direction = "outflow";
-  } else if (rawAmount > 0) {
-    direction = "inflow";
-  }
+  const direction = rawDirection === "inflow" ? "inflow" : "outflow";
 
   return {
     ...txn,

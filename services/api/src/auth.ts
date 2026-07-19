@@ -275,7 +275,6 @@ export function deleteUser(userId) {
   store.aiProviderPreferences = store.aiProviderPreferences.filter((entry) => entry.userId !== userId);
   store.assistantQueries = store.assistantQueries.filter((entry) => entry.userId !== userId);
   store.savedViews = store.savedViews.filter((entry) => entry.userId !== userId);
-  store.migrationRuns = store.migrationRuns.filter((entry) => entry.userId !== userId);
   store.auditEvents = store.auditEvents.filter((entry) => entry.userId !== userId);
 
   saveStore(store);

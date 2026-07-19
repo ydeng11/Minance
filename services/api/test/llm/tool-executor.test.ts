@@ -107,7 +107,6 @@ const baseStore = {
   aiProviderPreferences: [],
   assistantQueries: [],
   savedViews: [],
-  migrationRuns: [],
   auditEvents: []
 };
 

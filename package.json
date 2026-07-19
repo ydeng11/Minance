@@ -15,7 +15,6 @@
     "migrate:sqlite": "tsx scripts/migrate-json-to-sqlite.ts",
     "validate:sqlite": "tsx scripts/validate-json-vs-sqlite.ts",
     "seed:fixture": "tsx scripts/seed-deterministic-fixture.ts",
-    "seed:legacy-api": "tsx scripts/load-legacy-api.ts",
     "docs:api": "tsx scripts/generate-api-docs.ts",
     "guardrails": "tsx scripts/run-guardrails.ts",
     "test:test-first": "node --test scripts/check-root-script-binaries.test.mjs && env NODE_ENV=test tsx --test scripts/check-frontend-test-first.test.ts && env NODE_ENV=test tsx --test scripts/run-with-open-ports.test.ts && env NODE_ENV=test tsx scripts/check-frontend-test-first.ts",

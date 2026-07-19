@@ -40,7 +40,6 @@ const defaultStore = {
   aiProviderPreferences: [],
   assistantQueries: [],
   savedViews: [],
-  migrationRuns: [],
   auditEvents: [],
   userRecurringScanState: [],
   scanRunState: {
@@ -96,7 +95,7 @@ function buildTransactionIndex() {
   if (!cache) return;
   const index = new Map();
   for (const txn of cache.transactions) {
-    const uid = txn.user_id || txn.userId;
+    const uid = txn.user_id;
     if (!uid) continue;
     if (txn.deleted_at) continue;
     let list = index.get(uid);

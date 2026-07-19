@@ -247,17 +247,6 @@ CREATE TABLE IF NOT EXISTS investment_snapshots (
   payload_json TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS migration_runs (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  status TEXT,
-  sqlite_path TEXT,
-  created_at TEXT,
-  updated_at TEXT,
-  report_json TEXT,
-  payload_json TEXT NOT NULL
-);
-
 CREATE TABLE IF NOT EXISTS audit_events (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,

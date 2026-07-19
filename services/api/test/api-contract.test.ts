@@ -1670,17 +1670,6 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(response.payload?.error?.message, "Endpoint not found: GET /v1/settings");
   });
 
-  await t.test("legacy migration endpoint is not exposed", async () => {
-    const response = await apiRequest(context, "POST", "/v1/migrations/minance/sqlite", {
-      token: accessToken,
-      expectedStatus: 404,
-      body: {
-        fileName: "legacy.db",
-        sqliteBase64: "abcd"
-      }
-    });
-    assert.equal(response.payload?.error?.message, "Endpoint not found: POST /v1/migrations/minance/sqlite");
-  });
 });
 
 test("POST /v1/system/backups creates a backup", { skip: !hasSqlite3Cli() }, async (t) => {

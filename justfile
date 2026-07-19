@@ -156,11 +156,3 @@ seed-fixture:
     pnpm seed:fixture -- --target services/api/test/fixtures/deterministic-financial-store.json
     just _prepare-dev-data
     just _prepare-test-data
-
-# Load data from the legacy API into the dev database
-seed-legacy-api:
-    just --dotenv-filename .env.development _seed-legacy-api
-
-[private]
-_seed-legacy-api:
-    pnpm seed:legacy-api -- --base-url http://10.0.0.20:18080 --start 2024-01-01 --end 2026-12-31

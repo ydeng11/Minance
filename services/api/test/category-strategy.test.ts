@@ -1,10 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-
 import { loadStore, resetStoreForTests } from "../src/store.ts";
 import {
-  checkStrategyCoverageAgainstBackupDb,
   createCategoryResolver,
   ensureCategoryStrategyForUser,
   updateCategoryStrategyForUser
@@ -26,7 +23,6 @@ const EMPTY_STORE = {
   aiProviderPreferences: [],
   assistantQueries: [],
   savedViews: [],
-  migrationRuns: [],
   auditEvents: []
 };
 
@@ -81,16 +77,4 @@ test("strategy update persists emoji and coarse mapping changes", () => {
 
   assert.equal(dining?.emoji, "🍜");
   assert.equal(dining?.coarseKey, "essential");
-});
-
-test("default strategy covers categories found in the legacy backup db", (t) => {
-  const sqliteAvailable = spawnSync("sqlite3", ["-version"], { encoding: "utf8" });
-  if (sqliteAvailable.status !== 0) {
-    t.skip("sqlite3 is unavailable in test environment");
-    return;
-  }
-
-  const coverage = checkStrategyCoverageAgainstBackupDb();
-  assert.deepEqual(coverage.missingCanonicalCategories, []);
-  assert.deepEqual(coverage.missingTransactionCategories, []);
 });

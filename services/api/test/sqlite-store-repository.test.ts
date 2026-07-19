@@ -87,7 +87,7 @@ test("sqlite store repository round-trips payload collections", { skip: !isSqlit
         description: "Coffee",
         amount: 7.45,
         currency: "USD",
-        direction: "debit",
+        direction: "outflow",
         categoryRaw: "Dining",
         categoryFinal: "Dining",
         categoryCoarse: "extra",
@@ -167,7 +167,6 @@ test("sqlite store repository round-trips payload collections", { skip: !isSqlit
         updatedAt: now
       }
     ],
-    migrationRuns: [],
     auditEvents: [
       {
         id: "audit_1",
@@ -375,7 +374,7 @@ test(
         description: "Oversized regression transaction",
         amount: index + 0.01,
         currency: "USD",
-        direction: "debit",
+        direction: "outflow",
         categoryRaw: "Dining",
         categoryFinal: "Dining",
         categoryCoarse: "extra",
@@ -395,7 +394,6 @@ test(
       aiProviderPreferences: [],
       assistantQueries: [],
       savedViews: [],
-      migrationRuns: [],
       auditEvents: []
     };
 

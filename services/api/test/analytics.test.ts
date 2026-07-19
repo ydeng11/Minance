@@ -23,7 +23,7 @@ const baseStore = {
       merchant_raw: "Coffee",
       description: "Coffee",
       amount: 10,
-      direction: "debit",
+      direction: "outflow",
       category_final: "Dining",
       dedupe_fingerprint: "a"
     },
@@ -35,7 +35,7 @@ const baseStore = {
       merchant_raw: "Payroll",
       description: "Payroll",
       amount: 1000,
-      direction: "credit",
+      direction: "inflow",
       category_final: "Income",
       dedupe_fingerprint: "b"
     },
@@ -47,7 +47,7 @@ const baseStore = {
       merchant_raw: "Coffee",
       description: "Coffee",
       amount: 12,
-      direction: "debit",
+      direction: "outflow",
       category_final: "Dining",
       dedupe_fingerprint: "prev"
     },
@@ -59,7 +59,7 @@ const baseStore = {
       merchant_raw: "Flight",
       description: "Flight",
       amount: 400,
-      direction: "debit",
+      direction: "outflow",
       category_final: "Transport",
       dedupe_fingerprint: "c"
     }
@@ -73,7 +73,6 @@ const baseStore = {
   aiProviderPreferences: [],
   assistantQueries: [],
   savedViews: [],
-  migrationRuns: [],
   auditEvents: []
 };
 
@@ -86,7 +85,7 @@ test("overview calculates spend, income, and net", () => {
   assert.equal(overview.summary.netFlow, 590);
 });
 
-test("category rollup groups debit amounts", () => {
+test("category rollup groups outflow amounts", () => {
   resetStoreForTests(structuredClone(baseStore));
   const categories = getCategoryRollup("user_1", { start: "2026-01-01", end: "2026-01-31" });
 
@@ -120,7 +119,7 @@ test("overview and explorer omit excluded-group transactions by default", () => 
     merchant_raw: "Internal Transfer",
     description: "Move to savings",
     amount: 250,
-    direction: "debit",
+    direction: "outflow",
     category_final: "Uncategorized",
     dedupe_fingerprint: "excluded"
   });
@@ -169,7 +168,7 @@ test("analytics transaction filtering honors account, query, tag, review, type, 
       description: "Fuel stop",
       memo: "car commute",
       amount: 40,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Transport",
       tags: ["car"],
@@ -188,7 +187,7 @@ test("analytics transaction filtering honors account, query, tag, review, type, 
       description: "Morning coffee",
       memo: "latte run",
       amount: 10,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Dining",
       tags: ["coffee"],
@@ -227,7 +226,7 @@ test("analytics transaction filtering honors recurring-only sentinel", () => {
       merchant_raw: "Netflix",
       description: "Netflix subscription",
       amount: 15,
-      direction: "debit",
+      direction: "outflow",
       category_final: "Entertainment",
       recurring_rule_id: "rule_netflix",
       dedupe_fingerprint: "recurring"
@@ -240,7 +239,7 @@ test("analytics transaction filtering honors recurring-only sentinel", () => {
       merchant_raw: "Movie Theater",
       description: "Weekend movie",
       amount: 24,
-      direction: "debit",
+      direction: "outflow",
       category_final: "Entertainment",
       dedupe_fingerprint: "one-off"
     }
@@ -314,7 +313,7 @@ test("getExplorerAnalytics returns comparison data and account rollups", () => {
       merchant_raw: "Gas Station",
       description: "Fuel stop",
       amount: 40,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Transport",
       dedupe_fingerprint: "fuel_jan"
@@ -329,7 +328,7 @@ test("getExplorerAnalytics returns comparison data and account rollups", () => {
       merchant_raw: "Super Market",
       description: "Groceries",
       amount: 60,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Groceries",
       dedupe_fingerprint: "grocery_jan"
@@ -344,7 +343,7 @@ test("getExplorerAnalytics returns comparison data and account rollups", () => {
       merchant_raw: "Payroll",
       description: "Salary",
       amount: 1000,
-      direction: "credit",
+      direction: "inflow",
       transaction_type: "income",
       category_final: "Income",
       dedupe_fingerprint: "payroll_jan"
@@ -359,7 +358,7 @@ test("getExplorerAnalytics returns comparison data and account rollups", () => {
       merchant_raw: "Gas Station",
       description: "Fuel stop",
       amount: 20,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Transport",
       dedupe_fingerprint: "fuel_dec"
@@ -374,7 +373,7 @@ test("getExplorerAnalytics returns comparison data and account rollups", () => {
       merchant_raw: "Coffee",
       description: "Coffee",
       amount: 10,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Dining",
       dedupe_fingerprint: "coffee_dec"
@@ -412,7 +411,7 @@ test("getExplorerAnalytics returns a seven-point summary sparkline", () => {
       merchant_raw: "Grocer",
       description: "Groceries",
       amount: 45,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Groceries",
       dedupe_fingerprint: "spark_1"
@@ -425,7 +424,7 @@ test("getExplorerAnalytics returns a seven-point summary sparkline", () => {
       merchant_raw: "Gas",
       description: "Gas",
       amount: 20,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Transport",
       dedupe_fingerprint: "spark_2"
@@ -438,7 +437,7 @@ test("getExplorerAnalytics returns a seven-point summary sparkline", () => {
       merchant_raw: "Payroll",
       description: "Payroll",
       amount: 500,
-      direction: "credit",
+      direction: "inflow",
       transaction_type: "income",
       category_final: "Income",
       dedupe_fingerprint: "spark_3"
@@ -472,7 +471,7 @@ test("getExplorerAnalytics includes category balance metrics and monthly composi
       merchant_raw: "Super Market",
       description: "Groceries",
       amount: 60,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Groceries",
       dedupe_fingerprint: "groceries_feb"
@@ -485,7 +484,7 @@ test("getExplorerAnalytics includes category balance metrics and monthly composi
       merchant_raw: "Noodles",
       description: "Dinner",
       amount: 40,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Dining",
       dedupe_fingerprint: "dining_feb"
@@ -498,7 +497,7 @@ test("getExplorerAnalytics includes category balance metrics and monthly composi
       merchant_raw: "Payroll",
       description: "Salary",
       amount: 1000,
-      direction: "credit",
+      direction: "inflow",
       transaction_type: "income",
       category_final: "Salary",
       dedupe_fingerprint: "salary_feb"
@@ -511,7 +510,7 @@ test("getExplorerAnalytics includes category balance metrics and monthly composi
       merchant_raw: "Insurance",
       description: "Refund",
       amount: 200,
-      direction: "credit",
+      direction: "inflow",
       transaction_type: "income",
       category_final: "Refunds",
       dedupe_fingerprint: "refund_feb"
@@ -572,7 +571,7 @@ test("getExplorerAnalytics returns weekday summary buckets and top category week
       merchant_raw: "Super Market",
       description: "Groceries",
       amount: 80,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Groceries",
       dedupe_fingerprint: "weekday_groceries_sun"
@@ -587,7 +586,7 @@ test("getExplorerAnalytics returns weekday summary buckets and top category week
       merchant_raw: "Noodles",
       description: "Dinner",
       amount: 70,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Dining",
       dedupe_fingerprint: "weekday_dining_tue"
@@ -602,7 +601,7 @@ test("getExplorerAnalytics returns weekday summary buckets and top category week
       merchant_raw: "Gas Station",
       description: "Fuel",
       amount: 60,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Transport",
       dedupe_fingerprint: "weekday_transport_wed"
@@ -617,7 +616,7 @@ test("getExplorerAnalytics returns weekday summary buckets and top category week
       merchant_raw: "Landlord",
       description: "Rent",
       amount: 50,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Rent",
       dedupe_fingerprint: "weekday_rent_thu"
@@ -632,7 +631,7 @@ test("getExplorerAnalytics returns weekday summary buckets and top category week
       merchant_raw: "Cinema",
       description: "Movie",
       amount: 40,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Entertainment",
       dedupe_fingerprint: "weekday_entertainment_fri"
@@ -647,7 +646,7 @@ test("getExplorerAnalytics returns weekday summary buckets and top category week
       merchant_raw: "Pharmacy",
       description: "Pharmacy",
       amount: 30,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Health",
       dedupe_fingerprint: "weekday_health_sat"
@@ -662,7 +661,7 @@ test("getExplorerAnalytics returns weekday summary buckets and top category week
       merchant_raw: "Utility Co",
       description: "Utilities",
       amount: 20,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Utilities",
       dedupe_fingerprint: "weekday_utilities_mon"
@@ -677,7 +676,7 @@ test("getExplorerAnalytics returns weekday summary buckets and top category week
       merchant_raw: "Corner Shop",
       description: "Misc",
       amount: 10,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Misc",
       dedupe_fingerprint: "weekday_misc_tue"
@@ -692,7 +691,7 @@ test("getExplorerAnalytics returns weekday summary buckets and top category week
       merchant_raw: "Payroll",
       description: "Salary",
       amount: 1000,
-      direction: "credit",
+      direction: "inflow",
       transaction_type: "income",
       category_final: "Salary",
       dedupe_fingerprint: "weekday_income_ignored"
@@ -753,7 +752,7 @@ test("analytics transfer filters honor custom category transfer types", () => {
       merchant_raw: "Brokerage",
       description: "Sweep to brokerage",
       amount: 250,
-      direction: "debit",
+      direction: "outflow",
       category_final: "Brokerage Sweep",
       dedupe_fingerprint: "transfer_custom"
     }
@@ -821,7 +820,7 @@ test("explorer selector rollups stay populated while category or account is focu
       merchant_raw: "Gas Station",
       description: "Fuel stop",
       amount: 40,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Transport",
       dedupe_fingerprint: "selector_card_transport"
@@ -836,7 +835,7 @@ test("explorer selector rollups stay populated while category or account is focu
       merchant_raw: "Super Market",
       description: "Groceries",
       amount: 60,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Groceries",
       dedupe_fingerprint: "selector_checking_groceries"
@@ -926,7 +925,7 @@ test("category weekday matrix honors account and merchant filters", () => {
       merchant_raw: "Super Market",
       description: "Groceries",
       amount: 60,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Groceries",
       dedupe_fingerprint: "matrix_checking_groceries"
@@ -941,7 +940,7 @@ test("category weekday matrix honors account and merchant filters", () => {
       merchant_raw: "Coffee",
       description: "Coffee",
       amount: 20,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Dining",
       dedupe_fingerprint: "matrix_checking_dining"
@@ -956,7 +955,7 @@ test("category weekday matrix honors account and merchant filters", () => {
       merchant_raw: "Gas Station",
       description: "Fuel stop",
       amount: 40,
-      direction: "debit",
+      direction: "outflow",
       transaction_type: "expense",
       category_final: "Transport",
       dedupe_fingerprint: "matrix_card_transport"
@@ -999,7 +998,7 @@ test("recurringSpend only counts transactions with recurring_rule_id", () => {
       merchant_raw: "Netflix",
       description: "Netflix subscription",
       amount: 15,
-      direction: "debit",
+      direction: "outflow",
       category_final: "Entertainment",
       recurring_rule_id: "rule_netflix",
       dedupe_fingerprint: "recurring_1"
@@ -1012,7 +1011,7 @@ test("recurringSpend only counts transactions with recurring_rule_id", () => {
       merchant_raw: "Gym",
       description: "Gym membership",
       amount: 50,
-      direction: "debit",
+      direction: "outflow",
       category_final: "Health",
       recurring_rule_id: "rule_gym",
       dedupe_fingerprint: "recurring_2"
@@ -1025,7 +1024,7 @@ test("recurringSpend only counts transactions with recurring_rule_id", () => {
       merchant_raw: "Groceries",
       description: "Groceries",
       amount: 100,
-      direction: "debit",
+      direction: "outflow",
       category_final: "Groceries",
       dedupe_fingerprint: "non_recurring"
     },
@@ -1037,7 +1036,7 @@ test("recurringSpend only counts transactions with recurring_rule_id", () => {
       merchant_raw: "Salary",
       description: "Salary",
       amount: 2000,
-      direction: "credit",
+      direction: "inflow",
       category_final: "Income",
       recurring_rule_id: "rule_salary",
       dedupe_fingerprint: "recurring_income"

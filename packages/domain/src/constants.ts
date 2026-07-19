@@ -8,9 +8,7 @@ export const IMPORT_STATUSES = [
   "failed"
 ];
 
-export const SOURCE_TYPES = ["imported", "manual", "migrated"];
-
-export const DIRECTIONS = ["debit", "credit"];
+export const SOURCE_TYPES = ["imported", "manual"];
 
 export const AI_PROVIDERS = {
   openai: {
