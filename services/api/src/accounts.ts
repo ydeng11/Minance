@@ -3,7 +3,8 @@ import { createId, nowIso, normalizeText, parseDate, toDecimal } from "./utils.t
 import {
   DEFAULT_ACCOUNT_TYPE,
   formatAccountDisplayIdentifier,
-  getSupportedAccountTypes as getCanonicalSupportedAccountTypes
+  getSupportedAccountTypes as getCanonicalSupportedAccountTypes,
+  createDefaultClassMetadata
 } from "../../../packages/domain/src/accounts.ts";
 const DEFAULT_CURRENCY = "USD";
 const DEFAULT_ACCOUNT_STATUS = "active";
@@ -138,6 +139,67 @@ function normalizeClosedAt(rawValue) {
   return parsed;
 }
 
+function createAccountBenefitId() {
+  return createId("bnft");
+}
+
+function resolveClassMetadata(accountType, payload = {}, existingMetadata = null) {
+  if (accountType !== "credit") {
+    return null;
+  }
+
+  // If payload has explicit classMetadata, use it
+  if (hasAnyField(payload, ["classMetadata", "class_metadata"])) {
+    const raw = payload.classMetadata ?? payload.class_metadata;
+    if (raw == null) {
+      return null;
+    }
+
+    // Handle the case where raw is an object with type dispatch
+    const rawCredit = raw.type === "credit" ? raw.credit : raw;
+
+    const annualFee = rawCredit.annualFee != null ? Number(rawCredit.annualFee) : (existingMetadata?.credit?.annualFee ?? null);
+    const activationDate = rawCredit.activationDate || existingMetadata?.credit?.activationDate || null;
+    const lastRenewalDate = rawCredit.lastRenewalDate || existingMetadata?.credit?.lastRenewalDate || null;
+    const renewalCycleMonths = Number(rawCredit.renewalCycleMonths) || 12;
+
+    let benefits = [];
+    if (Array.isArray(rawCredit.benefits)) {
+      const existingBenefits = existingMetadata?.credit?.benefits || [];
+      benefits = rawCredit.benefits.map((b, index) => {
+        const existing = existingBenefits[index];
+        return {
+          id: b.id || existing?.id || createAccountBenefitId(),
+          name: String(b.name || "").trim(),
+          monetaryValue: b.monetaryValue != null ? Number(b.monetaryValue) : null,
+          used: b.used === true,
+          lastUsedDate: b.lastUsedDate || null
+        };
+      });
+    } else if (existingMetadata?.credit?.benefits) {
+      benefits = existingMetadata.credit.benefits;
+    }
+
+    return {
+      type: "credit",
+      credit: {
+        annualFee: Number.isFinite(annualFee) ? annualFee : null,
+        activationDate,
+        lastRenewalDate,
+        renewalCycleMonths: renewalCycleMonths > 0 ? renewalCycleMonths : 12,
+        benefits
+      }
+    };
+  }
+
+  // No explicit classMetadata in payload – keep existing or create default
+  if (existingMetadata) {
+    return existingMetadata;
+  }
+
+  return createDefaultClassMetadata(accountType);
+}
+
 function resolveAccountSettings(account = {}, payload = {}) {
   const includeInCharts = hasAnyField(payload, [
     "includeInCharts",
@@ -232,7 +294,8 @@ function toAccountResponse(entry) {
     closedAt,
     normalizedKey: entry.normalizedKey,
     createdAt: entry.createdAt || null,
-    updatedAt: entry.updatedAt || null
+    updatedAt: entry.updatedAt || null,
+    classMetadata: entry.classMetadata || null
   };
 }
 
@@ -284,13 +347,15 @@ function resolveCreatePayload(payload = {}) {
     payload.sourceInstitution ?? payload.source_institution ?? payload.bankName ?? payload.bank_name
   );
   const settings = resolveAccountSettings({}, payload);
+  const classMetadata = resolveClassMetadata(accountType, payload);
   return {
     displayName,
     accountType,
     currency,
     initialBalance,
     sourceInstitution,
-    settings
+    settings,
+    classMetadata
   };
 }
 
@@ -313,13 +378,16 @@ function resolveUpdatePayload(account, payload = {}) {
     )
     : account.sourceInstitution || null;
   const settings = resolveAccountSettings(account, payload);
+  const existingClassMetadata = account.classMetadata || null;
+  const classMetadata = resolveClassMetadata(accountType, payload, existingClassMetadata);
   return {
     displayName,
     accountType,
     currency,
     initialBalance,
     sourceInstitution,
-    settings
+    settings,
+    classMetadata
   };
 }
 
@@ -366,7 +434,8 @@ export function createAccount(userId, payload) {
     manualAdjustments: [],
     version: 1,
     createdAt: timestamp,
-    updatedAt: timestamp
+    updatedAt: timestamp,
+    classMetadata: normalized.classMetadata
   };
 
   store.accounts.push(account);
@@ -398,6 +467,7 @@ export function updateAccount(userId, accountId, payload) {
   account.currency = normalized.currency;
   account.initialBalance = normalized.initialBalance;
   account.status = normalized.settings.status;
+  account.classMetadata = normalized.classMetadata;
   account.includeInCharts = normalized.settings.includeInCharts;
   account.closedAt = normalized.settings.closedAt;
   account.version = currentVersion + 1;

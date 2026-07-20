@@ -23,6 +23,31 @@ export interface Provider {
   models: string[];
 }
 
+export interface AccountBenefit {
+  id: string;
+  name: string;
+  monetaryValue: number | null;
+  used: boolean;
+  lastUsedDate: string | null;
+}
+
+export interface CreditCardMetadata {
+  annualFee: number | null;
+  activationDate: string | null;
+  lastRenewalDate: string | null;
+  renewalCycleMonths: number;
+  benefits: AccountBenefit[];
+}
+
+export type AccountClassMetadata =
+  | { type: "credit"; credit: CreditCardMetadata }
+  | { type: "loan" }
+  | { type: "investment" }
+  | { type: "savings" }
+  | { type: "checking" }
+  | { type: "depository" }
+  | { type: "cash" };
+
 export interface Account {
   id: string;
   userId: string;
@@ -41,6 +66,7 @@ export interface Account {
   normalizedKey: string;
   createdAt: string | null;
   updatedAt: string | null;
+  classMetadata: AccountClassMetadata | null;
 }
 
 export interface AccountProviderCapabilities {

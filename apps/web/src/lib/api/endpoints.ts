@@ -205,6 +205,7 @@ export const accountsApi = {
       accountType: string;
       currency?: string;
       initialBalance: number;
+      classMetadata?: Account["classMetadata"];
     }
   ) => request<{ account: Account }>("/v1/accounts", { method: "POST", body }),
   update: (
@@ -220,6 +221,7 @@ export const accountsApi = {
       hidden: boolean;
       closed: boolean;
       status: "active" | "hidden" | "closed";
+      classMetadata: Account["classMetadata"];
       expectedVersion: number;
     }>
   ) => request<{ account: Account }>(`/v1/accounts/${id}`, { method: "PUT", body }),

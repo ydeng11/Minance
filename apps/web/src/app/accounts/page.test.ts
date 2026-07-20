@@ -29,8 +29,8 @@ test("accounts controls declare touch targets and decorative icons", () => {
   assert.match(pageSource, /min-w-\[44px\]/);
   assert.match(pageSource, /<Plus className="h-4 w-4" aria-hidden="true" \/>/);
   assert.match(pageSource, /<X className="h-4 w-4" aria-hidden="true" \/>/);
-  assert.match(pageSource, /<CreditCard className="h-4 w-4" aria-hidden="true" \/>/);
-  assert.match(pageSource, /<Building2 className="h-4 w-4" aria-hidden="true" \/>/);
+  assert.match(pageSource, /CardFace/);
+  assert.match(pageSource, /CardDetailsSection/);
 });
 
 test("account delete confirmation uses styled in-app controls", () => {

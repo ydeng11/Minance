@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
-import { Archive, Building2, CreditCard, Loader2, Plus, Save, Trash2, Undo2, X } from "lucide-react";
+import { Archive, Loader2, Plus, Save, Trash2, Undo2, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
-import type { Account } from "@/lib/api/types";
+import type { Account, AccountClassMetadata } from "@/lib/api/types";
 import { StatusMessage } from "@/components/feedback/StatusMessage";
 import { getDialogFocusableElements, trapDialogTabKey } from "@/lib/dialogFocus";
+import { CardFace } from "./CardFace";
+import { CardDetailsSection } from "./CardDetailsSection";
 import {
   createDefaultManualAccountDraft,
   hasManualDraftChanges,
@@ -15,7 +17,7 @@ import {
   type ManualAccountDraft,
   type ManualAccountErrors
 } from "./wizard";
-import { formatAccountTypeLabel, getAccountIdentifier } from "./accountFormatting";
+import { formatAccountTypeLabel } from "./accountFormatting";
 import { resolveSupportedAccountTypes } from "./accountTypes";
 
 interface AccountSettingsDraft {
@@ -26,6 +28,7 @@ interface AccountSettingsDraft {
   initialBalance: string;
   status: Account["status"];
   includeInCharts: boolean;
+  classMetadata: AccountClassMetadata | null;
 }
 
 interface AccountSettingsErrors {
@@ -44,6 +47,7 @@ interface NormalizedAccountSettingsDraft {
   initialBalance: number;
   status: Account["status"];
   includeInCharts: boolean;
+  classMetadata: AccountClassMetadata | null;
 }
 
 const SECTION_PANEL_CLASS =
@@ -100,7 +104,8 @@ function createAccountSettingsDraft(account: Account): AccountSettingsDraft {
     currency: account.currency,
     initialBalance: String(account.initialBalance),
     status: account.status,
-    includeInCharts: account.includeInCharts
+    includeInCharts: account.includeInCharts,
+    classMetadata: account.classMetadata ?? null
   };
 }
 
@@ -146,7 +151,8 @@ function validateAccountSettingsDraft(draft: AccountSettingsDraft): { errors: Ac
       currency,
       initialBalance: parsedBalance,
       status: draft.status,
-      includeInCharts: draft.includeInCharts
+      includeInCharts: draft.includeInCharts,
+      classMetadata: draft.classMetadata
     }
   };
 }
@@ -161,7 +167,8 @@ function hasSettingsDraftChanges(account: Account, draft: AccountSettingsDraft) 
     !Number.isFinite(initialBalance) ||
     Number(account.initialBalance) !== initialBalance ||
     account.status !== draft.status ||
-    account.includeInCharts !== draft.includeInCharts
+    account.includeInCharts !== draft.includeInCharts ||
+    JSON.stringify(account.classMetadata ?? null) !== JSON.stringify(draft.classMetadata)
   );
 }
 
@@ -582,35 +589,28 @@ export default function AccountsPage() {
           {accounts.length ? (
             <div className="mt-3 grid gap-3 md:grid-cols-2">
               {accounts.map((entry) => (
-                <article key={entry.id} className="rounded-xl border border-border-subtle bg-surface-field p-4" data-testid={`account-row-${entry.id}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-base font-medium text-text-primary">{entry.displayName}</p>
-                      <p className="text-xs text-text-secondary">{getAccountIdentifier(entry)}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <span className={`rounded-full px-2 py-1 text-xs ${statusClasses(entry.status)}`}>{entry.status}</span>
-                      <button
-                        type="button"
-                        className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-border-strong bg-surface-panel px-3 py-2 text-xs text-text-secondary transition hover:border-accent/40 hover:text-text-primary"
-                        data-testid={`account-manage-${entry.id}`}
-                        onClick={() => openAccountSettings(entry)}
-                      >
-                        Manage
-                      </button>
-                    </div>
+                <article
+                  key={entry.id}
+                  className="relative cursor-pointer rounded-xl overflow-hidden aspect-[280/176]"
+                  data-testid={`account-row-${entry.id}`}
+                  onClick={() => openAccountSettings(entry)}
+                >
+                  <CardFace
+                    sourceInstitution={entry.sourceInstitution}
+                    accountType={entry.accountType}
+                    displayName={entry.displayName}
+                    cover
+                  />
+                  {/* Gradient overlay for text readability */}
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                  {/* Account name + balance */}
+                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-end justify-between gap-3 p-4">
+                    <p className="text-lg font-semibold text-white">{entry.displayName}</p>
+                    <span className="text-lg font-semibold text-white">{formatBalance(entry.initialBalance, entry.currency)}</span>
                   </div>
-                  <div className="mt-4 flex items-center justify-between gap-3 text-sm text-text-secondary">
-                    <div className="flex items-center gap-2">
-                      {entry.accountType === "credit" || entry.accountType === "loan" ? (
-                        <CreditCard className="h-4 w-4" aria-hidden="true" />
-                      ) : (
-                        <Building2 className="h-4 w-4" aria-hidden="true" />
-                      )}
-                      <span>{formatAccountTypeLabel(entry.accountType)}</span>
-                    </div>
-                    <span className="font-medium text-text-primary">{formatBalance(entry.initialBalance, entry.currency)}</span>
-                  </div>
+                  <span className={`pointer-events-none absolute right-3 top-3 rounded-full px-2 py-0.5 text-xs ${statusClasses(entry.status)}`}>
+                    {entry.status}
+                  </span>
                 </article>
               ))}
             </div>
@@ -905,6 +905,13 @@ export default function AccountsPage() {
                 />
                 Include in charts and net worth calculations
               </label>
+
+              <div className="border-t border-border-subtle pt-4">
+                <CardDetailsSection
+                  classMetadata={settingsDraft.classMetadata}
+                  onChange={(metadata) => updateSettingsDraftField("classMetadata", metadata)}
+                />
+              </div>
 
               {settingsError ? (
                 <p className={DANGER_ALERT_CLASS}>{settingsError}</p>

@@ -4,15 +4,22 @@ tools = [
     "pi",
 ]
 
-[installed_skills.handoff]
-added = "2026-05-21"
-source = "https://github.com/mattpocock/skills/tree/main/skills/productivity/handoff"
-commit_sha = "b6250ed602f8a2b401d49274eb31e15695a0637f"
+[installed_skills.batch-grill-me]
+added = "2026-07-20"
+source = "https://github.com/mattpocock/skills/tree/main/skills/in-progress/batch-grill-me"
+commit_sha = "fde4cd58cf9d53e6fc287c445f33253645364311"
 scope = "project"
+covered_tools = ["pi"]
 
 [installed_skills.grill-with-docs]
 added = "2026-06-16"
 source = "https://github.com/mattpocock/skills/tree/main/skills/engineering/grill-with-docs"
-commit_sha = "e3b90b5238f38cdea5996e16861dcae28ef52eda"
+commit_sha = "697d4ce9742da558fd1ba6697c8e9775e2e302dd"
 scope = "project"
 covered_tools = ["pi"]
+
+[installed_skills.handoff]
+added = "2026-05-21"
+source = "https://github.com/mattpocock/skills/tree/main/skills/productivity/handoff"
+commit_sha = "697d4ce9742da558fd1ba6697c8e9775e2e302dd"
+scope = "project"

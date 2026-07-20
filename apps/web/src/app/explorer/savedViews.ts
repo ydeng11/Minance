@@ -8,7 +8,7 @@ function createBuiltInDefaultView(): SavedView {
     id: DEFAULT_SAVED_VIEW_ID,
     userId: "",
     name: "Default",
-    filters: createDefaultExplorerFilterState(),
+    filters: createDefaultExplorerFilterState() as unknown as Record<string, unknown>,
     layout: {},
     createdAt: "",
     updatedAt: ""

@@ -28,6 +28,7 @@ function createAccount(overrides: Partial<Account> = {}): Account {
     normalizedKey: "travel_fund",
     createdAt: "2026-03-25T00:00:00.000Z",
     updatedAt: "2026-03-25T00:00:00.000Z",
+    classMetadata: null,
     ...overrides
   };
 }

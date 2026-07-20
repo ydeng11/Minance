@@ -37,12 +37,192 @@
       "updatedAt": "2026-03-01T00:00:00.000Z"
     },
     {
-      "id": "acct_fixture_credit",
+      "id": "acct_fixture_chase_sapphire",
       "userId": "usr_fixture_001",
-      "normalizedKey": "fixture-credit",
-      "displayName": "Fixture Rewards Card",
-      "sourceInstitution": "Fixture Bank",
+      "normalizedKey": "fixture-chase-sapphire",
+      "displayName": "Sapphire Preferred",
+      "sourceInstitution": "Chase",
       "accountType": "credit",
+      "currency": "USD",
+      "initialBalance": 0,
+      "status": "active",
+      "includeInCharts": true,
+      "version": 1,
+      "classMetadata": {
+        "type": "credit",
+        "credit": {
+          "annualFee": 95,
+          "activationDate": "2024-06-15",
+          "lastRenewalDate": "2025-06-15",
+          "renewalCycleMonths": 12,
+          "benefits": [
+            {
+              "id": "bnft_fixture_001",
+              "name": "5x Travel via Chase Travel",
+              "monetaryValue": null,
+              "used": true,
+              "lastUsedDate": "2026-06-01"
+            },
+            {
+              "id": "bnft_fixture_002",
+              "name": "3x Dining & Streaming",
+              "monetaryValue": null,
+              "used": false,
+              "lastUsedDate": null
+            },
+            {
+              "id": "bnft_fixture_003",
+              "name": "$50 Annual Hotel Credit",
+              "monetaryValue": 50,
+              "used": true,
+              "lastUsedDate": "2026-04-10"
+            },
+            {
+              "id": "bnft_fixture_004",
+              "name": "Primary Rental Car Coverage",
+              "monetaryValue": null,
+              "used": false,
+              "lastUsedDate": null
+            }
+          ]
+        }
+      },
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-03-01T00:00:00.000Z"
+    },
+    {
+      "id": "acct_fixture_amex_gold",
+      "userId": "usr_fixture_001",
+      "normalizedKey": "fixture-amex-gold",
+      "displayName": "Gold Card",
+      "sourceInstitution": "American Express",
+      "accountType": "credit",
+      "currency": "USD",
+      "initialBalance": 0,
+      "status": "active",
+      "includeInCharts": true,
+      "version": 1,
+      "classMetadata": {
+        "type": "credit",
+        "credit": {
+          "annualFee": 350,
+          "activationDate": "2025-11-01",
+          "lastRenewalDate": null,
+          "renewalCycleMonths": 12,
+          "benefits": [
+            {
+              "id": "bnft_fixture_005",
+              "name": "4x Restaurants Worldwide",
+              "monetaryValue": null,
+              "used": false,
+              "lastUsedDate": null
+            },
+            {
+              "id": "bnft_fixture_006",
+              "name": "4x US Supermarkets (up to $25k)",
+              "monetaryValue": null,
+              "used": false,
+              "lastUsedDate": null
+            },
+            {
+              "id": "bnft_fixture_007",
+              "name": "3x Flights Direct/AmexTravel",
+              "monetaryValue": null,
+              "used": false,
+              "lastUsedDate": null
+            },
+            {
+              "id": "bnft_fixture_008",
+              "name": "$120 Annual Dining Credit",
+              "monetaryValue": 120,
+              "used": false,
+              "lastUsedDate": null
+            },
+            {
+              "id": "bnft_fixture_009",
+              "name": "$120 Annual Uber Cash",
+              "monetaryValue": 120,
+              "used": false,
+              "lastUsedDate": null
+            },
+            {
+              "id": "bnft_fixture_010",
+              "name": "$100 Resy Credit",
+              "monetaryValue": 100,
+              "used": false,
+              "lastUsedDate": null
+            }
+          ]
+        }
+      },
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-03-01T00:00:00.000Z"
+    },
+    {
+      "id": "acct_fixture_venture_x",
+      "userId": "usr_fixture_001",
+      "normalizedKey": "fixture-venture-x",
+      "displayName": "Venture X",
+      "sourceInstitution": "Capital One",
+      "accountType": "credit",
+      "currency": "USD",
+      "initialBalance": 0,
+      "status": "active",
+      "includeInCharts": true,
+      "version": 1,
+      "classMetadata": {
+        "type": "credit",
+        "credit": {
+          "annualFee": 395,
+          "activationDate": "2026-03-20",
+          "lastRenewalDate": null,
+          "renewalCycleMonths": 12,
+          "benefits": [
+            {
+              "id": "bnft_fixture_011",
+              "name": "10x Hotels/Rental Cars via Capital One Travel",
+              "monetaryValue": null,
+              "used": false,
+              "lastUsedDate": null
+            },
+            {
+              "id": "bnft_fixture_012",
+              "name": "5x Flights via Capital One Travel",
+              "monetaryValue": null,
+              "used": false,
+              "lastUsedDate": null
+            },
+            {
+              "id": "bnft_fixture_013",
+              "name": "2x Miles on Everything",
+              "monetaryValue": null,
+              "used": false,
+              "lastUsedDate": null
+            },
+            {
+              "id": "bnft_fixture_014",
+              "name": "10k Bonus Miles Annually",
+              "monetaryValue": null,
+              "used": false,
+              "lastUsedDate": null
+            },
+            {
+              "id": "bnft_fixture_015",
+              "name": "$300 Annual Travel Credit",
+              "monetaryValue": 300,
+              "used": true,
+              "lastUsedDate": "2026-04-05"
+            },
+            {
+              "id": "bnft_fixture_016",
+              "name": "Priority Pass & Lounge Access",
+              "monetaryValue": null,
+              "used": false,
+              "lastUsedDate": null
+            }
+          ]
+        }
+      },
       "createdAt": "2026-01-01T00:00:00.000Z",
       "updatedAt": "2026-03-01T00:00:00.000Z"
     },
@@ -129,8 +309,8 @@
     {
       "id": "txn_fixture_003",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-01-10",
@@ -231,8 +411,8 @@
     {
       "id": "txn_fixture_006",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-01-12",
@@ -265,8 +445,8 @@
     {
       "id": "txn_fixture_007",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-01-14",
@@ -500,8 +680,8 @@
     {
       "id": "txn_fixture_014",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-02-10",
@@ -602,8 +782,8 @@
     {
       "id": "txn_fixture_017",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-02-12",
@@ -636,8 +816,8 @@
     {
       "id": "txn_fixture_018",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-02-14",
@@ -871,8 +1051,8 @@
     {
       "id": "txn_fixture_025",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-03-10",
@@ -973,8 +1153,8 @@
     {
       "id": "txn_fixture_028",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-03-12",
@@ -1007,8 +1187,8 @@
     {
       "id": "txn_fixture_029",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-03-14",
@@ -1242,8 +1422,8 @@
     {
       "id": "txn_fixture_036",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-04-10",
@@ -1344,8 +1524,8 @@
     {
       "id": "txn_fixture_039",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-04-12",
@@ -1378,8 +1558,8 @@
     {
       "id": "txn_fixture_040",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-04-14",
@@ -1613,8 +1793,8 @@
     {
       "id": "txn_fixture_047",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-05-10",
@@ -1715,8 +1895,8 @@
     {
       "id": "txn_fixture_050",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-05-12",
@@ -1749,8 +1929,8 @@
     {
       "id": "txn_fixture_051",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-05-14",
@@ -1984,8 +2164,8 @@
     {
       "id": "txn_fixture_058",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-06-10",
@@ -2086,8 +2266,8 @@
     {
       "id": "txn_fixture_061",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-06-12",
@@ -2120,8 +2300,8 @@
     {
       "id": "txn_fixture_062",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-06-14",
@@ -2355,8 +2535,8 @@
     {
       "id": "txn_fixture_069",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-07-10",
@@ -2457,8 +2637,8 @@
     {
       "id": "txn_fixture_072",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-07-12",
@@ -2491,8 +2671,8 @@
     {
       "id": "txn_fixture_073",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-07-14",
@@ -2726,8 +2906,8 @@
     {
       "id": "txn_fixture_080",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-08-10",
@@ -2828,8 +3008,8 @@
     {
       "id": "txn_fixture_083",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-08-12",
@@ -2862,8 +3042,8 @@
     {
       "id": "txn_fixture_084",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-08-14",
@@ -3097,8 +3277,8 @@
     {
       "id": "txn_fixture_091",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-09-10",
@@ -3199,8 +3379,8 @@
     {
       "id": "txn_fixture_094",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-09-12",
@@ -3233,8 +3413,8 @@
     {
       "id": "txn_fixture_095",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-09-14",
@@ -3468,8 +3648,8 @@
     {
       "id": "txn_fixture_102",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-10-10",
@@ -3570,8 +3750,8 @@
     {
       "id": "txn_fixture_105",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-10-12",
@@ -3604,8 +3784,8 @@
     {
       "id": "txn_fixture_106",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-10-14",
@@ -3839,8 +4019,8 @@
     {
       "id": "txn_fixture_113",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-11-10",
@@ -3941,8 +4121,8 @@
     {
       "id": "txn_fixture_116",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-11-12",
@@ -3975,8 +4155,8 @@
     {
       "id": "txn_fixture_117",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-11-14",
@@ -4210,8 +4390,8 @@
     {
       "id": "txn_fixture_124",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-12-10",
@@ -4312,8 +4492,8 @@
     {
       "id": "txn_fixture_127",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-12-12",
@@ -4346,8 +4526,8 @@
     {
       "id": "txn_fixture_128",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-12-14",
@@ -4581,8 +4761,8 @@
     {
       "id": "txn_fixture_135",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-01-10",
@@ -4683,8 +4863,8 @@
     {
       "id": "txn_fixture_138",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-01-12",
@@ -4717,8 +4897,8 @@
     {
       "id": "txn_fixture_139",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-01-14",
@@ -4952,8 +5132,8 @@
     {
       "id": "txn_fixture_146",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-02-10",
@@ -5054,8 +5234,8 @@
     {
       "id": "txn_fixture_149",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-02-12",
@@ -5088,8 +5268,8 @@
     {
       "id": "txn_fixture_150",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-02-14",
@@ -5323,8 +5503,8 @@
     {
       "id": "txn_fixture_157",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-03-10",
@@ -5425,8 +5605,8 @@
     {
       "id": "txn_fixture_160",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-03-12",
@@ -5459,8 +5639,8 @@
     {
       "id": "txn_fixture_161",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-03-14",
@@ -5694,8 +5874,8 @@
     {
       "id": "txn_fixture_168",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-04-10",
@@ -5796,8 +5976,8 @@
     {
       "id": "txn_fixture_171",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-04-12",
@@ -5830,8 +6010,8 @@
     {
       "id": "txn_fixture_172",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-04-14",
@@ -6065,8 +6245,8 @@
     {
       "id": "txn_fixture_179",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-05-10",
@@ -6167,8 +6347,8 @@
     {
       "id": "txn_fixture_182",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-05-12",
@@ -6201,8 +6381,8 @@
     {
       "id": "txn_fixture_183",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-05-14",
@@ -6436,8 +6616,8 @@
     {
       "id": "txn_fixture_190",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-06-10",
@@ -6538,8 +6718,8 @@
     {
       "id": "txn_fixture_193",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-06-12",
@@ -6572,8 +6752,8 @@
     {
       "id": "txn_fixture_194",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-06-14",
@@ -6807,8 +6987,8 @@
     {
       "id": "txn_fixture_201",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-07-10",
@@ -6909,8 +7089,8 @@
     {
       "id": "txn_fixture_204",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-07-12",
@@ -6943,8 +7123,8 @@
     {
       "id": "txn_fixture_205",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-07-14",
@@ -7110,8 +7290,8 @@
     {
       "id": "txn_fixture_210",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-10-18",
@@ -7143,8 +7323,8 @@
     {
       "id": "txn_fixture_211",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2025-12-22",
@@ -7176,8 +7356,8 @@
     {
       "id": "txn_fixture_212",
       "user_id": "usr_fixture_001",
-      "account_id": "acct_fixture_credit",
-      "account_key": "fixture-credit",
+      "account_id": "acct_fixture_chase_sapphire",
+      "account_key": "fixture-chase-sapphire",
       "source_type": "fixture_seed",
       "source_file_id": null,
       "transaction_date": "2026-01-02",
@@ -7780,7 +7960,7 @@
       "amount": 15.99,
       "direction": "outflow",
       "category": "Entertainment",
-      "accountId": "acct_fixture_credit",
+      "accountId": "acct_fixture_chase_sapphire",
       "merchantPattern": "Stream Box",
       "nextRunAt": "2026-08-12",
       "status": "paused",

@@ -163,6 +163,7 @@ function createAccount(overrides: Partial<Account> = {}): Account {
     normalizedKey: "main checking",
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
+    classMetadata: null,
     ...overrides
   };
 }

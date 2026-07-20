@@ -29,12 +29,96 @@ const ACCOUNTS = [
     updatedAt: UPDATED_AT
   },
   {
-    id: "acct_fixture_credit",
+    id: "acct_fixture_chase_sapphire",
     userId: DETERMINISTIC_FIXTURE_USER_ID,
-    normalizedKey: "fixture-credit",
-    displayName: "Fixture Rewards Card",
-    sourceInstitution: "Fixture Bank",
+    normalizedKey: "fixture-chase-sapphire",
+    displayName: "Sapphire Preferred",
+    sourceInstitution: "Chase",
     accountType: "credit",
+    currency: "USD",
+    initialBalance: 0,
+    status: "active",
+    includeInCharts: true,
+    version: 1,
+    classMetadata: {
+      type: "credit",
+      credit: {
+        annualFee: 95,
+        activationDate: "2024-06-15",
+        lastRenewalDate: "2025-06-15",
+        renewalCycleMonths: 12,
+        benefits: [
+          { id: "bnft_fixture_001", name: "5x Travel via Chase Travel", monetaryValue: null, used: true, lastUsedDate: "2026-06-01" },
+          { id: "bnft_fixture_002", name: "3x Dining & Streaming", monetaryValue: null, used: false, lastUsedDate: null },
+          { id: "bnft_fixture_003", name: "$50 Annual Hotel Credit", monetaryValue: 50, used: true, lastUsedDate: "2026-04-10" },
+          { id: "bnft_fixture_004", name: "Primary Rental Car Coverage", monetaryValue: null, used: false, lastUsedDate: null }
+        ]
+      }
+    },
+    createdAt: CREATED_AT,
+    updatedAt: UPDATED_AT
+  },
+  {
+    id: "acct_fixture_amex_gold",
+    userId: DETERMINISTIC_FIXTURE_USER_ID,
+    normalizedKey: "fixture-amex-gold",
+    displayName: "Gold Card",
+    sourceInstitution: "American Express",
+    accountType: "credit",
+    currency: "USD",
+    initialBalance: 0,
+    status: "active",
+    includeInCharts: true,
+    version: 1,
+    classMetadata: {
+      type: "credit",
+      credit: {
+        annualFee: 350,
+        activationDate: "2025-11-01",
+        lastRenewalDate: null,
+        renewalCycleMonths: 12,
+        benefits: [
+          { id: "bnft_fixture_005", name: "4x Restaurants Worldwide", monetaryValue: null, used: false, lastUsedDate: null },
+          { id: "bnft_fixture_006", name: "4x US Supermarkets (up to $25k)", monetaryValue: null, used: false, lastUsedDate: null },
+          { id: "bnft_fixture_007", name: "3x Flights Direct/AmexTravel", monetaryValue: null, used: false, lastUsedDate: null },
+          { id: "bnft_fixture_008", name: "$120 Annual Dining Credit", monetaryValue: 120, used: false, lastUsedDate: null },
+          { id: "bnft_fixture_009", name: "$120 Annual Uber Cash", monetaryValue: 120, used: false, lastUsedDate: null },
+          { id: "bnft_fixture_010", name: "$100 Resy Credit", monetaryValue: 100, used: false, lastUsedDate: null }
+        ]
+      }
+    },
+    createdAt: CREATED_AT,
+    updatedAt: UPDATED_AT
+  },
+  {
+    id: "acct_fixture_venture_x",
+    userId: DETERMINISTIC_FIXTURE_USER_ID,
+    normalizedKey: "fixture-venture-x",
+    displayName: "Venture X",
+    sourceInstitution: "Capital One",
+    accountType: "credit",
+    currency: "USD",
+    initialBalance: 0,
+    status: "active",
+    includeInCharts: true,
+    version: 1,
+    classMetadata: {
+      type: "credit",
+      credit: {
+        annualFee: 395,
+        activationDate: "2026-03-20",
+        lastRenewalDate: null,
+        renewalCycleMonths: 12,
+        benefits: [
+          { id: "bnft_fixture_011", name: "10x Hotels/Rental Cars via Capital One Travel", monetaryValue: null, used: false, lastUsedDate: null },
+          { id: "bnft_fixture_012", name: "5x Flights via Capital One Travel", monetaryValue: null, used: false, lastUsedDate: null },
+          { id: "bnft_fixture_013", name: "2x Miles on Everything", monetaryValue: null, used: false, lastUsedDate: null },
+          { id: "bnft_fixture_014", name: "10k Bonus Miles Annually", monetaryValue: null, used: false, lastUsedDate: null },
+          { id: "bnft_fixture_015", name: "$300 Annual Travel Credit", monetaryValue: 300, used: true, lastUsedDate: "2026-04-05" },
+          { id: "bnft_fixture_016", name: "Priority Pass & Lounge Access", monetaryValue: null, used: false, lastUsedDate: null }
+        ]
+      }
+    },
     createdAt: CREATED_AT,
     updatedAt: UPDATED_AT
   },
@@ -89,11 +173,11 @@ const TRANSACTION_INPUTS = MONTHS.flatMap((month, monthIndex) => {
   return [
     [`${month}-01`, "Fixture Employer", "Payroll", 5200, "inflow", "Income", "income", "acct_fixture_checking", "income", ["recurring", "payroll"], "rr_fixture_payroll"],
     [`${month}-03`, "Green Market", "Weekly groceries", groceryBase, "outflow", "Groceries", "essential", "acct_fixture_checking", "expense", ["recurring", "groceries"], "rr_fixture_groceries"],
-    [`${month}-10`, "Neighborhood Foods", "Weekly groceries", groceryBase + 18.75, "outflow", "Groceries", "essential", "acct_fixture_credit", "expense", ["recurring", "groceries"], "rr_fixture_groceries"],
+    [`${month}-10`, "Neighborhood Foods", "Weekly groceries", groceryBase + 18.75, "outflow", "Groceries", "essential", "acct_fixture_chase_sapphire", "expense", ["recurring", "groceries"], "rr_fixture_groceries"],
     [`${month}-05`, "Sunset Apartments", "Monthly rent", 1850, "outflow", "Housing", "essential", "acct_fixture_checking", "expense", ["recurring", "fixed"], "rr_fixture_rent"],
     [`${month}-08`, "Fixture Energy", "Electric bill", energyAmount, "outflow", "Utilities", "essential", "acct_fixture_checking", "expense", ["recurring", "utilities"], "rr_fixture_energy"],
-    [`${month}-12`, "Stream Box", "Video subscription", 15.99, "outflow", "Entertainment", "extra", "acct_fixture_credit", "expense", ["recurring", "subscription"], "rr_fixture_streaming"],
-    [`${month}-14`, "Cafe Brisk", "Dinner", 32 + monthIndex * 1.8, "outflow", "Dining", "extra", "acct_fixture_credit", "expense", ["dining"], null],
+    [`${month}-12`, "Stream Box", "Video subscription", 15.99, "outflow", "Entertainment", "extra", "acct_fixture_chase_sapphire", "expense", ["recurring", "subscription"], "rr_fixture_streaming"],
+    [`${month}-14`, "Cafe Brisk", "Dinner", 32 + monthIndex * 1.8, "outflow", "Dining", "extra", "acct_fixture_chase_sapphire", "expense", ["dining"], null],
     [`${month}-16`, "Savings Transfer", "Monthly savings", 400, "outflow", "Transfer", "neutral", "acct_fixture_checking", "transfer", ["transfer"], null],
     [`${month}-16`, "Savings Transfer", "Monthly savings", 400, "inflow", "Transfer", "neutral", "acct_fixture_savings", "transfer", ["transfer"], null],
     [`${month}-18`, "Broker Transfer", "Investment contribution", investmentAmount, "outflow", "Investments", "investments", "acct_fixture_checking", "transfer", ["transfer", "investment"], null],
@@ -102,9 +186,9 @@ const TRANSACTION_INPUTS = MONTHS.flatMap((month, monthIndex) => {
 });
 
 TRANSACTION_INPUTS.push(
-  ["2025-10-18", "Fixture Health Clinic", "Annual checkup", 180, "outflow", "Healthcare", "essential", "acct_fixture_credit", "expense", ["health"], null],
-  ["2025-12-22", "Northwind Airlines", "Holiday trip", 845.5, "outflow", "Travel", "extra", "acct_fixture_credit", "expense", ["travel"], null],
-  ["2026-01-02", "Northwind Airlines", "Fare adjustment refund", 125, "inflow", "Refunds", "income", "acct_fixture_credit", "income", ["refund", "travel"], null],
+  ["2025-10-18", "Fixture Health Clinic", "Annual checkup", 180, "outflow", "Healthcare", "essential", "acct_fixture_chase_sapphire", "expense", ["health"], null],
+  ["2025-12-22", "Northwind Airlines", "Holiday trip", 845.5, "outflow", "Travel", "extra", "acct_fixture_chase_sapphire", "expense", ["travel"], null],
+  ["2026-01-02", "Northwind Airlines", "Fare adjustment refund", 125, "inflow", "Refunds", "income", "acct_fixture_chase_sapphire", "income", ["refund", "travel"], null],
   ["2026-04-21", "Fixture Insurance", "Annual premium", 720, "outflow", "Utilities", "essential", "acct_fixture_checking", "expense", ["recurring", "annual"], "rr_fixture_insurance"],
   ["2026-06-27", "Fixture Bank", "Service fee needs review", 35, "outflow", "Fees", "extra", "acct_fixture_checking", "expense", ["fee"], null, true]
 );
@@ -216,7 +300,7 @@ const RECURRING_RULES = [
     amount: 15.99,
     direction: "outflow",
     category: "Entertainment",
-    accountId: "acct_fixture_credit",
+    accountId: "acct_fixture_chase_sapphire",
     merchantPattern: "Stream Box",
     nextRunAt: "2026-08-12",
     status: "paused",

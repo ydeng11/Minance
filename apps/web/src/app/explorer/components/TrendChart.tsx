@@ -161,8 +161,8 @@ export function TrendChart({
       label: formatMonthLabel(entry.month, includeYear),
       detailLabel: formatMonthDetailLabel(entry.month),
       ariaLabel: `${formatMonthDetailLabel(entry.month)} trend summary: spend ${money(entry.spend)}, income ${money(entry.income)}, net ${money(entry.net)}`,
-      spendComposition: Array.isArray(entry.spendComposition) ? entry.spendComposition : [],
-      incomeComposition: Array.isArray(entry.incomeComposition) ? entry.incomeComposition : [],
+      spendComposition: (entry as any).spendComposition ?? [],
+      incomeComposition: (entry as any).incomeComposition ?? [],
       spendHeight: Math.max(24, Math.round((entry.spend / maxSpend) * 220)),
       incomeHeight: Math.max(16, Math.round((entry.income / maxIncome) * 220))
     }));
