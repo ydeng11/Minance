@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
-import { Archive, Loader2, Plus, Save, Trash2, Undo2, X } from "lucide-react";
+import { Archive, ChevronDown, Loader2, Plus, Save, Trash2, Undo2, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import type { Account, AccountClassMetadata } from "@/lib/api/types";
@@ -206,6 +206,52 @@ export default function AccountsPage() {
     () => Array.from(new Set(accounts.map((entry) => entry.sourceInstitution).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b)),
     [accounts]
   );
+
+  const groupedAccounts = useMemo(() => {
+    const groups = new Map<string, Account[]>();
+    const other: Account[] = [];
+
+    for (const account of accounts) {
+      const inst = account.sourceInstitution?.trim();
+      if (inst) {
+        const list = groups.get(inst);
+        if (list) {
+          list.push(account);
+        } else {
+          groups.set(inst, [account]);
+        }
+      } else {
+        other.push(account);
+      }
+    }
+
+    const result: { institution: string; accounts: Account[] }[] = [];
+    for (const inst of knownInstitutions) {
+      const list = groups.get(inst);
+      if (list) {
+        result.push({ institution: inst, accounts: list });
+      }
+    }
+    if (other.length) {
+      result.push({ institution: "Other", accounts: other });
+    }
+
+    return result;
+  }, [accounts, knownInstitutions]);
+
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  function toggleSection(institution: string) {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(institution)) {
+        next.delete(institution);
+      } else {
+        next.add(institution);
+      }
+      return next;
+    });
+  }
 
   const resetWizardState = useCallback(() => {
     setManualDraft(createDefaultManualAccountDraft());
@@ -587,32 +633,55 @@ export default function AccountsPage() {
         <section className={SECTION_PANEL_CLASS}>
           <h3 className="text-sm font-medium text-text-primary">Connected accounts</h3>
           {accounts.length ? (
-            <div className="mt-3 grid gap-3 md:grid-cols-2">
-              {accounts.map((entry) => (
-                <article
-                  key={entry.id}
-                  className="relative cursor-pointer rounded-xl overflow-hidden aspect-[280/176]"
-                  data-testid={`account-row-${entry.id}`}
-                  onClick={() => openAccountSettings(entry)}
-                >
-                  <CardFace
-                    sourceInstitution={entry.sourceInstitution}
-                    accountType={entry.accountType}
-                    displayName={entry.displayName}
-                    cover
-                  />
-                  {/* Gradient overlay for text readability */}
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                  {/* Account name + balance */}
-                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-end justify-between gap-3 p-4">
-                    <p className="text-lg font-semibold text-white">{entry.displayName}</p>
-                    <span className="text-lg font-semibold text-white">{formatBalance(entry.initialBalance, entry.currency)}</span>
-                  </div>
-                  <span className={`pointer-events-none absolute right-3 top-3 rounded-full px-2 py-0.5 text-xs ${statusClasses(entry.status)}`}>
-                    {entry.status}
-                  </span>
-                </article>
-              ))}
+            <div className="mt-3 space-y-4">
+              {groupedAccounts.map(({ institution, accounts: groupAccounts }) => {
+                const isCollapsed = collapsedSections.has(institution);
+                return (
+                  <section key={institution}>
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 text-sm font-medium text-text-primary"
+                      onClick={() => toggleSection(institution)}
+                    >
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`}
+                        aria-hidden="true"
+                      />
+                      {institution}
+                      <span className="text-xs text-text-secondary">({groupAccounts.length})</span>
+                    </button>
+                    {!isCollapsed && (
+                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                        {groupAccounts.map((entry) => (
+                          <article
+                            key={entry.id}
+                            className="relative cursor-pointer rounded-xl overflow-hidden aspect-[280/176]"
+                            data-testid={`account-row-${entry.id}`}
+                            onClick={() => openAccountSettings(entry)}
+                          >
+                            <CardFace
+                              sourceInstitution={entry.sourceInstitution}
+                              accountType={entry.accountType}
+                              displayName={entry.displayName}
+                              cover
+                            />
+                            {/* Gradient overlay for text readability */}
+                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                            {/* Account name + balance */}
+                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-end justify-between gap-3 p-4">
+                              <p className="text-lg font-semibold text-white">{entry.displayName}</p>
+                              <span className="text-lg font-semibold text-white">{formatBalance(entry.initialBalance, entry.currency)}</span>
+                            </div>
+                            <span className={`pointer-events-none absolute right-3 top-3 rounded-full px-2 py-0.5 text-xs ${statusClasses(entry.status)}`}>
+                              {entry.status}
+                            </span>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
             </div>
           ) : (
             <p className="mt-3 rounded-lg border border-dashed border-border-subtle bg-surface-field px-3 py-4 text-sm text-text-secondary">
