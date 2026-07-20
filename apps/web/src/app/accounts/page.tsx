@@ -18,6 +18,7 @@ import {
   type ManualAccountErrors
 } from "./wizard";
 import { formatAccountTypeLabel } from "./accountFormatting";
+import { INSTITUTION_PRESETS, ALL_CREDIT_CARD_PRESETS } from "./presets";
 import { resolveSupportedAccountTypes } from "./accountTypes";
 
 interface AccountSettingsDraft {
@@ -203,7 +204,15 @@ export default function AccountsPage() {
     [accountTypes]
   );
   const knownInstitutions = useMemo(
-    () => Array.from(new Set(accounts.map((entry) => entry.sourceInstitution).filter(Boolean) as string[])).sort((a, b) => a.localeCompare(b)),
+    () => {
+      const dynamic = new Set(
+        accounts.map((entry) => entry.sourceInstitution).filter(Boolean) as string[]
+      );
+      for (const inst of INSTITUTION_PRESETS) {
+        dynamic.add(inst);
+      }
+      return Array.from(dynamic).sort((a, b) => a.localeCompare(b));
+    },
     [accounts]
   );
 
@@ -759,11 +768,17 @@ export default function AccountsPage() {
                       id="accounts-manual-name"
                       data-testid="accounts-wizard-manual-name"
                       type="text"
+                      list="accounts-credit-card-presets"
                       value={manualDraft.displayName}
                       onChange={(event) => updateManualDraft("displayName", event.target.value)}
                       className={FIELD_CLASS}
                       placeholder="e.g. Travel Card"
                     />
+                    <datalist id="accounts-credit-card-presets">
+                      {ALL_CREDIT_CARD_PRESETS.map((name) => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
                     {manualErrors.displayName ? (
                       <p className={FIELD_ERROR_CLASS}>{manualErrors.displayName}</p>
                     ) : null}
