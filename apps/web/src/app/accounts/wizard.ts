@@ -1,13 +1,16 @@
-import { getSupportedAccountTypes } from "../../../../../packages/domain/src/accounts";
+import { getSupportedAccountTypes, createDefaultClassMetadata } from "../../../../../packages/domain/src/accounts";
+import type { AccountClassMetadata } from "@/lib/api/types";
 
 export type AddAccountPath = "provider" | "manual";
 
 export interface ManualAccountDraft {
   sourceInstitution: string;
+  selectedCardPreset: string;
   displayName: string;
   accountType: string;
   currency: string;
   initialBalance: string;
+  classMetadata: AccountClassMetadata | null;
 }
 
 export interface ManualAccountErrors {
@@ -24,6 +27,7 @@ export interface NormalizedManualAccountInput {
   accountType: string;
   currency: string;
   initialBalance: number;
+  classMetadata: AccountClassMetadata | null;
 }
 
 export interface ManualAccountValidationResult {
@@ -36,10 +40,12 @@ const DEFAULT_CURRENCY = "USD";
 export function createDefaultManualAccountDraft(): ManualAccountDraft {
   return {
     sourceInstitution: "",
+    selectedCardPreset: "",
     displayName: "",
     accountType: "",
     currency: DEFAULT_CURRENCY,
-    initialBalance: "0"
+    initialBalance: "0",
+    classMetadata: null
   };
 }
 
@@ -64,6 +70,7 @@ export function hasManualDraftChanges(draft: ManualAccountDraft) {
   const defaultDraft = createDefaultManualAccountDraft();
   return (
     draft.sourceInstitution.trim() !== defaultDraft.sourceInstitution ||
+    draft.selectedCardPreset !== defaultDraft.selectedCardPreset ||
     draft.displayName.trim() !== defaultDraft.displayName ||
     draft.accountType.trim() !== defaultDraft.accountType ||
     normalizeCurrencyInput(draft.currency) !== defaultDraft.currency ||
@@ -135,6 +142,9 @@ export function validateManualAccountDraft(
     };
   }
 
+  // Pass through classMetadata if present; otherwise derive from account type
+  const classMetadata = draft.classMetadata ?? createDefaultClassMetadata(accountType);
+
   return {
     errors: {},
     normalized: {
@@ -142,7 +152,8 @@ export function validateManualAccountDraft(
       displayName,
       accountType,
       currency,
-      initialBalance
+      initialBalance,
+      classMetadata
     }
   };
 }

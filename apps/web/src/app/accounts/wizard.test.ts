@@ -36,10 +36,12 @@ function createAccount(overrides: Partial<Account> = {}): Account {
 test("createDefaultManualAccountDraft returns manual defaults", () => {
   assert.deepEqual(createDefaultManualAccountDraft(), {
     sourceInstitution: "",
+    selectedCardPreset: "",
     displayName: "",
     accountType: "",
     currency: "USD",
-    initialBalance: "0"
+    initialBalance: "0",
+    classMetadata: null
   });
 });
 
@@ -67,6 +69,8 @@ test("validateManualAccountDraft enforces required fields and numeric balance", 
 });
 
 test("validateManualAccountDraft trims and normalizes valid payloads", () => {
+  // With accountType=credit and no explicit classMetadata, the validator
+  // derives default credit metadata.
   const result = validateManualAccountDraft({
     sourceInstitution: "  Chase  ",
     displayName: "  Travel Card  ",
@@ -81,8 +85,31 @@ test("validateManualAccountDraft trims and normalizes valid payloads", () => {
     displayName: "Travel Card",
     accountType: "credit",
     currency: "USD",
-    initialBalance: -82.4
+    initialBalance: -82.4,
+    classMetadata: {
+      type: "credit",
+      credit: {
+        annualFee: null,
+        activationDate: null,
+        lastRenewalDate: null,
+        renewalCycleMonths: 12,
+        benefits: []
+      }
+    }
   });
+
+  // With explicit non-credit classMetadata, it passes through unchanged.
+  const nonCreditResult = validateManualAccountDraft({
+    sourceInstitution: "Manual",
+    displayName: "Cash Wallet",
+    accountType: "cash",
+    currency: "USD",
+    initialBalance: "100",
+    classMetadata: { type: "cash" }
+  });
+
+  assert.deepEqual(nonCreditResult.errors, {});
+  assert.deepEqual(nonCreditResult.normalized?.classMetadata, { type: "cash" });
 });
 
 test("validateManualAccountDraft rejects unsupported account types against the shared supported list", () => {

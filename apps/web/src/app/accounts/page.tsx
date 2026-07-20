@@ -18,7 +18,10 @@ import {
   type ManualAccountErrors
 } from "./wizard";
 import { formatAccountTypeLabel } from "./accountFormatting";
-import { INSTITUTION_PRESETS, ALL_CREDIT_CARD_PRESETS } from "./presets";
+import { INSTITUTION_PRESETS, getCardPresetsForInstitution, getPresetMetadata } from "./presets";
+import { SearchableSelect } from "./SearchableSelect";
+import type { AccountBenefit } from "@/lib/api/types";
+import { createDefaultClassMetadata } from "../../../../../packages/domain/src/accounts";
 import { resolveSupportedAccountTypes } from "./accountTypes";
 
 interface AccountSettingsDraft {
@@ -354,6 +357,67 @@ export default function AccountsPage() {
         ...previous,
         [field]: undefined
       }));
+    }
+  }
+
+  function setManualDraftClassMetadata(metadata: AccountClassMetadata | null) {
+    setManualDraft((previous) => ({
+      ...previous,
+      classMetadata: metadata
+    }));
+  }
+
+  function handleCardPresetSelect(cardName: string) {
+    setManualDraft((previous) => ({
+      ...previous,
+      selectedCardPreset: cardName
+    }));
+    if (!cardName) {
+      // Custom — clear any preset-derived classMetadata
+      setManualDraftClassMetadata(createDefaultClassMetadata(previous.accountType));
+      return;
+    }
+    const preset = getPresetMetadata(previous.sourceInstitution, cardName);
+    if (preset) {
+      setManualDraft((draft) => ({
+        ...draft,
+        displayName: cardName,
+        accountType: preset.accountType,
+        classMetadata: {
+          type: "credit",
+          credit: {
+            annualFee: preset.annualFee,
+            activationDate: null,
+            lastRenewalDate: null,
+            renewalCycleMonths: 12,
+            benefits: preset.benefits.map((b) => ({
+              id: "",
+              name: b.name,
+              monetaryValue: b.monetaryValue,
+              used: false,
+              lastUsedDate: null
+            } as AccountBenefit))
+          }
+        } as AccountClassMetadata
+      }));
+    } else {
+      // Name-only preset (no metadata) — fill name but use default credit metadata
+      setManualDraft((draft) => ({
+        ...draft,
+        displayName: cardName,
+        classMetadata: createDefaultClassMetadata(draft.accountType || "credit")
+      }));
+    }
+  }
+
+  function handleAccountTypeChange(type: string) {
+    setManualDraft((previous) => ({
+      ...previous,
+      accountType: type,
+      classMetadata: createDefaultClassMetadata(type)
+    }));
+    if (manualErrors.accountType) {
+      setManualErrors((prev) => ({ ...prev, accountType: undefined }));
     }
   }
 
@@ -739,27 +803,41 @@ export default function AccountsPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-accent">Manual setup</p>
               <form className="space-y-4" data-testid="accounts-wizard-manual-form" onSubmit={submitManualAccount}>
                   <div className="grid gap-2">
-                    <label htmlFor="accounts-manual-institution" className="text-sm font-medium text-text-primary">Institution</label>
-                    <input
-                      id="accounts-manual-institution"
-                      data-testid="accounts-wizard-manual-institution"
-                      type="text"
-                      list="accounts-known-institutions"
+                    <label className="text-sm font-medium text-text-primary">Institution</label>
+                    <SearchableSelect
+                      options={knownInstitutions.map((i) => ({ value: i, label: i }))}
                       value={manualDraft.sourceInstitution}
-                      onChange={(event) => updateManualDraft("sourceInstitution", event.target.value)}
-                      className={FIELD_CLASS}
-                      placeholder="e.g. Chase"
+                      onChange={(val) => {
+                        updateManualDraft("sourceInstitution", val);
+                        // Reset card preset when institution changes
+                        if (val !== manualDraft.sourceInstitution) {
+                          setManualDraft((prev) => ({
+                            ...prev,
+                            selectedCardPreset: "",
+                            classMetadata: createDefaultClassMetadata(prev.accountType)
+                          }));
+                        }
+                      }}
+                      placeholder="Search institution…"
+                      testId="accounts-wizard-manual-institution"
                     />
-                    {knownInstitutions.length ? (
-                      <datalist id="accounts-known-institutions">
-                        {knownInstitutions.map((entry) => (
-                          <option key={entry} value={entry} />
-                        ))}
-                      </datalist>
-                    ) : null}
                     {manualErrors.sourceInstitution ? (
                       <p className={FIELD_ERROR_CLASS}>{manualErrors.sourceInstitution}</p>
                     ) : null}
+                  </div>
+
+                  <div className="grid gap-2">
+                    <label className="text-sm font-medium text-text-primary">Card preset</label>
+                    <SearchableSelect
+                      options={getCardPresetsForInstitution(manualDraft.sourceInstitution).map(
+                        (p) => ({ value: p.name, label: p.name })
+                      )}
+                      value={manualDraft.selectedCardPreset}
+                      onChange={handleCardPresetSelect}
+                      placeholder="Select a card or type custom…"
+                      testId="accounts-wizard-card-preset"
+                      showCustom
+                    />
                   </div>
 
                   <div className="grid gap-2">
@@ -768,17 +846,11 @@ export default function AccountsPage() {
                       id="accounts-manual-name"
                       data-testid="accounts-wizard-manual-name"
                       type="text"
-                      list="accounts-credit-card-presets"
                       value={manualDraft.displayName}
                       onChange={(event) => updateManualDraft("displayName", event.target.value)}
                       className={FIELD_CLASS}
                       placeholder="e.g. Travel Card"
                     />
-                    <datalist id="accounts-credit-card-presets">
-                      {ALL_CREDIT_CARD_PRESETS.map((name) => (
-                        <option key={name} value={name} />
-                      ))}
-                    </datalist>
                     {manualErrors.displayName ? (
                       <p className={FIELD_ERROR_CLASS}>{manualErrors.displayName}</p>
                     ) : null}
@@ -786,19 +858,17 @@ export default function AccountsPage() {
 
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">
-                      <label htmlFor="accounts-manual-type" className="text-sm font-medium text-text-primary">Account type</label>
-                      <select
-                        id="accounts-manual-type"
-                        data-testid="accounts-wizard-manual-type"
+                      <label className="text-sm font-medium text-text-primary">Account type</label>
+                      <SearchableSelect
+                        options={supportedAccountTypes.map((t) => ({
+                          value: t,
+                          label: formatAccountTypeLabel(t)
+                        }))}
                         value={manualDraft.accountType}
-                        onChange={(event) => updateManualDraft("accountType", event.target.value)}
-                        className={FIELD_CLASS}
-                      >
-                        <option value="">Select account type</option>
-                        {supportedAccountTypes.map((type) => (
-                          <option key={type} value={type}>{formatAccountTypeLabel(type)}</option>
-                        ))}
-                      </select>
+                        onChange={handleAccountTypeChange}
+                        placeholder="Select account type"
+                        testId="accounts-wizard-manual-type"
+                      />
                       {manualErrors.accountType ? (
                         <p className={FIELD_ERROR_CLASS}>{manualErrors.accountType}</p>
                       ) : null}
