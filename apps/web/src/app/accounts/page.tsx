@@ -20,7 +20,6 @@ import {
 import { formatAccountTypeLabel } from "./accountFormatting";
 import { INSTITUTION_PRESETS, getCardPresetsForInstitution, getPresetMetadata } from "./presets";
 import { SearchableSelect } from "./SearchableSelect";
-import type { AccountBenefit } from "@/lib/api/types";
 import { createDefaultClassMetadata } from "../../../../../packages/domain/src/accounts";
 import { resolveSupportedAccountTypes } from "./accountTypes";
 
@@ -198,6 +197,7 @@ export default function AccountsPage() {
   const [isUpdatingAccountState, setIsUpdatingAccountState] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isWizardCloseConfirmOpen, setIsWizardCloseConfirmOpen] = useState(false);
   const wizardDialogRef = useRef<HTMLElement | null>(null);
   const settingsDialogRef = useRef<HTMLElement | null>(null);
   const lastFocusedElementRef = useRef<HTMLElement | null>(null);
@@ -327,19 +327,26 @@ export default function AccountsPage() {
   }, [rememberFocusedElement, resetWizardState]);
 
   const closeWizard = useCallback((force = false) => {
-    if (!force) {
-      const confirmCancel = hasManualDraftChanges(manualDraft);
-      if (confirmCancel && typeof window !== "undefined") {
-        const shouldDiscard = window.confirm("Discard this account setup?");
-        if (!shouldDiscard) {
-          return;
-        }
-      }
+    if (!force && hasManualDraftChanges(manualDraft)) {
+      setIsWizardCloseConfirmOpen(true);
+      return;
     }
     setIsWizardOpen(false);
+    setIsWizardCloseConfirmOpen(false);
     resetWizardState();
     restoreFocusAfterDialogClose();
   }, [manualDraft, resetWizardState, restoreFocusAfterDialogClose]);
+
+  function confirmDiscardWizard() {
+    setIsWizardOpen(false);
+    setIsWizardCloseConfirmOpen(false);
+    resetWizardState();
+    restoreFocusAfterDialogClose();
+  }
+
+  function cancelDiscardWizard() {
+    setIsWizardCloseConfirmOpen(false);
+  }
 
   function handleWizardBackdropClick(event: ReactMouseEvent<HTMLDivElement>) {
     if (event.target === event.currentTarget) {
@@ -360,54 +367,49 @@ export default function AccountsPage() {
     }
   }
 
-  function setManualDraftClassMetadata(metadata: AccountClassMetadata | null) {
-    setManualDraft((previous) => ({
-      ...previous,
-      classMetadata: metadata
-    }));
-  }
-
   function handleCardPresetSelect(cardName: string) {
-    setManualDraft((previous) => ({
-      ...previous,
-      selectedCardPreset: cardName
-    }));
-    if (!cardName) {
-      // Custom — clear any preset-derived classMetadata
-      setManualDraftClassMetadata(createDefaultClassMetadata(previous.accountType));
-      return;
-    }
-    const preset = getPresetMetadata(previous.sourceInstitution, cardName);
-    if (preset) {
-      setManualDraft((draft) => ({
-        ...draft,
-        displayName: cardName,
-        accountType: preset.accountType,
-        classMetadata: {
-          type: "credit",
-          credit: {
-            annualFee: preset.annualFee,
-            activationDate: null,
-            lastRenewalDate: null,
-            renewalCycleMonths: 12,
-            benefits: preset.benefits.map((b) => ({
-              id: "",
-              name: b.name,
-              monetaryValue: b.monetaryValue,
-              used: false,
-              lastUsedDate: null
-            } as AccountBenefit))
+    setManualDraft((previous) => {
+      if (!cardName) {
+        // Custom — clear any preset-derived classMetadata
+        return {
+          ...previous,
+          selectedCardPreset: "",
+          classMetadata: createDefaultClassMetadata(previous.accountType)
+        };
+      }
+      const preset = getPresetMetadata(previous.sourceInstitution, cardName);
+      if (preset) {
+        return {
+          ...previous,
+          selectedCardPreset: cardName,
+          displayName: cardName,
+          accountType: preset.accountType,
+          classMetadata: {
+            type: "credit",
+            credit: {
+              annualFee: preset.annualFee,
+              activationDate: null,
+              lastRenewalDate: null,
+              renewalCycleMonths: 12,
+              benefits: preset.benefits.map((b) => ({
+                id: "",
+                name: b.name,
+                monetaryValue: b.monetaryValue,
+                used: false,
+                lastUsedDate: null
+              }))
+            }
           }
-        } as AccountClassMetadata
-      }));
-    } else {
-      // Name-only preset (no metadata) — fill name but use default credit metadata
-      setManualDraft((draft) => ({
-        ...draft,
+        };
+      }
+      // Name-only preset (no metadata) — fill name, default credit metadata
+      return {
+        ...previous,
+        selectedCardPreset: cardName,
         displayName: cardName,
-        classMetadata: createDefaultClassMetadata(draft.accountType || "credit")
-      }));
-    }
+        classMetadata: createDefaultClassMetadata(previous.accountType || "credit")
+      };
+    });
   }
 
   function handleAccountTypeChange(type: string) {
@@ -808,15 +810,12 @@ export default function AccountsPage() {
                       options={knownInstitutions.map((i) => ({ value: i, label: i }))}
                       value={manualDraft.sourceInstitution}
                       onChange={(val) => {
-                        updateManualDraft("sourceInstitution", val);
-                        // Reset card preset when institution changes
-                        if (val !== manualDraft.sourceInstitution) {
-                          setManualDraft((prev) => ({
-                            ...prev,
-                            selectedCardPreset: "",
-                            classMetadata: createDefaultClassMetadata(prev.accountType)
-                          }));
-                        }
+                        setManualDraft((prev) => ({
+                          ...prev,
+                          sourceInstitution: val,
+                          selectedCardPreset: "",
+                          classMetadata: createDefaultClassMetadata(prev.accountType)
+                        }));
                       }}
                       placeholder="Search institution…"
                       testId="accounts-wizard-manual-institution"
@@ -929,6 +928,37 @@ export default function AccountsPage() {
                       Save account
                     </button>
                   </div>
+
+                  {isWizardCloseConfirmOpen ? (
+                    <div className={DANGER_CONFIRM_PANEL_CLASS} role="alert" aria-labelledby="wizard-discard-title">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p id="wizard-discard-title" className="font-medium text-danger">
+                            Discard this account setup?
+                          </p>
+                          <p className="mt-1 text-danger/85">
+                            All entered details will be lost.
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className={SECONDARY_BUTTON_CLASS}
+                            onClick={cancelDiscardWizard}
+                          >
+                            Keep editing
+                          </button>
+                          <button
+                            type="button"
+                            className={DANGER_CONFIRM_BUTTON_CLASS}
+                            onClick={confirmDiscardWizard}
+                          >
+                            Discard
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </form>
             </div>
           </section>

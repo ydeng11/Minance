@@ -370,7 +370,7 @@ export function getPresetMetadata(
   institution: string,
   cardName: string
 ): CreditCardPreset | null {
-  const presets = CREDIT_CARD_PRESETS_META[institution?.trim()];
+  const presets = CREDIT_CARD_PRESETS_META[institution.trim()];
   if (!presets) return null;
   return presets.find((p) => p.name === cardName) ?? null;
 }
@@ -379,5 +379,5 @@ export function getPresetMetadata(
  * Return all card presets (with metadata) for a given institution.
  */
 export function getCardPresetsForInstitution(institution: string): CreditCardPreset[] {
-  return CREDIT_CARD_PRESETS_META[institution?.trim()] ?? [];
+  return CREDIT_CARD_PRESETS_META[institution.trim()] ?? [];
 }
