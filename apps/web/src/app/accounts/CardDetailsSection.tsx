@@ -112,42 +112,38 @@ function BenefitRow({
       </div>
 
       {benefit.consumable && (
-        <div className="w-24 shrink-0">
+        <>
+          <div className="w-24 shrink-0">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={benefit.monetaryValue ?? ""}
+              onChange={(e) =>
+                onChange({
+                  ...benefit,
+                  monetaryValue: e.target.value ? Number(e.target.value) : null
+                })
+              }
+              placeholder="$ value"
+              className={`${FIELD_CLASS} w-full`}
+            />
+          </div>
           <input
-            type="text"
-            inputMode="decimal"
-            value={benefit.monetaryValue ?? ""}
+            type="checkbox"
+            checked={benefit.used}
             onChange={(e) =>
               onChange({
                 ...benefit,
-                monetaryValue: e.target.value ? Number(e.target.value) : null
+                used: e.target.checked,
+                lastUsedDate: e.target.checked
+                  ? new Date().toISOString().slice(0, 10)
+                  : null
               })
             }
-            placeholder="$ value"
-            className={`${FIELD_CLASS} w-full`}
+            className="h-4 w-4 rounded border border-border-strong bg-surface-field text-accent focus-visible:ring-2 focus-visible:ring-focus-ring"
           />
-        </div>
+        </>
       )}
-
-      <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
-        <input
-          type="checkbox"
-          checked={benefit.used}
-          onChange={(e) =>
-            onChange({
-              ...benefit,
-              used: e.target.checked,
-              lastUsedDate: e.target.checked
-                ? new Date().toISOString().slice(0, 10)
-                : null
-            })
-          }
-          className="h-4 w-4 rounded border border-border-strong bg-surface-field text-accent focus-visible:ring-2 focus-visible:ring-focus-ring"
-        />
-        <span className="text-xs text-text-secondary select-none">
-          Used
-        </span>
-      </label>
 
       <button
         type="button"
