@@ -41,7 +41,7 @@ export function CardFace({
   cover = false,
   className = ""
 }: CardFaceProps) {
-  const style: CardFaceStyle = inferCardFaceStyle(sourceInstitution, accountType);
+  const style: CardFaceStyle = inferCardFaceStyle(sourceInstitution, accountType, displayName);
 
   // cover mode uses the full viewBox size so all internal elements fill the parent
   const width = cover ? 280 : (compact ? 140 : 280);

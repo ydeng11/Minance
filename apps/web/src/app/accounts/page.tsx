@@ -29,7 +29,6 @@ interface AccountSettingsDraft {
   accountType: string;
   currency: string;
   initialBalance: string;
-  includeInCharts: boolean;
   classMetadata: AccountClassMetadata | null;
 }
 
@@ -47,7 +46,6 @@ interface NormalizedAccountSettingsDraft {
   accountType: string;
   currency: string;
   initialBalance: number;
-  includeInCharts: boolean;
   classMetadata: AccountClassMetadata | null;
 }
 
@@ -92,7 +90,6 @@ function createAccountSettingsDraft(account: Account): AccountSettingsDraft {
     accountType: account.accountType,
     currency: account.currency,
     initialBalance: String(account.initialBalance),
-    includeInCharts: account.includeInCharts,
     classMetadata: account.classMetadata ?? null
   };
 }
@@ -138,7 +135,6 @@ function validateAccountSettingsDraft(draft: AccountSettingsDraft): { errors: Ac
       accountType,
       currency,
       initialBalance: parsedBalance,
-      includeInCharts: draft.includeInCharts,
       classMetadata: draft.classMetadata
     }
   };
@@ -153,7 +149,6 @@ function hasSettingsDraftChanges(account: Account, draft: AccountSettingsDraft) 
     account.currency !== draft.currency.trim().toUpperCase() ||
     !Number.isFinite(initialBalance) ||
     Number(account.initialBalance) !== initialBalance ||
-    account.includeInCharts !== draft.includeInCharts ||
     JSON.stringify(account.classMetadata ?? null) !== JSON.stringify(draft.classMetadata)
   );
 }
@@ -1015,16 +1010,6 @@ export default function AccountsPage() {
                 </div>
 
               </div>
-
-              <label className="flex items-center gap-2 text-sm text-text-secondary">
-                <input
-                  type="checkbox"
-                  checked={settingsDraft.includeInCharts}
-                  onChange={(event) => updateSettingsDraftField("includeInCharts", event.target.checked)}
-                  className="h-4 w-4 rounded border border-border-strong bg-surface-field text-accent focus-visible:ring-2 focus-visible:ring-focus-ring"
-                />
-                Include in charts and net worth calculations
-              </label>
 
               <div className="border-t border-border-subtle pt-4">
                 <CardDetailsSection

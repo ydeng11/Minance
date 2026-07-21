@@ -200,18 +200,6 @@ function resolveClassMetadata(accountType, payload = {}, existingMetadata = null
 }
 
 function resolveAccountSettings(account = {}, payload = {}) {
-  const includeInCharts = hasAnyField(payload, [
-    "includeInCharts",
-    "include_in_charts",
-    "includeInNetWorth",
-    "include_in_net_worth"
-  ])
-    ? parseBooleanField(
-      payload.includeInCharts ?? payload.include_in_charts ?? payload.includeInNetWorth ?? payload.include_in_net_worth,
-      "account chart inclusion setting"
-    )
-    : coerceStoredBoolean(account.includeInCharts, true);
-
   // hidden is independent of lifecycle status — stored as a boolean
   const hidden = hasAnyField(payload, ["hidden", "isHidden", "is_hidden"])
     ? parseBooleanField(payload.hidden ?? payload.isHidden ?? payload.is_hidden, "account hidden setting")
@@ -239,7 +227,6 @@ function resolveAccountSettings(account = {}, payload = {}) {
   }
 
   return {
-    includeInCharts,
     status,
     hidden,
     closedAt
@@ -267,7 +254,6 @@ function normalizeStoredClosedAt(rawValue, fallbackValue = null) {
 
 function toAccountResponse(entry) {
   const status = normalizeStoredAccountStatus(entry.status);
-  const includeInCharts = coerceStoredBoolean(entry.includeInCharts, true);
   const accountType = entry.accountType || DEFAULT_ACCOUNT_TYPE;
   const closedAt = status === "closed"
     ? normalizeStoredClosedAt(entry.closedAt, parseDate(entry.updatedAt || entry.createdAt || nowIso()))
@@ -287,7 +273,6 @@ function toAccountResponse(entry) {
     initialBalance: Number(entry.initialBalance || 0),
     version: Number(entry.version || 1),
     status,
-    includeInCharts,
     hidden,
     closed: status === "closed",
     closedAt,
@@ -442,7 +427,6 @@ export function createAccount(userId, payload) {
     initialBalance: normalized.initialBalance,
     status: normalized.settings.status,
     hidden: normalized.settings.hidden,
-    includeInCharts: normalized.settings.includeInCharts,
     closedAt: normalized.settings.closedAt,
     manualAdjustments: [],
     version: 1,
@@ -482,7 +466,6 @@ export function updateAccount(userId, accountId, payload) {
   account.status = normalized.settings.status;
   account.hidden = normalized.settings.hidden;
   account.classMetadata = normalized.classMetadata;
-  account.includeInCharts = normalized.settings.includeInCharts;
   account.closedAt = normalized.settings.closedAt;
   account.version = currentVersion + 1;
   account.updatedAt = updatedAt;

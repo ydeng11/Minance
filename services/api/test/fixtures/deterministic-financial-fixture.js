@@ -38,7 +38,6 @@ const ACCOUNTS = [
     currency: "USD",
     initialBalance: 0,
     status: "active",
-    includeInCharts: true,
     version: 1,
     classMetadata: {
       type: "credit",
@@ -68,7 +67,6 @@ const ACCOUNTS = [
     currency: "USD",
     initialBalance: 0,
     status: "active",
-    includeInCharts: true,
     version: 1,
     classMetadata: {
       type: "credit",
@@ -100,7 +98,6 @@ const ACCOUNTS = [
     currency: "USD",
     initialBalance: 0,
     status: "active",
-    includeInCharts: true,
     version: 1,
     classMetadata: {
       type: "credit",

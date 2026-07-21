@@ -60,7 +60,6 @@ export interface Account {
   initialBalance: number;
   version: number;
   status: "active" | "closed";
-  includeInCharts: boolean;
   hidden: boolean;
   closed: boolean;
   closedAt: string | null;

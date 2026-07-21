@@ -218,6 +218,74 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
         { name: "Activation required each quarter", monetaryValue: null, consumable: false },
       ],
     },
+    {
+      name: "United Explorer",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "2 miles per $1 on United purchases and dining", monetaryValue: null, consumable: false },
+        { name: "2 miles per $1 on hotel stays", monetaryValue: null, consumable: false },
+        { name: "Free first checked bag (up to $70 savings per round trip)", monetaryValue: null, consumable: false },
+        { name: "Priority boarding", monetaryValue: null, consumable: false },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
+        { name: "2 United Club one-time passes per year", monetaryValue: null, consumable: true },
+      ],
+    },
+    {
+      name: "Southwest Rapid Rewards Plus",
+      accountType: "credit",
+      annualFee: 69,
+      benefits: [
+        { name: "2 points per $1 on Southwest purchases and Rapid Rewards partners", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "3,000 anniversary points per year", monetaryValue: null, consumable: true },
+        { name: "6,500-point bonus after account anniversary", monetaryValue: null, consumable: true },
+      ],
+    },
+    {
+      name: "Marriott Bonvoy Boundless",
+      accountType: "credit",
+      annualFee: 95,
+      benefits: [
+        { name: "6 points per $1 on Marriott Bonvoy purchases", monetaryValue: null, consumable: false },
+        { name: "2 points per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "1 free night award each anniversary", monetaryValue: null, consumable: true },
+        { name: "Automatic Silver Elite status", monetaryValue: null, consumable: false },
+        { name: "15 Elite Night Credits per year", monetaryValue: null, consumable: true },
+      ],
+    },
+    {
+      name: "IHG One Rewards Premier",
+      accountType: "credit",
+      annualFee: 99,
+      benefits: [
+        { name: "10 points per $1 on IHG purchases", monetaryValue: null, consumable: false },
+        { name: "5 points per $1 on travel, dining, and gas", monetaryValue: null, consumable: false },
+        { name: "3 points per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "4th night free on award stays", monetaryValue: null, consumable: false },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
+      ],
+    },
+    {
+      name: "Chase Slate Edge",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "No penalty APR", monetaryValue: null, consumable: false },
+        { name: "Auto credit line review for increase after 7 months", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Amazon Prime Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "5% back on Amazon.com and Whole Foods purchases with Prime", monetaryValue: null, consumable: false },
+        { name: "2% back at restaurants, gas stations, and drugstores", monetaryValue: null, consumable: false },
+        { name: "1% back on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
   ],
   "American Express": [
     {
@@ -273,6 +341,92 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
         { name: "Preferred Rewards bonus up to 75% more", monetaryValue: null, consumable: false },
       ],
     },
+    {
+      name: "Bank of America Premium Rewards",
+      accountType: "credit",
+      annualFee: 95,
+      benefits: [
+        { name: "Unlimited 1.5 points per $1 on all purchases", monetaryValue: null, consumable: false },
+        { name: "2 points per $1 on travel and dining", monetaryValue: null, consumable: false },
+        { name: "$100 annual airline incidental credit", monetaryValue: 100, consumable: true },
+        { name: "$100 annual TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Bank of America Premium Rewards Elite",
+      accountType: "credit",
+      annualFee: 550,
+      benefits: [
+        { name: "Unlimited 2 points per $1 on travel and dining", monetaryValue: null, consumable: false },
+        { name: "Unlimited 1.5 points per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "$300 annual travel credit", monetaryValue: 300, consumable: true },
+        { name: "$200 airline incidental credit", monetaryValue: 200, consumable: true },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
+        { name: "Priority Pass Select lounge access", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Bank of America Unlimited Cash Rewards",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Preferred Rewards bonus up to 75% more", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Bank of America BankAmericard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "0% intro APR on purchases and balance transfers", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Alaska Airlines Visa Signature",
+      accountType: "credit",
+      annualFee: 95,
+      benefits: [
+        { name: "3 miles per $1 on Alaska Airlines purchases", monetaryValue: null, consumable: false },
+        { name: "1 mile per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Free first checked bag (up to $70 savings per round trip)", monetaryValue: null, consumable: false },
+        { name: "$100 annual Companion Fare discount", monetaryValue: 100, consumable: true },
+        { name: "Boarding discount on Alaska flights", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Free Spirit Travel More",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "2 points per $1 on Spirit Airlines and dining", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "$100 credit for Spirit seat upgrades annually", monetaryValue: 100, consumable: true },
+      ],
+    },
+    {
+      name: "Susan G. Komen Customized Cash Rewards",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "3% cash back in category of choice", monetaryValue: null, consumable: false },
+        { name: "2% at grocery stores and wholesale clubs", monetaryValue: null, consumable: false },
+        { name: "Unlimited 1% on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Donation to Susan G. Komen at account opening", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Bank of America Customized Cash Rewards for Students",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "3% cash back in category of choice (gas, online shopping, dining, travel, drugstores, home improvement)", monetaryValue: null, consumable: false },
+        { name: "2% at grocery stores and wholesale clubs", monetaryValue: null, consumable: false },
+        { name: "Unlimited 1% on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
   ],
   "Citibank": [
     {
@@ -292,6 +446,92 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
         { name: "5% cash back on top eligible spend category each billing cycle (up to $500)", monetaryValue: null, consumable: false },
         { name: "Unlimited 1% on all other purchases", monetaryValue: null, consumable: false },
         { name: "Automatic category optimization", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citi Strata Premier",
+      accountType: "credit",
+      annualFee: 95,
+      benefits: [
+        { name: "10 points per $1 on hotels, car rentals, and attractions via Citi Travel", monetaryValue: null, consumable: false },
+        { name: "3 points per $1 on dining, supermarkets, gas/EV", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "$100 annual hotel credit (via Citi Travel, $50 minimum spend)", monetaryValue: 100, consumable: true },
+      ],
+    },
+    {
+      name: "Citi Diamond Preferred",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "0% intro APR on balance transfers for 21 months", monetaryValue: null, consumable: false },
+        { name: "0% intro APR on purchases for 12 months", monetaryValue: null, consumable: false },
+        { name: "No late fees and no penalty APR", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citi Simplicity",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "0% intro APR on balance transfers for 21 months", monetaryValue: null, consumable: false },
+        { name: "No late fees ever", monetaryValue: null, consumable: false },
+        { name: "No penalty APR", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citi AAdvantage Platinum Select",
+      accountType: "credit",
+      annualFee: 99,
+      benefits: [
+        { name: "2 miles per $1 on American Airlines and dining", monetaryValue: null, consumable: false },
+        { name: "1 mile per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Free first checked bag", monetaryValue: null, consumable: false },
+        { name: "Priority boarding on AA flights", monetaryValue: null, consumable: false },
+        { name: "$125 American Airlines flight discount after $20K spend", monetaryValue: 125, consumable: true },
+      ],
+    },
+    {
+      name: "Citi AAdvantage Executive World Elite",
+      accountType: "credit",
+      annualFee: 595,
+      benefits: [
+        { name: "4 miles per $1 on American Airlines purchases", monetaryValue: null, consumable: false },
+        { name: "1 mile per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Admirals Club lounge membership", monetaryValue: null, consumable: false },
+        { name: "Free first and second checked bags", monetaryValue: null, consumable: false },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
+      ],
+    },
+    {
+      name: "Citi AAdvantage MileUp",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "2 miles per $1 on American Airlines and grocery store purchases", monetaryValue: null, consumable: false },
+        { name: "1 mile per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Costco Anywhere Visa by Citi",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "4% cash back on eligible gas/EV charging worldwide (up to $7,000/yr)", monetaryValue: null, consumable: false },
+        { name: "3% cash back on restaurant and eligible travel", monetaryValue: null, consumable: false },
+        { name: "2% cash back on all Costco and Costco.com purchases", monetaryValue: null, consumable: false },
+        { name: "1% cash back on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citi Rewards+",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "2 points per $1 on supermarkets and gas/EV", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "10% points back on redeemed ThankYou Points (up to 100K back/yr)", monetaryValue: null, consumable: false },
       ],
     },
   ],
@@ -321,6 +561,16 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       ],
     },
     {
+      name: "Capital One VentureOne Rewards",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.25x miles on every purchase", monetaryValue: null, consumable: false },
+        { name: "5 miles per $1 on hotels and car rentals via Capital One Travel", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
       name: "Capital One Savor Cash Rewards",
       accountType: "credit",
       annualFee: 0,
@@ -340,17 +590,58 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
         { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
       ],
     },
-  ],
-  "Wells Fargo": [
     {
-      name: "Wells Fargo Active Cash",
+      name: "Capital One QuicksilverOne Cash Rewards",
       accountType: "credit",
       annualFee: 0,
       benefits: [
-        { name: "Unlimited 2% cash rewards on eligible purchases", monetaryValue: null, consumable: false },
-        { name: "Cell phone protection up to $600", monetaryValue: 600, consumable: true },
+        { name: "Unlimited 1.5% cash back on every purchase", monetaryValue: null, consumable: false },
+        { name: "Credit score tracking included", monetaryValue: null, consumable: false },
       ],
     },
+    {
+      name: "Capital One SavorOne Student Cash Rewards",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "3% cash back on dining, entertainment, streaming, and grocery stores", monetaryValue: null, consumable: false },
+        { name: "8% cash back on Capital One Entertainment purchases", monetaryValue: null, consumable: false },
+        { name: "Unlimited 1% on all other purchases", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Capital One Platinum",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Automatic credit line review after 6 months", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Capital One Spark Miles for Business",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5x miles on every purchase", monetaryValue: null, consumable: false },
+        { name: "5x miles on hotels and car rentals via Capital One Travel", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+        { name: "Free employee cards", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Capital One Spark Cash Plus",
+      accountType: "credit",
+      annualFee: 150,
+      benefits: [
+        { name: "Unlimited 2% cash back on every purchase", monetaryValue: null, consumable: false },
+        { name: "Unlimited 1% cash back on all other purchases", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+  ],
+  "Wells Fargo": [
     {
       name: "Wells Fargo Autograph",
       accountType: "credit",
@@ -362,8 +653,123 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
         { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
       ],
     },
+    {
+      name: "Wells Fargo Autograph Journey",
+      accountType: "credit",
+      annualFee: 95,
+      benefits: [
+        { name: "5 points per $1 on hotels", monetaryValue: null, consumable: false },
+        { name: "4 points per $1 on airlines", monetaryValue: null, consumable: false },
+        { name: "3 points per $1 on dining and other travel", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "$50 annual airline credit", monetaryValue: 50, consumable: true },
+      ],
+    },
+    {
+      name: "Wells Fargo Active Cash",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 2% cash rewards on eligible purchases", monetaryValue: null, consumable: false },
+        { name: "Cell phone protection up to $600", monetaryValue: 600, consumable: true },
+      ],
+    },
+    {
+      name: "Wells Fargo Reflect",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "0% intro APR on purchases and balance transfers for 21 months", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Wells Fargo Attune",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash rewards on eligible purchases", monetaryValue: null, consumable: false },
+        { name: "3 points per $1 on wellness, fitness, and sustainable purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Choice Privileges Select Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "5 points per $1 on Choice Hotels purchases", monetaryValue: null, consumable: false },
+        { name: "2 points per $1 on gas, grocery, and home improvement", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Annual Choice Privileges bonus points", monetaryValue: null, consumable: true },
+      ],
+    },
+    {
+      name: "Choice Privileges Mastercard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "3 points per $1 on Choice Hotels purchases", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Bilt Rewards Mastercard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "1 point per $1 on rent (up to 50K points per year, no transaction fee)", monetaryValue: null, consumable: false },
+        { name: "2 points per $1 on travel (book direct)", monetaryValue: null, consumable: false },
+        { name: "3 points per $1 on dining", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Double points on Rent Day (1st of month)", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Wells Fargo Clear Access Banking Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "No overdraft fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Wells Fargo Business Select",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on every purchase", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
   ],
   "U.S. Bank": [
+    {
+      name: "U.S. Bank Altitude Reserve Visa Infinite",
+      accountType: "credit",
+      annualFee: 400,
+      benefits: [
+        { name: "5 points per $1 on prepaid hotels and car rentals via U.S. Bank Travel", monetaryValue: null, consumable: false },
+        { name: "3 points per $1 on travel and mobile wallet purchases", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "$325 annual travel and dining credit", monetaryValue: 325, consumable: true },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
+        { name: "Priority Pass lounge access (enrollment required)", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "U.S. Bank Altitude Connect Visa Signature",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "4 points per $1 on travel and gas/EV", monetaryValue: null, consumable: false },
+        { name: "2 points per $1 on dining, grocery, and streaming", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "$20 annual travel credit", monetaryValue: 20, consumable: true },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
     {
       name: "U.S. Bank Altitude Go Visa Signature",
       accountType: "credit",
@@ -373,6 +779,449 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
         { name: "2 points per $1 at grocery stores, gas stations, and EV charging", monetaryValue: null, consumable: false },
         { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
         { name: "$15 annual streaming credit", monetaryValue: 15, consumable: true },
+      ],
+    },
+    {
+      name: "U.S. Bank Cash+ Visa Signature",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "5% cash back on two chosen categories each quarter (up to $2,000)", monetaryValue: null, consumable: false },
+        { name: "2% cash back on one everyday category", monetaryValue: null, consumable: false },
+        { name: "1% cash back on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Activation required each quarter", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "U.S. Bank Shopper Cash Rewards Visa Signature",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "6% cash back on two chosen retailers each quarter (up to $1,500)", monetaryValue: null, consumable: false },
+        { name: "3% cash back on eligible wholesale clubs and gas", monetaryValue: null, consumable: false },
+        { name: "1.5% cash back on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "U.S. Bank Shield",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Cell phone protection up to $600", monetaryValue: 600, consumable: true },
+        { name: "Purchase security and extended warranty", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "State Farm Premier Cash Rewards Visa Signature",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "3% cash back on eligible auto, transit, and insurance purchases", monetaryValue: null, consumable: false },
+        { name: "1% cash back on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Korean Air SKYPASS Visa Signature",
+      accountType: "credit",
+      annualFee: 100,
+      benefits: [
+        { name: "2 miles per $1 on Korean Air and SKYPASS purchases", monetaryValue: null, consumable: false },
+        { name: "1 mile per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Free first checked bag on Korean Air flights", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "U.S. Bank Visa Secured",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Credit building tool with refundable security deposit", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "U.S. Bank Business Leverage Visa Signature",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "3% cash back on eligible business purchases (office supplies, software, telecom)", monetaryValue: null, consumable: false },
+        { name: "1% cash back on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+  ],
+  "PNC Bank": [
+    {
+      name: "PNC Cash Unlimited Visa Signature",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on every purchase", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "PNC Points Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "4 points per $1 on eligible gas, grocery, and dining purchases", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "PNC Core Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "PNC Cash Rewards Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "4% cash back on eligible gas, grocery, and dining purchases", monetaryValue: null, consumable: false },
+        { name: "1% cash back on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "PNC Travel Rewards Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5 points per $1 on all purchases", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "PNC Secured Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Credit building tool with refundable security deposit", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "PNC Business Options Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "3% cash back on eligible business supplies and telecom", monetaryValue: null, consumable: false },
+        { name: "1% cash back on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "PNC Business Credit Card",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on every purchase", monetaryValue: null, consumable: false },
+        { name: "Free employee cards", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "PNC Visa Corporate Card",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Expense management tools", monetaryValue: null, consumable: false },
+        { name: "Customizable spend controls", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "PNC Treasury Credit Card",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Integrated treasury management", monetaryValue: null, consumable: false },
+        { name: "Custom spend limits per user", monetaryValue: null, consumable: false },
+      ],
+    },
+  ],
+  "Truist Bank": [
+    {
+      name: "Truist Enjoy Cash",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Truist Enjoy Travel",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5 points per $1 on all purchases", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Truist Enjoy Beyond",
+      accountType: "credit",
+      annualFee: 95,
+      benefits: [
+        { name: "3 points per $1 on travel and dining", monetaryValue: null, consumable: false },
+        { name: "Unlimited 1.5 points per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "$100 annual travel credit", monetaryValue: 100, consumable: true },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
+      ],
+    },
+    {
+      name: "Truist Future",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Truist Spectrum Rewards",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "3 points per $1 on gas, grocery, and dining", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Truist Enjoy Cash Secured",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Credit building tool with refundable security deposit", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Truist Business Enjoy Cash",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on every purchase", monetaryValue: null, consumable: false },
+        { name: "Free employee cards", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Truist Business Enjoy Travel",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5 points per $1 on every purchase", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Truist Business Credit Card",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Free employee cards", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Truist Commercial Card Solutions",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Expense management integration", monetaryValue: null, consumable: false },
+        { name: "Customizable spend controls", monetaryValue: null, consumable: false },
+      ],
+    },
+  ],
+  "TD Bank": [
+    {
+      name: "TD DoubleUp",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 2% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "TD Clear Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "TD FlexPay",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Flexible payment options on purchases over $100", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "TD Cash",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "3% cash back on dining", monetaryValue: null, consumable: false },
+        { name: "2% cash back on groceries", monetaryValue: null, consumable: false },
+        { name: "1% cash back on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "TD First Class Visa Signature",
+      accountType: "credit",
+      annualFee: 89,
+      benefits: [
+        { name: "3 points per $1 on dining, travel, and entertainment", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "$100 annual travel credit", monetaryValue: 100, consumable: true },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "TD Target Compasses Mastercard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "5% off on Target purchases every day", monetaryValue: null, consumable: false },
+        { name: "Free standard shipping on Target.com", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "TD Secured Visa",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Credit building tool with refundable security deposit", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "TD Business Solutions",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "1.5% cash back on business purchases", monetaryValue: null, consumable: false },
+        { name: "Free employee cards", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "TD Aeroplan Visa Signature",
+      accountType: "credit",
+      annualFee: 89,
+      benefits: [
+        { name: "3 miles per $1 on Air Canada and Aeroplan purchases", monetaryValue: null, consumable: false },
+        { name: "1 mile per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Free first checked bag on Air Canada flights", monetaryValue: null, consumable: false },
+        { name: "Priority boarding", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "TD Essential",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+  ],
+  "Citizens Bank": [
+    {
+      name: "Citizens Cash Back Plus World Mastercard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on every purchase", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citizens Clear Value Mastercard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citizens Everyday Points Mastercard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "2 points per $1 on dining, gas, and grocery", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citizens Pay",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Flexible installment payment options", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citizens Bank Secured Mastercard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Credit building tool with refundable security deposit", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citizens Student Credit Card",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "No annual fee", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citizens Business Cash Back Plus Mastercard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on every purchase", monetaryValue: null, consumable: false },
+        { name: "Free employee cards", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citizens Business Credit Card",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "1% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Free employee cards", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citizens Commercial Executive Card",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Expense management tools", monetaryValue: null, consumable: false },
+        { name: "Customizable spend controls", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Citizens Wealth Management World Elite Mastercard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "Unlimited 1.5% cash back on all purchases", monetaryValue: null, consumable: false },
+        { name: "Concierge service access", monetaryValue: null, consumable: false },
       ],
     },
   ],

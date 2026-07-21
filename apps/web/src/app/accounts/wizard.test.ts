@@ -21,7 +21,6 @@ function createAccount(overrides: Partial<Account> = {}): Account {
     initialBalance: 0,
     version: 1,
     status: "active",
-    includeInCharts: true,
     hidden: false,
     closed: false,
     closedAt: null,

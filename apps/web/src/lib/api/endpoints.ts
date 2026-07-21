@@ -217,7 +217,6 @@ export const accountsApi = {
       accountType: string;
       currency: string;
       initialBalance: number;
-      includeInCharts: boolean;
       hidden: boolean;
       closed: boolean;
       status: "active" | "closed";
@@ -229,7 +228,6 @@ export const accountsApi = {
     request: ApiRequest,
     id: string,
     body: Partial<{
-      includeInCharts: boolean;
       hidden: boolean;
       closed: boolean;
       status: "active" | "closed";

@@ -1193,7 +1193,6 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(createAsset.payload?.account?.accountType, "checking");
     assert.equal(createAsset.payload?.account?.initialBalance, 250.55);
     assert.equal(createAsset.payload?.account?.status, "active");
-    assert.equal(createAsset.payload?.account?.includeInCharts, true);
     assert.equal(createAsset.payload?.account?.hidden, false);
     assert.equal(createAsset.payload?.account?.closed, false);
     assert.equal(
@@ -1263,7 +1262,6 @@ test("api parity contract suite for categories/transactions/settings and missing
       token: accessToken,
       expectedStatus: 200,
       body: {
-        includeInCharts: false,
         hidden: true,
         expectedVersion: Number(currentVersion)
       }
@@ -1272,7 +1270,6 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(hiddenUpdate.payload?.account?.status, "active");
     assert.equal(hiddenUpdate.payload?.account?.hidden, true);
     assert.equal(hiddenUpdate.payload?.account?.closed, false);
-    assert.equal(hiddenUpdate.payload?.account?.includeInCharts, false);
     assert.equal(Number.isInteger(currentVersion), true);
 
     const closedUpdate = await apiRequest(context, "PUT", `/v1/accounts/${assetAccountId}/settings`, {
@@ -1294,7 +1291,6 @@ test("api parity contract suite for categories/transactions/settings and missing
       expectedStatus: 200,
       body: {
         status: "active",
-        includeInCharts: true,
         hidden: false,
         expectedVersion: Number(currentVersion)
       }
@@ -1304,7 +1300,6 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(activeUpdate.payload?.account?.hidden, false);
     assert.equal(activeUpdate.payload?.account?.closed, false);
     assert.equal(activeUpdate.payload?.account?.closedAt, null);
-    assert.equal(activeUpdate.payload?.account?.includeInCharts, true);
 
     const staleManualAdjustment = await apiRequest(
       context,
