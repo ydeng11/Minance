@@ -98,8 +98,9 @@ export function shouldRenewBenefits(metadata: CreditCardMetadata): boolean {
 }
 
 /**
- * Resets all consumable benefits' used flags and optionally sets a new lastRenewalDate.
- * Permanent benefits (consumable === false) are left untouched.
+ * Resets all benefits' used flags and optionally sets a new lastRenewalDate.
+ * All benefits (both consumable and earning rates) are reset so users
+ * can cross off temporarily maxed-out categories each cycle.
  * Returns a shallow copy with updated fields.
  */
 export function resetBenefitsForRenewal(
@@ -109,11 +110,11 @@ export function resetBenefitsForRenewal(
   return {
     ...metadata,
     lastRenewalDate: renewalDate ?? metadata.lastRenewalDate,
-    benefits: metadata.benefits.map((benefit) =>
-      benefit.consumable
-        ? { ...benefit, used: false, lastUsedDate: null }
-        : benefit
-    )
+    benefits: metadata.benefits.map((benefit) => ({
+      ...benefit,
+      used: false,
+      lastUsedDate: null
+    }))
   };
 }
 

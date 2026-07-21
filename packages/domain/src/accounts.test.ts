@@ -87,7 +87,7 @@ test("shouldRenewBenefits returns true when nextRenewalDate is in the past", () 
 
 
 
-test("resetBenefitsForRenewal resets consumable benefits and leaves permanent ones untouched", () => {
+test("resetBenefitsForRenewal resets all benefits' used flags and clears lastUsedDate", () => {
   const metadata: accountsModule.CreditCardMetadata = {
     annualFee: 95,
     activationDate: "2020-01-01",
@@ -104,10 +104,10 @@ test("resetBenefitsForRenewal resets consumable benefits and leaves permanent on
       },
       {
         id: "b2",
-        name: "3x on dining",
+        name: "3 points per $1 on dining",
         monetaryValue: null,
-        used: false,
-        lastUsedDate: null,
+        used: true,
+        lastUsedDate: "2026-06-01",
         consumable: false
       }
     ]
@@ -115,10 +115,9 @@ test("resetBenefitsForRenewal resets consumable benefits and leaves permanent on
 
   const renewed = accountsModule.resetBenefitsForRenewal(metadata);
   assert.equal(renewed.lastRenewalDate, "2026-01-01");
-  // Consumable benefit is reset
+  // Both consumable and non-consumable benefits are reset
   assert.equal(renewed.benefits[0].used, false);
   assert.equal(renewed.benefits[0].lastUsedDate, null);
-  // Permanent benefit is left untouched
   assert.equal(renewed.benefits[1].used, false);
   assert.equal(renewed.benefits[1].lastUsedDate, null);
 });
