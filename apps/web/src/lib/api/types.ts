@@ -29,6 +29,7 @@ export interface AccountBenefit {
   monetaryValue: number | null;
   used: boolean;
   lastUsedDate: string | null;
+  consumable: boolean;
 }
 
 export interface CreditCardMetadata {

@@ -127,25 +127,31 @@ function BenefitRow({
         />
       </div>
 
-      <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
-        <input
-          type="checkbox"
-          checked={benefit.used}
-          onChange={(e) =>
-            onChange({
-              ...benefit,
-              used: e.target.checked,
-              lastUsedDate: e.target.checked
-                ? new Date().toISOString().slice(0, 10)
-                : null
-            })
-          }
-          className="h-4 w-4 rounded border border-border-strong bg-surface-field text-accent focus-visible:ring-2 focus-visible:ring-focus-ring"
-        />
-        <span className="text-xs text-text-secondary select-none">
-          Used
+      {benefit.consumable ? (
+        <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
+          <input
+            type="checkbox"
+            checked={benefit.used}
+            onChange={(e) =>
+              onChange({
+                ...benefit,
+                used: e.target.checked,
+                lastUsedDate: e.target.checked
+                  ? new Date().toISOString().slice(0, 10)
+                  : null
+              })
+            }
+            className="h-4 w-4 rounded border border-border-strong bg-surface-field text-accent focus-visible:ring-2 focus-visible:ring-focus-ring"
+          />
+          <span className="text-xs text-text-secondary select-none">
+            Used
+          </span>
+        </label>
+      ) : (
+        <span className="inline-flex items-center gap-1 shrink-0 text-xs text-text-muted">
+          Permanent
         </span>
-      </label>
+      )}
 
       <button
         type="button"
@@ -163,6 +169,7 @@ function CreditCardEditor({ metadata, onChange }: CreditCardEditorProps) {
   const [adding, setAdding] = useState(false);
   const [newBenefitName, setNewBenefitName] = useState("");
   const [newBenefitValue, setNewBenefitValue] = useState("");
+  const [newBenefitConsumable, setNewBenefitConsumable] = useState(true);
 
   const nextRenewalDate = computeNextRenewalDate(
     metadata.activationDate,
@@ -190,7 +197,8 @@ function CreditCardEditor({ metadata, onChange }: CreditCardEditorProps) {
       name,
       monetaryValue: newBenefitValue ? Number(newBenefitValue) : null,
       used: false,
-      lastUsedDate: null
+      lastUsedDate: null,
+      consumable: newBenefitConsumable
     };
 
     onChange({
@@ -200,8 +208,9 @@ function CreditCardEditor({ metadata, onChange }: CreditCardEditorProps) {
 
     setNewBenefitName("");
     setNewBenefitValue("");
+    setNewBenefitConsumable(true);
     setAdding(false);
-  }, [metadata, newBenefitName, newBenefitValue, onChange]);
+  }, [metadata, newBenefitName, newBenefitValue, newBenefitConsumable, onChange]);
 
   const handleUpdateBenefit = useCallback(
     (index: number, updated: AccountBenefit) => {
@@ -317,14 +326,17 @@ function CreditCardEditor({ metadata, onChange }: CreditCardEditorProps) {
       )}
 
       {/* Benefits */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className={FIELD_LABEL_CLASS}>Benefits</p>
           {!adding && (
             <button
               type="button"
               className={SECONDARY_BUTTON_CLASS}
-              onClick={() => setAdding(true)}
+              onClick={() => {
+                setNewBenefitConsumable(true);
+                setAdding(true);
+              }}
             >
               <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               Add benefit
@@ -338,15 +350,51 @@ function CreditCardEditor({ metadata, onChange }: CreditCardEditorProps) {
           </p>
         )}
 
-        {metadata.benefits.map((benefit, index) => (
-          <BenefitRow
-            key={benefit.id}
-            benefit={benefit}
-            benefitCatalog={benefitCatalog}
-            onChange={(updated) => handleUpdateBenefit(index, updated)}
-            onRemove={() => handleRemoveBenefit(index)}
-          />
-        ))}
+        {/* Consumable benefits — tracked and reset on renewal */}
+        {(() => {
+          const consumableBenefits = metadata.benefits.filter((b) => b.consumable);
+          if (consumableBenefits.length === 0) return null;
+          return (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-text-muted">Consumable</p>
+              {consumableBenefits.map((benefit) => {
+                const realIndex = metadata.benefits.indexOf(benefit);
+                return (
+                  <BenefitRow
+                    key={benefit.id}
+                    benefit={benefit}
+                    benefitCatalog={benefitCatalog}
+                    onChange={(updated) => handleUpdateBenefit(realIndex, updated)}
+                    onRemove={() => handleRemoveBenefit(realIndex)}
+                  />
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* Permanent benefits — descriptive only, no usage tracking */}
+        {(() => {
+          const permanentBenefits = metadata.benefits.filter((b) => !b.consumable);
+          if (permanentBenefits.length === 0) return null;
+          return (
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-text-muted">Permanent</p>
+              {permanentBenefits.map((benefit) => {
+                const realIndex = metadata.benefits.indexOf(benefit);
+                return (
+                  <BenefitRow
+                    key={benefit.id}
+                    benefit={benefit}
+                    benefitCatalog={benefitCatalog}
+                    onChange={(updated) => handleUpdateBenefit(realIndex, updated)}
+                    onRemove={() => handleRemoveBenefit(realIndex)}
+                  />
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {adding && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border-subtle bg-surface-field p-2">
@@ -393,10 +441,19 @@ function CreditCardEditor({ metadata, onChange }: CreditCardEditorProps) {
                 inputMode="decimal"
                 value={newBenefitValue}
                 onChange={(e) => setNewBenefitValue(e.target.value)}
-                placeholder="$ value"
+                placeholder="$"
                 className={`${FIELD_CLASS} w-full`}
               />
             </div>
+            <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={newBenefitConsumable}
+                onChange={(e) => setNewBenefitConsumable(e.target.checked)}
+                className="h-4 w-4 rounded border border-border-strong bg-surface-field text-accent focus-visible:ring-2 focus-visible:ring-focus-ring"
+              />
+              <span className="text-xs text-text-secondary select-none">Consumable</span>
+            </label>
             <button
               type="button"
               className={SECONDARY_BUTTON_CLASS}
@@ -412,6 +469,7 @@ function CreditCardEditor({ metadata, onChange }: CreditCardEditorProps) {
                 setAdding(false);
                 setNewBenefitName("");
                 setNewBenefitValue("");
+                setNewBenefitConsumable(true);
               }}
             >
               Cancel

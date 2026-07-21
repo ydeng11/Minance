@@ -10,6 +10,7 @@ export interface AccountBenefit {
   monetaryValue: number | null;
   used: boolean;
   lastUsedDate: string | null;
+  consumable: boolean;
 }
 
 export interface CreditCardMetadata {
@@ -97,7 +98,8 @@ export function shouldRenewBenefits(metadata: CreditCardMetadata): boolean {
 }
 
 /**
- * Resets all benefits' used flags and optionally sets a new lastRenewalDate.
+ * Resets all consumable benefits' used flags and optionally sets a new lastRenewalDate.
+ * Permanent benefits (consumable === false) are left untouched.
  * Returns a shallow copy with updated fields.
  */
 export function resetBenefitsForRenewal(
@@ -107,11 +109,11 @@ export function resetBenefitsForRenewal(
   return {
     ...metadata,
     lastRenewalDate: renewalDate ?? metadata.lastRenewalDate,
-    benefits: metadata.benefits.map((benefit) => ({
-      ...benefit,
-      used: false,
-      lastUsedDate: null
-    }))
+    benefits: metadata.benefits.map((benefit) =>
+      benefit.consumable
+        ? { ...benefit, used: false, lastUsedDate: null }
+        : benefit
+    )
   };
 }
 

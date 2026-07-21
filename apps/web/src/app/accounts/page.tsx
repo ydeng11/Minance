@@ -378,7 +378,8 @@ export default function AccountsPage() {
                 name: b.name,
                 monetaryValue: b.monetaryValue,
                 used: false,
-                lastUsedDate: null
+                lastUsedDate: null,
+                consumable: b.consumable
               }))
             }
           }
