@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { MessageSquare, Moon, SlidersHorizontal, Sun } from "lucide-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -183,6 +184,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-muted">Workspace</p>
               <div className="mt-2 flex flex-wrap items-center gap-3">
+                <Image
+                  src="/iHelio.svg"
+                  alt=""
+                  width={36}
+                  height={28}
+                  className="h-7 w-auto"
+                  aria-hidden="true"
+                />
                 <h1 className="font-display text-2xl font-semibold tracking-tight text-text-primary">Minance</h1>
                 <span className="rounded-full border border-border-subtle bg-surface-field px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted">
                   {appEnv}

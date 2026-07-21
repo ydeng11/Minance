@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -37,9 +38,14 @@ export function Sidebar() {
       <div className="mb-6 px-2">
         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-text-muted">Workspace</p>
         <div className="mt-2 flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-accent/35 bg-accent-soft">
-            <div className="h-3 w-3 rounded-full bg-accent" />
-          </div>
+          <Image
+            src="/iHelio.svg"
+            alt="Minance"
+            width={28}
+            height={22}
+            className="h-7 w-auto"
+            priority
+          />
           <span className="font-display text-xl font-semibold tracking-tight text-text-primary">Minance</span>
         </div>
       </div>

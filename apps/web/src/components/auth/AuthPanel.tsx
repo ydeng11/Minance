@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { StatusMessage } from "@/components/feedback/StatusMessage";
@@ -51,7 +52,18 @@ export function AuthPanel() {
         className="w-full max-w-md rounded-3xl border border-border-subtle bg-surface-panel/90 p-8 shadow-dialog"
         data-testid="auth-panel"
       >
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-text-primary">Minance</h1>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/iHelio.svg"
+            alt=""
+            width={42}
+            height={32}
+            className="h-8 w-auto"
+            aria-hidden="true"
+            priority
+          />
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-text-primary">Minance</h1>
+        </div>
         <p className="mt-2 text-sm text-text-secondary">Privacy-first money intelligence without bank linking.</p>
 
         <div className="mt-6 flex gap-2">
