@@ -629,8 +629,7 @@ export default function AccountsPage() {
       upsertAccountInList(response.account);
       setEditingAccount(response.account);
       setSettingsDraft(createAccountSettingsDraft(response.account));
-      const label = response.account.hidden ? "hidden" : "unhidden";
-      setMessage(`Account "${response.account.displayName}" ${label}.`);
+      setMessage(`Account "${response.account.displayName}" ${response.account.hidden ? "hidden" : "unhidden"}.`);
       setMessageTone("info");
     } catch (error) {
       setSettingsError(error instanceof ApiError ? error.message : "Failed to update account.");
@@ -643,8 +642,7 @@ export default function AccountsPage() {
     if (!editingAccount) return;
 
     const nextStatus = editingAccount.status === "active" ? "closed" : "active";
-    const verb = nextStatus === "closed" ? "close" : "restore";
-    if (typeof window !== "undefined" && !window.confirm(`Confirm ${verb} action for "${editingAccount.displayName}"?`)) {
+    if (typeof window !== "undefined" && !window.confirm(`Confirm ${nextStatus === "closed" ? "close" : "restore"} action for "${editingAccount.displayName}"?`)) {
       return;
     }
 
