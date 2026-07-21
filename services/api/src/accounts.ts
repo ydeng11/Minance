@@ -171,7 +171,8 @@ function resolveClassMetadata(accountType, payload = {}, existingMetadata = null
           name: String(b.name || "").trim(),
           monetaryValue: b.monetaryValue != null ? Number(b.monetaryValue) : null,
           used: b.used === true,
-          lastUsedDate: b.lastUsedDate || null
+          lastUsedDate: b.lastUsedDate || null,
+          consumable: b.consumable ?? (b.monetaryValue != null)
         };
       });
     } else if (existingMetadata?.credit?.benefits) {
@@ -293,7 +294,20 @@ function toAccountResponse(entry) {
     normalizedKey: entry.normalizedKey,
     createdAt: entry.createdAt || null,
     updatedAt: entry.updatedAt || null,
-    classMetadata: entry.classMetadata || null
+    classMetadata: entry.classMetadata
+      ? entry.classMetadata.type === "credit" && entry.classMetadata.credit
+        ? {
+            type: "credit",
+            credit: {
+              ...entry.classMetadata.credit,
+              benefits: (entry.classMetadata.credit.benefits || []).map((b) => ({
+                ...b,
+                consumable: b.consumable ?? (b.monetaryValue != null)
+              }))
+            }
+          }
+        : entry.classMetadata
+      : null
   };
 }
 
