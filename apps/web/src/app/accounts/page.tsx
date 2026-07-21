@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent as ReactMouseEvent } from "react";
-import { Archive, ChevronDown, Loader2, Plus, Save, Trash2, Undo2, X } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import type { Account, AccountClassMetadata } from "@/lib/api/types";
@@ -29,7 +29,6 @@ interface AccountSettingsDraft {
   accountType: string;
   currency: string;
   initialBalance: string;
-  status: Account["status"];
   includeInCharts: boolean;
   classMetadata: AccountClassMetadata | null;
 }
@@ -48,7 +47,6 @@ interface NormalizedAccountSettingsDraft {
   accountType: string;
   currency: string;
   initialBalance: number;
-  status: Account["status"];
   includeInCharts: boolean;
   classMetadata: AccountClassMetadata | null;
 }
@@ -68,8 +66,6 @@ const PRIMARY_BUTTON_CLASS =
   "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-accent/40 bg-accent-soft px-3 py-2 text-sm font-medium text-accent transition hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-60";
 const CLOSE_BUTTON_CLASS =
   "inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-border-subtle bg-surface-field p-2 text-text-muted transition hover:text-text-primary";
-const WARNING_ACTION_BUTTON_CLASS =
-  "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-warning/35 bg-warning-soft px-3 py-2 text-sm text-warning transition hover:border-warning/55 disabled:cursor-not-allowed disabled:opacity-60";
 const DANGER_ACTION_BUTTON_CLASS =
   "inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-danger/35 bg-danger-soft px-3 py-2 text-sm text-danger transition hover:border-danger/55 disabled:cursor-not-allowed disabled:opacity-60";
 const DANGER_CONFIRM_BUTTON_CLASS =
@@ -77,16 +73,6 @@ const DANGER_CONFIRM_BUTTON_CLASS =
 const DANGER_ALERT_CLASS = "rounded-lg border border-danger/35 bg-danger-soft px-3 py-2 text-sm text-danger";
 const DANGER_CONFIRM_PANEL_CLASS =
   "rounded-lg border border-danger/35 bg-danger-soft px-3 py-3 text-sm text-danger";
-
-function accountBadge(status: string, hidden: boolean): { label: string; classes: string } | null {
-  if (status === "closed") {
-    return { label: "Closed", classes: "bg-danger-soft text-danger" };
-  }
-  if (hidden) {
-    return { label: "Hidden", classes: "bg-warning-soft text-warning" };
-  }
-  return null;
-}
 
 function formatBalance(amount: number, currency: string) {
   try {
@@ -106,7 +92,6 @@ function createAccountSettingsDraft(account: Account): AccountSettingsDraft {
     accountType: account.accountType,
     currency: account.currency,
     initialBalance: String(account.initialBalance),
-    status: account.status,
     includeInCharts: account.includeInCharts,
     classMetadata: account.classMetadata ?? null
   };
@@ -153,7 +138,6 @@ function validateAccountSettingsDraft(draft: AccountSettingsDraft): { errors: Ac
       accountType,
       currency,
       initialBalance: parsedBalance,
-      status: draft.status,
       includeInCharts: draft.includeInCharts,
       classMetadata: draft.classMetadata
     }
@@ -169,7 +153,6 @@ function hasSettingsDraftChanges(account: Account, draft: AccountSettingsDraft) 
     account.currency !== draft.currency.trim().toUpperCase() ||
     !Number.isFinite(initialBalance) ||
     Number(account.initialBalance) !== initialBalance ||
-    account.status !== draft.status ||
     account.includeInCharts !== draft.includeInCharts ||
     JSON.stringify(account.classMetadata ?? null) !== JSON.stringify(draft.classMetadata)
   );
@@ -194,7 +177,6 @@ export default function AccountsPage() {
   const [settingsErrors, setSettingsErrors] = useState<AccountSettingsErrors>({});
   const [settingsError, setSettingsError] = useState("");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
-  const [isUpdatingAccountState, setIsUpdatingAccountState] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isWizardCloseConfirmOpen, setIsWizardCloseConfirmOpen] = useState(false);
@@ -615,57 +597,6 @@ export default function AccountsPage() {
     }
   }
 
-  async function toggleAccountHidden() {
-    if (!editingAccount) return;
-
-    setIsUpdatingAccountState(true);
-    setSettingsError("");
-
-    try {
-      const response = await api.accounts.updateSettings(editingAccount.id, {
-        hidden: !editingAccount.hidden,
-        expectedVersion: editingAccount.version
-      });
-      upsertAccountInList(response.account);
-      setEditingAccount(response.account);
-      setSettingsDraft(createAccountSettingsDraft(response.account));
-      setMessage(`Account "${response.account.displayName}" ${response.account.hidden ? "hidden" : "unhidden"}.`);
-      setMessageTone("info");
-    } catch (error) {
-      setSettingsError(error instanceof ApiError ? error.message : "Failed to update account.");
-    } finally {
-      setIsUpdatingAccountState(false);
-    }
-  }
-
-  async function toggleAccountClosed() {
-    if (!editingAccount) return;
-
-    const nextStatus = editingAccount.status === "active" ? "closed" : "active";
-    if (typeof window !== "undefined" && !window.confirm(`Confirm ${nextStatus === "closed" ? "close" : "restore"} action for "${editingAccount.displayName}"?`)) {
-      return;
-    }
-
-    setIsUpdatingAccountState(true);
-    setSettingsError("");
-
-    try {
-      const response = await api.accounts.updateSettings(editingAccount.id, {
-        status: nextStatus,
-        expectedVersion: editingAccount.version
-      });
-      upsertAccountInList(response.account);
-      setEditingAccount(response.account);
-      setSettingsDraft(createAccountSettingsDraft(response.account));
-      setMessage(`Account "${response.account.displayName}" status set to ${response.account.status}.`);
-      setMessageTone("info");
-    } catch (error) {
-      setSettingsError(error instanceof ApiError ? error.message : "Failed to update account.");
-    } finally {
-      setIsUpdatingAccountState(false);
-    }
-  }
-
   function requestDeleteEditingAccount() {
     setSettingsError("");
     setIsDeleteConfirmOpen(true);
@@ -768,14 +699,6 @@ export default function AccountsPage() {
                               <p className="text-lg font-semibold text-white">{entry.displayName}</p>
                               <span className="text-lg font-semibold text-white">{formatBalance(entry.initialBalance, entry.currency)}</span>
                             </div>
-                            {(() => {
-                              const badge = accountBadge(entry.status, entry.hidden);
-                              return badge ? (
-                                <span className={`pointer-events-none absolute right-3 top-3 rounded-full px-2 py-0.5 text-xs ${badge.classes}`}>
-                                  {badge.label}
-                                </span>
-                              ) : null;
-                            })()}
                           </article>
                         ))}
                       </div>
@@ -1091,18 +1014,6 @@ export default function AccountsPage() {
                   {settingsErrors.initialBalance ? <p className={FIELD_ERROR_CLASS}>{settingsErrors.initialBalance}</p> : null}
                 </div>
 
-                <div className="grid gap-2">
-                  <label htmlFor="accounts-settings-status" className="text-sm font-medium text-text-primary">State</label>
-                  <select
-                    id="accounts-settings-status"
-                    value={settingsDraft.status}
-                    onChange={(event) => updateSettingsDraftField("status", event.target.value as Account["status"])}
-                    className={FIELD_CLASS}
-                  >
-                    <option value="active">Active</option>
-                    <option value="closed">Closed</option>
-                  </select>
-                </div>
               </div>
 
               <label className="flex items-center gap-2 text-sm text-text-secondary">
@@ -1126,25 +1037,7 @@ export default function AccountsPage() {
                 <p className={DANGER_ALERT_CLASS}>{settingsError}</p>
               ) : null}
 
-              <div className="grid gap-2 border-t border-border-subtle pt-4 sm:grid-cols-3">
-                <button
-                  type="button"
-                  className={WARNING_ACTION_BUTTON_CLASS}
-                  onClick={() => void toggleAccountHidden()}
-                  disabled={isUpdatingAccountState}
-                >
-                  {isUpdatingAccountState ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Archive className="h-4 w-4" aria-hidden="true" />}
-                  {editingAccount.hidden ? "Show in list" : "Hide from list"}
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border-strong px-3 py-2 text-sm text-text-secondary transition hover:border-accent/40 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  onClick={() => void toggleAccountClosed()}
-                  disabled={isUpdatingAccountState}
-                >
-                  {isUpdatingAccountState ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Undo2 className="h-4 w-4" aria-hidden="true" />}
-                  {editingAccount.status === "active" ? "Close account" : "Restore active"}
-                </button>
+              <div className="border-t border-border-subtle pt-4">
                 <button
                   type="button"
                   className={DANGER_ACTION_BUTTON_CLASS}
