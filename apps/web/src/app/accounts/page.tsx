@@ -179,6 +179,7 @@ export default function AccountsPage() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isSettingsCloseConfirmOpen, setIsSettingsCloseConfirmOpen] = useState(false);
   const [isWizardCloseConfirmOpen, setIsWizardCloseConfirmOpen] = useState(false);
   const wizardDialogRef = useRef<HTMLElement | null>(null);
   const settingsDialogRef = useRef<HTMLElement | null>(null);
@@ -475,11 +476,9 @@ export default function AccountsPage() {
   }, [rememberFocusedElement]);
 
   const closeAccountSettings = useCallback((force = false) => {
-    if (!force && editingAccount && settingsDraft && typeof window !== "undefined") {
-      const shouldConfirm = hasSettingsDraftChanges(editingAccount, settingsDraft);
-      if (shouldConfirm && !window.confirm("Discard account setting changes?")) {
-        return;
-      }
+    if (!force && editingAccount && settingsDraft && hasSettingsDraftChanges(editingAccount, settingsDraft)) {
+      setIsSettingsCloseConfirmOpen(true);
+      return;
     }
 
     setIsSettingsOpen(false);
@@ -488,9 +487,9 @@ export default function AccountsPage() {
     setSettingsErrors({});
     setSettingsError("");
     setIsSavingSettings(false);
-    setIsUpdatingAccountState(false);
     setIsDeletingAccount(false);
     setIsDeleteConfirmOpen(false);
+    setIsSettingsCloseConfirmOpen(false);
     restoreFocusAfterDialogClose();
   }, [editingAccount, restoreFocusAfterDialogClose, settingsDraft]);
 
@@ -1067,6 +1066,37 @@ export default function AccountsPage() {
                       >
                         {isDeletingAccount ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
                         Delete account
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {isSettingsCloseConfirmOpen ? (
+                <div className={DANGER_CONFIRM_PANEL_CLASS} role="alert" aria-labelledby="settings-discard-title">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p id="settings-discard-title" className="font-medium text-danger">
+                        Discard changes?
+                      </p>
+                      <p className="mt-1 text-danger/85">
+                        All unsaved changes will be lost.
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className={SECONDARY_BUTTON_CLASS}
+                        onClick={() => setIsSettingsCloseConfirmOpen(false)}
+                      >
+                        Keep editing
+                      </button>
+                      <button
+                        type="button"
+                        className={DANGER_CONFIRM_BUTTON_CLASS}
+                        onClick={() => closeAccountSettings(true)}
+                      >
+                        Discard
                       </button>
                     </div>
                   </div>
