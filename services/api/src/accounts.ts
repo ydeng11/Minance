@@ -29,8 +29,6 @@ const ACCOUNT_STATUS_ALIASES = new Map(
   Object.entries({
     active: "active",
     open: "active",
-    hidden: "hidden",
-    hide: "hidden",
     closed: "closed",
     close: "closed"
   })
@@ -213,26 +211,19 @@ function resolveAccountSettings(account = {}, payload = {}) {
     )
     : coerceStoredBoolean(account.includeInCharts, true);
 
+  // hidden is independent of lifecycle status — stored as a boolean
+  const hidden = hasAnyField(payload, ["hidden", "isHidden", "is_hidden"])
+    ? parseBooleanField(payload.hidden ?? payload.isHidden ?? payload.is_hidden, "account hidden setting")
+    : coerceStoredBoolean(account.hidden, false);
+
+  // status is lifecycle-only: "active" | "closed"
   let status = hasAnyField(payload, ["status", "state", "accountStatus", "account_status"])
     ? normalizeAccountStatus(payload.status ?? payload.state ?? payload.accountStatus ?? payload.account_status)
     : normalizeAccountStatus(account.status, DEFAULT_ACCOUNT_STATUS);
 
-  if (hasAnyField(payload, ["hidden", "isHidden", "is_hidden"])) {
-    const hidden = parseBooleanField(payload.hidden ?? payload.isHidden ?? payload.is_hidden, "account hidden setting");
-    if (hidden) {
-      status = "hidden";
-    } else if (status === "hidden") {
-      status = DEFAULT_ACCOUNT_STATUS;
-    }
-  }
-
   if (hasAnyField(payload, ["closed", "isClosed", "is_closed"])) {
     const closed = parseBooleanField(payload.closed ?? payload.isClosed ?? payload.is_closed, "account closed setting");
-    if (closed) {
-      status = "closed";
-    } else if (status === "closed") {
-      status = DEFAULT_ACCOUNT_STATUS;
-    }
+    status = closed ? "closed" : "active";
   }
 
   let closedAt = normalizeClosedAt(account.closedAt);
@@ -249,11 +240,15 @@ function resolveAccountSettings(account = {}, payload = {}) {
   return {
     includeInCharts,
     status,
+    hidden,
     closedAt
   };
 }
 
 function normalizeStoredAccountStatus(rawValue) {
+  // Backward compat: old store entries may have status="hidden" — treat as active
+  const normalized = normalizeText(String(rawValue || "")).toLowerCase().replace(/\s+/g, "_");
+  if (normalized === "hidden" || normalized === "hide") return DEFAULT_ACCOUNT_STATUS;
   try {
     return normalizeAccountStatus(rawValue, DEFAULT_ACCOUNT_STATUS);
   } catch {
@@ -277,6 +272,9 @@ function toAccountResponse(entry) {
     ? normalizeStoredClosedAt(entry.closedAt, parseDate(entry.updatedAt || entry.createdAt || nowIso()))
     : null;
 
+  // hidden is now a stored boolean (not derived from status)
+  const hidden = coerceStoredBoolean(entry.hidden, false);
+
   return {
     id: entry.id,
     userId: entry.userId,
@@ -289,7 +287,7 @@ function toAccountResponse(entry) {
     version: Number(entry.version || 1),
     status,
     includeInCharts,
-    hidden: status === "hidden",
+    hidden,
     closed: status === "closed",
     closedAt,
     normalizedKey: entry.normalizedKey,
@@ -429,6 +427,7 @@ export function createAccount(userId, payload) {
     currency: normalized.currency,
     initialBalance: normalized.initialBalance,
     status: normalized.settings.status,
+    hidden: normalized.settings.hidden,
     includeInCharts: normalized.settings.includeInCharts,
     closedAt: normalized.settings.closedAt,
     manualAdjustments: [],
@@ -467,6 +466,7 @@ export function updateAccount(userId, accountId, payload) {
   account.currency = normalized.currency;
   account.initialBalance = normalized.initialBalance;
   account.status = normalized.settings.status;
+  account.hidden = normalized.settings.hidden;
   account.classMetadata = normalized.classMetadata;
   account.includeInCharts = normalized.settings.includeInCharts;
   account.closedAt = normalized.settings.closedAt;

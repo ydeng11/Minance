@@ -58,7 +58,7 @@ export interface Account {
   currency: string;
   initialBalance: number;
   version: number;
-  status: "active" | "hidden" | "closed";
+  status: "active" | "closed";
   includeInCharts: boolean;
   hidden: boolean;
   closed: boolean;

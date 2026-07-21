@@ -1269,7 +1269,7 @@ test("api parity contract suite for categories/transactions/settings and missing
       }
     });
     currentVersion = hiddenUpdate.payload?.account?.version;
-    assert.equal(hiddenUpdate.payload?.account?.status, "hidden");
+    assert.equal(hiddenUpdate.payload?.account?.status, "active");
     assert.equal(hiddenUpdate.payload?.account?.hidden, true);
     assert.equal(hiddenUpdate.payload?.account?.closed, false);
     assert.equal(hiddenUpdate.payload?.account?.includeInCharts, false);
@@ -1295,6 +1295,7 @@ test("api parity contract suite for categories/transactions/settings and missing
       body: {
         status: "active",
         includeInCharts: true,
+        hidden: false,
         expectedVersion: Number(currentVersion)
       }
     });

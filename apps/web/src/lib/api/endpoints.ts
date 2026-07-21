@@ -220,7 +220,7 @@ export const accountsApi = {
       includeInCharts: boolean;
       hidden: boolean;
       closed: boolean;
-      status: "active" | "hidden" | "closed";
+      status: "active" | "closed";
       classMetadata: Account["classMetadata"];
       expectedVersion: number;
     }>
@@ -232,7 +232,7 @@ export const accountsApi = {
       includeInCharts: boolean;
       hidden: boolean;
       closed: boolean;
-      status: "active" | "hidden" | "closed";
+      status: "active" | "closed";
       expectedVersion: number;
     }>
   ) => request<{ account: Account }>(`/v1/accounts/${id}/settings`, { method: "PUT", body }),

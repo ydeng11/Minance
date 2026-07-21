@@ -78,14 +78,14 @@ const DANGER_ALERT_CLASS = "rounded-lg border border-danger/35 bg-danger-soft px
 const DANGER_CONFIRM_PANEL_CLASS =
   "rounded-lg border border-danger/35 bg-danger-soft px-3 py-3 text-sm text-danger";
 
-function statusClasses(status: string) {
+function accountBadge(status: string, hidden: boolean): { label: string; classes: string } | null {
   if (status === "closed") {
-    return "bg-danger-soft text-danger";
+    return { label: "Closed", classes: "bg-danger-soft text-danger" };
   }
-  if (status === "hidden") {
-    return "bg-warning-soft text-warning";
+  if (hidden) {
+    return { label: "Hidden", classes: "bg-warning-soft text-warning" };
   }
-  return "bg-accent-soft text-accent";
+  return null;
 }
 
 function formatBalance(amount: number, currency: string) {
@@ -615,13 +615,36 @@ export default function AccountsPage() {
     }
   }
 
-  async function updateAccountState(nextStatus: Account["status"]) {
-    if (!editingAccount) {
-      return;
-    }
+  async function toggleAccountHidden() {
+    if (!editingAccount) return;
 
-    const stateLabel = nextStatus === "hidden" ? "archive" : nextStatus === "closed" ? "close" : "restore";
-    if (typeof window !== "undefined" && !window.confirm(`Confirm ${stateLabel} action for "${editingAccount.displayName}"?`)) {
+    setIsUpdatingAccountState(true);
+    setSettingsError("");
+
+    try {
+      const response = await api.accounts.updateSettings(editingAccount.id, {
+        hidden: !editingAccount.hidden,
+        expectedVersion: editingAccount.version
+      });
+      upsertAccountInList(response.account);
+      setEditingAccount(response.account);
+      setSettingsDraft(createAccountSettingsDraft(response.account));
+      const label = response.account.hidden ? "hidden" : "unhidden";
+      setMessage(`Account "${response.account.displayName}" ${label}.`);
+      setMessageTone("info");
+    } catch (error) {
+      setSettingsError(error instanceof ApiError ? error.message : "Failed to update account.");
+    } finally {
+      setIsUpdatingAccountState(false);
+    }
+  }
+
+  async function toggleAccountClosed() {
+    if (!editingAccount) return;
+
+    const nextStatus = editingAccount.status === "active" ? "closed" : "active";
+    const verb = nextStatus === "closed" ? "close" : "restore";
+    if (typeof window !== "undefined" && !window.confirm(`Confirm ${verb} action for "${editingAccount.displayName}"?`)) {
       return;
     }
 
@@ -639,7 +662,7 @@ export default function AccountsPage() {
       setMessage(`Account "${response.account.displayName}" status set to ${response.account.status}.`);
       setMessageTone("info");
     } catch (error) {
-      setSettingsError(error instanceof ApiError ? error.message : "Failed to update account status.");
+      setSettingsError(error instanceof ApiError ? error.message : "Failed to update account.");
     } finally {
       setIsUpdatingAccountState(false);
     }
@@ -747,9 +770,14 @@ export default function AccountsPage() {
                               <p className="text-lg font-semibold text-white">{entry.displayName}</p>
                               <span className="text-lg font-semibold text-white">{formatBalance(entry.initialBalance, entry.currency)}</span>
                             </div>
-                            <span className={`pointer-events-none absolute right-3 top-3 rounded-full px-2 py-0.5 text-xs ${statusClasses(entry.status)}`}>
-                              {entry.status}
-                            </span>
+                            {(() => {
+                              const badge = accountBadge(entry.status, entry.hidden);
+                              return badge ? (
+                                <span className={`pointer-events-none absolute right-3 top-3 rounded-full px-2 py-0.5 text-xs ${badge.classes}`}>
+                                  {badge.label}
+                                </span>
+                              ) : null;
+                            })()}
                           </article>
                         ))}
                       </div>
@@ -1074,7 +1102,6 @@ export default function AccountsPage() {
                     className={FIELD_CLASS}
                   >
                     <option value="active">Active</option>
-                    <option value="hidden">Archived</option>
                     <option value="closed">Closed</option>
                   </select>
                 </div>
@@ -1105,16 +1132,16 @@ export default function AccountsPage() {
                 <button
                   type="button"
                   className={WARNING_ACTION_BUTTON_CLASS}
-                  onClick={() => void updateAccountState("hidden")}
-                  disabled={isUpdatingAccountState || editingAccount.status === "hidden"}
+                  onClick={() => void toggleAccountHidden()}
+                  disabled={isUpdatingAccountState}
                 >
                   {isUpdatingAccountState ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Archive className="h-4 w-4" aria-hidden="true" />}
-                  Archive
+                  {editingAccount.hidden ? "Show in list" : "Hide from list"}
                 </button>
                 <button
                   type="button"
                   className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-border-strong px-3 py-2 text-sm text-text-secondary transition hover:border-accent/40 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  onClick={() => void updateAccountState(editingAccount.status === "active" ? "closed" : "active")}
+                  onClick={() => void toggleAccountClosed()}
                   disabled={isUpdatingAccountState}
                 >
                   {isUpdatingAccountState ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Undo2 className="h-4 w-4" aria-hidden="true" />}
