@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Bank of America | Page Not Found</title>
+<meta name="description" content="The Bank of America page you are trying to reach is not found. We apologize for the inconvenience." />
+<meta name="redirect-type" content="302, temporary" />
+<meta name="robots" content="noindex, follow" />
+<link href="/content/error-page/html/styles/error.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="/content/error-page/html/script/jquery-3.6.0.js"></script>
+<script type="text/javascript" src="/content/error-page/html/script/jquery-migrate-3.1.0.js"></script>
+<script  src="/content/error-page/html/script/error.js" type="text/javascript"></script>
+</head>
+
+<body class="fsd-layout-body" >
+<a class="ada-hidden" href="#skip-to-h1">Skip to main content</a>
+<div class="fsd-layout fsd-2c-700lt-layout">
+  <div class="fsd-border">
+    <div id="content-height" class="center-content">
+      <div class="header">
+        <div class="header-module">
+          <div class="text-w-logo-skin">
+            <div class="header-left">
+              <div class="bofa-logo">
+              	<a href="https://www.bankofamerica.com"><img height="28" width="221" alt="Bank of America Logo" src="/content/error-page/html/images/bofa-logo.gif" /></a>
+              </div>
+              <div class="clearboth"></div>
+            </div>
+            <div class="header-right">
+              <ul class="header-links">
+                <li class="sign-in"><a href="https://www.bankofamerica.com/sitemap/hub/signin.go">Sign In</a></li>
+                <li> <a href="http://www.bankofamerica.com">Home</a> </li>
+                <li> <a href="https://locators.bankofamerica.com">Locations</a> </li>
+                <li> <a href="https://www.bankofamerica.com/contactus/contactus.go">Contact Us</a> </li>
+                <li class="last-link"> <a href="https://www.bankofamerica.com/help/overview.go">Help</a> </li>
+              </ul>
+            </div>
+            <div class="clearboth"></div>
+          </div>
+        </div>
+        <div class="page-title-fsd-module">
+          <div class="redbar-scart-status-skin sup-ie">
+			<div class="button-text-wrapper">
+				<div class="text-wrapper">
+					<h1 id="skip-to-h1">Page Not Available</h1>
+				</div>
+				<div class="clearboth"></div>
+			</div>
+          </div>
+        </div>
+      </div>
+      <div class="columns">
+        <div class="flex-col lt-col">
+          <h2 class="h2-fsd-red">The page you're trying to reach is not available</h2>
+          <p class="pad-adjust">The Bank of America page you are trying to reach is not available. We apologize for the inconvenience. There are several possible reasons you are unable to reach the page you want:</p>
+			<ul class="content-list">
+				<li>The link you used is outdated.</li>
+				<li>The Web address you entered is incorrect.</li>
+				<li>The page you want no longer exists.	</li>
+			</ul>
+			<h3 class="top-element">Getting where you're going</h3>
+			<p class="pad-adjust">We want to help you get where you&nbsp;are going.</p>
+			<ul class="content-list">
+				<li>Check the Web address to make sure it is correct.</li>
+				<li><a href="https://www.bankofamerica.com">Visit our Home Page</a></li>
+				<li><a href="https://www.bankofamerica.com/sitemap/personal.go">View our Site Map</a></li>
+			</ul>
+			<h3 class="top-element">Still need help?</h3>
+			<p>If you're still not sure how to get where you're going or you need more help, please <a title="contact us" name="contact us" href="https://www.bankofamerica.com/contactus/contactus.go" target="_self">contact us</a>.</p>
+		</div>
+        <div class="flex-col rt-col"><!-- --></div>
+        <div class="clearboth"><!-- --></div>
+      </div>
+      <div class="footer">
+		<div class="footer-top">&nbsp;</div>
+        <div class="footer-inner" id="inner-footer">
+            <div class="global-footer-module">
+              <div class="fsd-skin">
+				<div class="gf-links">
+					<a title="Home" name="global_footer_home" href="https://www.bankofamerica.com/" target="_self">Home</a>
+					<a title="Privacy &amp; Security" name="global_footer_privacy__security" href="https://www.bankofamerica.com/privacy/overview.go" target="_self">Privacy &amp; Security</a>
+					<a title="Careers" name="global_footer_careers" href="https://careers.bankofamerica.com/en-us" target="_self">Careers</a>
+
+					<a title="Site Map" class="gf-last-link" name="global_footer_site_map" href="https://www.bankofamerica.com/sitemap/personal.go" target="_self">Site Map</a>
+
+					<div class="clearboth"></div>
+				</div>
+				  <p>Bank of America, N.A. Member <acronym title="Federal Deposit Insurance Corporation">FDIC</acronym>. <a target="_blank" href="https://www.bankofamerica.com/help/equalhousing_popup.go" onclick="window.open('https://www.bankofamerica.com/help/equalhousing_popup.go','newwin','width=640,height=371,scrollbars=yes,resizable=yes,left=35,top=161'); return false;" title="Equal Housing Lender information. Link opens in new window." id="equal_housing_footer">Equal Housing Lender<img height="9" width="14" alt="Opens in new window" src="https://www.bankofamerica.com/content/images/ContextualSiteGraphics/Logos/en_US/icon_equal_housing_lender.gif"></a><br>&copy; <script type="text/javascript">
+                                                let x = new Date();
+                                                document.write(x.getFullYear());
+                                                </script> Bank of America Corporation. All rights reserved.</p>
+              </div>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

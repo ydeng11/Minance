@@ -298,18 +298,54 @@ const ACCOUNT_TYPE_CARD_STYLES: Record<string, CardFaceStyle> = {
  * Cards without a mapping fall through to the unique deterministic gradient.
  */
 const CARD_FACE_IMAGE_MAP: Record<string, string> = {
+  // Chase
   "Chase Sapphire Preferred": "/card-faces/chase-sapphire-preferred.png",
+  "Chase Sapphire Reserve": "/card-faces/chase-sapphire-reserve.png",
+  "Chase Freedom Unlimited": "/card-faces/chase-freedom-unlimited.png",
+  "Chase Freedom Flex": "/card-faces/chase-freedom-flex.png",
+  "Amazon Prime Visa": "/card-faces/amazon-prime-visa.png",
+  "United Explorer": "/card-faces/united-explorer.png",
+  "United Quest Card": "/card-faces/united-quest.png",
+  "Southwest Rapid Rewards Plus": "/card-faces/southwest-rapid-rewards-plus.png",
+  "Marriott Bonvoy Boundless": "/card-faces/marriott-bonvoy-boundless.png",
+  "IHG One Rewards Premier": "/card-faces/ihg-one-rewards-premier.png",
+
+  // American Express
   "Amex Platinum": "/card-faces/amex-platinum.png",
-  "Amex Gold": "/card-faces/amex-platinum.png",
+  "Amex Gold": "/card-faces/amex-gold.png",
+
+  // Capital One
   "Capital One Venture X": "/card-faces/capital-one-venture-x.png",
+  "Capital One Venture Rewards": "/card-faces/capital-one-venture-rewards.png",
+  "Capital One Savor Cash Rewards": "/card-faces/capital-one-savor-rewards.png",
+  "Capital One Quicksilver Cash Rewards": "/card-faces/capital-one-quicksilver.png",
+
+  // Citi
+  "Citi Double Cash": "/card-faces/citi-double-cash.png",
+  "Citi Custom Cash": "/card-faces/citi-custom-cash.png",
+  "Citi Strata Premier": "/card-faces/citi-strata-premier.png",
+  "Citi Diamond Preferred": "/card-faces/citi-diamond-preferred.png",
+  "Citi Simplicity": "/card-faces/citi-simplicity.png",
   "Citi AAdvantage Platinum Select": "/card-faces/citi-aadvantage-platinum-select.png",
+
+  // Wells Fargo
   "Wells Fargo Active Cash": "/card-faces/wells-fargo-active-cash.png",
+  "Wells Fargo Autograph": "/card-faces/wells-fargo-autograph.png",
+  "Wells Fargo Autograph Journey": "/card-faces/wells-fargo-autograph-journey.png",
+
+  // Bank of America
   "Bank of America Customized Cash Rewards": "/card-faces/bofa-customized-cash.png",
+  "Bank of America Travel Rewards": "/card-faces/bofa-travel-rewards.png",
+
+  // Regional / other
   "U.S. Bank Altitude Connect Visa Signature": "/card-faces/usbank-altitude-connect.png",
   "PNC Cash Rewards Visa": "/card-faces/pnc-cash-rewards.png",
   "Truist Enjoy Beyond": "/card-faces/truist-enjoy-beyond.png",
   "TD First Class Visa Signature": "/card-faces/td-first-class-visa.png",
   "Citizens Wealth Management World Elite Mastercard": "/card-faces/citizens-summit.png",
+
+  // Discover not in presets but nice to have
+  "Discover it Cash Back": "/card-faces/discover-it-cash-back.png",
 };
 
 /**
