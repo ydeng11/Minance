@@ -305,7 +305,6 @@ const CARD_FACE_IMAGE_MAP: Record<string, string> = {
   "Chase Freedom Flex": "/card-faces/chase-freedom-flex.png",
   "Amazon Prime Visa": "/card-faces/amazon-prime-visa.png",
   "United Explorer": "/card-faces/united-explorer.png",
-  "United Quest Card": "/card-faces/united-quest.png",
   "Southwest Rapid Rewards Plus": "/card-faces/southwest-rapid-rewards-plus.png",
   "Marriott Bonvoy Boundless": "/card-faces/marriott-bonvoy-boundless.png",
   "IHG One Rewards Premier": "/card-faces/ihg-one-rewards-premier.png",
