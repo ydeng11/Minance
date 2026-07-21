@@ -1037,18 +1037,6 @@ export default function AccountsPage() {
                 <p className={DANGER_ALERT_CLASS}>{settingsError}</p>
               ) : null}
 
-              <div className="border-t border-border-subtle pt-4">
-                <button
-                  type="button"
-                  className={DANGER_ACTION_BUTTON_CLASS}
-                  onClick={requestDeleteEditingAccount}
-                  disabled={isDeletingAccount}
-                >
-                  {isDeletingAccount ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
-                  Delete
-                </button>
-              </div>
-
               {isDeleteConfirmOpen ? (
                 <div className={DANGER_CONFIRM_PANEL_CLASS} role="alert" aria-labelledby="account-delete-confirm-title" data-testid="accounts-delete-confirm">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1091,6 +1079,15 @@ export default function AccountsPage() {
                   onClick={() => closeAccountSettings()}
                 >
                   Cancel
+                </button>
+                <button
+                  type="button"
+                  className={DANGER_ACTION_BUTTON_CLASS}
+                  onClick={requestDeleteEditingAccount}
+                  disabled={isDeletingAccount}
+                >
+                  {isDeletingAccount ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                  Delete
                 </button>
                 <button
                   type="submit"
