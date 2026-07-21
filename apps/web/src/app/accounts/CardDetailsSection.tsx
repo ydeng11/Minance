@@ -127,7 +127,7 @@ function BenefitRow({
         />
       </div>
 
-      {benefit.consumable ? (
+      {benefit.consumable && (
         <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
           <input
             type="checkbox"
@@ -147,10 +147,6 @@ function BenefitRow({
             Used
           </span>
         </label>
-      ) : (
-        <span className="inline-flex items-center gap-1 shrink-0 text-xs text-text-muted">
-          Permanent
-        </span>
       )}
 
       <button
@@ -373,14 +369,13 @@ function CreditCardEditor({ metadata, onChange }: CreditCardEditorProps) {
           );
         })()}
 
-        {/* Permanent benefits — descriptive only, no usage tracking */}
+        {/* Non-consumable benefits — descriptive only */}
         {(() => {
-          const permanentBenefits = metadata.benefits.filter((b) => !b.consumable);
-          if (permanentBenefits.length === 0) return null;
+          const staticBenefits = metadata.benefits.filter((b) => !b.consumable);
+          if (staticBenefits.length === 0) return null;
           return (
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-text-muted">Permanent</p>
-              {permanentBenefits.map((benefit) => {
+              {staticBenefits.map((benefit) => {
                 const realIndex = metadata.benefits.indexOf(benefit);
                 return (
                   <BenefitRow
