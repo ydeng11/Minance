@@ -28,7 +28,10 @@ const displayFont = localFont({
 
 export const metadata: Metadata = {
   title: "Minance | AI Finance",
-  description: "Personal finance, reinvented."
+  description: "Personal finance, reinvented.",
+  icons: {
+    icon: "/iHelio.svg"
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
