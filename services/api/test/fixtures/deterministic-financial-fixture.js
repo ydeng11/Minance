@@ -110,12 +110,12 @@ const ACCOUNTS = [
         lastRenewalDate: null,
         renewalCycleMonths: 12,
         benefits: [
-          { id: "bnft_fixture_011", name: "10x Hotels/Rental Cars via Capital One Travel", monetaryValue: null, used: false, lastUsedDate: null },
-          { id: "bnft_fixture_012", name: "5x Flights via Capital One Travel", monetaryValue: null, used: false, lastUsedDate: null },
-          { id: "bnft_fixture_013", name: "2x Miles on Everything", monetaryValue: null, used: false, lastUsedDate: null },
-          { id: "bnft_fixture_014", name: "10k Bonus Miles Annually", monetaryValue: null, used: false, lastUsedDate: null },
-          { id: "bnft_fixture_015", name: "$300 Annual Travel Credit", monetaryValue: 300, used: true, lastUsedDate: "2026-04-05" },
-          { id: "bnft_fixture_016", name: "Priority Pass & Lounge Access", monetaryValue: null, used: false, lastUsedDate: null }
+          { id: "bnft_fixture_011", name: "10x Hotels/Rental Cars via Capital One Travel", monetaryValue: null, used: false, lastUsedDate: null, consumable: false },
+          { id: "bnft_fixture_012", name: "5x Flights via Capital One Travel", monetaryValue: null, used: false, lastUsedDate: null, consumable: false },
+          { id: "bnft_fixture_013", name: "2x Miles on Everything", monetaryValue: null, used: false, lastUsedDate: null, consumable: false },
+          { id: "bnft_fixture_014", name: "10k Bonus Miles Annually", monetaryValue: null, used: false, lastUsedDate: null, consumable: false },
+          { id: "bnft_fixture_015", name: "$300 Annual Travel Credit", monetaryValue: 300, used: true, lastUsedDate: "2026-04-05", consumable: true },
+          { id: "bnft_fixture_016", name: "Priority Pass & Lounge Access", monetaryValue: null, used: false, lastUsedDate: null, consumable: false }
         ]
       }
     },
