@@ -74,7 +74,11 @@ function BenefitRow({
   );
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border-subtle bg-surface-field p-2">
+    <div className={`flex flex-wrap items-center gap-2 rounded-lg border p-2 ${
+      benefit.used
+        ? "border-border-subtle/60 bg-surface-field/60"
+        : "border-border-subtle bg-surface-field"
+    }`}>
       <div className="relative flex-1">
         <input
           type="text"
@@ -85,7 +89,9 @@ function BenefitRow({
           }}
           onFocus={() => setShowCatalog(true)}
           placeholder="Benefit name"
-          className={`${FIELD_CLASS} w-full`}
+          className={`${FIELD_CLASS} w-full ${
+            benefit.used ? "text-text-muted line-through" : ""
+          }`}
           ref={inputRef}
         />
         {showCatalog && filteredCatalog.length > 0 && (
@@ -125,7 +131,7 @@ function BenefitRow({
                 })
               }
               placeholder="$ value"
-              className={`${FIELD_CLASS} w-full`}
+              className={`${FIELD_CLASS} w-full ${benefit.used ? "text-text-muted line-through" : ""}`}
             />
           </div>
           <input
