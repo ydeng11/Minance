@@ -173,9 +173,12 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       annualFee: 95,
       benefits: [
         { name: "5x on travel via Chase Travel", monetaryValue: null, consumable: false },
-        { name: "3x on dining, streaming, and online groceries", monetaryValue: null, consumable: false },
-        { name: "2x on other travel", monetaryValue: null, consumable: false },
-        { name: "25% point boost redeeming via Chase Travel", monetaryValue: null, consumable: false },
+        { name: "3x on dining worldwide", monetaryValue: null, consumable: false },
+        { name: "3x on online groceries (excl. Target, Walmart, wholesale)", monetaryValue: null, consumable: false },
+        { name: "3x on select streaming services", monetaryValue: null, consumable: false },
+        { name: "2x on all other travel", monetaryValue: null, consumable: false },
+        { name: "$50 annual Chase Travel hotel credit", monetaryValue: 50, consumable: true },
+        { name: "10% anniversary points bonus", monetaryValue: null, consumable: false },
       ],
     },
     {
@@ -184,9 +187,12 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       annualFee: 550,
       benefits: [
         { name: "$300 annual travel credit", monetaryValue: 300, consumable: true },
-        { name: "10x on hotels and car rentals via Chase", monetaryValue: null, consumable: false },
+        { name: "10x on hotels and car rentals via Chase Travel", monetaryValue: null, consumable: false },
+        { name: "10x on dining via Chase Travel", monetaryValue: null, consumable: false },
+        { name: "5x on flights via Chase Travel", monetaryValue: null, consumable: false },
         { name: "3x on general travel and dining", monetaryValue: null, consumable: false },
-        { name: "Priority Pass Select lounge access", monetaryValue: null, consumable: false },
+        { name: "Priority Pass Select lounge access (enrollment required)", monetaryValue: null, consumable: false },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
       ],
     },
     {
@@ -196,7 +202,8 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       benefits: [
         { name: "Unlimited 1.5% cash back on all purchases", monetaryValue: null, consumable: false },
         { name: "5x on travel via Chase Travel", monetaryValue: null, consumable: false },
-        { name: "3x on dining and drugstores", monetaryValue: null, consumable: false },
+        { name: "3x on dining worldwide", monetaryValue: null, consumable: false },
+        { name: "3x on drugstores", monetaryValue: null, consumable: false },
       ],
     },
     {
@@ -204,8 +211,10 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       accountType: "credit",
       annualFee: 0,
       benefits: [
-        { name: "5% cash back on rotating quarterly categories", monetaryValue: null, consumable: false },
-        { name: "3x on dining and drugstores", monetaryValue: null, consumable: false },
+        { name: "5% cash back on rotating quarterly categories (up to $1,500)", monetaryValue: null, consumable: false },
+        { name: "5x on travel via Chase Travel", monetaryValue: null, consumable: false },
+        { name: "3x on dining worldwide", monetaryValue: null, consumable: false },
+        { name: "3x on drugstores", monetaryValue: null, consumable: false },
         { name: "Activation required each quarter", monetaryValue: null, consumable: false },
       ],
     },
@@ -214,14 +223,15 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
     {
       name: "Amex Gold",
       accountType: "credit",
-      annualFee: 350,
+      annualFee: 325,
       benefits: [
         { name: "4x at restaurants worldwide", monetaryValue: null, consumable: false },
-        { name: "4x at U.S. supermarkets (up to $25k/yr)", monetaryValue: null, consumable: false },
+        { name: "4x at U.S. supermarkets (up to $25,000/yr)", monetaryValue: null, consumable: false },
         { name: "3x on flights booked directly or with Amex Travel", monetaryValue: null, consumable: false },
-        { name: "$10 monthly dining credit", monetaryValue: 120, consumable: true },
         { name: "$10 monthly Uber Cash", monetaryValue: 120, consumable: true },
+        { name: "$10 monthly dining credit (Grubhub, Cheesecake Factory, etc.)", monetaryValue: 120, consumable: true },
         { name: "$7 monthly Dunkin' credit", monetaryValue: 84, consumable: true },
+        { name: "$10 quarterly Resy credit", monetaryValue: 40, consumable: true },
       ],
     },
     {
@@ -229,11 +239,16 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       accountType: "credit",
       annualFee: 695,
       benefits: [
+        { name: "5x on flights booked directly or with Amex Travel", monetaryValue: null, consumable: false },
+        { name: "5x on prepaid hotels via Amex Travel", monetaryValue: null, consumable: false },
         { name: "$200 airline incidental credit", monetaryValue: 200, consumable: true },
         { name: "$200 Uber Cash", monetaryValue: 200, consumable: true },
+        { name: "$200 hotel credit (Fine Hotels & Resorts / The Hotel Collection)", monetaryValue: 200, consumable: true },
         { name: "$240 digital entertainment credit", monetaryValue: 240, consumable: true },
-        { name: "5x on flights and prepaid hotels via Amex Travel", monetaryValue: null, consumable: false },
+        { name: "$100 Saks Fifth Avenue credit ($50 semi-annual)", monetaryValue: 100, consumable: true },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
         { name: "Centurion Lounge access", monetaryValue: null, consumable: false },
+        { name: "Walmart+ membership credit", monetaryValue: 155, consumable: true },
       ],
     },
   ],
@@ -244,7 +259,6 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       annualFee: 0,
       benefits: [
         { name: "Unlimited 1.5 points per $1 on all purchases", monetaryValue: null, consumable: false },
-        { name: "Points redeemable as statement credits for travel and dining", monetaryValue: null, consumable: false },
         { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
       ],
     },
@@ -255,6 +269,7 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       benefits: [
         { name: "3% cash back in category of choice (gas, online shopping, dining, travel, drugstores, home improvement)", monetaryValue: null, consumable: false },
         { name: "2% at grocery stores and wholesale clubs", monetaryValue: null, consumable: false },
+        { name: "Unlimited 1% on all other purchases", monetaryValue: null, consumable: false },
         { name: "Preferred Rewards bonus up to 75% more", monetaryValue: null, consumable: false },
       ],
     },
@@ -265,9 +280,8 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       accountType: "credit",
       annualFee: 0,
       benefits: [
-        { name: "2% total cash back (1% when you buy + 1% as you pay)", monetaryValue: null, consumable: false },
-        { name: "No category tracking or rotating categories", monetaryValue: null, consumable: false },
-        { name: "No annual fee", monetaryValue: null, consumable: false },
+        { name: "2% total cash back (1% when you buy + 1% when you pay)", monetaryValue: null, consumable: false },
+        { name: "Unlimited 1% on all other purchases", monetaryValue: null, consumable: false },
       ],
     },
     {
@@ -276,7 +290,7 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       annualFee: 0,
       benefits: [
         { name: "5% cash back on top eligible spend category each billing cycle (up to $500)", monetaryValue: null, consumable: false },
-        { name: "1% on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Unlimited 1% on all other purchases", monetaryValue: null, consumable: false },
         { name: "Automatic category optimization", monetaryValue: null, consumable: false },
       ],
     },
@@ -290,9 +304,10 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
         { name: "10x miles on hotels and rental cars via Capital One Travel", monetaryValue: null, consumable: false },
         { name: "5x miles on flights via Capital One Travel", monetaryValue: null, consumable: false },
         { name: "2x miles on all other purchases", monetaryValue: null, consumable: false },
-        { name: "$300 annual travel credit", monetaryValue: 300, consumable: false },
-        { name: "10,000 anniversary miles", monetaryValue: null, consumable: true },
-        { name: "Unlimited lounge access", monetaryValue: null, consumable: false },
+        { name: "$300 annual travel credit", monetaryValue: 300, consumable: true },
+        { name: "10,000 anniversary bonus miles", monetaryValue: null, consumable: true },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
+        { name: "Unlimited lounge access (Capital One Lounge, Priority Pass, Plaza Premium)", monetaryValue: null, consumable: false },
       ],
     },
     {
@@ -302,7 +317,7 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       benefits: [
         { name: "Unlimited 2x miles on every purchase", monetaryValue: null, consumable: false },
         { name: "5x miles on hotels and car rentals via Capital One Travel", monetaryValue: null, consumable: false },
-        { name: "TSA PreCheck / Global Entry credit", monetaryValue: null, consumable: true },
+        { name: "TSA PreCheck / Global Entry credit", monetaryValue: 100, consumable: true },
       ],
     },
     {
@@ -311,8 +326,9 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       annualFee: 0,
       benefits: [
         { name: "3% cash back on dining, entertainment, streaming, and grocery stores", monetaryValue: null, consumable: false },
+        { name: "8% cash back on Capital One Entertainment purchases", monetaryValue: null, consumable: false },
+        { name: "Unlimited 1% on all other purchases", monetaryValue: null, consumable: false },
         { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
-        { name: "No annual fee", monetaryValue: null, consumable: false },
       ],
     },
     {
@@ -321,8 +337,7 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       annualFee: 0,
       benefits: [
         { name: "Unlimited 1.5% cash back on every purchase", monetaryValue: null, consumable: false },
-        { name: "0% intro APR options available", monetaryValue: null, consumable: false },
-        { name: "No annual fee", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
       ],
     },
   ],
@@ -334,7 +349,6 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       benefits: [
         { name: "Unlimited 2% cash rewards on eligible purchases", monetaryValue: null, consumable: false },
         { name: "Cell phone protection up to $600", monetaryValue: 600, consumable: true },
-        { name: "No annual fee", monetaryValue: null, consumable: false },
       ],
     },
     {
@@ -343,8 +357,9 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       annualFee: 0,
       benefits: [
         { name: "3x points on restaurants, travel, gas/EV, transit, streaming, phone plans", monetaryValue: null, consumable: false },
+        { name: "1x points on all other purchases", monetaryValue: null, consumable: false },
         { name: "Cell phone protection", monetaryValue: null, consumable: true },
-        { name: "No annual fee", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
       ],
     },
   ],
@@ -356,7 +371,8 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       benefits: [
         { name: "4x points on dining, takeout, and restaurant delivery", monetaryValue: null, consumable: false },
         { name: "2x at grocery stores, gas stations, and EV charging", monetaryValue: null, consumable: false },
-        { name: "No annual fee", monetaryValue: null, consumable: false },
+        { name: "1x on all other purchases", monetaryValue: null, consumable: false },
+        { name: "$15 annual streaming credit", monetaryValue: 15, consumable: true },
       ],
     },
   ],
