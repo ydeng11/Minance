@@ -33,6 +33,12 @@ test("accounts controls declare touch targets and decorative icons", () => {
   assert.match(pageSource, /CardDetailsSection/);
 });
 
+test("updateManualDraft safely indexes manualErrors with overlapping keys only", () => {
+  assert.match(pageSource, /function updateManualDraft\(/);
+  assert.match(pageSource, /const errorField = field as keyof ManualAccountErrors;/);
+  assert.match(pageSource, /\[errorField\]/);
+});
+
 test("account delete confirmation uses styled in-app controls", () => {
   assert.match(pageSource, /isDeleteConfirmOpen/);
   assert.match(pageSource, /data-testid="accounts-delete-confirm"/);

@@ -337,10 +337,11 @@ export default function AccountsPage() {
       ...previous,
       [field]: value
     }));
-    if (manualErrors[field]) {
+    const errorField = field as keyof ManualAccountErrors;
+    if (manualErrors[errorField]) {
       setManualErrors((previous) => ({
         ...previous,
-        [field]: undefined
+        [errorField]: undefined
       }));
     }
   }
