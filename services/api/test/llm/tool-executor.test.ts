@@ -592,7 +592,9 @@ test("get_merchant_history requires merchant parameter", async () => {
 });
 
 test("get_merchant_transactions_6_months returns recent data", async () => {
-  resetStoreForTests(structuredClone(baseStore));
+  const store = structuredClone(baseStore);
+  store.transactions[0].transaction_date = new Date().toISOString().substring(0, 10);
+  resetStoreForTests(store);
 
   const result = await executeTool(
     "get_merchant_transactions_6_months",
