@@ -12,6 +12,8 @@ const authPanelSource = readFileSync(join(process.cwd(), "src/components/auth/Au
 const appGateSource = readFileSync(join(process.cwd(), "src/components/auth/AppGate.tsx"), "utf8");
 const helpPageSource = readFileSync(join(process.cwd(), "src/app/help/page.tsx"), "utf8");
 const accountsPageSource = readFileSync(join(process.cwd(), "src/app/accounts/page.tsx"), "utf8");
+const accountsCardDetailsSource = readFileSync(join(process.cwd(), "src/app/accounts/CardDetailsSection.tsx"), "utf8");
+const accountsRouteSource = `${accountsPageSource}\n${accountsCardDetailsSource}`;
 const recurringsPageSource = readFileSync(join(process.cwd(), "src/app/recurrings/page.tsx"), "utf8");
 const categoriesPageSource = readFileSync(join(process.cwd(), "src/app/categories/page.tsx"), "utf8");
 const taxonomyManagementStart = categoriesPageSource.lastIndexOf(
@@ -371,19 +373,19 @@ test("auth and help entry surfaces use semantic tokens instead of hard-coded dar
 });
 
 test("accounts route uses semantic tokens instead of hard-coded dark palettes", () => {
-  assert.match(accountsPageSource, /bg-surface-panel/);
-  assert.match(accountsPageSource, /bg-surface-field/);
-  assert.match(accountsPageSource, /border-border-subtle/);
-  assert.match(accountsPageSource, /text-text-secondary/);
-  assert.match(accountsPageSource, /bg-app-bg\/80/);
-  assert.match(accountsPageSource, /text-danger/);
-  assert.match(accountsPageSource, /text-warning/);
+  assert.match(accountsRouteSource, /bg-surface-panel/);
+  assert.match(accountsRouteSource, /bg-surface-field/);
+  assert.match(accountsRouteSource, /border-border-subtle/);
+  assert.match(accountsRouteSource, /text-text-secondary/);
+  assert.match(accountsRouteSource, /bg-app-bg\/80/);
+  assert.match(accountsRouteSource, /text-danger/);
+  assert.match(accountsRouteSource, /text-warning/);
 
-  assert.doesNotMatch(accountsPageSource, /neutral-\d/);
-  assert.doesNotMatch(accountsPageSource, /emerald-\d/);
-  assert.doesNotMatch(accountsPageSource, /rose-\d/);
-  assert.doesNotMatch(accountsPageSource, /amber-\d/);
-  assert.doesNotMatch(accountsPageSource, /bg-black/);
+  assert.doesNotMatch(accountsRouteSource, /neutral-\d/);
+  assert.doesNotMatch(accountsRouteSource, /emerald-\d/);
+  assert.doesNotMatch(accountsRouteSource, /rose-\d/);
+  assert.doesNotMatch(accountsRouteSource, /amber-\d/);
+  assert.doesNotMatch(accountsRouteSource, /bg-black/);
 });
 
 test("recurrings route uses semantic tokens instead of hard-coded dark palettes", () => {
