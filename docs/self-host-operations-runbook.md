@@ -17,16 +17,17 @@ Security baseline companion checklist:
 ### Quick start
 1. Copy `.env.selfhost.example` to `.env.selfhost`.
 2. Set `AI_CREDENTIAL_SECRET` in `.env.selfhost` to a strong random secret.
-3. If you want Docker to reuse the repo's current SQLite/runtime data directory, set `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data` in `.env.selfhost`. Leave it unset to use the Docker-managed named volume `minance_data`.
-4. Treat `.env.selfhost` as the Docker self-host env file only. Local `pnpm dev` should use `.env.local`.
-5. Pull and launch:
+3. If you expose the API directly or use a custom split-container proxy, set `MINANCE_ALLOWED_ORIGINS` to the exact browser-facing origin. The stock combined image validates same-origin browser requests at its web proxy before forwarding them over loopback.
+4. If you want Docker to reuse the repo's current SQLite/runtime data directory, set `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data` in `.env.selfhost`. Leave it unset to use the Docker-managed named volume `minance_data`.
+5. Treat `.env.selfhost` as the Docker self-host env file only. Local `pnpm dev` should use `.env.local`.
+6. Pull and launch:
 
 ```bash
 docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost pull
 docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 ```
 
-6. Verify services:
+7. Verify services:
 
 ```bash
 docker compose -f docker-compose.selfhost.yml ps
@@ -42,6 +43,7 @@ curl -i -sS http://localhost:${MINANCE_WEB_PORT:-3000}/v1/system/storage | sed -
 
 ### Compose defaults and advanced overrides
 - The stock `docker-compose.selfhost.yml` stack runs the published image `ydeng11/minance:nightly`.
+- The stock compose profile includes an `api -> 127.0.0.1` compatibility alias for combined images built before the runtime proxy fix. New images resolve the loopback API at request time and do not depend on this alias.
 - The stock stack already sets `MINANCE_STORE_BACKEND=sqlite`, `MINANCE_SQLITE_FILE=/var/lib/minance/production-minance.sqlite`, `MINANCE_SQLITE_SCHEMA_FILE=/app/services/api/sql/schema.sql`, and `MINANCE_SQLITE_AUTO_INIT=true` inside the combined app container.
 - The app volume source is controlled by `MINANCE_RUNTIME_DATA_SOURCE`:
   - unset: `minance_data` named volume

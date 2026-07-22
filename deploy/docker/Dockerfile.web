@@ -11,8 +11,6 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS build
 WORKDIR /app
 COPY . .
-ARG MINANCE_API_ORIGIN=http://api:3001
-ENV MINANCE_API_ORIGIN=${MINANCE_API_ORIGIN}
 RUN pnpm build:web
 
 FROM node:20-bookworm-slim AS runtime
