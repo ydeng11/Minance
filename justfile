@@ -6,14 +6,13 @@ default:
 install:
     pnpm install
 
-# Install dependencies and start both development servers
+# Start both development servers (run just install first)
 dev:
     just --dotenv-filename .env.development _dev
 
 [private]
 _dev:
-    pnpm install
-    just _prepare-dev-data
+    just _prepare-data development
     pnpm exec tsx scripts/run-with-open-ports.ts dev
 
 # Start the Next.js app in development mode
@@ -26,16 +25,14 @@ dev-api:
 
 [private]
 _dev-api:
-    just _prepare-dev-data
+    just _prepare-data development
     pnpm dev:api
 
+# Prepare a SQLite database from the deterministic fixture
+# Usage: just _prepare-data <development|test>
 [private]
-_prepare-dev-data:
-    pnpm migrate:sqlite -- --source services/api/test/fixtures/deterministic-financial-store.json --db services/api/data/development-minance.sqlite
-
-[private]
-_prepare-test-data:
-    pnpm migrate:sqlite -- --source services/api/test/fixtures/deterministic-financial-store.json --db services/api/data/test-minance.sqlite
+_prepare-data DB:
+    pnpm migrate:sqlite -- --source services/api/test/fixtures/deterministic-financial-store.json --db services/api/data/{{DB}}-minance.sqlite
 
 # Build the web app
 build-web:
@@ -104,16 +101,13 @@ test:
 
 [private]
 _test:
-    just _prepare-test-data
+    just _prepare-data test
     pnpm test
 
-# Run guardrails and tests
+# Run guardrails and tests with test data preparation
 check:
-    just --dotenv-filename .env.test _check
-
-[private]
-_check:
-    pnpm check
+    just guardrails
+    just test
 
 # Run Playwright end-to-end tests
 e2e:
@@ -135,24 +129,3 @@ e2e-a11y:
 docs-api:
     pnpm docs:api
 
-# Migrate JSON data into SQLite
-migrate-sqlite ENV="development":
-    just --dotenv-filename .env.{{ENV}} _migrate-sqlite
-
-[private]
-_migrate-sqlite:
-    pnpm migrate:sqlite
-
-# Validate JSON and SQLite parity
-validate-sqlite ENV="development":
-    just --dotenv-filename .env.{{ENV}} _validate-sqlite
-
-[private]
-_validate-sqlite:
-    pnpm validate:sqlite
-
-# Seed the deterministic fixture dataset
-seed-fixture:
-    pnpm seed:fixture -- --target services/api/test/fixtures/deterministic-financial-store.json
-    just _prepare-dev-data
-    just _prepare-test-data

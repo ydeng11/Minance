@@ -137,7 +137,7 @@ docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 - The stock self-host compose stack publishes only `MINANCE_WEB_PORT`. Docker container health uses the internal API readiness probe, while `/v1/system/storage` and `/v1/system/metrics` remain reachable through the published web origin.
 - E2E runs use isolated storage at `services/api/tmp/e2e/test-minance.sqlite`.
 - `just dev` and `just dev-api` load `.env.development`; `just test`, `just check`, and `just e2e` load `.env.test`.
-- Development uses the tracked, environment-prefixed `services/api/data/development-minance.sqlite`; `just dev`, `just dev-api`, and `just seed-fixture` rebuild it from the deterministic JSON fixture.
+- Development uses the tracked, environment-prefixed `services/api/data/development-minance.sqlite`; `just dev` and `just dev-api` rebuild it from the deterministic JSON fixture.
 - Tests copy tracked `services/api/data/test-minance.sqlite` into an isolated runtime directory while preserving the exact `test-minance.sqlite` filename; integration tests may still provide explicit temporary paths.
 - Production reads `services/api/data/production-minance.sqlite` (or its `MINANCE_SQLITE_FILE` override) and never loads development or test data.
 - JSON fixtures are retained only for explicit migration/import setup tests, with the committed fixture at `services/api/test/fixtures/deterministic-financial-store.json`.
