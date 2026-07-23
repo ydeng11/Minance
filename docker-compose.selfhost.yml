@@ -15,7 +15,7 @@ services:
       MINANCE_INTERNAL_API_PORT: 3001          # API server port inside the container
       MINANCE_STORE_BACKEND: sqlite            # Data backend (sqlite | json — json is legacy)
       MINANCE_SQLITE_AUTO_INIT: "true"         # Auto-create SQLite tables on startup
-      MINANCE_SEED_TEST_ACCOUNT: "false"       # Disable dev/test account seeding in production
+      MINANCE_SEED_TEST_ACCOUNT: "false"       # Disable dev/test account seeding — read by auth.ts
 
       # ── Internal paths ────────────────────────────────────────────
       # Baked into the Docker image. Uncomment only if you customise
