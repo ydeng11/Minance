@@ -1,153 +1,138 @@
-# Minance Next
+# Minance
 
-Minance Next is a privacy-first personal finance web app built from the PRD/implementation plan in this repository.
+**A privacy-first personal finance workspace you can run yourself.**
 
-## Project structure
+Minance turns local transaction data into a clear money story: review cash flow, trace insights back to ledger rows, manage accounts and card perks, import bank exports, and ask questions with your own AI provider keys.
 
-```
-minance/
-├── apps/web/          # Next.js frontend
-├── services/api/      # API server (Node.js + SQLite)
-├── packages/domain/   # Shared domain logic
-├── scripts/           # Build, seed, and utility scripts
-└── docs/              # Design docs, runbooks, and API reference
-```
+No bank connection or AI subscription is required for the core experience.
 
-## What is implemented
-- Auth (`signup`, `login`, `refresh`, `/me`, user delete)
-- CSV import flow with mapping suggestions, diagnostics, normalization, dedupe, and bank category alias matching
-- Manual transaction CRUD
-- AI BYOK settings with 4 providers (OpenAI, OpenRouter, Anthropic, Google), encrypted key storage, custom model input, preferences, and failover order
-- Multi-stage categorization (rules -> merchant memory -> model fallback) with confidence thresholds
-- Dashboard + analytics APIs (overview, categories, merchants, heatmap, anomalies)
-- Explorer page with spend composition chart and category filters
-- Conversational assistant endpoint with explainable output and drill-down filters
-- Database backup and reload feature
-- Help center for self-host UX
-- Responsive web UI covering dashboard, explorer, imports, transactions, analytics, assistant, help, and settings
-- Saved views/bookmarks
+## 🎬 Product tour
 
-## Under consideration
-- Banking provider support for direct bank connections (beyond manual CSV).
-- Expanded investments feature coverage.
+![Minance product tour showing the financial dashboard, transaction drill-down, account and credit-card benefit management, CSV import review, Explorer analytics, recurring commitments, and BYOK assistant](docs/assets/minance-demo.gif)
 
-## Quick start
+The tour covers the main workflow:
+
+1. Read the dashboard and drill into the transactions behind a number.
+2. Manage bank and credit-card accounts.
+3. Track annual fees, renewal dates, and consumable card benefits.
+4. Review a bank export before committing imported transactions.
+5. Explore spending patterns, categories, and recurring commitments.
+6. Open the optional bring-your-own-key assistant.
+
+## ✨ Highlights
+
+| Area | What Minance provides |
+| --- | --- |
+| **Dashboard & Explorer** | Cash-flow summaries, trends, spend composition, category and account filters, saved views, heatmaps, merchants, and anomalies. |
+| **Transactions** | Search, filtering, manual entry, inline editing, bulk actions, categorization review, and drill-down from analytics. |
+| **Accounts & benefits** | Bank and card account management, balance history, manual adjustments, annual fees, renewal cycles, and a benefit tracker that can reset consumable perks each cycle. |
+| **Imports** | Staged CSV, OFX, and QFX ingestion with mapping suggestions, diagnostics, normalization, duplicate detection, row editing, and account reconciliation. |
+| **Categories & recurrings** | Custom categories and rules plus recurring-item lifecycle controls for evaluating, pausing, resuming, archiving, and deleting commitments. |
+| **Optional AI** | BYOK support for OpenAI, OpenRouter, Anthropic, and Google; configurable provider order; assisted categorization; and explainable chat responses with transaction filters. |
+| **Privacy & operations** | Local SQLite storage, email/password sessions, database backup and restore, responsive UI, and a single-container Docker profile. |
+
+## 🚀 Quick start
+
+### Requirements
+
+- Node.js
+- [pnpm 10.17.1](https://pnpm.io/)
+- `sqlite3`
+- [`just`](https://just.systems/) for the recommended development commands
+
+### Run with deterministic demo data
 
 ```bash
 pnpm install
-pnpm dev
+just dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). The API runs on [http://localhost:3001](http://localhost:3001).
 
-Development services:
-- Frontend (Next.js): `http://localhost:3000`
-- API server: `http://localhost:3001`
+Use the development account:
 
-## Test
-
-```bash
-pnpm test
+```text
+Email:    dev@minance.local
+Password: devpassword123
 ```
 
-`pnpm test` now includes a frontend test-first guard:
-- If files under `apps/web/src/**/*.tsx` change, at least one frontend/e2e test file must change in the same changeset.
-- Accepted test paths: `apps/web/src/**/*.test.ts(x)` and `e2e/specs/**/*.spec.*`.
+`just dev` rebuilds `services/api/data/development-minance.sqlite` from the deterministic fixture before starting both services. To start without refreshing that fixture, run `pnpm dev`.
 
-## E2E (Playwright)
+## 🧰 Common commands
 
-```bash
-pnpm e2e
-```
+| Command | Purpose |
+| --- | --- |
+| `just dev` | Prepare demo data and start the web and API services. |
+| `just check` | Run repository guardrails and the full test suite. |
+| `just e2e` | Run Playwright end-to-end tests. |
+| `just e2e-headed` | Run Playwright with a visible browser. |
+| `just e2e-a11y` | Run accessibility-focused end-to-end tests. |
+| `just build-web` | Create the production web build. |
+| `just docs-api` | Regenerate the import API reference. |
 
-Useful variants:
-- `pnpm e2e:headed` for local debugging.
-- `pnpm e2e:ci` for CI-style execution and HTML report output.
-- Seed deterministic financial fixture for parity flows:
-  - `E2E_SEED_DATASET=deterministic-financial pnpm e2e`
+Direct pnpm equivalents include `pnpm test`, `pnpm check`, `pnpm e2e`, `pnpm e2e:headed`, and `pnpm build:web`.
 
-## Deterministic fixture seed
-
-Create a repeatable baseline dataset (accounts/categories/transactions/recurring/investments):
+### Seed a standalone fixture
 
 ```bash
 pnpm seed:fixture -- --target services/api/test/fixtures/deterministic-financial-store.json
-```
-
-Dry-run summary:
-
-```bash
 pnpm seed:fixture -- --dry-run
 ```
 
-Fixture source of truth:
-- `services/api/test/fixtures/deterministic-financial-fixture.js`
-- `services/api/test/fixtures/deterministic-financial-store.json`
+## 🐳 Self-host with Docker
 
-## Self-host profile
-
-This project uses [OrbStack](https://orbstack.dev) to build Docker images (e.g., `docker build` targets in the repo use OrbStack's Docker engine under the hood).
-
-Reference deployment and operations profile:
-- `docker-compose.selfhost.yml`
-- `.env.selfhost.example`
-- `docs/self-host-operations-runbook.md`
-- `docs/self-host-breaking-migration-guide.md`
-- `docs/self-host-security-hardening-checklist.md`
-- `docs/transaction-category-operator-runbook.md`
-- `scripts/selfhost-backup.sh`
-- `scripts/selfhost-restore.sh`
-
-`.env.selfhost.example` is for the Docker self-host stack. Local `pnpm dev` uses `.env.local`. Test runs use `.env.test`.
-
-Quick start for reusing the current runtime data directory and SQLite file:
+The stock profile runs the published `ydeng11/minance:nightly` image and exposes the combined app on port `3000`.
 
 ```bash
 cp .env.selfhost.example .env.selfhost
 chmod 600 .env.selfhost
 ```
 
-Set these values in `.env.selfhost` before launching:
-- `AI_CREDENTIAL_SECRET=<strong-random-secret>`
-- `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`
+Before launch:
 
-Then pull and start the stock nightly image:
+- Replace `AI_CREDENTIAL_SECRET` with a strong random secret.
+- Update `MINANCE_ALLOWED_ORIGINS` if Minance will be opened from another host or port.
+- Optionally set `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data` to bind-mount the repository data directory. When unset, Docker uses the `minance_data` volume.
+
+Start the stack:
 
 ```bash
 docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost pull
 docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 ```
 
-## Notes
-- Runtime data uses an environment-prefixed SQLite file: `development-minance.sqlite`, `test-minance.sqlite`, or `production-minance.sqlite`.
-- SQLite foundation bootstrap is active at startup:
-  - runtime uses SQLite in non-test execution
-  - `NODE_ENV` selects `services/api/data/{env}-minance.sqlite`; `MINANCE_SQLITE_FILE` overrides the path outside tests and `MINANCE_SQLITE_FILE_TEST` overrides it in tests
-  - `MINANCE_SQLITE_SCHEMA_FILE` selects the schema file (default `services/api/sql/schema.sql`)
-  - `MINANCE_SQLITE_AUTO_INIT=false` disables startup schema initialization
-- The stock `docker-compose.selfhost.yml` stack already sets the combined app container's internal SQLite paths. Only add `MINANCE_SQLITE_FILE` or `MINANCE_SQLITE_SCHEMA_FILE` to `.env.selfhost` if you customize that compose file or run Minance outside the stock stack.
-- The stock self-host stack runs the published Docker image `ydeng11/minance:nightly`.
-- `MINANCE_RUNTIME_DATA_SOURCE` controls how `/var/lib/minance` is mounted in the app container:
-  - unset: Docker-managed named volume `minance_data`
-  - `./services/api/data`: bind-mount the repo runtime data directory and reuse `services/api/data/production-minance.sqlite`
-- The backup and restore scripts already target `services/api/data` by default, so no script changes are required when using `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data`.
-- Authenticated storage status can be inspected via `GET /v1/system/storage`.
-- Authenticated metrics snapshot can be inspected via `GET /v1/system/metrics`.
-- Generated import API reference lives at `docs/api/imports.md`.
-- The stock self-host compose stack publishes only `MINANCE_WEB_PORT`. Docker container health uses the internal API readiness probe, while `/v1/system/storage` and `/v1/system/metrics` remain reachable through the published web origin.
-- E2E runs use isolated storage at `services/api/tmp/e2e/test-minance.sqlite`.
-- `just dev` and `just dev-api` load `.env.development`; `just test`, `just check`, and `just e2e` load `.env.test`.
-- Development uses the tracked, environment-prefixed `services/api/data/development-minance.sqlite`; `just dev` and `just dev-api` rebuild it from the deterministic JSON fixture.
-- Tests copy tracked `services/api/data/test-minance.sqlite` into an isolated runtime directory while preserving the exact `test-minance.sqlite` filename; integration tests may still provide explicit temporary paths.
-- Production reads `services/api/data/production-minance.sqlite` (or its `MINANCE_SQLITE_FILE` override) and never loads development or test data.
-- JSON fixtures are retained only for explicit migration/import setup tests, with the committed fixture at `services/api/test/fixtures/deterministic-financial-store.json`.
-- Dev/test account is auto-seeded when `NODE_ENV` is not `production`:
-  - Email: `dev@minance.local` (override with `DEV_TEST_ACCOUNT_EMAIL`)
-  - Password: `devpassword123` (override with `DEV_TEST_ACCOUNT_PASSWORD`)
-  - Disable seeding with `MINANCE_SEED_TEST_ACCOUNT=false`
-- If `.env.local` contains `OPENROUTER_API_KEY`, the dev account is auto-seeded with an OpenRouter credential and default provider preference.
-- Set `IMPORT_PROCESSING_LOGS_ENABLED=true` in `.env.local` to print import-processing logs (including whether LLM categorization was attempted/succeeded/failed).
-- AI key encryption uses `AI_CREDENTIAL_SECRET` (set in environment for non-local use).
-- Account provider abstraction is exposed via `GET /v1/accounts/providers` and `GET /v1/accounts/providers/:providerId` (self-host default provider is `manual_csv`; direct-link actions return explicit unsupported-action errors).
-- CrewAI analysis agent script lives at `services/agents/crewai_analysis_agent.py` (enable/disable with `AI_CREW_ANALYSIS_ENABLED`; install Python deps from `services/agents/requirements.txt`).
-- SQLite storage requires the `sqlite3` CLI on the host machine.
+Production data is stored as `production-minance.sqlite`. The stock stack publishes only the web port; authenticated storage and metrics endpoints remain available through the web origin at `/v1/system/storage` and `/v1/system/metrics`.
+
+For backup, restore, upgrades, and hardening, use the [self-host operations runbook](docs/self-host-operations-runbook.md) and [security checklist](docs/self-host-security-hardening-checklist.md).
+
+## 🔐 Data and AI
+
+- **Local by default:** development, test, and production use separate environment-prefixed SQLite files.
+- **Portable:** create, download, upload, and restore database backups from Settings or the self-host scripts.
+- **AI is optional:** imports, transactions, categories, accounts, recurrings, and analytics remain usable without a model provider.
+- **Keys stay under your control:** configured provider credentials are encrypted with `AI_CREDENTIAL_SECRET`.
+- **No mandatory bank linking:** manual accounts and file imports are the supported self-host path.
+
+## 🧱 Project structure
+
+```text
+minance/
+├── apps/web/          # Next.js frontend
+├── services/api/      # Node.js API and SQLite runtime
+├── services/agents/   # Optional CrewAI analysis agent
+├── packages/domain/   # Shared domain logic
+├── scripts/           # Build, seed, migration, and operations tools
+├── deploy/docker/     # Container definitions
+└── docs/              # Runbooks, API reference, audits, and design plans
+```
+
+## 🧭 Current boundaries
+
+- Direct bank aggregation is not bundled; use manual accounts or CSV, OFX, and QFX imports.
+- AI features require a user-supplied provider key and degrade gracefully when no provider is configured.
+- The dedicated Investments page is deferred and currently redirects to the dashboard.
+- Full exchange-rate-aware multi-currency reporting is planned; native transaction currencies are retained today.
+
+## 📄 License
+
+Minance is available under the [MIT License](LICENSE).
