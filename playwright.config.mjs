@@ -9,6 +9,7 @@ const E2E_HOST = "localhost";
 const E2E_FRONTEND_PORT = 4173;
 const E2E_API_PORT = 4174;
 const E2E_SQLITE_FILE = "services/api/tmp/e2e/test-minance.sqlite";
+const isCI = !!process.env.CI;
 
 export default defineConfig({
   testDir: path.join(__dirname, "e2e/specs"),
@@ -45,13 +46,15 @@ export default defineConfig({
       command: `env NODE_ENV=test PORT=${E2E_API_PORT} MINANCE_STORE_BACKEND=sqlite MINANCE_SQLITE_FILE_TEST=${E2E_SQLITE_FILE} MINANCE_BACKUP_ROOT=services/api/tmp/e2e-backups MINANCE_ALLOWED_ORIGINS=http://${E2E_HOST}:${E2E_FRONTEND_PORT} MINANCE_RATE_LIMIT_MAX_REQUESTS=5000 MINANCE_AUTH_RATE_LIMIT_MAX_REQUESTS=500 MINANCE_SEED_TEST_ACCOUNT=true DEV_TEST_ACCOUNT_EMAIL=dev@minance.local DEV_TEST_ACCOUNT_PASSWORD=devpassword123 apps/web/node_modules/.bin/tsx services/api/src/server.ts`,
       url: `http://${E2E_HOST}:${E2E_API_PORT}`,
       timeout: 120_000,
-      reuseExistingServer: !process.env.CI
+      reuseExistingServer: !isCI
     },
     {
-      command: `cd apps/web && env MINANCE_API_ORIGIN=http://${E2E_HOST}:${E2E_API_PORT} MINANCE_NEXT_DIST_DIR=.next-e2e pnpm dev --webpack --port ${E2E_FRONTEND_PORT}`,
+      command: isCI
+        ? `cd apps/web && env NODE_ENV=production MINANCE_API_ORIGIN=http://${E2E_HOST}:${E2E_API_PORT} MINANCE_NEXT_DIST_DIR=.next-e2e pnpm start --port ${E2E_FRONTEND_PORT}`
+        : `cd apps/web && env MINANCE_API_ORIGIN=http://${E2E_HOST}:${E2E_API_PORT} MINANCE_NEXT_DIST_DIR=.next-e2e pnpm dev --webpack --port ${E2E_FRONTEND_PORT}`,
       url: `http://${E2E_HOST}:${E2E_FRONTEND_PORT}`,
       timeout: 120_000,
-      reuseExistingServer: !process.env.CI
+      reuseExistingServer: !isCI
     }
   ]
 });

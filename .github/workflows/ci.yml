@@ -21,6 +21,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm exec playwright install --with-deps chromium
+      - name: Build Next.js app for E2E
+        run: MINANCE_NEXT_DIST_DIR=.next-e2e pnpm --filter @minance/web build
       - run: pnpm e2e:ci
       - name: Upload Playwright Artifacts
         if: failure()
