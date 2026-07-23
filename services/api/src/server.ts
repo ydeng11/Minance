@@ -12,8 +12,10 @@ import {
   addCredential,
   rotateCredential,
   deleteCredential,
+  updateCredentialMeta,
   updatePreferences,
   getPreferences,
+  activateProfile,
   ensureDevOpenRouterCredential
 } from "./ai.ts";
 import {
@@ -621,24 +623,46 @@ async function handleApiRequest(req, res, url) {
     if (req.method === "POST" && pathname === "/v1/ai/credentials") {
       const user = requireUser(req);
       const body = await parseJsonBody(req);
-      const credential = addCredential(user.id, body.provider, body.apiKey, body.label);
+      const credential = addCredential(user.id, body.provider, body.apiKey, body.label, body.model);
       sendJson(res, 201, { credential });
       return;
     }
 
-    const credentialPutParams = matchPath(pathname, "/v1/ai/credentials/:id");
-    if (req.method === "PUT" && credentialPutParams) {
+    // Activate a profile (must be checked before :id patterns to avoid conflict)
+    if (req.method === "PUT" && pathname === "/v1/ai/credentials/activate") {
       const user = requireUser(req);
       const body = await parseJsonBody(req);
-      const credential = rotateCredential(user.id, credentialPutParams.id, body.apiKey);
+      const result = activateProfile(user.id, body.profileId);
+      sendJson(res, 200, result);
+      return;
+    }
+
+    const credentialParams = matchPath(pathname, "/v1/ai/credentials/:id");
+    if (req.method === "PUT" && credentialParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      // If body has apiKey, it's a rotate; otherwise update metadata
+      if (body.apiKey) {
+        const credential = rotateCredential(user.id, credentialParams.id, body.apiKey);
+        sendJson(res, 200, { credential });
+      } else {
+        const credential = updateCredentialMeta(user.id, credentialParams.id, body);
+        sendJson(res, 200, { credential });
+      }
+      return;
+    }
+
+    if (req.method === "PATCH" && credentialParams) {
+      const user = requireUser(req);
+      const body = await parseJsonBody(req);
+      const credential = updateCredentialMeta(user.id, credentialParams.id, body);
       sendJson(res, 200, { credential });
       return;
     }
 
-    const credentialDeleteParams = matchPath(pathname, "/v1/ai/credentials/:id");
-    if (req.method === "DELETE" && credentialDeleteParams) {
+    if (req.method === "DELETE" && credentialParams) {
       const user = requireUser(req);
-      deleteCredential(user.id, credentialDeleteParams.id);
+      deleteCredential(user.id, credentialParams.id);
       sendNoContent(res);
       return;
     }

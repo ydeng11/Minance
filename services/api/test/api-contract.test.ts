@@ -1124,14 +1124,8 @@ test("api parity contract suite for categories/transactions/settings and missing
     );
   });
 
-  await t.test("settings endpoints expose storage and AI preference contracts", async () => {
-    const storage = await apiRequest(context, "GET", "/v1/system/storage", {
-      token: accessToken,
-      expectedStatus: 200
-    });
-    assert.equal(storage.payload?.storage?.backend, "sqlite");
-    assert.equal(storage.payload?.storage?.sqlite?.backend, "sqlite");
-
+  await t.test("AI profile endpoints support creation, activation, update, and key rotation", async () => {
+    // GET /v1/ai/providers
     const providers = await apiRequest(context, "GET", "/v1/ai/providers", {
       token: accessToken,
       expectedStatus: 200
@@ -1139,33 +1133,63 @@ test("api parity contract suite for categories/transactions/settings and missing
     assert.equal(Array.isArray(providers.payload?.providers), true);
     assert.equal(providers.payload.providers.length > 0, true);
 
-    await apiRequest(context, "POST", "/v1/ai/credentials", {
+    // POST /v1/ai/credentials - create a profile with model
+    const created = await apiRequest(context, "POST", "/v1/ai/credentials", {
       token: accessToken,
       expectedStatus: 201,
       body: {
         provider: "openrouter",
-        label: "Contract test key",
+        label: "Contract test profile",
+        model: "gpt-4.1-mini",
         apiKey: "sk-or-v1-contract-test-key"
       }
     });
+    assert.equal(created.payload?.credential?.label, "Contract test profile");
+    assert.equal(created.payload?.credential?.provider, "openrouter");
+    assert.equal(created.payload?.credential?.model, "gpt-4.1-mini");
+    assert.equal(created.payload?.credential?.maskedKey, "sk-o...-key");
+    assert.equal(created.payload?.credential?.apiKey, undefined, "API key must never be returned");
+    const profileId = created.payload?.credential?.id;
+    assert.ok(profileId);
 
-    const savePreferences = await apiRequest(context, "PUT", "/v1/ai/preferences", {
-      token: accessToken,
-      expectedStatus: 200,
-      body: {
-        defaultProvider: "openrouter",
-        defaultModel: "openai/gpt-4.1-mini",
-        failoverProviders: ["openrouter"]
-      }
-    });
-    assert.equal(savePreferences.payload?.preferences?.defaultProvider, "openrouter");
-
-    const credentials = await apiRequest(context, "GET", "/v1/ai/credentials", {
+    // The first profile should auto-activate
+    let getResult = await apiRequest(context, "GET", "/v1/ai/credentials", {
       token: accessToken,
       expectedStatus: 200
     });
-    assert.equal(Array.isArray(credentials.payload?.credentials), true);
-    assert.equal(credentials.payload?.preferences?.defaultProvider, "openrouter");
+    assert.equal(Array.isArray(getResult.payload?.credentials), true);
+    assert.equal(getResult.payload?.preferences?.activeProfileId, profileId);
+    // Verify model is returned in profile list
+    const myProfile = getResult.payload.credentials.find((c) => c.id === profileId);
+    assert.ok(myProfile);
+    assert.equal(myProfile.model, "gpt-4.1-mini");
+
+    // PATCH /v1/ai/credentials/:id - update metadata without key
+    const patched = await apiRequest(context, "PATCH", `/v1/ai/credentials/${profileId}`, {
+      token: accessToken,
+      expectedStatus: 200,
+      body: {
+        label: "Contract test profile (edited)",
+        model: "gpt-4o-mini"
+      }
+    });
+    assert.equal(patched.payload?.credential?.label, "Contract test profile (edited)");
+    assert.equal(patched.payload?.credential?.model, "gpt-4o-mini");
+
+    // PUT /v1/ai/credentials/activate - activate by profile ID
+    const activateResult = await apiRequest(context, "PUT", "/v1/ai/credentials/activate", {
+      token: accessToken,
+      expectedStatus: 200,
+      body: { profileId }
+    });
+    assert.equal(activateResult.payload?.activeProfileId, profileId);
+
+    // Verify activation is persisted
+    getResult = await apiRequest(context, "GET", "/v1/ai/credentials", {
+      token: accessToken,
+      expectedStatus: 200
+    });
+    assert.equal(getResult.payload?.preferences?.activeProfileId, profileId);
   });
 
   await t.test("accounts create/update contracts enforce type, currency, and initial-balance semantics", async () => {

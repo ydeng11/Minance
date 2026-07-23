@@ -30,6 +30,16 @@ export const AI_PROVIDERS = {
     id: "google",
     name: "Google",
     models: ["gemini-2.0-flash", "gemini-2.5-pro"]
+  },
+  "opencode-go": {
+    id: "opencode-go",
+    name: "Opencode Go",
+    models: ["default"]
+  },
+  "opencode-zen": {
+    id: "opencode-zen",
+    name: "Opencode Zen",
+    models: ["default"]
   }
 };
 

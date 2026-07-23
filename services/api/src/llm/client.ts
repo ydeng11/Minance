@@ -8,6 +8,12 @@ function endpointForProvider(provider) {
   if (provider === "openrouter") {
     return OPENROUTER_URL;
   }
+  if (provider === "opencode-go") {
+    return process.env.OPENCODE_GO_API_URL || "http://localhost:11434/v1/chat/completions";
+  }
+  if (provider === "opencode-zen") {
+    return process.env.OPENCODE_ZEN_API_URL || "http://localhost:11434/v1/chat/completions";
+  }
   return null;
 }
 

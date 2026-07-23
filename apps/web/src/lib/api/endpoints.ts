@@ -9,7 +9,7 @@ import type {
   Category,
   CategoryStrategy,
   CommitImportResponse,
-  Credential,
+  Profile,
   ExplorerAnalyticsResponse,
   HeatmapItem,
   ImportDetailsResponse,
@@ -113,20 +113,25 @@ export const systemApi = {
 export const aiApi = {
   providers: (request: ApiRequest) => request<{ providers: Provider[] }>("/v1/ai/providers"),
   credentials: (request: ApiRequest) =>
-    request<{ credentials: Credential[]; preferences: ProviderPreferences }>("/v1/ai/credentials"),
-  addCredential: (request: ApiRequest, body: { provider: string; label: string; apiKey: string }) =>
-    request<{ credential: Credential }>("/v1/ai/credentials", { method: "POST", body }),
+    request<{ credentials: Profile[]; preferences: ProviderPreferences }>("/v1/ai/credentials"),
+  addCredential: (request: ApiRequest, body: { provider: string; label: string; apiKey: string; model?: string }) =>
+    request<{ credential: Profile }>("/v1/ai/credentials", { method: "POST", body }),
+  updateCredentialMeta: (request: ApiRequest, id: string, body: { label?: string; model?: string }) =>
+    request<{ credential: Profile }>(`/v1/ai/credentials/${id}`, { method: "PATCH", body }),
   rotateCredential: (request: ApiRequest, id: string, body: { apiKey: string }) =>
-    request<{ credential: Credential }>(`/v1/ai/credentials/${id}`, { method: "PUT", body }),
+    request<{ credential: Profile }>(`/v1/ai/credentials/${id}`, { method: "PUT", body }),
   deleteCredential: (request: ApiRequest, id: string) =>
     request<null>(`/v1/ai/credentials/${id}`, { method: "DELETE" }),
+  activateProfile: (request: ApiRequest, profileId: string) =>
+    request<{ activeProfileId: string }>("/v1/ai/credentials/activate", { method: "PUT", body: { profileId } }),
   savePreferences: (
     request: ApiRequest,
     body: {
-      defaultProvider: string | null;
-      defaultModel: string | null;
-      failoverProviders: string[];
+      defaultProvider?: string | null;
+      defaultModel?: string | null;
+      failoverProviders?: string[];
       featureOverrides?: Record<string, unknown>;
+      activeProfileId?: string;
     }
   ) => request<{ preferences: ProviderPreferences }>("/v1/ai/preferences", { method: "PUT", body })
 };

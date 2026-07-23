@@ -230,6 +230,7 @@ export const STORE_TABLE_SPECS = [
       user_id: row.userId ?? row.user_id ?? null,
       provider: row.provider ?? null,
       label: row.label ?? null,
+      model: row.model ?? null,
       encrypted_json: toJsonOrNull(row.encrypted),
       masked_key: row.maskedKey ?? row.masked_key ?? null,
       status: row.status ?? null,
@@ -246,10 +247,7 @@ export const STORE_TABLE_SPECS = [
     sampleKey: { source: "userId", table: "user_id" },
     mapRow: (row) => ({
       user_id: row.userId ?? row.user_id ?? null,
-      default_provider: row.defaultProvider ?? row.default_provider ?? null,
-      default_model: row.defaultModel ?? row.default_model ?? null,
-      failover_providers_json: toJsonOrNull(row.failoverProviders ?? row.failover_providers),
-      feature_overrides_json: toJsonOrNull(row.featureOverrides ?? row.feature_overrides),
+      active_profile_id: row.activeProfileId ?? row.active_profile_id ?? null,
       updated_at: row.updatedAt ?? row.updated_at ?? null,
       payload_json: JSON.stringify(row ?? {})
     })

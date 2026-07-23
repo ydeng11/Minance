@@ -121,6 +121,19 @@ function gatherFoundationStatus(overrides = {}) {
       const version = schemaVersion(schemaSql);
 
       runSqlScript(sqliteFile, `PRAGMA foreign_keys = ON;\n${schemaSql}`);
+
+      // Apply column additions for existing databases that pre-date the model/active_profile_id columns
+      for (const alterSql of [
+        `ALTER TABLE ai_provider_credentials ADD COLUMN model TEXT;`,
+        `ALTER TABLE ai_provider_preferences ADD COLUMN active_profile_id TEXT;`
+      ]) {
+        try {
+          runSqlScript(sqliteFile, alterSql);
+        } catch {
+          // Column already exists — non-fatal on repeat runs
+        }
+      }
+
       runSqlScript(
         sqliteFile,
         `INSERT INTO schema_migrations(version, applied_at) VALUES(${sqlLiteral(version)}, ${sqlLiteral(

@@ -25,8 +25,10 @@ export function useApi() {
         providers: () => aiApi.providers(request),
         credentials: () => aiApi.credentials(request),
         addCredential: aiApi.addCredential.bind(null, request),
+        updateCredentialMeta: aiApi.updateCredentialMeta.bind(null, request),
         rotateCredential: aiApi.rotateCredential.bind(null, request),
         deleteCredential: aiApi.deleteCredential.bind(null, request),
+        activateProfile: aiApi.activateProfile.bind(null, request),
         savePreferences: aiApi.savePreferences.bind(null, request)
       },
       system: {

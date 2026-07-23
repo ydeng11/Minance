@@ -34,7 +34,7 @@ export async function synthesizeAssistantAnswerWithLlm({
     return { ok: false, reason: "no_ai_setup" };
   }
 
-  if (!["openrouter", "openai"].includes(aiContext.provider)) {
+  if (!["openrouter", "openai", "opencode-go", "opencode-zen"].includes(aiContext.provider)) {
     return { ok: false, reason: "provider_not_supported" };
   }
 

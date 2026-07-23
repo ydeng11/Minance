@@ -113,10 +113,11 @@ export interface AccountLinkSession {
   expiresAt: string | null;
 }
 
-export interface Credential {
+export interface Profile {
   id: string;
   provider: string;
   label: string;
+  model: string | null;
   maskedKey: string;
   status: string;
   createdAt: string;
@@ -126,10 +127,7 @@ export interface Credential {
 
 export interface ProviderPreferences {
   userId: string;
-  defaultProvider: string | null;
-  defaultModel: string | null;
-  failoverProviders: string[];
-  featureOverrides: Record<string, { provider?: string; model?: string }>;
+  activeProfileId: string | null;
   updatedAt: string | null;
 }
 

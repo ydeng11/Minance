@@ -64,23 +64,28 @@ export function validateProviderKey(provider, apiKey) {
   return { ok: true };
 }
 
+function credentialToProfile(entry) {
+  return {
+    id: entry.id,
+    provider: entry.provider,
+    label: entry.label,
+    model: entry.model || null,
+    maskedKey: entry.maskedKey,
+    status: entry.status,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+    lastValidatedAt: entry.lastValidatedAt
+  };
+}
+
 export function listCredentials(userId) {
   const store = loadStore();
   return store.aiProviderCredentials
     .filter((entry) => entry.userId === userId)
-    .map((entry) => ({
-      id: entry.id,
-      provider: entry.provider,
-      label: entry.label,
-      maskedKey: entry.maskedKey,
-      status: entry.status,
-      createdAt: entry.createdAt,
-      updatedAt: entry.updatedAt,
-      lastValidatedAt: entry.lastValidatedAt
-    }));
+    .map(credentialToProfile);
 }
 
-export function addCredential(userId, provider, apiKey, label = "") {
+export function addCredential(userId, provider, apiKey, label = "", model = null) {
   const validation = validateProviderKey(provider, apiKey);
   if (!validation.ok) {
     throw new Error(validation.reason);
@@ -89,12 +94,14 @@ export function addCredential(userId, provider, apiKey, label = "") {
   const store = loadStore();
   const encrypted = encrypt(apiKey);
   const now = nowIso();
+  const resolvedModel = model || AI_PROVIDERS[provider]?.models?.[0] || null;
 
   const credential = {
     id: createId("cred"),
     userId,
     provider,
     label: String(label || AI_PROVIDERS[provider].name),
+    model: resolvedModel,
     encrypted,
     maskedKey: maskKey(apiKey),
     status: "active",
@@ -107,16 +114,38 @@ export function addCredential(userId, provider, apiKey, label = "") {
   saveStore(store);
   addAuditEvent(userId, "ai.credential.create", { provider, credentialId: credential.id });
 
-  return {
-    id: credential.id,
-    provider: credential.provider,
-    label: credential.label,
-    maskedKey: credential.maskedKey,
-    status: credential.status,
-    createdAt: credential.createdAt,
-    updatedAt: credential.updatedAt,
-    lastValidatedAt: credential.lastValidatedAt
-  };
+  // Auto-activate first profile
+  const prefs = getPreferences(userId);
+  if (!prefs.activeProfileId) {
+    activateProfile(userId, credential.id);
+  }
+
+  return credentialToProfile(credential);
+}
+
+export function updateCredentialMeta(userId, credentialId, updates) {
+  const store = loadStore();
+  const credential = store.aiProviderCredentials.find(
+    (entry) => entry.id === credentialId && entry.userId === userId
+  );
+  if (!credential) {
+    throw new Error("Credential not found");
+  }
+
+  if (updates.label !== undefined) {
+    credential.label = String(updates.label);
+  }
+  if (updates.model !== undefined) {
+    const providerModels = AI_PROVIDERS[credential.provider]?.models || [];
+    const resolvedModel = updates.model || providerModels[0] || null;
+    credential.model = resolvedModel;
+  }
+
+  credential.updatedAt = nowIso();
+  saveStore(store);
+  addAuditEvent(userId, "ai.credential.update", { credentialId, updates });
+
+  return credentialToProfile(credential);
 }
 
 export function rotateCredential(userId, credentialId, apiKey) {
@@ -144,16 +173,7 @@ export function rotateCredential(userId, credentialId, apiKey) {
     credentialId: credential.id
   });
 
-  return {
-    id: credential.id,
-    provider: credential.provider,
-    label: credential.label,
-    maskedKey: credential.maskedKey,
-    status: credential.status,
-    createdAt: credential.createdAt,
-    updatedAt: credential.updatedAt,
-    lastValidatedAt: credential.lastValidatedAt
-  };
+  return credentialToProfile(credential);
 }
 
 export function deleteCredential(userId, credentialId) {
@@ -167,27 +187,18 @@ export function deleteCredential(userId, credentialId) {
     throw new Error("Credential not found");
   }
 
+  // If the deleted credential was the active profile, auto-activate first remaining
   const prefs = store.aiProviderPreferences.find((entry) => entry.userId === userId);
-  if (prefs) {
-    if (prefs.defaultProvider && !hasActiveCredentialForProvider(store, userId, prefs.defaultProvider)) {
-      prefs.defaultProvider = null;
-      prefs.defaultModel = null;
-    }
-    prefs.failoverProviders = (prefs.failoverProviders || []).filter((provider) =>
-      hasActiveCredentialForProvider(store, userId, provider)
-    );
+  if (prefs && prefs.activeProfileId === credentialId) {
+    const remaining = store.aiProviderCredentials.filter((entry) => entry.userId === userId);
+    prefs.activeProfileId = remaining.length > 0 ? remaining[0].id : null;
+    prefs.updatedAt = nowIso();
   }
 
   saveStore(store);
   addAuditEvent(userId, "ai.credential.delete", { credentialId });
 
   return true;
-}
-
-function hasActiveCredentialForProvider(store, userId, provider) {
-  return store.aiProviderCredentials.some(
-    (entry) => entry.userId === userId && entry.provider === provider && entry.status === "active"
-  );
 }
 
 export function getPreferences(userId) {
@@ -199,139 +210,93 @@ export function getPreferences(userId) {
 
   return {
     userId,
-    defaultProvider: null,
-    defaultModel: null,
-    failoverProviders: [],
-    featureOverrides: {},
+    activeProfileId: null,
     updatedAt: null
   };
 }
 
-export function updatePreferences(userId, payload) {
+export function activateProfile(userId, profileId) {
   const store = loadStore();
+  const credential = store.aiProviderCredentials.find(
+    (entry) => entry.id === profileId && entry.userId === userId
+  );
+  if (!credential) {
+    throw new Error("Profile not found");
+  }
+
   let existing = store.aiProviderPreferences.find((entry) => entry.userId === userId);
-
-  const defaultProvider = payload.defaultProvider || null;
-  const defaultModel = payload.defaultModel || null;
-  const failoverProviders = Array.isArray(payload.failoverProviders)
-    ? payload.failoverProviders.filter((provider) => AI_PROVIDERS[provider])
-    : [];
-  const featureOverrides = payload.featureOverrides && typeof payload.featureOverrides === "object"
-    ? payload.featureOverrides
-    : {};
-
-  if (defaultProvider && !AI_PROVIDERS[defaultProvider]) {
-    throw new Error("Unsupported default provider");
-  }
-
-  if (defaultProvider && !hasActiveCredentialForProvider(store, userId, defaultProvider)) {
-    throw new Error("Default provider has no active credential");
-  }
-
-  for (const provider of failoverProviders) {
-    if (!hasActiveCredentialForProvider(store, userId, provider)) {
-      throw new Error(`Failover provider ${provider} has no active credential`);
-    }
-  }
-
   if (!existing) {
     existing = {
       userId,
-      defaultProvider,
-      defaultModel,
-      failoverProviders,
-      featureOverrides,
+      activeProfileId: profileId,
       updatedAt: nowIso()
     };
     store.aiProviderPreferences.push(existing);
   } else {
-    existing.defaultProvider = defaultProvider;
-    existing.defaultModel = defaultModel;
-    existing.failoverProviders = failoverProviders;
-    existing.featureOverrides = featureOverrides;
+    existing.activeProfileId = profileId;
     existing.updatedAt = nowIso();
   }
 
   saveStore(store);
-  addAuditEvent(userId, "ai.preferences.update", {
-    defaultProvider,
-    defaultModel,
-    failoverProviders,
-    featureOverrides
-  });
+  addAuditEvent(userId, "ai.profile.activate", { profileId });
 
-  return existing;
+  return { activeProfileId: profileId };
 }
 
-export function resolveProviderForFeature(userId, feature = "general") {
+export function updatePreferences(userId, payload) {
+  // Deprecated — kept for compatibility; delegates to activateProfile if defaultProvider changes
+  if (payload.defaultProvider && !payload.activeProfileId) {
+    const store = loadStore();
+    const credential = store.aiProviderCredentials.find(
+      (entry) => entry.userId === userId && entry.provider === payload.defaultProvider && entry.status === "active"
+    );
+    if (credential) {
+      return activateProfile(userId, credential.id);
+    }
+  }
+  if (payload.activeProfileId) {
+    return activateProfile(userId, payload.activeProfileId);
+  }
+  return getPreferences(userId);
+}
+
+export function resolveProviderForFeature(userId, _feature = "general") {
   const store = loadStore();
-  const credentials = store.aiProviderCredentials.filter(
-    (entry) => entry.userId === userId && entry.status === "active"
-  );
+  const prefs = store.aiProviderPreferences.find((entry) => entry.userId === userId);
 
-  if (credentials.length === 0) {
-    return {
-      ok: false,
-      reason: "No AI credential configured"
-    };
-  }
-
-  const prefs = store.aiProviderPreferences.find((entry) => entry.userId === userId) || {
-    defaultProvider: null,
-    defaultModel: null,
-    failoverProviders: [],
-    featureOverrides: {}
-  };
-
-  const featureOverride = prefs.featureOverrides?.[feature] || null;
-
-  const candidates = [];
-  if (featureOverride?.provider) {
-    candidates.push({
-      provider: featureOverride.provider,
-      model: featureOverride.model || null
-    });
-  }
-  if (prefs.defaultProvider) {
-    candidates.push({
-      provider: prefs.defaultProvider,
-      model: prefs.defaultModel || null
-    });
-  }
-
-  for (const provider of prefs.failoverProviders || []) {
-    candidates.push({ provider, model: null });
-  }
-
-  for (const credential of credentials) {
-    if (!candidates.some((entry) => entry.provider === credential.provider)) {
-      candidates.push({ provider: credential.provider, model: null });
-    }
-  }
-
-  for (const candidate of candidates) {
-    const credential = credentials.find((entry) => entry.provider === candidate.provider);
-    if (!credential) {
-      continue;
-    }
-
-    let resolvedModel = candidate.model;
-    if (!resolvedModel) {
-      resolvedModel = AI_PROVIDERS[candidate.provider]?.models?.[0] || null;
-    }
-
+  // Resolve model fallback, then build the resolved credential result
+  function resolveCredential(credential) {
+    const model = credential.model || AI_PROVIDERS[credential.provider]?.models?.[0] || null;
     return {
       ok: true,
-      provider: candidate.provider,
-      model: resolvedModel,
+      provider: credential.provider,
+      model,
       credentialId: credential.id,
       apiKey: decrypt(credential.encrypted)
     };
   }
 
+  // Use active profile
+  if (prefs?.activeProfileId) {
+    const credential = store.aiProviderCredentials.find(
+      (entry) => entry.id === prefs.activeProfileId && entry.userId === userId && entry.status === "active"
+    );
+    if (credential) {
+      return resolveCredential(credential);
+    }
+  }
+
+  // Fallback: use first available credential
+  const credentials = store.aiProviderCredentials.filter(
+    (entry) => entry.userId === userId && entry.status === "active"
+  );
+  if (credentials.length > 0) {
+    return resolveCredential(credentials[0]);
+  }
+
   return {
     ok: false,
-    reason: "No active AI credential available for selected providers"
+    reason: "No AI credential configured"
   };
 }
 
@@ -362,6 +327,7 @@ export function ensureDevOpenRouterCredential(userId) {
 
   const store = loadStore();
   const now = nowIso();
+  const defaultModel = AI_PROVIDERS.openrouter.models[0] || null;
 
   let existingCredential = store.aiProviderCredentials.find(
     (entry) =>
@@ -377,6 +343,7 @@ export function ensureDevOpenRouterCredential(userId) {
       userId,
       provider: "openrouter",
       label: "Dev OpenRouter (.env.local)",
+      model: defaultModel,
       encrypted: encrypt(apiKey),
       maskedKey: maskKey(apiKey),
       status: "active",
@@ -386,6 +353,10 @@ export function ensureDevOpenRouterCredential(userId) {
     };
     store.aiProviderCredentials.push(existingCredential);
     createdCredential = true;
+  } else if (!existingCredential.model) {
+    // Migrate: set model on existing credential that lacks it
+    existingCredential.model = defaultModel;
+    existingCredential.updatedAt = now;
   }
 
   let preferences = store.aiProviderPreferences.find((entry) => entry.userId === userId);
@@ -393,27 +364,18 @@ export function ensureDevOpenRouterCredential(userId) {
   if (!preferences) {
     preferences = {
       userId,
-      defaultProvider: "openrouter",
-      defaultModel: AI_PROVIDERS.openrouter.models[0] || null,
-      failoverProviders: [],
-      featureOverrides: {},
+      activeProfileId: existingCredential.id,
       updatedAt: now
     };
     store.aiProviderPreferences.push(preferences);
     updatedPreferences = true;
-  } else {
-    const openrouterDefaultModel = AI_PROVIDERS.openrouter.models[0] || null;
-    const hasOpenrouterModel = AI_PROVIDERS.openrouter.models.includes(preferences.defaultModel || "");
-    if (preferences.defaultProvider !== "openrouter" || !hasOpenrouterModel) {
-      preferences.defaultProvider = "openrouter";
-      preferences.defaultModel = openrouterDefaultModel;
-      preferences.updatedAt = now;
-      updatedPreferences = true;
-    }
-  }
-
-  if (updatedPreferences && preferences.updatedAt !== now) {
+  } else if (!preferences.activeProfileId || !store.aiProviderCredentials.some(
+    (c) => c.id === preferences.activeProfileId && c.userId === userId
+  )) {
+    // Set active if missing or pointing to deleted credential
+    preferences.activeProfileId = existingCredential.id;
     preferences.updatedAt = now;
+    updatedPreferences = true;
   }
 
   if (!createdCredential && !updatedPreferences) {
@@ -433,8 +395,7 @@ export function ensureDevOpenRouterCredential(userId) {
   }
   if (updatedPreferences) {
     addAuditEvent(userId, "ai.preferences.seed_dev_env", {
-      defaultProvider: preferences.defaultProvider,
-      defaultModel: preferences.defaultModel
+      activeProfileId: preferences.activeProfileId
     });
   }
 

@@ -163,6 +163,7 @@ CREATE TABLE IF NOT EXISTS ai_provider_credentials (
   user_id TEXT NOT NULL,
   provider TEXT NOT NULL,
   label TEXT,
+  model TEXT,
   encrypted_json TEXT,
   masked_key TEXT,
   status TEXT,
@@ -174,10 +175,7 @@ CREATE TABLE IF NOT EXISTS ai_provider_credentials (
 
 CREATE TABLE IF NOT EXISTS ai_provider_preferences (
   user_id TEXT PRIMARY KEY,
-  default_provider TEXT,
-  default_model TEXT,
-  failover_providers_json TEXT,
-  feature_overrides_json TEXT,
+  active_profile_id TEXT,
   updated_at TEXT,
   payload_json TEXT NOT NULL
 );
