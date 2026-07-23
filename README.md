@@ -79,31 +79,51 @@ pnpm seed:fixture -- --target services/api/test/fixtures/deterministic-financial
 pnpm seed:fixture -- --dry-run
 ```
 
-## 🐳 Self-host with Docker
+## 📦 Install
 
-The stock profile runs the published `ydeng11/minance:nightly` image and exposes the combined app on port `3000`.
+Minance ships as a single Docker image. The reference configuration is [`docker-compose.selfhost.yml`](docker-compose.selfhost.yml).
+
+### 1. Prepare environment
+
+Copy and secure the environment file:
 
 ```bash
 cp .env.selfhost.example .env.selfhost
 chmod 600 .env.selfhost
 ```
 
-Before launch:
+Edit `.env.selfhost` and set at minimum:
 
-- Replace `AI_CREDENTIAL_SECRET` with a strong random secret.
-- Update `MINANCE_ALLOWED_ORIGINS` if Minance will be opened from another host or port.
-- Optionally set `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data` to bind-mount the repository data directory. When unset, Docker uses the `minance_data` volume.
+- `AI_CREDENTIAL_SECRET` — a strong random secret for encrypting AI provider keys
+- `MINANCE_ALLOWED_ORIGINS` — the origin (host + port) where users will access Minance
 
-Start the stack:
+### 2. Choose data storage
+
+The compose file mounts a volume at `/var/lib/minance` inside the container. Two modes:
+
+- **Docker volume (default):** Docker manages a named `minance_data` volume. No host path to manage.
+- **Host bind mount:** Set `MINANCE_RUNTIME_DATA_SOURCE=./services/api/data` in `.env.selfhost` to store SQLite data directly in the repository directory. Useful for backup scripts and manual inspection.
+
+### 3. Pull and start
 
 ```bash
 docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost pull
 docker compose -f docker-compose.selfhost.yml --env-file .env.selfhost up -d
 ```
 
-Production data is stored as `production-minance.sqlite`. The stock stack publishes only the web port; authenticated storage and metrics endpoints remain available through the web origin at `/v1/system/storage` and `/v1/system/metrics`.
+The combined app (API + web) listens on port `3000` by default. Override with `MINANCE_WEB_PORT` in `.env.selfhost`.
 
-For backup, restore, upgrades, and hardening, use the [self-host operations runbook](docs/self-host-operations-runbook.md) and [security checklist](docs/self-host-security-hardening-checklist.md).
+### 4. Open and register
+
+Visit [http://localhost:3000](http://localhost:3000) (or your chosen origin) and create your first account.
+
+### Production data
+
+Data is stored as `production-minance.sqlite`. Storage status and metrics are available to authenticated users at `/v1/system/storage` and `/v1/system/metrics` through the web origin.
+
+### Backup, upgrades, and hardening
+
+For production operation, follow the [self-host operations runbook](docs/self-host-operations-runbook.md) and [security checklist](docs/self-host-security-hardening-checklist.md).
 
 ## 🔐 Data and AI
 
