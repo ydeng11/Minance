@@ -7,17 +7,80 @@ services:
     extra_hosts:
       - "api:127.0.0.1"
     environment:
-      NODE_ENV: production
-      PORT: 3000
-      MINANCE_NEXT_DIST_DIR: .next
-      MINANCE_API_ORIGIN: http://127.0.0.1:3001
-      MINANCE_INTERNAL_API_PORT: 3001
-      MINANCE_STORE_BACKEND: sqlite
-      MINANCE_DATA_FILE: /var/lib/minance/store.json
-      MINANCE_SQLITE_FILE: /var/lib/minance/production-minance.sqlite
-      MINANCE_SQLITE_SCHEMA_FILE: /app/services/api/sql/schema.sql
-      MINANCE_SQLITE_AUTO_INIT: "true"
-      MINANCE_SEED_TEST_ACCOUNT: "false"
+      # ── Stock runtime config ──────────────────────────────────────
+      # These are the minimum settings for the combined container.
+      NODE_ENV: production                     # Runtime mode (development|test|production)
+      PORT: 3000                               # Web server port inside the container
+      MINANCE_API_ORIGIN: http://127.0.0.1:3001  # Internal URL the web app uses to reach the API
+      MINANCE_INTERNAL_API_PORT: 3001          # API server port inside the container
+      MINANCE_STORE_BACKEND: sqlite            # Data backend (sqlite | json — json is legacy)
+      MINANCE_SQLITE_AUTO_INIT: "true"         # Auto-create SQLite tables on startup
+      MINANCE_SEED_TEST_ACCOUNT: "false"       # Disable dev/test account seeding in production
+
+      # ── Internal paths ────────────────────────────────────────────
+      # Baked into the Docker image. Uncomment only if you customise
+      # the Dockerfile or run the image outside the stock compose stack.
+      # MINANCE_NEXT_DIST_DIR: .next                    # Next.js build output directory
+      # MINANCE_DATA_FILE: /var/lib/minance/store.json  # Legacy JSON store path
+      # MINANCE_SQLITE_FILE: /var/lib/minance/production-minance.sqlite   # SQLite database path
+      # MINANCE_SQLITE_SCHEMA_FILE: /app/services/api/sql/schema.sql     # Schema initialisation file
+
+      # ── Auth & security ───────────────────────────────────────────
+      # AI_CREDENTIAL_SECRET is required in production. Set it in .env.selfhost.
+      # MINANCE_ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      #   Comma-separated origins allowed to access the API (CORS).
+      # MINANCE_CORS_ALLOW_CREDENTIALS: false
+      #   Whether to allow credentialed CORS requests (cookies, auth headers).
+
+      # ── Rate limiting ─────────────────────────────────────────────
+      # MINANCE_RATE_LIMIT_WINDOW_MS: 60000
+      #   Time window (ms) for rate-limit counters. Default: 60 000 (1 min).
+      # MINANCE_RATE_LIMIT_MAX_REQUESTS: 600
+      #   Max requests per window across general API routes. Default: 600.
+      # MINANCE_AUTH_RATE_LIMIT_MAX_REQUESTS: 60
+      #   Max requests per window on auth endpoints (signup, login). Default: 60.
+
+      # ── AI / LLM ──────────────────────────────────────────────────
+      # AI_CREW_ANALYSIS_ENABLED: false
+      #   Enable the optional CrewAI analysis agent (Python).
+      # CREWAI_PYTHON_BIN: python3
+      #   Python binary for the CrewAI agent.
+      # AI_CREW_ANALYSIS_TIMEOUT_MS: 8000
+      #   Timeout (ms) for the CrewAI analysis agent.
+      # AI_LLM_TIMEOUT_MS: 16000
+      #   Timeout (ms) for LLM provider calls.
+      # OPENROUTER_API_KEY:
+      #   OpenRouter API key (used for auto-seeding a BYOK credential).
+      # OPENROUTER_APP_NAME: Minance
+      #   App name sent in OpenRouter request headers.
+      # OPENROUTER_APP_URL:
+      #   App URL sent in OpenRouter request headers.
+
+      # ── Dev / test account overrides ──────────────────────────────
+      # Only effective when MINANCE_SEED_TEST_ACCOUNT is not "false".
+      # These should NOT be set in production.
+      # DEV_TEST_ACCOUNT_EMAIL: dev@minance.local
+      # DEV_TEST_ACCOUNT_PASSWORD: devpassword123
+
+      # ── Uploads & backups ─────────────────────────────────────────
+      # MINANCE_UPLOAD_DIR: /var/lib/minance/uploads
+      #   Directory for uploaded import files inside the container.
+      # MINANCE_BACKUP_ROOT: /var/lib/minance/backups
+      #   Directory for database backups inside the container.
+
+      # ── Web app public config ─────────────────────────────────────
+      # These are read by the Next.js frontend at build time.
+      # NEXT_PUBLIC_APP_ENV: production
+      #   Environment label exposed to the frontend.
+      # NEXT_PUBLIC_HELP_DOCS_URL:
+      #   Custom URL for the help/docs link in the UI.
+      # NEXT_PUBLIC_HELP_MESSENGER_URL:
+      #   Custom URL for the messenger/chat link in the UI.
+      # NEXT_PUBLIC_HELP_SUPPORT_EMAIL:
+      #   Support email address shown in the UI.
+      # NEXT_PUBLIC_HELP_SUPPORT_URL:
+      #   Custom support page URL.
+
     volumes:
       - ${MINANCE_RUNTIME_DATA_SOURCE:-minance_data}:/var/lib/minance
     ports:
