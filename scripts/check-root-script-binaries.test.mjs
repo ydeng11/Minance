@@ -9,7 +9,7 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, "..");
 const packageJsonPath = path.join(rootDir, "package.json");
 const webPackageJsonPath = path.join(rootDir, "apps", "web", "package.json");
-const justfilePath = path.join(rootDir, "Justfile");
+const justfilePath = path.join(rootDir, "justfile");
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
