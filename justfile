@@ -81,7 +81,7 @@ docker-nightly:
 
 # Build and push versioned release image (test → buildx → push)
 # Usage: just docker-release VERSION
-# Example: just docker-release 2.0.0
+# Example: just docker-release 0.1.0
 docker-release VERSION:
     just test
     docker buildx build \
