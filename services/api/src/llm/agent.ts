@@ -68,6 +68,24 @@ defineCapability({
 - "Dismiss suggestion" \u2192 dismiss_recurring_suggestion with _mode=preview first, then _mode=execute after confirm`
 });
 
+// Credit card benefits capability
+defineCapability({
+  id: "benefits",
+  name: "Credit Card Benefits",
+  description: "Track credit card rewards, benefit caps, annual fees, and find the best card to use",
+  categories: ["benefits"],
+  systemPromptSegment: `
+## Credit Card Benefits
+- "What cards do I have?" \u2192 list_credit_cards
+- "What are the benefits for [card]?" \u2192 get_card_benefits
+- "How much [category] cashback have I used?" \u2192 get_benefit_usage
+- "Which card should I use for [category]?" \u2192 get_best_card_for_category (considers caps, not just rates)
+- "Is my [card] worth the annual fee?" \u2192 get_annual_fee_analysis
+- "What annual credits do I have left?" \u2192 get_annual_credits
+- To add a benefit: save_card_benefit with _mode=preview first, then _mode=execute after user confirms
+- To delete a benefit: delete_card_benefit with _mode=preview first, then _mode=execute after confirm`
+});
+
 // Maps legacy mode to capability IDs
 const MODE_TO_CAPABILITIES: Record<string, string[]> = {
   qa: ["analytics"],

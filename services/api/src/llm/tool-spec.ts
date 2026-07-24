@@ -979,6 +979,338 @@ export const T_LIST_CREDIT_CARDS = register({
   }
 });
 
+// --- Tool: get_card_benefits ---
+
+export const T_GET_CARD_BENEFITS = register({
+  name: "get_card_benefits",
+  description: "Get the benefits configured for a specific credit card account. Returns rates, caps, annual credits, and annual fee.",
+  access: "read",
+  category: "benefits",
+  schema: {
+    type: "function",
+    function: {
+      name: "get_card_benefits",
+      description: "Get benefits for a specific credit card account.",
+      parameters: {
+        type: "object",
+        properties: {
+          account_id: { type: "string", description: "The credit card account ID" }
+        },
+        required: ["account_id"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const accountId = args.account_id as string;
+    if (!accountId) return { success: false, error: "account_id is required" };
+    const { getBenefitsForAccount } = await import("./benefits-store.ts");
+    const benefits = getBenefitsForAccount(ctx.userId, accountId);
+    return { success: true, data: { accountId, benefits } };
+  }
+});
+
+// --- Tool: get_benefit_usage ---
+
+export const T_GET_BENEFIT_USAGE = register({
+  name: "get_benefit_usage",
+  description: "Track how much of a benefit cap has been used, based on actual transaction history.",
+  access: "read",
+  category: "benefits",
+  schema: {
+    type: "function",
+    function: {
+      name: "get_benefit_usage",
+      description: "Track benefit cap usage against transaction history.",
+      parameters: {
+        type: "object",
+        properties: {
+          benefit_id: { type: "string", description: "The benefit ID to check" }
+        },
+        required: ["benefit_id"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const benefitId = args.benefit_id as string;
+    if (!benefitId) return { success: false, error: "benefit_id is required" };
+    const { getBenefit, calculateBenefitUsage } = await import("./benefits-store.ts");
+    const benefit = getBenefit(ctx.userId, benefitId);
+    if (!benefit) return { success: false, error: "Benefit not found" };
+    const usage = await calculateBenefitUsage(ctx.userId, benefit);
+    return { success: true, data: usage };
+  }
+});
+
+// --- Tool: get_best_card_for_category ---
+
+export const T_GET_BEST_CARD_FOR_CATEGORY = register({
+  name: "get_best_card_for_category",
+  description: "Find which credit card gives the best rewards for a spending category, considering rates and remaining caps.",
+  access: "read",
+  category: "benefits",
+  schema: {
+    type: "function",
+    function: {
+      name: "get_best_card_for_category",
+      description: "Find the best card for a spending category.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: { type: "string", description: "The spending category (e.g. Dining, Groceries)" },
+          spend_amount: { type: "number", description: "Expected spend amount (optional)" }
+        },
+        required: ["category"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const category = args.category as string;
+    if (!category) return { success: false, error: "category is required" };
+    const spendAmount = Number(args.spend_amount) || 0;
+    const { getBestCardForCategory } = await import("./benefits-store.ts");
+    const results = await getBestCardForCategory(ctx.userId, category, spendAmount);
+    return { success: true, data: { category, recommendations: results } };
+  }
+});
+
+// --- Tool: get_annual_fee_analysis ---
+
+export const T_GET_ANNUAL_FEE_ANALYSIS = register({
+  name: "get_annual_fee_analysis",
+  description: "Analyze whether a card's annual fee is worth it based on rewards earned vs fee paid.",
+  access: "read",
+  category: "benefits",
+  schema: {
+    type: "function",
+    function: {
+      name: "get_annual_fee_analysis",
+      description: "Analyze annual fee vs rewards earned.",
+      parameters: {
+        type: "object",
+        properties: {
+          benefit_id: { type: "string", description: "The benefit ID to analyze" }
+        },
+        required: ["benefit_id"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const benefitId = args.benefit_id as string;
+    if (!benefitId) return { success: false, error: "benefit_id is required" };
+    const { getBenefit, getAnnualFeeAnalysis } = await import("./benefits-store.ts");
+    const benefit = getBenefit(ctx.userId, benefitId);
+    if (!benefit) return { success: false, error: "Benefit not found" };
+    const analysis = await getAnnualFeeAnalysis(ctx.userId, benefit);
+    return { success: true, data: analysis };
+  }
+});
+
+// --- Tool: get_annual_credits ---
+
+export const T_GET_ANNUAL_CREDITS = register({
+  name: "get_annual_credits",
+  description: "Track annual credits for a card (e.g. Uber cash, airline fee credit) and see remaining amounts.",
+  access: "read",
+  category: "benefits",
+  schema: {
+    type: "function",
+    function: {
+      name: "get_annual_credits",
+      description: "Track annual credits usage.",
+      parameters: {
+        type: "object",
+        properties: {
+          benefit_id: { type: "string", description: "The benefit ID" }
+        },
+        required: ["benefit_id"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const benefitId = args.benefit_id as string;
+    if (!benefitId) return { success: false, error: "benefit_id is required" };
+    const { getBenefit, getAnnualCreditsUsage } = await import("./benefits-store.ts");
+    const benefit = getBenefit(ctx.userId, benefitId);
+    if (!benefit) return { success: false, error: "Benefit not found" };
+    return { success: true, data: { credits: getAnnualCreditsUsage(benefit) } };
+  }
+});
+
+// --- Tool: save_card_benefit (with confirmation) ---
+
+export const T_SAVE_CARD_BENEFIT = register({
+  name: "save_card_benefit",
+  description: "Add or update a credit card benefit. Use _mode=preview first, then _mode=execute after user confirms.",
+  access: "write",
+  requiresConfirmation: true,
+  category: "benefits",
+  schema: {
+    type: "function",
+    function: {
+      name: "save_card_benefit",
+      description: "Add or update a credit card benefit. Preview first, then execute after user confirms.",
+      parameters: {
+        type: "object",
+        properties: {
+          _mode: { type: "string", enum: ["preview", "execute"], description: "preview or execute" },
+          account_id: { type: "string", description: "The credit card account ID" },
+          category: { type: "string", description: "Category the benefit applies to (or omit for all)" },
+          merchant: { type: "string", description: "Specific merchant (or omit for category-wide)" },
+          rate: { type: "number", description: "Cashback rate percentage (e.g. 3 for 3%)" },
+          cap_amount: { type: "number", description: "Maximum spend that qualifies (omit for uncapped)" },
+          cap_period: { type: "string", enum: ["monthly", "yearly", "statement"], description: "Cap period" },
+          annual_fee: { type: "number", description: "Annual fee" },
+          benefit_id: { type: "string", description: "Existing benefit ID to update (omit to create new)" }
+        },
+        required: ["account_id", "rate"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const mode = String(args._mode || "preview");
+    const accountId = String(args.account_id || "");
+    const rate = Number(args.rate) || 0;
+
+    if (!accountId) return { success: false, error: "account_id is required" };
+    if (rate <= 0) return { success: false, error: "rate must be positive" };
+
+    // Build the benefit data
+    const benefitData: Record<string, unknown> = {
+      accountId,
+      rate,
+      category: args.category || null,
+      merchant: args.merchant || null,
+      capAmount: args.cap_amount !== undefined ? Number(args.cap_amount) : null,
+      capPeriod: (args.cap_period as string) || null,
+      annualFee: Number(args.annual_fee) || 0,
+      annualCredits: []
+    };
+
+    if (mode === "preview") {
+      return {
+        success: true,
+        data: {
+          _requiresConfirmation: true,
+          _confirmationType: "save_card_benefit",
+          preview: {
+            accountId,
+            category: benefitData.category || "all categories",
+            merchant: benefitData.merchant || "any merchant",
+            rate,
+            capAmount: benefitData.capAmount || "uncapped",
+            capPeriod: benefitData.capPeriod || "none",
+            annualFee: benefitData.annualFee || 0
+          },
+          confirmationQuestion: `Save this benefit: ${rate}%${benefitData.category ? ` on ${benefitData.category}` : ""}?`
+        }
+      };
+    }
+
+    // Execute: save the benefit
+    const { addBenefit, updateBenefit } = await import("./benefits-store.ts");
+    const { listAccounts } = await import("../accounts.ts");
+
+    // Verify the account exists and belongs to the user
+    const accounts = listAccounts(ctx.userId);
+    const account = accounts.find((a: { id: string }) => a.id === accountId);
+    if (!account) return { success: false, error: "Account not found" };
+
+    const cardName = String((account as Record<string, unknown>).name || "Unknown Card");
+    const issuer = String((account as Record<string, unknown>).institution || "Unknown");
+
+    const existingBenefitId = args.benefit_id as string | undefined;
+    let result;
+
+    if (existingBenefitId) {
+      result = updateBenefit(ctx.userId, existingBenefitId, benefitData as Record<string, never>);
+      if (!result) return { success: false, error: "Benefit not found" };
+    } else {
+      result = addBenefit(ctx.userId, {
+        userId: ctx.userId,
+        cardName,
+        issuer,
+        benefitType: "rate",
+        category: benefitData.category as string | null | undefined,
+        merchant: benefitData.merchant as string | null | undefined,
+        rate,
+        capAmount: benefitData.capAmount as number | null,
+        capPeriod: benefitData.capPeriod as "monthly" | "yearly" | "statement" | null,
+        annualFee: benefitData.annualFee as number,
+        annualCredits: []
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        created: !existingBenefitId,
+        benefit: result,
+        message: existingBenefitId
+          ? "Benefit updated."
+          : `Benefit added for ${cardName}: ${rate}%${benefitData.category ? ` on ${benefitData.category}` : ""}`
+      }
+    };
+  }
+});
+
+// --- Tool: delete_card_benefit (with confirmation) ---
+
+export const T_DELETE_CARD_BENEFIT = register({
+  name: "delete_card_benefit",
+  description: "Delete a credit card benefit. Use _mode=preview first, then _mode=execute after user confirms.",
+  access: "write",
+  requiresConfirmation: true,
+  category: "benefits",
+  schema: {
+    type: "function",
+    function: {
+      name: "delete_card_benefit",
+      description: "Delete a credit card benefit.",
+      parameters: {
+        type: "object",
+        properties: {
+          _mode: { type: "string", enum: ["preview", "execute"], description: "preview or execute" },
+          benefit_id: { type: "string", description: "The benefit ID to delete" }
+        },
+        required: ["benefit_id"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const mode = String(args._mode || "preview");
+    const benefitId = String(args.benefit_id || "");
+
+    if (!benefitId) return { success: false, error: "benefit_id is required" };
+
+    const { getBenefit, deleteBenefit } = await import("./benefits-store.ts");
+    const benefit = getBenefit(ctx.userId, benefitId);
+    if (!benefit) return { success: false, error: "Benefit not found" };
+
+    if (mode === "preview") {
+      return {
+        success: true,
+        data: {
+          _requiresConfirmation: true,
+          _confirmationType: "delete_card_benefit",
+          preview: {
+            benefitId,
+            cardName: benefit.cardName,
+            category: benefit.category || "all",
+            rate: benefit.rate
+          },
+          confirmationQuestion: `Delete the ${benefit.rate}% ${benefit.category || "general"} benefit for ${benefit.cardName}?`
+        }
+      };
+    }
+
+    const deleted = deleteBenefit(ctx.userId, benefitId);
+    return {
+      success: true,
+      data: { deleted, message: "Benefit deleted." }
+    };
+  }
+});
+
 // ----- Terminal / write tools (categorization, recurring, import) -----
 
 export const T_ASSIGN_CATEGORY = register({
