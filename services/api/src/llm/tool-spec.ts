@@ -1533,6 +1533,41 @@ export const T_GET_RECURRING_FORECAST = register({
       const cadence = String(rule.cadence || "monthly");
       const direction = String(rule.direction || "outflow");
 
+      // Helper: advance a date by cadence with month-end clamping.
+      // Uses explicit date constructor to avoid JS auto-overflow bugs
+      // (e.g. Jan 31 + 1 month → Mar 2 instead of Feb 28).
+      function advanceCadence(d: Date, cadence: string): Date {
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        const day = d.getDate();
+
+        if (cadence === "weekly") {
+          return new Date(d.getTime() + 7 * 86400000);
+        } else if (cadence === "biweekly") {
+          return new Date(d.getTime() + 14 * 86400000);
+        } else if (cadence === "monthly") {
+          const targetMonth = month + 1;
+          const lastDay = new Date(year, targetMonth + 1, 0).getDate();
+          return new Date(year, targetMonth, Math.min(day, lastDay));
+        } else if (cadence === "quarterly") {
+          let y = year, m = month;
+          for (let i = 0; i < 3; i++) {
+            m++;
+            if (m > 11) { m = 0; y++; }
+          }
+          const lastDay = new Date(y, m + 1, 0).getDate();
+          return new Date(y, m, Math.min(day, lastDay));
+        } else if (cadence === "yearly") {
+          const lastDay = new Date(year + 1, month + 1, 0).getDate();
+          return new Date(year + 1, month, Math.min(day, lastDay));
+        } else {
+          // Default monthly
+          const targetMonth = month + 1;
+          const lastDay = new Date(year, targetMonth + 1, 0).getDate();
+          return new Date(year, targetMonth, Math.min(day, lastDay));
+        }
+      }
+
       // Generate expected occurrences from rule's next_run_at using calendar cadence
       const displayDates: string[] = [];
       const maxDisplayDates = 6;
@@ -1546,19 +1581,8 @@ export const T_GET_RECURRING_FORECAST = register({
         let safety = 0;
         while (advanceCount < startDate && safety < 100) {
           safety++;
-          if (cadence === "weekly") {
-            advanceCount.setDate(advanceCount.getDate() + 7);
-          } else if (cadence === "biweekly") {
-            advanceCount.setDate(advanceCount.getDate() + 14);
-          } else if (cadence === "monthly") {
-            advanceCount.setMonth(advanceCount.getMonth() + 1);
-          } else if (cadence === "quarterly") {
-            advanceCount.setMonth(advanceCount.getMonth() + 3);
-          } else if (cadence === "yearly") {
-            advanceCount.setFullYear(advanceCount.getFullYear() + 1);
-          } else {
-            advanceCount.setMonth(advanceCount.getMonth() + 1);
-          }
+          const next = advanceCadence(advanceCount, cadence);
+          advanceCount.setTime(next.getTime());
         }
         current = advanceCount;
       }
@@ -1570,19 +1594,8 @@ export const T_GET_RECURRING_FORECAST = register({
       while (countCurrent <= endDate && safety < 1000) {
         safety++;
         totalOccurrences++;
-        if (cadence === "weekly") {
-          countCurrent.setDate(countCurrent.getDate() + 7);
-        } else if (cadence === "biweekly") {
-          countCurrent.setDate(countCurrent.getDate() + 14);
-        } else if (cadence === "monthly") {
-          countCurrent.setMonth(countCurrent.getMonth() + 1);
-        } else if (cadence === "quarterly") {
-          countCurrent.setMonth(countCurrent.getMonth() + 3);
-        } else if (cadence === "yearly") {
-          countCurrent.setFullYear(countCurrent.getFullYear() + 1);
-        } else {
-          countCurrent.setMonth(countCurrent.getMonth() + 1);
-        }
+        const next = advanceCadence(countCurrent, cadence);
+        countCurrent.setTime(next.getTime());
       }
 
       // Second: collect display dates (capped)
@@ -1591,19 +1604,8 @@ export const T_GET_RECURRING_FORECAST = register({
       while (displayCurrent <= endDate && displayDates.length < maxDisplayDates && safety < 100) {
         safety++;
         displayDates.push(displayCurrent.toISOString().substring(0, 10));
-        if (cadence === "weekly") {
-          displayCurrent.setDate(displayCurrent.getDate() + 7);
-        } else if (cadence === "biweekly") {
-          displayCurrent.setDate(displayCurrent.getDate() + 14);
-        } else if (cadence === "monthly") {
-          displayCurrent.setMonth(displayCurrent.getMonth() + 1);
-        } else if (cadence === "quarterly") {
-          displayCurrent.setMonth(displayCurrent.getMonth() + 3);
-        } else if (cadence === "yearly") {
-          displayCurrent.setFullYear(displayCurrent.getFullYear() + 1);
-        } else {
-          displayCurrent.setMonth(displayCurrent.getMonth() + 1);
-        }
+        const next = advanceCadence(displayCurrent, cadence);
+        displayCurrent.setTime(next.getTime());
       }
 
       const totalForRule = amount * totalOccurrences;

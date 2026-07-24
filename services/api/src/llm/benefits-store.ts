@@ -205,11 +205,19 @@ export async function calculateBenefitUsage(
   if (benefit.category) filters.category = benefit.category;
   if (benefit.merchant) filters.merchant = benefit.merchant;
 
-  // Filter by the specific account as well
-  const accountFilters: Record<string, unknown> = { ...filters, account: benefit.accountId };
+  // Filter by the specific account and only outflow (excludes refunds/inflow)
+  const accountFilters: Record<string, unknown> = {
+    ...filters,
+    account: benefit.accountId,
+    direction: "outflow"
+  };
   const transactions = filterUserTransactions(userId, accountFilters);
   const usedAmount = transactions.reduce(
-    (sum: number, t: { amount: number }) => sum + Math.abs(Number(t.amount) || 0),
+    (sum: number, t: { amount: number }) => {
+      const amt = Number(t.amount) || 0;
+      // Only count positive outflows (exclude negative amounts/refunds)
+      return amt > 0 ? sum + amt : sum;
+    },
     0
   );
 
@@ -333,12 +341,16 @@ export async function getAnnualFeeAnalysis(
       start: start.toISOString().substring(0, 10),
       end: now.toISOString().substring(0, 10),
       category: cat,
-      include_excluded: false
+      include_excluded: false,
+      direction: "outflow"
     };
 
     const transactions = filterUserTransactions(userId, filters);
     const spend = transactions.reduce(
-      (sum: number, t: { amount: number }) => sum + Math.abs(Number(t.amount) || 0),
+      (sum: number, t: { amount: number }) => {
+        const amt = Number(t.amount) || 0;
+        return amt > 0 ? sum + amt : sum;
+      },
       0
     );
 

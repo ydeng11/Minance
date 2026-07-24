@@ -27,6 +27,15 @@ async function executeTool(
   if (!spec) {
     return { success: false, error: `Unknown tool: ${toolName}` };
   }
+
+  // Security: if this tool requires confirmation, force preview mode.
+  // Only the confirm endpoint (which calls toolSpec.execute directly,
+  // bypassing this dispatch) may use _mode: "execute".
+  // This prevents the LLM from bypassing the confirmation flow.
+  if (spec.requiresConfirmation) {
+    (args as Record<string, unknown>)._mode = "preview";
+  }
+
   try {
     if (context._now) {
       (args as Record<string, unknown>)._now = context._now;
