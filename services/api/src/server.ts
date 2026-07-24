@@ -1338,20 +1338,22 @@ async function handleApiRequest(req, res, url) {
       return;
     }
 
-    // Confirm/cancel pending assistant actions
+    // Confirm/cancel pending assistant actions (requires conversationId for atomic ownership)
     const actionConfirmParams = matchPath(pathname, "/v1/assistant/actions/:id/confirm");
     if (req.method === "POST" && actionConfirmParams) {
       const user = requireUser(req);
-      const { consumePendingAction } = await import("./llm/pending-actions.ts");
-      const { ALL_TOOLS } = await import("./llm/tool-spec.ts");
-      const { addAuditEvent } = await import("./store.ts");
-      const action = consumePendingAction(actionConfirmParams.id);
-      if (!action) {
-        sendError(res, 404, "Action not found or expired");
+      const body = await parseJsonBody(req).catch(() => ({}));
+      const conversationId = String(body.conversationId || "");
+      if (!conversationId) {
+        sendError(res, 400, "conversationId is required");
         return;
       }
-      if (action.userId !== user.id) {
-        sendError(res, 403, "Action belongs to a different user");
+      const { consumePendingActionForOwner } = await import("./llm/pending-actions.ts");
+      const { ALL_TOOLS } = await import("./llm/tool-spec.ts");
+      const { addAuditEvent } = await import("./store.ts");
+      const action = consumePendingActionForOwner(actionConfirmParams.id, user.id, conversationId);
+      if (!action) {
+        sendError(res, 404, "Action not found, expired, or access denied");
         return;
       }
       try {
@@ -1362,7 +1364,7 @@ async function handleApiRequest(req, res, url) {
         }
         const execArgs = { ...action.args, _mode: "execute" };
         const result = await toolSpec.execute(
-          { userId: user.id, conversationId: action.conversationId, resultCache: new Map() },
+          { userId: user.id, conversationId, resultCache: new Map() },
           execArgs
         );
         addAuditEvent(user.id, "assistant.action.confirm", {
@@ -1392,15 +1394,17 @@ async function handleApiRequest(req, res, url) {
     const actionCancelParams = matchPath(pathname, "/v1/assistant/actions/:id/cancel");
     if (req.method === "POST" && actionCancelParams) {
       const user = requireUser(req);
-      const { consumePendingAction } = await import("./llm/pending-actions.ts");
-      const { addAuditEvent } = await import("./store.ts");
-      const action = consumePendingAction(actionCancelParams.id);
-      if (!action) {
-        sendError(res, 404, "Action not found or expired");
+      const body = await parseJsonBody(req).catch(() => ({}));
+      const conversationId = String(body.conversationId || "");
+      if (!conversationId) {
+        sendError(res, 400, "conversationId is required");
         return;
       }
-      if (action.userId !== user.id) {
-        sendError(res, 403, "Action belongs to a different user");
+      const { consumePendingActionForOwner } = await import("./llm/pending-actions.ts");
+      const { addAuditEvent } = await import("./store.ts");
+      const action = consumePendingActionForOwner(actionCancelParams.id, user.id, conversationId);
+      if (!action) {
+        sendError(res, 404, "Action not found, expired, or access denied");
         return;
       }
       addAuditEvent(user.id, "assistant.action.cancel", {

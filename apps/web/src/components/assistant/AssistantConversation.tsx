@@ -503,12 +503,12 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
                       {renderAssistantBody(entry)}
                       {renderAssistantFooter(
                         entry,
-                        // Confirm: call API endpoint directly
+                        // Confirm: call API endpoint with actionId + conversationId
                         async () => {
-                          if (!entry.pendingActionKey) return;
+                          if (!entry.pendingActionKey || !conversationId) return;
                           setIsLoading(true);
                           try {
-                            const result = await api.assistant.confirmAction(entry.pendingActionKey);
+                            const result = await api.assistant.confirmAction(entry.pendingActionKey, conversationId);
                             if (result.confirmed && result.success) {
                               setMessage(result.message || "Done.");
                             } else {
@@ -520,12 +520,12 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
                             setIsLoading(false);
                           }
                         },
-                        // Cancel: call API endpoint directly
+                        // Cancel: call API endpoint with actionId + conversationId
                         async () => {
-                          if (!entry.pendingActionKey) return;
+                          if (!entry.pendingActionKey || !conversationId) return;
                           setIsLoading(true);
                           try {
-                            await api.assistant.cancelAction(entry.pendingActionKey);
+                            await api.assistant.cancelAction(entry.pendingActionKey, conversationId);
                             setMessage("Action cancelled.");
                           } catch {
                             setMessage("Failed to cancel action.");

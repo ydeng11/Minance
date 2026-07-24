@@ -218,12 +218,12 @@ export type AgentState =
   | "max_calls";
 
 const VALID_TRANSITIONS: Record<AgentState, AgentState[]> = {
-  planning: ["awaiting_llm", "failed"],
-  awaiting_llm: ["tool_call", "completed", "failed", "timeout"],
-  tool_call: ["preview", "awaiting_llm", "failed"],
-  preview: ["awaiting_confirmation", "failed"],
-  awaiting_confirmation: ["executing", "cancelled", "failed"],
-  executing: ["completed", "failed"],
+  planning: ["awaiting_llm", "failed", "timeout", "max_calls"],
+  awaiting_llm: ["tool_call", "completed", "failed", "timeout", "max_calls"],
+  tool_call: ["preview", "awaiting_llm", "failed", "timeout", "max_calls"],
+  preview: ["awaiting_confirmation", "failed", "timeout", "max_calls"],
+  awaiting_confirmation: ["executing", "cancelled", "failed", "timeout", "max_calls"],
+  executing: ["completed", "failed", "timeout"],
   completed: [],
   failed: [],
   cancelled: [],
@@ -246,7 +246,10 @@ export class AgentStateMachine {
   transition(to: AgentState): void {
     const allowed = VALID_TRANSITIONS[this._state];
     if (!allowed.includes(to)) {
-      console.warn(`Agent state: invalid transition ${this._state} -> ${to} (allowed: ${allowed.join(",")})`);
+      throw new Error(
+        `Invalid agent state transition: ${this._state} -> ${to} ` +
+        `(allowed from ${this._state}: ${allowed.join(", ")})`
+      );
     }
     this._transitions.push({ from: this._state, to });
     this._state = to;
@@ -532,10 +535,12 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         toolCalls: response.toolCalls
       });
 
+      // Transition to tool_call once per LLM response
+      sm.transition("tool_call");
+
       // Execute each tool call — each counts toward MAX_TOOL_CALLS
       for (const toolCall of response.toolCalls) {
         toolCallsMade++;
-        sm.transition("tool_call");
 
         // Check if we've exceeded the limit mid-batch
         if (toolCallsMade > MAX_TOOL_CALLS) {

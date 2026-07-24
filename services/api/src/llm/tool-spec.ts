@@ -1537,7 +1537,31 @@ export const T_GET_RECURRING_FORECAST = register({
       const displayDates: string[] = [];
       const maxDisplayDates = 6;
       let current = rule.next_run_at ? new Date(rule.next_run_at) : new Date(startDate);
-      if (current < startDate) current = new Date(startDate);
+
+      // Advance past occurrences forward by cadence until they reach startDate
+      // e.g. next_run_at = Jan 15, forecast starts Jun 15, cadence = monthly
+      // Advance: Feb 15, Mar 15, Apr 15, May 15, Jun 15 (now in window)
+      if (current < startDate) {
+        const advanceCount = new Date(current);
+        let safety = 0;
+        while (advanceCount < startDate && safety < 100) {
+          safety++;
+          if (cadence === "weekly") {
+            advanceCount.setDate(advanceCount.getDate() + 7);
+          } else if (cadence === "biweekly") {
+            advanceCount.setDate(advanceCount.getDate() + 14);
+          } else if (cadence === "monthly") {
+            advanceCount.setMonth(advanceCount.getMonth() + 1);
+          } else if (cadence === "quarterly") {
+            advanceCount.setMonth(advanceCount.getMonth() + 3);
+          } else if (cadence === "yearly") {
+            advanceCount.setFullYear(advanceCount.getFullYear() + 1);
+          } else {
+            advanceCount.setMonth(advanceCount.getMonth() + 1);
+          }
+        }
+        current = advanceCount;
+      }
 
       // First: count all occurrences in the period for the total
       const countCurrent = new Date(current);

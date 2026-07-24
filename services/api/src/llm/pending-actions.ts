@@ -77,6 +77,28 @@ export function getPendingActionByConversation(
   return undefined;
 }
 
+/**
+ * Atomically consume a pending action only if it belongs to the given
+ * userId and conversationId and has not expired. Returns the action
+ * if consumed, or undefined if not found/wrong owner/expired.
+ */
+export function consumePendingActionForOwner(
+  actionId: string,
+  userId: string,
+  conversationId: string
+): PendingAction | undefined {
+  const action = store.get(actionId);
+  if (!action) return undefined;
+  if (action.userId !== userId) return undefined;
+  if (action.conversationId !== conversationId) return undefined;
+  if (Date.now() - action.createdAt > PENDING_TTL_MS) {
+    store.delete(actionId);
+    return undefined;
+  }
+  store.delete(actionId);
+  return action;
+}
+
 export function clearPendingActions(): void {
   store.clear();
 }

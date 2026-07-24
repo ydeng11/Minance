@@ -487,15 +487,15 @@ export const assistantApi = {
       method: "POST",
       body: { question }
     }),
-  confirmAction: (request: ApiRequest, actionId: string) =>
+  confirmAction: (request: ApiRequest, actionId: string, conversationId: string) =>
     request<{ confirmed: boolean; success: boolean; message?: string; error?: string; data?: unknown }>(
       `/v1/assistant/actions/${encodeURIComponent(actionId)}/confirm`,
-      { method: "POST" }
+      { method: "POST", body: { conversationId } }
     ),
-  cancelAction: (request: ApiRequest, actionId: string) =>
+  cancelAction: (request: ApiRequest, actionId: string, conversationId: string) =>
     request<{ cancelled: boolean; toolName: string }>(
       `/v1/assistant/actions/${encodeURIComponent(actionId)}/cancel`,
-      { method: "POST" }
+      { method: "POST", body: { conversationId } }
     )
 };
 
