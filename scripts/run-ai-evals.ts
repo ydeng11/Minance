@@ -432,7 +432,7 @@ async function main() {
   console.log(`[EVAL] Override dt: ${overrideDate}`);
   console.log("");
 
-  // Load fixture data
+  // Load base fixture data
   try {
     const fixtureData = JSON.parse(fs.readFileSync(FIXTURE_PATH, "utf-8"));
     const { resetStoreForTests } = await import("../services/api/src/store.ts");
@@ -442,6 +442,43 @@ async function main() {
   } catch (err) {
     console.error(`[ERROR] Failed to load fixture from ${FIXTURE_PATH}:`, err);
     process.exit(1);
+  }
+
+  // Load eval supplemental fixture (benefits, budget targets, suggestions)
+  const EVAL_FIXTURE_PATH = path.resolve(
+    import.meta.dirname,
+    "../services/api/test/fixtures/eval-fixture.json"
+  );
+  try {
+    const evalFixtureData = JSON.parse(fs.readFileSync(EVAL_FIXTURE_PATH, "utf-8"));
+
+    // Seed card benefits
+    const { seedBenefits } = await import("../services/api/src/llm/benefits-store.ts");
+    if (evalFixtureData.cardBenefits) {
+      seedBenefits(FIXTURE_USER_ID, evalFixtureData.cardBenefits);
+      console.log(`[EVAL] Seeded ${evalFixtureData.cardBenefits.length} card benefits`);
+    }
+
+    // Seed budget targets in store
+    if (evalFixtureData.budgetTargets) {
+      const { loadStore, saveStore } = await import("../services/api/src/store.ts");
+      const store = loadStore();
+      (store as Record<string, unknown>).budgetTargets = evalFixtureData.budgetTargets;
+      saveStore(store);
+      const targetCount = Object.keys(evalFixtureData.budgetTargets).length;
+      console.log(`[EVAL] Seeded ${targetCount} budget targets`);
+    }
+
+    // Seed recurring suggestions
+    if (evalFixtureData.recurringSuggestions?.length) {
+      const { loadStore, saveStore } = await import("../services/api/src/store.ts");
+      const store = loadStore();
+      store.recurringSuggestions = evalFixtureData.recurringSuggestions;
+      saveStore(store);
+      console.log(`[EVAL] Seeded ${evalFixtureData.recurringSuggestions.length} recurring suggestions`);
+    }
+  } catch (err) {
+    console.warn(`[WARN] Failed to load supplemental eval fixture: ${err instanceof Error ? err.message : String(err)}`);
   }
   console.log("");
 

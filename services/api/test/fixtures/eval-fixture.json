@@ -1,0 +1,164 @@
+{
+  "fixtureMeta": {
+    "name": "eval-fixture",
+    "description": "Supplemental fixture for AI assistant evals. Provides card benefits, budget targets, and recurring suggestions that complement the deterministic-financial-store.json base fixture.",
+    "version": "1",
+    "compatibleBaseFixture": "deterministic-financial-store.json"
+  },
+  "cardBenefits": [
+    {
+      "id": "cbnf_dining_chase",
+      "userId": "usr_fixture_001",
+      "accountId": "acct_fixture_chase_sapphire",
+      "cardName": "Chase Sapphire",
+      "issuer": "Chase",
+      "benefitType": "rate",
+      "category": "Dining",
+      "merchant": null,
+      "rate": 3.0,
+      "capAmount": 300,
+      "capPeriod": "monthly",
+      "statementCycleDay": 1,
+      "activationDate": "2025-01-01",
+      "expiryDate": null,
+      "annualFee": 95,
+      "annualCredits": [
+        { "name": "DoorDash Credit", "amount": 60, "used": 30 }
+      ]
+    },
+    {
+      "id": "cbnf_travel_chase",
+      "userId": "usr_fixture_001",
+      "accountId": "acct_fixture_chase_sapphire",
+      "cardName": "Chase Sapphire",
+      "issuer": "Chase",
+      "benefitType": "rate",
+      "category": "Travel",
+      "merchant": null,
+      "rate": 2.0,
+      "capAmount": null,
+      "capPeriod": null,
+      "statementCycleDay": 1,
+      "activationDate": "2025-01-01",
+      "expiryDate": null,
+      "annualFee": 95,
+      "annualCredits": [
+        { "name": "DoorDash Credit", "amount": 60, "used": 30 }
+      ]
+    },
+    {
+      "id": "cbnf_groceries_amex",
+      "userId": "usr_fixture_001",
+      "accountId": "acct_fixture_amex_gold",
+      "cardName": "Amex Gold",
+      "issuer": "American Express",
+      "benefitType": "rate",
+      "category": "Groceries",
+      "merchant": null,
+      "rate": 4.0,
+      "capAmount": 250,
+      "capPeriod": "monthly",
+      "statementCycleDay": 15,
+      "activationDate": "2025-03-01",
+      "expiryDate": null,
+      "annualFee": 250,
+      "annualCredits": [
+        { "name": "Uber Cash", "amount": 120, "used": 50 },
+        { "name": "Resy Credit", "amount": 100, "used": 25 }
+      ]
+    },
+    {
+      "id": "cbnf_dining_amex",
+      "userId": "usr_fixture_001",
+      "accountId": "acct_fixture_amex_gold",
+      "cardName": "Amex Gold",
+      "issuer": "American Express",
+      "benefitType": "rate",
+      "category": "Dining",
+      "merchant": null,
+      "rate": 4.0,
+      "capAmount": null,
+      "capPeriod": null,
+      "statementCycleDay": 15,
+      "activationDate": "2025-03-01",
+      "expiryDate": null,
+      "annualFee": 250,
+      "annualCredits": [
+        { "name": "Uber Cash", "amount": 120, "used": 50 },
+        { "name": "Resy Credit", "amount": 100, "used": 25 }
+      ]
+    },
+    {
+      "id": "cbnf_general_venture",
+      "userId": "usr_fixture_001",
+      "accountId": "acct_fixture_venture_x",
+      "cardName": "Venture X",
+      "issuer": "Capital One",
+      "benefitType": "rate",
+      "category": null,
+      "merchant": null,
+      "rate": 2.0,
+      "capAmount": null,
+      "capPeriod": null,
+      "statementCycleDay": null,
+      "activationDate": "2025-06-01",
+      "expiryDate": null,
+      "annualFee": 395,
+      "annualCredits": [
+        { "name": "Travel Credit", "amount": 300, "used": 150 }
+      ]
+    }
+  ],
+  "budgetTargets": {
+    "Dining": 400.00,
+    "Groceries": 600.00,
+    "Entertainment": 100.00,
+    "Utilities": 120.00
+  },
+  "recurringSuggestions": [
+    {
+      "id": "rsug_netflix_001",
+      "user_id": "usr_fixture_001",
+      "merchant_pattern": "stream box",
+      "amount": 15.99,
+      "cadence": "monthly",
+      "confidence": 0.95,
+      "status": "pending",
+      "dismissed": false,
+      "source_transaction_id": "txn_eval_001",
+      "created_at": "2026-01-15T00:00:00.000Z"
+    },
+    {
+      "id": "rsug_gym_001",
+      "user_id": "usr_fixture_001",
+      "merchant_pattern": "cafe brisk",
+      "amount": 9.99,
+      "cadence": "monthly",
+      "confidence": 0.6,
+      "status": "pending",
+      "dismissed": false,
+      "source_transaction_id": "txn_eval_002",
+      "created_at": "2026-02-01T00:00:00.000Z"
+    },
+    {
+      "id": "rsug_electric_001",
+      "user_id": "usr_fixture_001",
+      "merchant_pattern": "fixture energy",
+      "amount": 100.00,
+      "cadence": "monthly",
+      "confidence": 0.88,
+      "status": "pending",
+      "dismissed": false,
+      "source_transaction_id": "txn_eval_003",
+      "created_at": "2026-03-10T00:00:00.000Z"
+    }
+  ],
+  "expectedValues": {
+    "totalTransactions": 214,
+    "creditCards": ["acct_fixture_chase_sapphire", "acct_fixture_amex_gold", "acct_fixture_venture_x"],
+    "benefitCount": 5,
+    "recurringRules": 6,
+    "pendingSuggestions": 3,
+    "budgetTargets": 4
+  }
+}
