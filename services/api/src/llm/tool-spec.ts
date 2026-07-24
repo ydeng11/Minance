@@ -1012,9 +1012,23 @@ export const T_GET_CARD_BENEFITS = register({
   execute: async (ctx, args) => {
     const accountId = args.account_id as string;
     if (!accountId) return { success: false, error: "account_id is required" };
-    const { getBenefitsForAccount } = await import("./benefits-store.ts");
+    const { getBenefitsForAccount, calculateBenefitUsage } = await import("./benefits-store.ts");
     const benefits = getBenefitsForAccount(ctx.userId, accountId);
-    return { success: true, data: { accountId, benefits } };
+    // Join each benefit definition with its deterministic usage calculation
+    const benefitsWithUsage = await Promise.all(
+      benefits.map(async (b) => {
+        const usage = await calculateBenefitUsage(ctx.userId, b, ctx._now);
+        return {
+          ...b,
+          usedAmount: usage.usedAmount,
+          remainingAmount: usage.remainingAmount,
+          usagePercent: usage.usagePercent,
+          periodStart: usage.periodStart,
+          periodEnd: usage.periodEnd
+        };
+      })
+    );
+    return { success: true, data: { accountId, benefits: benefitsWithUsage } };
   }
 });
 
@@ -1460,10 +1474,6 @@ export const T_GET_RECURRING_FORECAST = register({
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + monthsAhead);
 
-    const cadenceDays: Record<string, number> = {
-      weekly: 7, biweekly: 14, monthly: 30, quarterly: 91, yearly: 365
-    };
-
     const forecast: Array<{
       merchant: string;
       cadence: string;
@@ -1478,20 +1488,37 @@ export const T_GET_RECURRING_FORECAST = register({
     for (const rule of rules) {
       const amount = Math.abs(Number(rule.amount) || 0);
       const cadence = String(rule.cadence || "monthly");
-      const days = cadenceDays[cadence] || 30;
       const direction = String(rule.direction || "outflow");
 
-      // Calculate expected occurrences in the forecast period
-      const daysInPeriod = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-      const occurrences = Math.max(1, Math.round(daysInPeriod / days));
-
+      // Generate expected occurrences from rule's next_run_at using calendar cadence
       const expectedDates: string[] = [];
-      for (let i = 0; i < Math.min(occurrences, 6); i++) {
-        const d = new Date(startDate);
-        d.setDate(d.getDate() + i * days);
-        expectedDates.push(d.toISOString().substring(0, 10));
+      const maxDates = 6;
+      let current = rule.next_run_at ? new Date(rule.next_run_at) : new Date(startDate);
+      if (current < startDate) current = new Date(startDate);
+
+      let safety = 0;
+      while (current <= endDate && expectedDates.length < maxDates && safety < 100) {
+        safety++;
+        expectedDates.push(current.toISOString().substring(0, 10));
+        // Advance by calendar cadence
+        const next = new Date(current);
+        if (cadence === "weekly") {
+          next.setDate(next.getDate() + 7);
+        } else if (cadence === "biweekly") {
+          next.setDate(next.getDate() + 14);
+        } else if (cadence === "monthly") {
+          next.setMonth(next.getMonth() + 1);
+        } else if (cadence === "quarterly") {
+          next.setMonth(next.getMonth() + 3);
+        } else if (cadence === "yearly") {
+          next.setFullYear(next.getFullYear() + 1);
+        } else {
+          next.setMonth(next.getMonth() + 1); // default monthly
+        }
+        current = next;
       }
 
+      const occurrences = expectedDates.length;
       const totalForRule = amount * occurrences;
       totalProjected += totalForRule;
 

@@ -26,16 +26,28 @@ async function executeTool(
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
   const spec = toolDispatch.get(toolName);
   if (spec) {
-    // If spec has execute and a date override, pass it through
-    if (context._now) {
-      (args as Record<string, unknown>)._now = context._now;
+    try {
+      if (context._now) {
+        (args as Record<string, unknown>)._now = context._now;
+      }
+      const result = await spec.execute(context, args);
+      return { success: result.success, data: result.data, error: result.error };
+    } catch (err) {
+      return {
+        success: false,
+        error: `Tool ${toolName} threw: ${err instanceof Error ? err.message : String(err)}`
+      };
     }
-    const result = await spec.execute(context, args);
-    // Flatten ToolResult → simpler format expected by agent loop
-    return { success: result.success, data: result.data, error: result.error };
   }
   // Fall back to legacy executor
-  return legacyExecuteTool(toolName, args, context);
+  try {
+    return legacyExecuteTool(toolName, args, context);
+  } catch (err) {
+    return {
+      success: false,
+      error: `Legacy tool ${toolName} threw: ${err instanceof Error ? err.message : String(err)}`
+    };
+  }
 }
 
 const MAX_TOOL_CALLS = 5;
