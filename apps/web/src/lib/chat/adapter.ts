@@ -21,6 +21,8 @@ export interface AssistantMessageCard {
   };
   /** Confirmation preview data */
   confirmationPreview?: Record<string, unknown>;
+  /** Pending action key for confirmation flow */
+  pendingActionKey?: string;
   /** Structured subscription data */
   subscriptions?: Array<{
     merchant: string;
@@ -82,6 +84,11 @@ export function assistantQueryToMessage(query: AssistantQuery): AssistantMessage
   // Confirmation preview
   if (query.result.confirmationPreview) {
     message.confirmationPreview = query.result.confirmationPreview;
+  }
+
+  // Pending action key
+  if (query.result.pendingActionKey) {
+    message.pendingActionKey = query.result.pendingActionKey;
   }
 
   // Structured data

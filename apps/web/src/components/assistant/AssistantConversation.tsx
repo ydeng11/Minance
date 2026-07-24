@@ -206,13 +206,41 @@ function renderAssistantBody(entry: AssistantMessageCard) {
   );
 }
 
-function renderAssistantFooter(entry: AssistantMessageCard) {
+function renderAssistantFooter(entry: AssistantMessageCard, onConfirmAction?: (confirm: boolean) => void) {
   if (entry.state !== "complete") {
     return null;
   }
 
   return (
     <>
+      {/* Confirmation preview with buttons */}
+      {entry.confirmationPreview ? (
+        <div className="mt-3 space-y-2 rounded-lg border border-accent/25 bg-accent-soft/50 p-3">
+          <p className="text-xs font-medium text-accent">
+            Review the action before confirming:
+          </p>
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-surface-field/50 p-2 text-xs text-text-secondary">
+            {JSON.stringify(entry.confirmationPreview, null, 2)}
+          </pre>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => onConfirmAction?.(true)}
+              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-app-bg transition hover:bg-accent/90"
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              onClick={() => onConfirmAction?.(false)}
+              className="rounded-md border border-border-subtle bg-surface-field px-4 py-2 text-sm text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {entry.highlights.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1">
           {entry.highlights.map((item) => (
@@ -246,6 +274,7 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [placeholder, setPlaceholder] = useState(() => pickAssistantPromptPlaceholder());
+  const [pendingConfirmText, setPendingConfirmText] = useState<string | null>(null);
 
   useEffect(() => {
     const storage = getAssistantConversationStorage();
@@ -285,6 +314,20 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
       window.clearTimeout(timeout);
     };
   }, [transcriptExpiresAt]);
+
+  // Auto-submit when confirmation button triggers a pending text
+  useEffect(() => {
+    if (!pendingConfirmText || isLoading) return;
+    setInput(pendingConfirmText);
+    setPendingConfirmText(null);
+
+    // Small delay to let state settle, then trigger submit
+    const timer = setTimeout(() => {
+      const form = inputRef.current?.closest("form");
+      if (form) form.requestSubmit();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [pendingConfirmText, isLoading]);
 
   useEffect(() => {
     if (!responsesRef.current) {
@@ -454,7 +497,9 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
                     </span>
                     <div className={ASSISTANT_BUBBLE_CLASS}>
                       {renderAssistantBody(entry)}
-                      {renderAssistantFooter(entry)}
+                      {renderAssistantFooter(entry, (confirm) => {
+                        setPendingConfirmText(confirm ? "Yes, confirm" : "No, cancel");
+                      })}
                     </div>
                   </div>
                 </article>

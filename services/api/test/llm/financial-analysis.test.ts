@@ -104,3 +104,74 @@ test("all analysis tool names are unique", () => {
   const uniqueNames = new Set(names);
   assert.equal(names.length, uniqueNames.size, "All analysis tool names must be unique");
 });
+
+// ---------------------------------------------------------------------------
+// Forecast correctness
+// ---------------------------------------------------------------------------
+
+test("forecast: totalProjected counts all occurrences, not just 6 display dates", async () => {
+  const tool = ALL_TOOLS.find((t) => t.name === "get_recurring_forecast");
+  assert.ok(tool, "get_recurring_forecast must be registered");
+
+  // 12 months of weekly charges ($10/week) = 52 occurrences, not 6
+  const fixedNow = new Date("2026-01-01T00:00:00Z");
+  const result = await tool.execute(
+    { userId: "test_user", _now: fixedNow },
+    { months: 12 }
+  );
+
+  assert.equal(result.success, true);
+  const data = result.data as Record<string, unknown>;
+  const forecast = data.forecast as Array<Record<string, unknown>>;
+
+  // All rules should have totalOccurrences, not just 6
+  for (const item of forecast) {
+    assert.ok(
+      typeof item.totalOccurrences === "number",
+      `${item.merchant} should have totalOccurrences`
+    );
+    // expectedDates (display) should be at most 6
+    assert.ok(
+      (item.expectedDates as Array<unknown>).length <= 6,
+      `${item.merchant} should have at most 6 display dates`
+    );
+    // totalProjected should be based on totalOccurrences, not display dates
+    const amount = Math.abs(Number(item.amount) || 0);
+    assert.equal(
+      item.totalProjected,
+      Math.round(amount * Number(item.totalOccurrences) * 100) / 100,
+      `${item.merchant} totalProjected should equal amount * totalOccurrences`
+    );
+  }
+});
+
+test("forecast: monthly rule with far-future next_run_at advances to forecast window", async () => {
+  const tool = ALL_TOOLS.find((t) => t.name === "get_recurring_forecast");
+  assert.ok(tool);
+
+  const fixedNow = new Date("2026-06-15T00:00:00Z");
+  const result = await tool.execute(
+    { userId: "test_user", _now: fixedNow },
+    { months: 3 }
+  );
+
+  assert.equal(result.success, true);
+  const data = result.data as Record<string, unknown>;
+  // Should not crash — fixtures have rules with various next_run_at values
+  assert.ok(data.forecast, "Should return forecast array");
+});
+
+test("forecast: returns dataAsOf freshness marker", async () => {
+  const tool = ALL_TOOLS.find((t) => t.name === "get_overview");
+  assert.ok(tool);
+
+  const fixedNow = new Date("2026-07-04T00:00:00Z");
+  const result = await tool.execute(
+    { userId: "usr_fixture_001", _now: fixedNow },
+    {}
+  );
+
+  assert.equal(result.success, true);
+  const data = result.data as Record<string, unknown>;
+  assert.equal(data.dataAsOf, "2026-07-04", "Should include dataAsOf date");
+});

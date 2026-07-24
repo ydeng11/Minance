@@ -149,7 +149,9 @@ export const T_GET_OVERVIEW = register({
   execute: async (ctx, args) => {
     const { getOverview } = await import("../analytics.ts");
     const filters = buildFiltersFromArgs(args);
-    return { success: true, data: getOverview(ctx.userId, filters) };
+    const data = getOverview(ctx.userId, filters);
+    const now = getEffectiveNow(ctx);
+    return { success: true, data: { ...data, dataAsOf: now.toISOString().substring(0, 10) } };
   }
 });
 
@@ -1480,6 +1482,7 @@ export const T_GET_RECURRING_FORECAST = register({
       amount: number;
       direction: string;
       expectedDates: string[];
+      totalOccurrences: number;
       totalProjected: number;
     }> = [];
 
@@ -1491,35 +1494,55 @@ export const T_GET_RECURRING_FORECAST = register({
       const direction = String(rule.direction || "outflow");
 
       // Generate expected occurrences from rule's next_run_at using calendar cadence
-      const expectedDates: string[] = [];
-      const maxDates = 6;
+      const displayDates: string[] = [];
+      const maxDisplayDates = 6;
       let current = rule.next_run_at ? new Date(rule.next_run_at) : new Date(startDate);
       if (current < startDate) current = new Date(startDate);
 
+      // First: count all occurrences in the period for the total
+      const countCurrent = new Date(current);
+      let totalOccurrences = 0;
       let safety = 0;
-      while (current <= endDate && expectedDates.length < maxDates && safety < 100) {
+      while (countCurrent <= endDate && safety < 1000) {
         safety++;
-        expectedDates.push(current.toISOString().substring(0, 10));
-        // Advance by calendar cadence
-        const next = new Date(current);
+        totalOccurrences++;
         if (cadence === "weekly") {
-          next.setDate(next.getDate() + 7);
+          countCurrent.setDate(countCurrent.getDate() + 7);
         } else if (cadence === "biweekly") {
-          next.setDate(next.getDate() + 14);
+          countCurrent.setDate(countCurrent.getDate() + 14);
         } else if (cadence === "monthly") {
-          next.setMonth(next.getMonth() + 1);
+          countCurrent.setMonth(countCurrent.getMonth() + 1);
         } else if (cadence === "quarterly") {
-          next.setMonth(next.getMonth() + 3);
+          countCurrent.setMonth(countCurrent.getMonth() + 3);
         } else if (cadence === "yearly") {
-          next.setFullYear(next.getFullYear() + 1);
+          countCurrent.setFullYear(countCurrent.getFullYear() + 1);
         } else {
-          next.setMonth(next.getMonth() + 1); // default monthly
+          countCurrent.setMonth(countCurrent.getMonth() + 1);
         }
-        current = next;
       }
 
-      const occurrences = expectedDates.length;
-      const totalForRule = amount * occurrences;
+      // Second: collect display dates (capped)
+      let displayCurrent = new Date(current);
+      safety = 0;
+      while (displayCurrent <= endDate && displayDates.length < maxDisplayDates && safety < 100) {
+        safety++;
+        displayDates.push(displayCurrent.toISOString().substring(0, 10));
+        if (cadence === "weekly") {
+          displayCurrent.setDate(displayCurrent.getDate() + 7);
+        } else if (cadence === "biweekly") {
+          displayCurrent.setDate(displayCurrent.getDate() + 14);
+        } else if (cadence === "monthly") {
+          displayCurrent.setMonth(displayCurrent.getMonth() + 1);
+        } else if (cadence === "quarterly") {
+          displayCurrent.setMonth(displayCurrent.getMonth() + 3);
+        } else if (cadence === "yearly") {
+          displayCurrent.setFullYear(displayCurrent.getFullYear() + 1);
+        } else {
+          displayCurrent.setMonth(displayCurrent.getMonth() + 1);
+        }
+      }
+
+      const totalForRule = amount * totalOccurrences;
       totalProjected += totalForRule;
 
       forecast.push({
@@ -1527,7 +1550,8 @@ export const T_GET_RECURRING_FORECAST = register({
         cadence,
         amount: Math.round(amount * 100) / 100,
         direction,
-        expectedDates,
+        expectedDates: displayDates,
+        totalOccurrences,
         totalProjected: Math.round(totalForRule * 100) / 100
       });
     }
