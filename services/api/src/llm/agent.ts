@@ -22,7 +22,7 @@ async function executeTool(
   toolName: string,
   args: Record<string, unknown>,
   context: ToolExecutionContext
-): Promise<{ success: boolean; data?: unknown; error?: string }> {
+): Promise<{ success: boolean; data?: unknown; error?: string; blocks?: Array<{ type: string; data: unknown }> }> {
   const spec = toolDispatch.get(toolName);
   if (!spec) {
     return { success: false, error: `Unknown tool: ${toolName}` };
@@ -32,7 +32,7 @@ async function executeTool(
       (args as Record<string, unknown>)._now = context._now;
     }
     const result = await spec.execute(context, args);
-    return { success: result.success, data: result.data, error: result.error };
+    return { success: result.success, data: result.data, error: result.error, blocks: result.blocks };
   } catch (err) {
     return {
       success: false,
@@ -614,39 +614,16 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
           resultCache.set(resultId, result.data);
         }
 
-        // Extract structured data for API response
-        if (result.success && result.data && typeof result.data === "object") {
-          const d = result.data as Record<string, unknown>;
-          // Subscriptions
-          if (toolCall.function.name === "list_recurring_rules" && d.items) {
-            structuredData.subscriptions = (d.items as Array<Record<string, unknown>>).map((item) => ({
-              merchant: item.name || item.merchant_pattern || "Unknown",
-              cadence: item.cadence || "",
-              amount: Math.abs(Number(item.amount) || 0),
-              nextDate: item.next_run_at || item.next_expected_date || undefined,
-              status: item.status || "active"
-            }));
-          }
-          // Card benefits
-          if (toolCall.function.name === "get_card_benefits" && d.benefits) {
-            structuredData.cardBenefits = (d.benefits as Array<Record<string, unknown>>).map((b) => ({
-              cardName: b.cardName || "",
-              benefitType: b.benefitType || "rate",
-              category: b.category || undefined,
-              rate: Number(b.rate) || 0,
-              used: Number(b.usedAmount) || 0,
-              cap: b.capAmount !== null ? Number(b.capAmount) : null,
-              remaining: b.remainingAmount !== null ? Number(b.remainingAmount) : null
-            }));
-          }
-          // Budget comparison
-          if (toolCall.function.name === "get_budget_comparison" && d.comparisons) {
-            structuredData.budgetComparison = (d.comparisons as Array<Record<string, unknown>>).map((c) => ({
-              category: c.category || "",
-              actual: Math.round(Number(c.actual) * 100) / 100,
-              target: c.target !== null ? Math.round(Number(c.target) * 100) / 100 : null,
-              difference: Math.round(Number(c.difference) * 100) / 100
-            }));
+        // Extract structured blocks from ToolResult (generic — no tool-name special cases)
+        if (result.success && result.blocks) {
+          for (const block of result.blocks) {
+            if (block.type === "subscriptions") {
+              structuredData.subscriptions = block.data as Array<Record<string, unknown>>;
+            } else if (block.type === "cardBenefits") {
+              structuredData.cardBenefits = block.data as Array<Record<string, unknown>>;
+            } else if (block.type === "budgetComparison") {
+              structuredData.budgetComparison = block.data as Array<Record<string, unknown>>;
+            }
           }
         }
 

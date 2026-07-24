@@ -27,10 +27,23 @@ export interface ToolResult {
     toolName: string;
     executionTimeMs: number;
   };
+  /** Structured blocks for typed API/frontend rendering */
+  blocks?: ToolResultBlock[];
 }
 
 export type ToolAccess = "read" | "write";
 export type ToolCategory = "analytics" | "subscriptions" | "benefits" | "budgeting" | "system";
+
+// ---------------------------------------------------------------------------
+// Structured blocks for UI rendering
+// ---------------------------------------------------------------------------
+
+export type BlockType = "subscriptions" | "cardBenefits" | "budgetComparison";
+
+export interface ToolResultBlock {
+  type: BlockType;
+  data: unknown;
+}
 
 export interface ToolSpec {
   name: string;
@@ -573,7 +586,20 @@ export const T_LIST_RECURRING_RULES = register({
   },
   execute: async (ctx) => {
     const { listRecurringRules } = await import("../recurrings.ts");
-    return { success: true, data: listRecurringRules(ctx.userId) };
+    const result = listRecurringRules(ctx.userId);
+    const rules = result.items || [];
+    const subscriptions = rules.map((r: Record<string, unknown>) => ({
+      merchant: String(r.name || r.merchant_pattern || "Unknown"),
+      cadence: String(r.cadence || ""),
+      amount: Math.abs(Number(r.amount) || 0),
+      nextDate: String(r.next_run_at || r.next_expected_date || ""),
+      status: String(r.status || "active")
+    }));
+    return {
+      success: true,
+      data: { items: rules },
+      blocks: subscriptions.length > 0 ? [{ type: "subscriptions" as const, data: subscriptions }] : undefined
+    };
   }
 });
 
@@ -1030,7 +1056,21 @@ export const T_GET_CARD_BENEFITS = register({
         };
       })
     );
-    return { success: true, data: { accountId, benefits: benefitsWithUsage } };
+    // Build structured blocks for API response
+    const cardBenefits = benefitsWithUsage.map((b) => ({
+      cardName: String(b.cardName || ""),
+      benefitType: String(b.benefitType || "rate"),
+      category: b.category ? String(b.category) : undefined,
+      rate: Number(b.rate) || 0,
+      used: Number(b.usedAmount) || 0,
+      cap: b.capAmount !== null && b.capAmount !== undefined ? Number(b.capAmount) : null,
+      remaining: b.remainingAmount !== null && b.remainingAmount !== undefined ? Number(b.remainingAmount) : null
+    }));
+    return {
+      success: true,
+      data: { accountId, benefits: benefitsWithUsage },
+      blocks: cardBenefits.length > 0 ? [{ type: "cardBenefits" as const, data: cardBenefits }] : undefined
+    };
   }
 });
 
@@ -1662,6 +1702,14 @@ export const T_GET_BUDGET_COMPARISON = register({
     const totalActual = comparisons.reduce((s, c) => s + c.actual, 0);
     const totalTarget = comparisons.reduce((s, c) => s + (c.target || 0), 0);
 
+    // Build structured blocks for API response
+    const budgetBlocks = comparisons.map((c) => ({
+      category: c.category,
+      actual: Math.round(c.actual * 100) / 100,
+      target: c.target !== null ? Math.round(c.target * 100) / 100 : null,
+      difference: Math.round(c.difference * 100) / 100
+    }));
+
     return {
       success: true,
       data: {
@@ -1674,7 +1722,8 @@ export const T_GET_BUDGET_COMPARISON = register({
           categoriesCompared: comparisons.length,
           categoriesWithTarget: comparisons.filter(c => c.target !== null).length
         }
-      }
+      },
+      blocks: budgetBlocks.length > 0 ? [{ type: "budgetComparison" as const, data: budgetBlocks }] : undefined
     };
   }
 });
