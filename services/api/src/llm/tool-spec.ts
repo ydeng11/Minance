@@ -1534,12 +1534,12 @@ export const T_GET_RECURRING_FORECAST = register({
       const direction = String(rule.direction || "outflow");
 
       // Helper: advance a date by cadence with month-end clamping.
-      // Uses explicit date constructor to avoid JS auto-overflow bugs
-      // (e.g. Jan 31 + 1 month → Mar 2 instead of Feb 28).
-      function advanceCadence(d: Date, cadence: string): Date {
+      // Uses the original anchor day for month-based cadences so that
+      // Jan 31 → Feb 28 → Mar 31 → Apr 30 → May 31 (anchor preserved).
+      function advanceCadence(d: Date, cadence: string, anchorDay?: number): Date {
         const year = d.getFullYear();
         const month = d.getMonth();
-        const day = d.getDate();
+        const day = anchorDay ?? d.getDate();
 
         if (cadence === "weekly") {
           return new Date(d.getTime() + 7 * 86400000);
@@ -1561,12 +1561,14 @@ export const T_GET_RECURRING_FORECAST = register({
           const lastDay = new Date(year + 1, month + 1, 0).getDate();
           return new Date(year + 1, month, Math.min(day, lastDay));
         } else {
-          // Default monthly
           const targetMonth = month + 1;
           const lastDay = new Date(year, targetMonth + 1, 0).getDate();
           return new Date(year, targetMonth, Math.min(day, lastDay));
         }
       }
+
+      // Determine the original anchor day (before any clamping)
+      const anchorDay = (rule.next_run_at ? new Date(rule.next_run_at) : new Date(startDate)).getDate();
 
       // Generate expected occurrences from rule's next_run_at using calendar cadence
       const displayDates: string[] = [];
@@ -1581,7 +1583,7 @@ export const T_GET_RECURRING_FORECAST = register({
         let safety = 0;
         while (advanceCount < startDate && safety < 100) {
           safety++;
-          const next = advanceCadence(advanceCount, cadence);
+          const next = advanceCadence(advanceCount, cadence, anchorDay);
           advanceCount.setTime(next.getTime());
         }
         current = advanceCount;
@@ -1594,7 +1596,7 @@ export const T_GET_RECURRING_FORECAST = register({
       while (countCurrent <= endDate && safety < 1000) {
         safety++;
         totalOccurrences++;
-        const next = advanceCadence(countCurrent, cadence);
+        const next = advanceCadence(countCurrent, cadence, anchorDay);
         countCurrent.setTime(next.getTime());
       }
 
@@ -1604,7 +1606,7 @@ export const T_GET_RECURRING_FORECAST = register({
       while (displayCurrent <= endDate && displayDates.length < maxDisplayDates && safety < 100) {
         safety++;
         displayDates.push(displayCurrent.toISOString().substring(0, 10));
-        const next = advanceCadence(displayCurrent, cadence);
+        const next = advanceCadence(displayCurrent, cadence, anchorDay);
         displayCurrent.setTime(next.getTime());
       }
 

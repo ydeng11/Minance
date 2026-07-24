@@ -188,34 +188,37 @@ test("monthly cadence on Jan 31 uses clamped last-day-of-month", () => {
   // The forecast handler should use month-end-safe advancement:
   // Jan 31 + 1 month → Feb 28 (or Feb 29 in leap year)
   // We test the UTC helper directly to verify clamping
-  function advanceClamped(d: Date, months: number): Date {
+  function advanceClamped(d: Date, months: number, anchorDay: number): Date {
     const result = new Date(d);
-    const origDay = result.getDate();
     const targetMonth = result.getMonth() + months;
-    const lastDayOfTarget = new Date(result.getFullYear(), targetMonth + 1, 0).getDate();
-    result.setMonth(targetMonth);
-    if (result.getDate() !== origDay) {
-      // Day overflow — clamp to last day of target month by rebuilding
-      return new Date(result.getFullYear(), targetMonth, lastDayOfTarget);
-    }
-    return result;
+    let y = result.getFullYear();
+    let m = targetMonth;
+    if (m > 11) { m -= 12; y++; }
+    const lastDayOfTarget = new Date(y, m + 1, 0).getDate();
+    // Use the anchor day, clamped to the last day of the target month
+    return new Date(y, m, Math.min(anchorDay, lastDayOfTarget));
   }
 
   // Jan 31 + 1 month = Feb 28 (2026 is not a leap year)
   const jan31 = new Date(2026, 0, 31);
-  const feb28 = advanceClamped(jan31, 1);
+  const feb28 = advanceClamped(jan31, 1, 31); // anchor day = 31
   assert.equal(feb28.getMonth(), 1, "Should be February");
   assert.equal(feb28.getDate(), 28, "Jan 31 + 1 month should clamp to Feb 28");
 
+  // Feb 28 + 1 month = Mar 31 (anchor day 31 restored)
+  const mar31 = advanceClamped(feb28, 1, 31);
+  assert.equal(mar31.getMonth(), 2, "Should be March");
+  assert.equal(mar31.getDate(), 31, "Feb 28 + 1 month with anchor 31 should restore to Mar 31");
+
   // Jan 31 + 1 month in leap year = Feb 29
   const jan31Leap = new Date(2024, 0, 31);
-  const feb29 = advanceClamped(jan31Leap, 1);
+  const feb29 = advanceClamped(jan31Leap, 1, 31);
   assert.equal(feb29.getMonth(), 1, "Should be February");
   assert.equal(feb29.getDate(), 29, "Jan 31 + 1 month in leap year should clamp to Feb 29");
 
   // Normal mid-month date should not be affected
   const mar15 = new Date(2026, 2, 15);
-  const apr15 = advanceClamped(mar15, 1);
+  const apr15 = advanceClamped(mar15, 1, 15);
   assert.equal(apr15.getDate(), 15, "Mid-month dates should not be clamped");
 });
 
