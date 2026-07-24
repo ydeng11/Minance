@@ -1311,6 +1311,382 @@ export const T_DELETE_CARD_BENEFIT = register({
   }
 });
 
+// ----- Analysis / Budgeting tools -----
+
+// --- Tool: get_spending_trends ---
+
+export const T_GET_SPENDING_TRENDS = register({
+  name: "get_spending_trends",
+  description: "Get month-over-month spending trends. Shows direction (increasing/decreasing/stable) and percent changes.",
+  access: "read",
+  category: "budgeting",
+  schema: {
+    type: "function",
+    function: {
+      name: "get_spending_trends",
+      description: "Get month-over-month spending trends.",
+      parameters: {
+        type: "object",
+        properties: {
+          months: { type: "number", description: "Number of months to analyze (default 6)" },
+          category: { type: "string", description: "Filter to a specific category" },
+          merchant: { type: "string", description: "Filter to a specific merchant" }
+        },
+        required: []
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const monthsCount = Math.min(Math.max(Number(args.months) || 6, 2), 24);
+    const { filterUserTransactions } = await import("../analytics.ts");
+
+    const now = new Date();
+    const end = now.toISOString().substring(0, 10);
+    const startDate = new Date(now);
+    startDate.setMonth(startDate.getMonth() - monthsCount);
+    const start = startDate.toISOString().substring(0, 10);
+
+    const filters: Record<string, unknown> = { start, end, include_excluded: false };
+    if (args.category) filters.category = args.category;
+    if (args.merchant) filters.merchant = args.merchant;
+
+    const transactions = filterUserTransactions(ctx.userId, filters);
+
+    // Group by month
+    const monthlyTotals: Record<string, { month: string; total: number; count: number }> = {};
+    for (const txn of transactions) {
+      const month = String(txn.transaction_date || "").substring(0, 7);
+      if (!month) continue;
+      if (!monthlyTotals[month]) monthlyTotals[month] = { month, total: 0, count: 0 };
+      monthlyTotals[month].total += Math.abs(Number(txn.amount) || 0);
+      monthlyTotals[month].count += 1;
+    }
+
+    const months = Object.values(monthlyTotals).sort((a, b) => a.month.localeCompare(b.month));
+
+    // Calculate trends
+    let trend: "increasing" | "decreasing" | "stable" = "stable";
+    let percentChange = 0;
+
+    if (months.length >= 2) {
+      const firstHalfTotal = months.slice(0, Math.floor(months.length / 2)).reduce((s, m) => s + m.total, 0);
+      const firstHalfCount = Math.floor(months.length / 2);
+      const secondHalfTotal = months.slice(Math.floor(months.length / 2)).reduce((s, m) => s + m.total, 0);
+      const secondHalfCount = Math.ceil(months.length / 2);
+
+      const firstAvg = firstHalfTotal / firstHalfCount;
+      const secondAvg = secondHalfTotal / secondHalfCount;
+
+      percentChange = firstAvg > 0 ? Math.round(((secondAvg - firstAvg) / firstAvg) * 10000) / 100 : 0;
+
+      if (percentChange > 10) trend = "increasing";
+      else if (percentChange < -10) trend = "decreasing";
+    }
+
+    const totalSpend = months.reduce((s, m) => s + m.total, 0);
+
+    return {
+      success: true,
+      data: {
+        trend,
+        percentChange,
+        monthsAnalyzed: months.length,
+        totalSpend: Math.round(totalSpend * 100) / 100,
+        averageMonthly: months.length ? Math.round((totalSpend / months.length) * 100) / 100 : 0,
+        monthlyBreakdown: months.map(m => ({
+          month: m.month,
+          total: Math.round(m.total * 100) / 100,
+          transactionCount: m.count
+        })),
+        period: { start, end }
+      }
+    };
+  }
+});
+
+// --- Tool: get_recurring_forecast ---
+
+export const T_GET_RECURRING_FORECAST = register({
+  name: "get_recurring_forecast",
+  description: "Project upcoming recurring charges for a given period based on active recurring rules.",
+  access: "read",
+  category: "budgeting",
+  schema: {
+    type: "function",
+    function: {
+      name: "get_recurring_forecast",
+      description: "Project upcoming recurring charges.",
+      parameters: {
+        type: "object",
+        properties: {
+          months: { type: "number", description: "Number of months to forecast (default 1, max 12)" },
+          start_date: { type: "string", format: "date", description: "Start date (YYYY-MM-DD, defaults to today)" }
+        },
+        required: []
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const monthsAhead = Math.min(Math.max(Number(args.months) || 1, 1), 12);
+    const { listRecurringRules } = await import("../recurrings.ts");
+
+    const rulesResult = listRecurringRules(ctx.userId, { status: "active" });
+    const rules = rulesResult.items || [];
+
+    if (rules.length === 0) {
+      return {
+        success: true,
+        data: {
+          forecast: [],
+          totalProjected: 0,
+          ruleCount: 0,
+          monthsForecasted: monthsAhead,
+          note: "No active recurring rules."
+        }
+      };
+    }
+
+    const now = new Date();
+    const startDate = args.start_date ? new Date(String(args.start_date)) : now;
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + monthsAhead);
+
+    const cadenceDays: Record<string, number> = {
+      weekly: 7, biweekly: 14, monthly: 30, quarterly: 91, yearly: 365
+    };
+
+    const forecast: Array<{
+      merchant: string;
+      cadence: string;
+      amount: number;
+      direction: string;
+      expectedDates: string[];
+      totalProjected: number;
+    }> = [];
+
+    let totalProjected = 0;
+
+    for (const rule of rules) {
+      const amount = Math.abs(Number(rule.amount) || 0);
+      const cadence = String(rule.cadence || "monthly");
+      const days = cadenceDays[cadence] || 30;
+      const direction = String(rule.direction || "outflow");
+
+      // Calculate expected occurrences in the forecast period
+      const daysInPeriod = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+      const occurrences = Math.max(1, Math.round(daysInPeriod / days));
+
+      const expectedDates: string[] = [];
+      for (let i = 0; i < Math.min(occurrences, 6); i++) {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + i * days);
+        expectedDates.push(d.toISOString().substring(0, 10));
+      }
+
+      const totalForRule = amount * occurrences;
+      totalProjected += totalForRule;
+
+      forecast.push({
+        merchant: String(rule.name || rule.merchant_pattern || "Unknown"),
+        cadence,
+        amount: Math.round(amount * 100) / 100,
+        direction,
+        expectedDates,
+        totalProjected: Math.round(totalForRule * 100) / 100
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        forecast,
+        totalProjected: Math.round(totalProjected * 100) / 100,
+        ruleCount: rules.length,
+        monthsForecasted: monthsAhead,
+        period: {
+          start: startDate.toISOString().substring(0, 10),
+          end: endDate.toISOString().substring(0, 10)
+        }
+      }
+    };
+  }
+});
+
+// --- Tool: get_budget_comparison ---
+
+export const T_GET_BUDGET_COMPARISON = register({
+  name: "get_budget_comparison",
+  description: "Compare actual spending to budget targets. Budget targets can be saved with save_budget_target.",
+  access: "read",
+  category: "budgeting",
+  schema: {
+    type: "function",
+    function: {
+      name: "get_budget_comparison",
+      description: "Compare actual spending to budget targets.",
+      parameters: {
+        type: "object",
+        properties: {
+          month: { type: "string", format: "date", description: "Month to analyze (YYYY-MM, defaults to current)" },
+          category: { type: "string", description: "Filter to a specific category" }
+        },
+        required: []
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const { filterUserTransactions } = await import("../analytics.ts");
+    const { listCategories } = await import("../categories.ts");
+
+    // Determine analysis period
+    const now = new Date();
+    let targetMonth: string;
+    if (args.month && typeof args.month === "string") {
+      targetMonth = args.month.substring(0, 7);
+    } else {
+      targetMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    }
+
+    const start = `${targetMonth}-01`;
+    const endDate = new Date(Number(targetMonth.split("-")[0]), Number(targetMonth.split("-")[1]), 0);
+    const end = endDate.toISOString().substring(0, 10);
+
+    // Get all categories for the user
+    const categories = listCategories(ctx.userId);
+
+    // Get budget targets from user store
+    const { loadStore } = await import("../store.ts");
+    const store = loadStore();
+    const budgetTargets: Record<string, number> =
+      (store as Record<string, unknown>).budgetTargets as Record<string, number> ||
+      (store as Record<string, unknown>).budget_targets as Record<string, number> ||
+      {};
+
+    // Get spending by category
+    const filters: Record<string, unknown> = { start, end, include_excluded: false };
+    if (args.category) filters.category = args.category;
+
+    const transactions = filterUserTransactions(ctx.userId, filters);
+
+    // Group by category
+    const actualByCategory: Record<string, number> = {};
+    for (const txn of transactions) {
+      const cat = String(txn.category || txn.categoryGranular || "Uncategorized");
+      actualByCategory[cat] = (actualByCategory[cat] || 0) + Math.abs(Number(txn.amount) || 0);
+    }
+
+    // Build comparison
+    const comparisons: Array<{
+      category: string;
+      actual: number;
+      target: number | null;
+      difference: number;
+      percentOfTarget: number | null;
+    }> = [];
+
+    const allCategoryNames = new Set([...Object.keys(actualByCategory), ...Object.keys(budgetTargets)]);
+
+    for (const catName of allCategoryNames) {
+      if (args.category && args.category !== catName) continue;
+      const actual = Math.round((actualByCategory[catName] || 0) * 100) / 100;
+      const target = budgetTargets[catName] !== undefined ? Number(budgetTargets[catName]) : null;
+      const difference = target !== null ? Math.round((actual - target) * 100) / 100 : 0;
+      const percentOfTarget = target !== null && target > 0
+        ? Math.round((actual / target) * 10000) / 100
+        : null;
+
+      comparisons.push({ category: catName, actual, target, difference, percentOfTarget });
+    }
+
+    // Sort: over-budget first, then by difference
+    comparisons.sort((a, b) => Math.abs(b.difference) - Math.abs(a.difference));
+
+    const totalActual = comparisons.reduce((s, c) => s + c.actual, 0);
+    const totalTarget = comparisons.reduce((s, c) => s + (c.target || 0), 0);
+
+    return {
+      success: true,
+      data: {
+        comparisons,
+        summary: {
+          month: targetMonth,
+          totalActual: Math.round(totalActual * 100) / 100,
+          totalTarget: Math.round(totalTarget * 100) / 100,
+          totalDifference: Math.round((totalActual - totalTarget) * 100) / 100,
+          categoriesCompared: comparisons.length,
+          categoriesWithTarget: comparisons.filter(c => c.target !== null).length
+        }
+      }
+    };
+  }
+});
+
+// --- Tool: save_budget_target (with confirmation) ---
+
+export const T_SAVE_BUDGET_TARGET = register({
+  name: "save_budget_target",
+  description: "Set a spending budget target for a category. Use _mode=preview first, then _mode=execute after user confirms.",
+  access: "write",
+  requiresConfirmation: true,
+  category: "budgeting",
+  schema: {
+    type: "function",
+    function: {
+      name: "save_budget_target",
+      description: "Set a spending budget target for a category.",
+      parameters: {
+        type: "object",
+        properties: {
+          _mode: { type: "string", enum: ["preview", "execute"], description: "preview or execute" },
+          category: { type: "string", description: "Category name" },
+          amount: { type: "number", description: "Monthly budget target" }
+        },
+        required: ["category", "amount"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const mode = String(args._mode || "preview");
+    const category = String(args.category || "");
+    const amount = Number(args.amount) || 0;
+
+    if (!category) return { success: false, error: "category is required" };
+    if (amount <= 0) return { success: false, error: "amount must be positive" };
+
+    if (mode === "preview") {
+      return {
+        success: true,
+        data: {
+          _requiresConfirmation: true,
+          _confirmationType: "save_budget_target",
+          preview: { category, amount: Math.round(amount * 100) / 100 },
+          confirmationQuestion: `Set a monthly budget of $${amount.toFixed(2)} for ${category}?`
+        }
+      };
+    }
+
+    // Execute: save the budget target
+    const { loadStore, saveStore } = await import("../store.ts");
+    const store = loadStore();
+    if (!(store as Record<string, unknown>).budgetTargets) {
+      (store as Record<string, unknown>).budgetTargets = {};
+    }
+    const targets = (store as Record<string, unknown>).budgetTargets as Record<string, number>;
+    targets[category] = Math.round(amount * 100) / 100;
+    saveStore(store);
+
+    return {
+      success: true,
+      data: {
+        saved: true,
+        category,
+        amount: Math.round(amount * 100) / 100,
+        message: `Monthly budget of $${amount.toFixed(2)} set for ${category}.`
+      }
+    };
+  }
+});
+
 // ----- Terminal / write tools (categorization, recurring, import) -----
 
 export const T_ASSIGN_CATEGORY = register({

@@ -3,7 +3,7 @@ import { requireAiFeature } from "./ai.ts";
 import { createId, nowIso } from "./utils.ts";
 import { runToolCallingAgent, createConversationId } from "./llm/agent.ts";
 import { defaultConversationStore, type ConversationSession } from "./llm/conversation-store.ts";
-import { AI_TOOL_CALLING_AGENT_ENABLED } from "./flags.ts";
+import { AI_TOOL_CALLING_AGENT_ENABLED, AI_CARD_BENEFITS_ENABLED } from "./flags.ts";
 import type { AgentResult } from "./llm/agent.ts";
 
 function buildDrillDownUrl(filters) {
@@ -109,8 +109,12 @@ export async function runAssistantQuery(
     }
   }
 
+  const capabilities = ["analytics", "subscriptions", "budgeting"];
+  if (AI_CARD_BENEFITS_ENABLED) capabilities.push("benefits");
+
   const agentResult = await agentFn({
     mode: "qa",
+    capabilities,
     userId,
     question,
     conversationId

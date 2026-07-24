@@ -86,6 +86,21 @@ defineCapability({
 - To delete a benefit: delete_card_benefit with _mode=preview first, then _mode=execute after confirm`
 });
 
+// Budgeting capability
+defineCapability({
+  id: "budgeting",
+  name: "Budgeting & Trends",
+  description: "Track spending trends, compare to budget targets, and forecast recurring charges",
+  categories: ["budgeting"],
+  systemPromptSegment: `
+## Budgeting & Trends
+- "Am I spending more than before?" \u2192 get_spending_trends (month-over-month analysis)
+- "What recurring charges are coming up?" \u2192 get_recurring_forecast
+- "How am I doing against my budget?" \u2192 get_budget_comparison
+- "Set a budget for [category]" \u2192 save_budget_target with _mode=preview first, then _mode=execute after confirm
+- For general financial education, I explain concepts using your data. I do not invent current rates or provide personalized financial advice.`
+});
+
 // Maps legacy mode to capability IDs
 const MODE_TO_CAPABILITIES: Record<string, string[]> = {
   qa: ["analytics"],
