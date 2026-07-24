@@ -184,42 +184,64 @@ test("benefit calculation excludes refunds", () => {
 // Calendar edge cases
 // ---------------------------------------------------------------------------
 
-test("monthly cadence on Jan 31 uses clamped last-day-of-month", () => {
-  // The forecast handler should use month-end-safe advancement:
-  // Jan 31 + 1 month → Feb 28 (or Feb 29 in leap year)
-  // We test the UTC helper directly to verify clamping
-  function advanceClamped(d: Date, months: number, anchorDay: number): Date {
-    const result = new Date(d);
-    const targetMonth = result.getMonth() + months;
-    let y = result.getFullYear();
-    let m = targetMonth;
-    if (m > 11) { m -= 12; y++; }
-    const lastDayOfTarget = new Date(y, m + 1, 0).getDate();
-    // Use the anchor day, clamped to the last day of the target month
-    return new Date(y, m, Math.min(anchorDay, lastDayOfTarget));
-  }
-
-  // Jan 31 + 1 month = Feb 28 (2026 is not a leap year)
+test("advanceCadence: monthly Jan 31 → Feb 28 with anchor day 31", async () => {
+  const { advanceCadence } = await import("../../src/llm/tool-spec.ts");
   const jan31 = new Date(2026, 0, 31);
-  const feb28 = advanceClamped(jan31, 1, 31); // anchor day = 31
+  const feb28 = advanceCadence(jan31, "monthly", 31);
   assert.equal(feb28.getMonth(), 1, "Should be February");
   assert.equal(feb28.getDate(), 28, "Jan 31 + 1 month should clamp to Feb 28");
+});
 
-  // Feb 28 + 1 month = Mar 31 (anchor day 31 restored)
-  const mar31 = advanceClamped(feb28, 1, 31);
+test("advanceCadence: Feb 28 with anchor 31 → Mar 31 (anchor restored)", async () => {
+  const { advanceCadence } = await import("../../src/llm/tool-spec.ts");
+  const feb28 = new Date(2026, 1, 28);
+  const mar31 = advanceCadence(feb28, "monthly", 31);
   assert.equal(mar31.getMonth(), 2, "Should be March");
   assert.equal(mar31.getDate(), 31, "Feb 28 + 1 month with anchor 31 should restore to Mar 31");
+});
 
-  // Jan 31 + 1 month in leap year = Feb 29
-  const jan31Leap = new Date(2024, 0, 31);
-  const feb29 = advanceClamped(jan31Leap, 1, 31);
+test("advanceCadence: Jan 31 in leap year → Feb 29", async () => {
+  const { advanceCadence } = await import("../../src/llm/tool-spec.ts");
+  const jan31 = new Date(2024, 0, 31);
+  const feb29 = advanceCadence(jan31, "monthly", 31);
   assert.equal(feb29.getMonth(), 1, "Should be February");
   assert.equal(feb29.getDate(), 29, "Jan 31 + 1 month in leap year should clamp to Feb 29");
+});
 
-  // Normal mid-month date should not be affected
+test("advanceCadence: mid-month date not clamped", async () => {
+  const { advanceCadence } = await import("../../src/llm/tool-spec.ts");
   const mar15 = new Date(2026, 2, 15);
-  const apr15 = advanceClamped(mar15, 1, 15);
+  const apr15 = advanceCadence(mar15, "monthly", 15);
   assert.equal(apr15.getDate(), 15, "Mid-month dates should not be clamped");
+});
+
+test("advanceCadence: quarterly via March 31 → June 30 → Sep 30 → Dec 31", async () => {
+  const { advanceCadence } = await import("../../src/llm/tool-spec.ts");
+  const mar31 = new Date(2026, 2, 31);
+  const jun30 = advanceCadence(mar31, "quarterly", 31);
+  assert.equal(jun30.getMonth(), 5, "Should be June");
+  assert.equal(jun30.getDate(), 30, "Mar 31 + quarter should clamp to Jun 30");
+  const sep30 = advanceCadence(jun30, "quarterly", 31);
+  assert.equal(sep30.getMonth(), 8, "Should be September");
+  assert.equal(sep30.getDate(), 30, "Jun 30 + quarter should clamp to Sep 30");
+  const dec31 = advanceCadence(sep30, "quarterly", 31);
+  assert.equal(dec31.getMonth(), 11, "Should be December");
+  assert.equal(dec31.getDate(), 31, "Sep 30 + quarter with anchor 31 should restore to Dec 31");
+});
+
+test("advanceCadence: yearly Feb 29 leap year → Feb 28 non-leap", async () => {
+  const { advanceCadence } = await import("../../src/llm/tool-spec.ts");
+  const feb29 = new Date(2024, 1, 29); // leap year
+  const feb28 = advanceCadence(feb29, "yearly", 29);
+  assert.equal(feb28.getDate(), 28, "Feb 29 + 1 year should clamp to Feb 28");
+});
+
+test("advanceCadence: weekly advances 7 days", async () => {
+  const { advanceCadence } = await import("../../src/llm/tool-spec.ts");
+  const mon = new Date(2026, 0, 5); // Monday Jan 5
+  const nextMon = advanceCadence(mon, "weekly");
+  const diff = (nextMon.getTime() - mon.getTime()) / 86400000;
+  assert.equal(diff, 7, "Weekly should advance 7 days");
 });
 
 test("leap year February 29 exists in 2024", () => {

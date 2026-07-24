@@ -105,6 +105,42 @@ export function getEffectiveNow(ctx: ToolExecutionContext): Date {
 }
 
 /**
+ * Advance a date by cadence with month-end clamping.
+ * Preserves the original anchor day so Jan 31 → Feb 28/29 → Mar 31.
+ * Uses explicit date constructor to avoid JS auto-overflow bugs.
+ */
+export function advanceCadence(d: Date, cadence: string, anchorDay?: number): Date {
+  const year = d.getFullYear();
+  const month = d.getMonth();
+  const day = anchorDay ?? d.getDate();
+
+  if (cadence === "weekly") {
+    return new Date(d.getTime() + 7 * 86400000);
+  } else if (cadence === "biweekly") {
+    return new Date(d.getTime() + 14 * 86400000);
+  } else if (cadence === "monthly") {
+    const targetMonth = month + 1;
+    const lastDay = new Date(year, targetMonth + 1, 0).getDate();
+    return new Date(year, targetMonth, Math.min(day, lastDay));
+  } else if (cadence === "quarterly") {
+    let y = year, m = month;
+    for (let i = 0; i < 3; i++) {
+      m++;
+      if (m > 11) { m = 0; y++; }
+    }
+    const lastDay = new Date(y, m + 1, 0).getDate();
+    return new Date(y, m, Math.min(day, lastDay));
+  } else if (cadence === "yearly") {
+    const lastDay = new Date(year + 1, month + 1, 0).getDate();
+    return new Date(year + 1, month, Math.min(day, lastDay));
+  } else {
+    const targetMonth = month + 1;
+    const lastDay = new Date(year, targetMonth + 1, 0).getDate();
+    return new Date(year, targetMonth, Math.min(day, lastDay));
+  }
+}
+
+/**
  * Authorization check for write/confirmation tools.
  * Returns an error ToolResult if the tool requires confirmation but
  * the execute context lacks proper writeAuthorization.
@@ -1578,41 +1614,7 @@ export const T_GET_RECURRING_FORECAST = register({
       const cadence = String(rule.cadence || "monthly");
       const direction = String(rule.direction || "outflow");
 
-      // Helper: advance a date by cadence with month-end clamping.
-      // Uses the original anchor day for month-based cadences so that
-      // Jan 31 → Feb 28 → Mar 31 → Apr 30 → May 31 (anchor preserved).
-      function advanceCadence(d: Date, cadence: string, anchorDay?: number): Date {
-        const year = d.getFullYear();
-        const month = d.getMonth();
-        const day = anchorDay ?? d.getDate();
-
-        if (cadence === "weekly") {
-          return new Date(d.getTime() + 7 * 86400000);
-        } else if (cadence === "biweekly") {
-          return new Date(d.getTime() + 14 * 86400000);
-        } else if (cadence === "monthly") {
-          const targetMonth = month + 1;
-          const lastDay = new Date(year, targetMonth + 1, 0).getDate();
-          return new Date(year, targetMonth, Math.min(day, lastDay));
-        } else if (cadence === "quarterly") {
-          let y = year, m = month;
-          for (let i = 0; i < 3; i++) {
-            m++;
-            if (m > 11) { m = 0; y++; }
-          }
-          const lastDay = new Date(y, m + 1, 0).getDate();
-          return new Date(y, m, Math.min(day, lastDay));
-        } else if (cadence === "yearly") {
-          const lastDay = new Date(year + 1, month + 1, 0).getDate();
-          return new Date(year + 1, month, Math.min(day, lastDay));
-        } else {
-          const targetMonth = month + 1;
-          const lastDay = new Date(year, targetMonth + 1, 0).getDate();
-          return new Date(year, targetMonth, Math.min(day, lastDay));
-        }
-      }
-
-      // Determine the original anchor day (before any clamping)
+      // Use the exported shared advanceCadence helper with anchor day preservation
       const anchorDay = (rule.next_run_at ? new Date(rule.next_run_at) : new Date(startDate)).getDate();
 
       // Generate expected occurrences from rule's next_run_at using calendar cadence
