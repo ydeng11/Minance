@@ -73,7 +73,7 @@ test("explain_recurring_rule schema requires rule_id", () => {
   assert.ok((params.required as string[]).includes("rule_id"));
 });
 
-test("create_recurring_rule schema accepts _mode, requires merchant/cadence/amount", () => {
+test("create_recurring_rule schema requires merchant/cadence/amount, hides _mode", () => {
   const tool = ALL_TOOLS.find((t) => t.name === "create_recurring_rule")!;
   const params = tool.schema.function.parameters as Record<string, unknown>;
   const required = params.required as string[];
@@ -81,18 +81,18 @@ test("create_recurring_rule schema accepts _mode, requires merchant/cadence/amou
   assert.ok(required.includes("cadence"));
   assert.ok(required.includes("amount"));
   const props = params.properties as Record<string, { enum?: string[] }>;
-  assert.ok(props._mode?.enum?.includes("preview"));
-  assert.ok(props._mode?.enum?.includes("execute"));
+  // _mode is intentionally hidden from LLM schemas for security
+  assert.ok(!props._mode, "_mode should not be exposed in LLM schema");
 });
 
-test("dismiss_recurring_suggestion schema requires suggestion_id, accepts _mode", () => {
+test("dismiss_recurring_suggestion schema requires suggestion_id, hides _mode", () => {
   const tool = ALL_TOOLS.find((t) => t.name === "dismiss_recurring_suggestion")!;
   const params = tool.schema.function.parameters as Record<string, unknown>;
   const required = params.required as string[];
   assert.ok(required.includes("suggestion_id"));
   const props = params.properties as Record<string, { enum?: string[] }>;
-  assert.ok(props._mode?.enum?.includes("preview"));
-  assert.ok(props._mode?.enum?.includes("execute"));
+  // _mode is intentionally hidden from LLM schemas for security
+  assert.ok(!props._mode, "_mode should not be exposed in LLM schema");
 });
 
 // ---------------------------------------------------------------------------

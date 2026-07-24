@@ -1363,8 +1363,9 @@ async function handleApiRequest(req, res, url) {
           return;
         }
         const execArgs = { ...action.args, _mode: "execute" };
+        // Pass writeAuthorization so the tool trusts this execution
         const result = await toolSpec.execute(
-          { userId: user.id, conversationId, resultCache: new Map() },
+          { userId: user.id, conversationId, resultCache: new Map(), writeAuthorization: { actionId: action.key } },
           execArgs
         );
         addAuditEvent(user.id, "assistant.action.confirm", {

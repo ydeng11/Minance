@@ -17,6 +17,12 @@ export interface ToolExecutionContext {
   resultCache?: Map<string, unknown>;
   /** Override "now" for deterministic date-relative calculations */
   _now?: Date;
+  /**
+   * Trusted write authorization. Only the confirm endpoint may supply this.
+   * When present, the tool may execute _mode: "execute".
+   * Without it, all confirmation-required tools are forced to preview mode.
+   */
+  writeAuthorization?: { actionId: string };
 }
 
 export interface ToolResult {
@@ -96,6 +102,25 @@ export function normalizeDateArgs(args: Record<string, unknown>): Record<string,
  */
 export function getEffectiveNow(ctx: ToolExecutionContext): Date {
   return ctx._now || new Date();
+}
+
+/**
+ * Authorization check for write/confirmation tools.
+ * Returns an error ToolResult if the tool requires confirmation but
+ * the execute context lacks proper writeAuthorization.
+ */
+export function requireWriteAuthorization(
+  ctx: ToolExecutionContext,
+  toolName: string,
+  args: Record<string, unknown>
+): ToolResult | null {
+  const spec = ALL_TOOLS.find((t) => t.name === toolName);
+  if (!spec?.requiresConfirmation) return null;
+  if (args._mode !== "execute") return null;
+  if (!ctx.writeAuthorization?.actionId) {
+    return { success: false, error: `Write authorization required for ${toolName}. Use the confirm endpoint.` };
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -854,11 +879,10 @@ export const T_CREATE_RECURRING_RULE = register({
     type: "function",
     function: {
       name: "create_recurring_rule",
-      description: "Create a recurring rule from a suggestion or detected pattern. Use _mode=preview first, then _mode=execute after user confirms.",
+      description: "Create a recurring rule from a suggestion or detected pattern. Requires user confirmation.",
       parameters: {
         type: "object",
         properties: {
-          _mode: { type: "string", enum: ["preview", "execute"], description: "preview = show what would happen, execute = actually create" },
           merchant: { type: "string", description: "Merchant name" },
           cadence: { type: "string", enum: [...VALID_CADENCES], description: "How often the charge occurs" },
           amount: { type: "number", description: "Expected amount" },
@@ -949,11 +973,10 @@ export const T_DISMISS_RECURRING_SUGGESTION = register({
     type: "function",
     function: {
       name: "dismiss_recurring_suggestion",
-      description: "Dismiss a recurring suggestion. Use _mode=preview first, then _mode=execute after user confirms.",
+      description: "Dismiss a recurring suggestion. Requires user confirmation.",
       parameters: {
         type: "object",
         properties: {
-          _mode: { type: "string", enum: ["preview", "execute"], description: "preview or execute" },
           suggestion_id: { type: "string", description: "The suggestion ID to dismiss" },
           reason: { type: "string", description: "Reason for dismissal", default: "user_dismissed" }
         },
@@ -1213,11 +1236,10 @@ export const T_SAVE_CARD_BENEFIT = register({
     type: "function",
     function: {
       name: "save_card_benefit",
-      description: "Add or update a credit card benefit. Preview first, then execute after user confirms.",
+      description: "Add or update a credit card benefit. Requires user confirmation.",
       parameters: {
         type: "object",
         properties: {
-          _mode: { type: "string", enum: ["preview", "execute"], description: "preview or execute" },
           account_id: { type: "string", description: "The credit card account ID" },
           category: { type: "string", description: "Category the benefit applies to (or omit for all)" },
           merchant: { type: "string", description: "Specific merchant (or omit for category-wide)" },
@@ -1330,11 +1352,10 @@ export const T_DELETE_CARD_BENEFIT = register({
     type: "function",
     function: {
       name: "delete_card_benefit",
-      description: "Delete a credit card benefit.",
+      description: "Delete a credit card benefit. Requires user confirmation.",
       parameters: {
         type: "object",
         properties: {
-          _mode: { type: "string", enum: ["preview", "execute"], description: "preview or execute" },
           benefit_id: { type: "string", description: "The benefit ID to delete" }
         },
         required: ["benefit_id"]
@@ -1768,11 +1789,10 @@ export const T_SAVE_BUDGET_TARGET = register({
     type: "function",
     function: {
       name: "save_budget_target",
-      description: "Set a spending budget target for a category.",
+      description: "Set a spending budget target for a category. Requires user confirmation.",
       parameters: {
         type: "object",
         properties: {
-          _mode: { type: "string", enum: ["preview", "execute"], description: "preview or execute" },
           category: { type: "string", description: "Category name" },
           amount: { type: "number", description: "Monthly budget target" }
         },

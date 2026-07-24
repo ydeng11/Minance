@@ -62,15 +62,15 @@ test("get_budget_comparison schema has optional params only", () => {
   assert.deepEqual(params.required, [], "should have no required params");
 });
 
-test("save_budget_target requires category and amount, accepts _mode", () => {
+test("save_budget_target requires category and amount, hides _mode from LLM", () => {
   const tool = ALL_TOOLS.find((t) => t.name === "save_budget_target")!;
   const params = tool.schema.function.parameters as Record<string, unknown>;
   const required = params.required as string[];
   assert.ok(required.includes("category"), "category should be required");
   assert.ok(required.includes("amount"), "amount should be required");
   const props = params.properties as Record<string, { enum?: string[] }>;
-  assert.ok(props._mode?.enum?.includes("preview"));
-  assert.ok(props._mode?.enum?.includes("execute"));
+  // _mode is intentionally hidden from LLM schemas for security
+  assert.ok(!props._mode, "_mode should not be exposed in LLM schema");
 });
 
 // ---------------------------------------------------------------------------

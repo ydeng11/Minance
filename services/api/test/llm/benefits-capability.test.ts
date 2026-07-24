@@ -84,25 +84,25 @@ test("get_annual_credits requires benefit_id", () => {
   assert.ok((params.required as string[]).includes("benefit_id"));
 });
 
-test("save_card_benefit requires account_id and rate, accepts _mode", () => {
+test("save_card_benefit requires account_id and rate, hides _mode from LLM", () => {
   const tool = ALL_TOOLS.find((t) => t.name === "save_card_benefit")!;
   const params = tool.schema.function.parameters as Record<string, unknown>;
   const required = params.required as string[];
   assert.ok(required.includes("account_id"));
   assert.ok(required.includes("rate"));
   const props = params.properties as Record<string, { enum?: string[] }>;
-  assert.ok(props._mode?.enum?.includes("preview"));
-  assert.ok(props._mode?.enum?.includes("execute"));
+  // _mode is intentionally hidden from LLM schemas for security
+  assert.ok(!props._mode, "_mode should not be exposed in LLM schema");
 });
 
-test("delete_card_benefit requires benefit_id, accepts _mode", () => {
+test("delete_card_benefit requires benefit_id, hides _mode from LLM", () => {
   const tool = ALL_TOOLS.find((t) => t.name === "delete_card_benefit")!;
   const params = tool.schema.function.parameters as Record<string, unknown>;
   const required = params.required as string[];
   assert.ok(required.includes("benefit_id"));
   const props = params.properties as Record<string, { enum?: string[] }>;
-  assert.ok(props._mode?.enum?.includes("preview"));
-  assert.ok(props._mode?.enum?.includes("execute"));
+  // _mode is intentionally hidden from LLM schemas for security
+  assert.ok(!props._mode, "_mode should not be exposed in LLM schema");
 });
 
 // ---------------------------------------------------------------------------
