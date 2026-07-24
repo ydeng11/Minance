@@ -1338,7 +1338,7 @@ async function handleApiRequest(req, res, url) {
       return;
     }
 
-    // Confirm/cancel pending assistant actions (requires conversationId for atomic ownership)
+    // Confirm/cancel pending assistant actions (uses action-executor service — no direct toolSpec.execute)
     const actionConfirmParams = matchPath(pathname, "/v1/assistant/actions/:id/confirm");
     if (req.method === "POST" && actionConfirmParams) {
       const user = requireUser(req);
@@ -1348,47 +1348,21 @@ async function handleApiRequest(req, res, url) {
         sendError(res, 400, "conversationId is required");
         return;
       }
-      const { consumePendingActionForOwner } = await import("./llm/pending-actions.ts");
-      const { ALL_TOOLS } = await import("./llm/tool-spec.ts");
+      const { executeConfirmedAction } = await import("./llm/action-executor.ts");
       const { addAuditEvent } = await import("./store.ts");
-      const action = consumePendingActionForOwner(actionConfirmParams.id, user.id, conversationId);
-      if (!action) {
-        sendError(res, 404, "Action not found, expired, or access denied");
+      const result = await executeConfirmedAction(actionConfirmParams.id, user.id, conversationId);
+      addAuditEvent(user.id, "assistant.action.confirm", {
+        actionId: result.actionId,
+        toolName: result.toolName,
+        success: result.success,
+        error: result.error
+      });
+      if (!result.success) {
+        sendJson(res, 200, { confirmed: true, success: false, error: result.error });
         return;
       }
-      try {
-        const toolSpec = ALL_TOOLS.find((t) => t.name === action.toolName);
-        if (!toolSpec) {
-          sendError(res, 500, `Tool ${action.toolName} not found`);
-          return;
-        }
-        const execArgs = { ...action.args, _mode: "execute" };
-        // Pass writeAuthorization so the tool trusts this execution
-        const result = await toolSpec.execute(
-          { userId: user.id, conversationId, resultCache: new Map(), writeAuthorization: { actionId: action.key } },
-          execArgs
-        );
-        addAuditEvent(user.id, "assistant.action.confirm", {
-          actionId: action.key,
-          toolName: action.toolName,
-          success: result.success,
-          error: result.error
-        });
-        if (!result.success) {
-          sendJson(res, 200, { confirmed: true, success: false, error: result.error });
-          return;
-        }
-        const msg = (result.data as Record<string, unknown>)?.message || `${action.toolName} executed successfully.`;
-        sendJson(res, 200, { confirmed: true, success: true, message: msg, data: result.data });
-      } catch (err) {
-        addAuditEvent(user.id, "assistant.action.confirm", {
-          actionId: actionConfirmParams.id,
-          toolName: action?.toolName,
-          success: false,
-          error: String(err)
-        });
-        sendError(res, 500, `Failed to execute: ${err instanceof Error ? err.message : String(err)}`);
-      }
+      const msg = (result.data as Record<string, unknown>)?.message || `${result.toolName} executed successfully.`;
+      sendJson(res, 200, { confirmed: true, success: true, message: msg, data: result.data });
       return;
     }
 

@@ -357,6 +357,12 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
     if (_collectTrace) trace.push(entry);
   };
 
+  // Create AbortController for end-to-end deadline
+  const ac = new AbortController();
+  const deadlineTimer = setTimeout(() => ac.abort(), AGENT_TIMEOUT_MS);
+  const done = () => { try { clearTimeout(deadlineTimer); } catch {} };
+
+  try {
   // Resolve capabilities: explicit > mode mapping > default
   const resolvedCapabilities = inputCapabilities?.length
     ? inputCapabilities
@@ -480,8 +486,10 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
   const structuredData: Record<string, unknown> = {};
   const sm = new AgentStateMachine();
 
-  // Resolve the LLM function to use (injected or default)
-  const llmFn = input._runToolCallingLlmFn ?? runToolCallingLlm;
+  // Resolve the LLM function to use (injected or default with abort signal)
+  const llmFn = input._runToolCallingLlmFn
+    ? input._runToolCallingLlmFn
+    : (opts: Parameters<typeof runToolCallingLlm>[0]) => runToolCallingLlm({ ...opts, signal: ac.signal });
 
   // Agent loop
   while (toolCallsMade < MAX_TOOL_CALLS) {
@@ -759,6 +767,9 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
   recordTrace({ turn, type: "terminal", terminalType: "max_calls" });
   if (_collectTrace) result._trace = trace;
   return result;
+  } finally {
+    done();
+  }
 }
 
 function buildSystemPrompt(mode: AgentMode, input: AgentInput): string {
