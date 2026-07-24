@@ -14,6 +14,38 @@ export interface AssistantMessageCard {
   createdAt: string;
   state: "pending" | "complete" | "error";
   pendingEmoji?: string;
+  /** Clarification request — agent needs more info */
+  clarification?: {
+    question: string;
+    options?: string[];
+  };
+  /** Confirmation preview data */
+  confirmationPreview?: Record<string, unknown>;
+  /** Structured subscription data */
+  subscriptions?: Array<{
+    merchant: string;
+    cadence: string;
+    amount: number;
+    nextDate?: string;
+    status: string;
+  }>;
+  /** Structured card benefit data */
+  cardBenefits?: Array<{
+    cardName: string;
+    benefitType: string;
+    category?: string;
+    rate: number;
+    used: number;
+    cap: number | null;
+    remaining: number | null;
+  }>;
+  /** Structured budget comparison data */
+  budgetComparison?: Array<{
+    category: string;
+    actual: number;
+    target: number | null;
+    difference: number;
+  }>;
 }
 
 function toShortStringList(value: unknown, limit = 4): string[] {
@@ -40,6 +72,27 @@ export function assistantQueryToMessage(query: AssistantQuery): AssistantMessage
 
   if (typeof query.result.followUp === "string") {
     message.followUp = query.result.followUp;
+  }
+
+  // Clarification
+  if (query.result.clarification) {
+    message.clarification = query.result.clarification;
+  }
+
+  // Confirmation preview
+  if (query.result.confirmationPreview) {
+    message.confirmationPreview = query.result.confirmationPreview;
+  }
+
+  // Structured data
+  if (query.result.subscriptions) {
+    message.subscriptions = query.result.subscriptions;
+  }
+  if (query.result.cardBenefits) {
+    message.cardBenefits = query.result.cardBenefits;
+  }
+  if (query.result.budgetComparison) {
+    message.budgetComparison = query.result.budgetComparison;
   }
 
   return message;

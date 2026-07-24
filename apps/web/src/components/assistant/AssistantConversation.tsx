@@ -83,9 +83,35 @@ function renderAssistantBody(entry: AssistantMessageCard) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm leading-6 text-text-primary">
-        {entry.summary || entry.answer}
-      </p>
+      {entry.clarification ? (
+        <div className="rounded-2xl border border-warning/35 bg-warning-soft/80 px-4 py-3 text-sm">
+          <p className="font-medium text-warning">{entry.clarification.question}</p>
+          {entry.clarification.options?.length ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {entry.clarification.options.map((opt) => (
+                <span
+                  key={opt}
+                  className="rounded-full border border-accent/25 bg-accent-soft/70 px-3 py-1 text-xs font-medium text-accent cursor-pointer hover:bg-accent-soft"
+                  onClick={() => {
+                    // User clicks option → fills input
+                    const input = document.getElementById("assistant-question-input") as HTMLInputElement;
+                    if (input) {
+                      input.value = opt;
+                      input.focus();
+                    }
+                  }}
+                >
+                  {opt}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="text-sm leading-6 text-text-primary">
+          {entry.summary || entry.answer}
+        </p>
+      )}
       {entry.keyPoints.length ? (
         <ul className="space-y-2 text-sm text-text-primary">
           {entry.keyPoints.map((item) => (
@@ -96,6 +122,81 @@ function renderAssistantBody(entry: AssistantMessageCard) {
           ))}
         </ul>
       ) : null}
+
+      {/* Structured: subscriptions */}
+      {entry.subscriptions?.length ? (
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Subscriptions</h4>
+          {entry.subscriptions.map((sub, i) => (
+            <div key={i} className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-sm">
+              <div>
+                <span className="font-medium text-text-primary">{sub.merchant}</span>
+                <span className="ml-2 text-xs text-text-secondary">{sub.cadence}</span>
+              </div>
+              <div className="text-right">
+                <span className="font-medium text-text-primary">${sub.amount.toFixed(2)}</span>
+                <span className={`ml-2 inline-block rounded-full px-2 py-0.5 text-[11px] ${sub.status === "active" ? "bg-success-soft text-success" : "bg-surface-elevated text-text-secondary"}`}>
+                  {sub.status}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Structured: card benefits */}
+      {entry.cardBenefits?.length ? (
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Card Benefits</h4>
+          {entry.cardBenefits.map((ben, i) => (
+            <div key={i} className="rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-text-primary">{ben.cardName}</span>
+                <span className="text-accent">{ben.rate}% {ben.category || "general"}</span>
+              </div>
+              {ben.cap !== null ? (
+                <div className="mt-1">
+                  <div className="flex justify-between text-xs text-text-secondary">
+                    <span>${ben.used.toFixed(2)} used of ${ben.cap.toFixed(2)}</span>
+                    <span>${(ben.remaining ?? 0).toFixed(2)} remaining</span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-elevated">
+                    <div
+                      className="h-full rounded-full bg-accent transition-all"
+                      style={{ width: `${Math.min(100, (ben.used / ben.cap) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Structured: budget comparison */}
+      {entry.budgetComparison?.length ? (
+        <div className="space-y-2">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary">Budget vs Actual</h4>
+          {entry.budgetComparison.map((bc, i) => (
+            <div key={i} className="flex items-center justify-between rounded-lg border border-border-subtle bg-surface-field px-3 py-2 text-sm">
+              <span className="font-medium text-text-primary">{bc.category}</span>
+              <div className="text-right">
+                <span className="text-text-primary">${bc.actual.toFixed(2)}</span>
+                {bc.target !== null ? (
+                  <>
+                    <span className="mx-1 text-text-secondary">/</span>
+                    <span className="text-text-secondary">${bc.target.toFixed(2)}</span>
+                    <span className={`ml-2 text-xs ${bc.difference > 0 ? "text-danger" : "text-success"}`}>
+                      {bc.difference > 0 ? "+" : ""}${bc.difference.toFixed(2)}
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {entry.followUp ? (
         <p className="rounded-2xl border border-accent/25 bg-accent-soft/70 px-3 py-2 text-xs leading-5 text-accent">
           {entry.followUp}

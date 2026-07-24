@@ -734,6 +734,38 @@ export interface AssistantQuery {
     synthesisStatus: string;
     analysisAgentStatus?: string;
     analysisDataScope?: string;
+    /** Clarification request (agent needs more info) */
+    clarification?: {
+      question: string;
+      options?: string[];
+    };
+    /** Confirmation preview data (for write tools) */
+    confirmationPreview?: Record<string, unknown>;
+    /** Structured subscription data */
+    subscriptions?: Array<{
+      merchant: string;
+      cadence: string;
+      amount: number;
+      nextDate?: string;
+      status: string;
+    }>;
+    /** Structured card benefit data */
+    cardBenefits?: Array<{
+      cardName: string;
+      benefitType: string;
+      category?: string;
+      rate: number;
+      used: number;
+      cap: number | null;
+      remaining: number | null;
+    }>;
+    /** Structured budget comparison data */
+    budgetComparison?: Array<{
+      category: string;
+      actual: number;
+      target: number | null;
+      difference: number;
+    }>;
   };
   createdAt: string;
 }
