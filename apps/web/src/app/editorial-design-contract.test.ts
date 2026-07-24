@@ -50,11 +50,12 @@ test("layout wires a distinct editorial display font and body font through next/
   assert.match(globalsSource, /--font-display:\s*var\(--font-editorial\)/);
 });
 
-test("home uses one primary financial story and two bounded supporting stories", () => {
-  assert.match(dashboardPageSource, /data-testid="home-primary-story"/);
-  assert.match(dashboardPageSource, /data-testid="home-review-story"/);
-  assert.match(dashboardPageSource, /data-testid="home-commitments-story"/);
-  assert.match(dashboardPageSource, /reviewTransactions\.slice\(0, 3\)/);
+test("dashboard uses an editorial hero metric layout instead of the cloned KPI grid", () => {
+  assert.match(dashboardPageSource, /dashboard-hero-metric/);
+  assert.match(dashboardPageSource, /dashboard-support-metrics/);
+  assert.match(dashboardPageSource, /dashboard-categories-section/);
+  assert.match(dashboardPageSource, /dashboard-merchants-section/);
+  assert.match(dashboardPageSource, /dashboard-ledger-handoff/);
   assert.doesNotMatch(dashboardPageSource, /grid grid-cols-2 gap-4 md:grid-cols-4/);
 });
 
@@ -77,11 +78,13 @@ test("explorer money flow gives spend and income separate color-coded y axes", (
 });
 
 test("visual shells use semantic tokens and avoid repeated gradient card tells", () => {
+  const supportKpiButtonClass = readConstAssignment(dashboardPageSource, "SUPPORT_KPI_BUTTON_CLASS");
   const panelClass = readConstAssignment(dashboardPageSource, "PANEL_CLASS");
   const importUploadClass = readConstAssignment(importPageSource, "IMPORT_UPLOAD_SECTION_CLASS");
 
   assert.doesNotMatch(explorerCardSource, /ring-white/);
   assert.match(explorerCardSource, /ring-border-subtle/);
+  assert.doesNotMatch(supportKpiButtonClass, /\[background-image:var\(--gradient-panel\)\]/);
   assert.doesNotMatch(panelClass, /\[background-image:var\(--gradient-panel\)\]/);
   assert.doesNotMatch(importUploadClass, /\[background-image:var\(--gradient-panel\)\]/);
   assert.doesNotMatch(helpPageSource, /\[background-image:var\(--gradient-panel\)\]/);

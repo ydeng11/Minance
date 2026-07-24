@@ -42,7 +42,6 @@ export function useApi() {
       analytics: {
         overview: analyticsApi.overview.bind(null, request),
         explorer: analyticsApi.explorer.bind(null, request),
-        insights: analyticsApi.insights.bind(null, request),
         categories: analyticsApi.categories.bind(null, request),
         merchants: analyticsApi.merchants.bind(null, request),
         heatmap: analyticsApi.heatmap.bind(null, request),
