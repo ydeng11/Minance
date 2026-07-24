@@ -8,9 +8,86 @@ import { executeTool, type ToolExecutionContext } from "./tool-executor.ts";
 import { defaultConversationStore, type ConversationSession } from "./conversation-store.ts";
 import { createId, nowIso } from "../utils.ts";
 import { DEFAULT_CATEGORIES } from "../../../../packages/domain/src/constants.ts";
+import { ALL_TOOLS, type ToolSpec, type ToolCategory } from "./tool-spec.ts";
 
 const MAX_TOOL_CALLS = 5;
 const AGENT_TIMEOUT_MS = 30000;
+
+// ---------------------------------------------------------------------------
+// Capability registry
+// ---------------------------------------------------------------------------
+
+interface CapabilityDefinition {
+  id: string;
+  name: string;
+  description: string;
+  /** Tool categories this capability enables */
+  categories: ToolCategory[];
+  /** Additional tool names to include */
+  extraTools?: string[];
+  /** System prompt segment to append */
+  systemPromptSegment: string;
+}
+
+const CAPABILITIES: Map<string, CapabilityDefinition> = new Map();
+
+function defineCapability(def: CapabilityDefinition): CapabilityDefinition {
+  CAPABILITIES.set(def.id, def);
+  return def;
+}
+
+// Built-in analytics capability (maps from mode: "qa")
+defineCapability({
+  id: "analytics",
+  name: "Spending Analytics",
+  description: "Analyze transaction data, spending patterns, categories, and merchants",
+  categories: ["analytics", "system"],
+  systemPromptSegment: `
+## Spending Analytics
+- General spending questions \u2192 get_overview (with specific dates if mentioned)
+- Category breakdowns \u2192 get_category_breakdown
+- Merchant breakdowns \u2192 get_merchant_breakdown
+- Unusual transactions \u2192 get_anomalies
+- Transaction listing \u2192 list_transactions
+- Compare periods \u2192 get_overview twice then compare_results`
+});
+
+// Maps legacy mode to capability IDs
+const MODE_TO_CAPABILITIES: Record<string, string[]> = {
+  qa: ["analytics"],
+  categorization: [],    // These modes use their own hardcoded tools/prompts
+  recurring: [],
+  import: []
+};
+
+/** Get the tool schemas and execute handlers for a set of capabilities */
+function getCapabilityTools(capIds: string[]): ToolSpec[] {
+  const names = new Set<string>();
+  const categories = new Set<ToolCategory>();
+
+  for (const id of capIds) {
+    const cap = CAPABILITIES.get(id);
+    if (!cap) continue;
+    for (const cat of cap.categories) categories.add(cat);
+    if (cap.extraTools) for (const n of cap.extraTools) names.add(n);
+  }
+
+  if (categories.size === 0 && names.size === 0) return [];
+
+  return ALL_TOOLS.filter(
+    (t) => names.has(t.name) || categories.has(t.category)
+  );
+}
+
+/** Build combined system prompt from capabilities */
+function buildCapabilitySystemPrompt(capIds: string[], existingPrompt: string): string {
+  const segments = capIds
+    .map((id) => CAPABILITIES.get(id))
+    .filter(Boolean)
+    .map((cap) => cap!.systemPromptSegment);
+  if (segments.length === 0) return existingPrompt;
+  return existingPrompt + "\n\n" + segments.join("\n");
+}
 
 /** A recorded step in the agent's observable trace */
 export interface TraceEntry {
@@ -29,7 +106,10 @@ export interface TraceEntry {
 }
 
 export interface AgentInput {
-  mode: AgentMode;
+  /** Legacy mode selector. Maps to capabilities automatically. */
+  mode?: AgentMode;
+  /** Explicit capability IDs (e.g. ["analytics", "subscriptions", "benefits"]) */
+  capabilities?: string[];
   userId: string;
   question?: string;
   transaction?: {
@@ -97,13 +177,21 @@ export interface AgentResult {
 
 export async function runToolCallingAgent(input: AgentInput): Promise<AgentResult> {
   const startedAt = Date.now();
-  const { mode, userId, _collectTrace } = input;
+  const { mode: inputMode, capabilities: inputCapabilities, userId, _collectTrace } = input;
   const trace: TraceEntry[] = [];
   let turn = 0;
 
   const recordTrace = (entry: TraceEntry) => {
     if (_collectTrace) trace.push(entry);
   };
+
+  // Resolve capabilities: explicit > mode mapping > default
+  const resolvedCapabilities = inputCapabilities?.length
+    ? inputCapabilities
+    : (inputMode ? MODE_TO_CAPABILITIES[inputMode] ?? [] : []);
+
+  // Resolve mode for backward compat (legacy modes that don't use capabilities)
+  const mode: AgentMode = inputMode || "qa";
 
   // Check feature flag
   if (!AI_TOOL_CALLING_AGENT_ENABLED) {
@@ -140,12 +228,16 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
     }
   }
 
-  // Get tools for this mode
-  const tools = TOOLS_BY_MODE[mode];
-  if (!tools) {
+  // Get tools: if capabilities are resolved, use capability-derived tools;
+  // otherwise fall back to legacy TOOLS_BY_MODE
+  const tools = resolvedCapabilities.length > 0
+    ? getCapabilityTools(resolvedCapabilities).map((t) => t.schema)
+    : TOOLS_BY_MODE[mode];
+
+  if (!tools || tools.length === 0) {
     const result: AgentResult = {
       ok: false,
-      error: `Unknown mode: ${mode}`,
+      error: `No tools available for ${mode}`,
       toolCallsMade: 0,
       provider: aiContext.provider,
       model: aiContext.model,
@@ -155,8 +247,11 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
     return result;
   }
 
-  // Build system prompt for this mode
-  const systemPrompt = buildSystemPrompt(mode, input);
+  // Build system prompt
+  const basePrompt = buildSystemPrompt(mode, input);
+  const systemPrompt = resolvedCapabilities.length > 0
+    ? buildCapabilitySystemPrompt(resolvedCapabilities, basePrompt)
+    : basePrompt;
 
   // Get or create conversation session (Q&A mode only)
   let session: ConversationSession | null = null;

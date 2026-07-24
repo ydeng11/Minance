@@ -271,7 +271,7 @@ test("runToolCallingAgent should return error for unknown mode", async () => {
   });
 
   assert.equal(result.ok, false);
-  assert.ok(result.error?.includes("Unknown mode"));
+  assert.ok(result.error?.includes("No tools available"), `Expected 'No tools available', got: ${result.error}`);
 });
 
 test("runToolCallingAgent should handle LLM API errors", async () => {
