@@ -906,6 +906,12 @@ export const T_CREATE_RECURRING_RULE = register({
     }
     if (amount <= 0) return { success: false, error: "amount must be positive" };
 
+    // Reject unauthorized execute attempts
+    if (mode === "execute") {
+      const authErr = requireWriteAuthorization(ctx, "create_recurring_rule", args);
+      if (authErr) return authErr;
+    }
+
     if (mode === "preview") {
       // Return a preview of what would be created
       return {
@@ -990,6 +996,12 @@ export const T_DISMISS_RECURRING_SUGGESTION = register({
     const reason = String(args.reason || "user_dismissed");
 
     if (!suggestionId) return { success: false, error: "suggestion_id is required" };
+
+    // Reject unauthorized execute attempts
+    if (mode === "execute") {
+      const authErr = requireWriteAuthorization(ctx, "dismiss_recurring_suggestion", args);
+      if (authErr) return authErr;
+    }
 
     if (mode === "preview") {
       return {
@@ -1273,6 +1285,12 @@ export const T_SAVE_CARD_BENEFIT = register({
       annualCredits: []
     };
 
+    // Reject unauthorized execute attempts
+    if (mode === "execute") {
+      const authErr = requireWriteAuthorization(ctx, "save_card_benefit", args);
+      if (authErr) return authErr;
+    }
+
     if (mode === "preview") {
       return {
         success: true,
@@ -1371,6 +1389,12 @@ export const T_DELETE_CARD_BENEFIT = register({
     const { getBenefit, deleteBenefit } = await import("./benefits-store.ts");
     const benefit = await getBenefit(ctx.userId, benefitId);
     if (!benefit) return { success: false, error: "Benefit not found" };
+
+    // Reject unauthorized execute attempts
+    if (mode === "execute") {
+      const authErr = requireWriteAuthorization(ctx, "delete_card_benefit", args);
+      if (authErr) return authErr;
+    }
 
     if (mode === "preview") {
       return {
@@ -1807,6 +1831,12 @@ export const T_SAVE_BUDGET_TARGET = register({
 
     if (!category) return { success: false, error: "category is required" };
     if (amount <= 0) return { success: false, error: "amount must be positive" };
+
+    // Reject unauthorized execute attempts
+    if (mode === "execute") {
+      const authErr = requireWriteAuthorization(ctx, "save_budget_target", args);
+      if (authErr) return authErr;
+    }
 
     if (mode === "preview") {
       return {

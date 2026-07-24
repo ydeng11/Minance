@@ -317,6 +317,81 @@ test("tool with extra unknown args does not throw", async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Write authorization enforcement
+// ---------------------------------------------------------------------------
+
+test("create_recurring_rule rejects execute without writeAuthorization", async () => {
+  const tool = ALL_TOOLS.find((t) => t.name === "create_recurring_rule")!;
+  const result = await tool.execute(
+    { userId: "test_user" },
+    { merchant: "Netflix", cadence: "monthly", amount: 15.99, _mode: "execute" }
+  );
+  assert.equal(result.success, false);
+  assert.ok(result.error?.includes("Write authorization"));
+});
+
+test("create_recurring_rule accepts execute with valid writeAuthorization", async () => {
+  const tool = ALL_TOOLS.find((t) => t.name === "create_recurring_rule")!;
+  // With writeAuthorization present, the tool should attempt execution
+  // (it may fail due to data not existing, but not due to auth)
+  const result = await tool.execute(
+    { userId: "test_user", writeAuthorization: { actionId: "test_act_1" } },
+    { merchant: "Netflix", cadence: "monthly", amount: 15.99, _mode: "execute" }
+  );
+  // The tool should NOT reject with "Write authorization required"
+  if (!result.success && result.error) {
+    assert.ok(
+      !result.error.includes("Write authorization"),
+      "Should not fail due to authorization"
+    );
+  }
+});
+
+test("save_budget_target rejects execute without writeAuthorization", async () => {
+  const tool = ALL_TOOLS.find((t) => t.name === "save_budget_target")!;
+  const result = await tool.execute(
+    { userId: "test_user" },
+    { category: "Dining", amount: 500, _mode: "execute" }
+  );
+  assert.equal(result.success, false);
+  assert.ok(result.error?.includes("Write authorization"));
+});
+
+test("save_budget_target accepts execute with valid writeAuthorization", async () => {
+  const tool = ALL_TOOLS.find((t) => t.name === "save_budget_target")!;
+  const result = await tool.execute(
+    { userId: "test_user", writeAuthorization: { actionId: "test_act_2" } },
+    { category: "Dining", amount: 500, _mode: "execute" }
+  );
+  if (!result.success && result.error) {
+    assert.ok(
+      !result.error.includes("Write authorization"),
+      "Should not fail due to authorization"
+    );
+  }
+});
+
+test("requireWriteAuthorization returns null for preview mode even without auth", async () => {
+  const { requireWriteAuthorization } = await import("../../src/llm/tool-spec.ts");
+  const result = requireWriteAuthorization(
+    { userId: "test", conversationId: "conv_1" },
+    "save_budget_target",
+    { _mode: "preview", category: "Dining", amount: 500 }
+  );
+  assert.equal(result, null, "Preview mode should not require authorization");
+});
+
+test("requireWriteAuthorization returns null for non-confirmation tools", async () => {
+  const { requireWriteAuthorization } = await import("../../src/llm/tool-spec.ts");
+  const result = requireWriteAuthorization(
+    { userId: "test" },
+    "get_overview",
+    {}
+  );
+  assert.equal(result, null, "Non-confirmation tools should not require authorization");
+});
+
+// ---------------------------------------------------------------------------
 // State machine tests
 // ---------------------------------------------------------------------------
 
