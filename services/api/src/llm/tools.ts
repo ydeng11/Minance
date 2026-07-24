@@ -1,27 +1,21 @@
 /**
- * Tool definitions for the AI Assistant.
+ * Backward-compatibility shim for legacy tool definitions.
  *
- * This module now derives its schemas from tool-spec.ts (the single source of truth).
- * Legacy exports are maintained for backward compatibility during the migration.
+ * All tools are now defined in tool-spec.ts (the single source of truth).
+ * This module re-exports derived collections for any code that still imports
+ * QA_TOOLS, CATEGORIZATION_TOOLS, RECURRING_TOOLS, IMPORT_TOOLS, or TOOLS_BY_MODE.
+ *
+ * New code should import from tool-spec.ts instead.
  */
 
 import { ALL_TOOLS, type ToolCategory } from "./tool-spec.ts";
 import type { ToolDefinition } from "./client.ts";
 
-// ---------------------------------------------------------------------------
 // Helper: group tools by category
-// ---------------------------------------------------------------------------
-
 function toolsByCategory(...categories: ToolCategory[]): ToolDefinition[] {
   return ALL_TOOLS
     .filter((t) => categories.includes(t.category))
     .map((t) => t.schema);
-}
-
-function toolNamesByCategory(...categories: ToolCategory[]): string[] {
-  return ALL_TOOLS
-    .filter((t) => categories.includes(t.category))
-    .map((t) => t.name);
 }
 
 // ---------------------------------------------------------------------------

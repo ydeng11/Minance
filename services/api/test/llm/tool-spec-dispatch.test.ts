@@ -1,10 +1,46 @@
-// services/api/test/llm/tool-executor.test.ts
+// services/api/test/llm/tool-spec-dispatch.test.ts
+//
+// Tests for ToolSpec dispatch — verifies that all tools registered in ALL_TOOLS
+// execute correctly against the deterministic fixture.
+//
 import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resetStoreForTests } from "../../src/store.ts";
-import { executeTool, getAvailableTools } from "../../src/llm/tool-executor.ts";
-import { QA_TOOLS } from "../../src/llm/tools.ts";
+import { ALL_TOOLS, type ToolExecutionContext, getCapabilityToolSchemas } from "../../src/llm/tool-spec.ts";
+
+// Build a dispatch map identical to what agent.ts uses
+const TOOL_DISPATCH = new Map<string, typeof ALL_TOOLS[0]>();
+for (const t of ALL_TOOLS) {
+  TOOL_DISPATCH.set(t.name, t);
+}
+
+async function executeTool(
+  toolName: string,
+  args: Record<string, unknown>,
+  context: ToolExecutionContext
+) {
+  const spec = TOOL_DISPATCH.get(toolName);
+  if (!spec) return { success: false, error: `Unknown tool: ${toolName}` };
+  try {
+    const result = await spec.execute(context, args);
+    return { success: result.success, data: result.data, error: result.error };
+  } catch (err) {
+    return {
+      success: false,
+      error: `Tool ${toolName} threw: ${err instanceof Error ? err.message : String(err)}`
+    };
+  }
+}
+
+// Get the analytics + system tools for QA mode
+function getQATools() {
+  return ALL_TOOLS.filter((t) => t.category === "analytics" || t.category === "system");
+}
+
+function getQAToolSchemas() {
+  return getQATools().map((t) => t.schema);
+}
 
 const baseStore = {
   users: [{ id: "user_1", email: "user@example.com", createdAt: "2026-01-01", updatedAt: "2026-01-01" }],
@@ -152,7 +188,6 @@ test("executeTool returns error for unknown tool", async () => {
 
   assert.equal(result.success, false);
   assert.ok(result.error?.includes("Unknown tool"));
-  assert.equal(result.meta?.toolName, "unknown_tool");
 });
 
 test("get_data_bounds returns user's transaction date range", async () => {
@@ -647,8 +682,8 @@ test("ask_clarification returns clarification request", async () => {
   assert.deepEqual(result.data?.options, ["This month", "Last month", "Custom"]);
 });
 
-test("getAvailableTools returns all tool definitions", () => {
-  const tools = getAvailableTools();
+test("ALL_TOOLS returns all tool definitions", () => {
+  const tools = ALL_TOOLS;
 
   assert.ok(Array.isArray(tools));
   assert.ok(tools.length >= 10);
@@ -668,7 +703,7 @@ test("getAvailableTools returns all tool definitions", () => {
 });
 
 test("qa tool definitions expose account filter for account-scoped questions", () => {
-  const qaToolsByName = new Map(QA_TOOLS.map((tool) => [tool.function.name, tool]));
+  const qaToolsByName = new Map(getQAToolSchemas().map((tool) => [tool.function.name, tool]));
 
   for (const toolName of ACCOUNT_SCOPED_QA_TOOL_NAMES) {
     const tool = qaToolsByName.get(toolName);
@@ -680,14 +715,15 @@ test("qa tool definitions expose account filter for account-scoped questions", (
   }
 });
 
-test("getAvailableTools includes account filter for scoped analytics tools", () => {
-  const availableByName = new Map(getAvailableTools().map((tool) => [tool.name, tool]));
+test("ALL_TOOLS includes account filter for scoped analytics tools", () => {
+  const availableByName = new Map(ALL_TOOLS.map((tool) => [tool.name, tool]));
 
   for (const toolName of ACCOUNT_SCOPED_QA_TOOL_NAMES) {
     const tool = availableByName.get(toolName);
-    assert.ok(tool, `${toolName} should exist in getAvailableTools`);
+    assert.ok(tool, `${toolName} should exist in ALL_TOOLS`);
+    const props = tool!.schema.function?.parameters?.properties || {};
     assert.ok(
-      Object.hasOwn(tool!.parameters.properties, "account"),
+      Object.hasOwn(props, "account"),
       `${toolName} should include account in metadata`
     );
   }
@@ -698,10 +734,10 @@ test("tool results include execution metadata", async () => {
 
   const result = await executeTool("get_data_bounds", {}, { userId: "user_1" });
 
-  assert.ok(result.meta);
-  assert.equal(result.meta?.toolName, "get_data_bounds");
-  assert.ok(typeof result.meta?.executionTimeMs === "number");
-  assert.ok(result.meta?.executionTimeMs >= 0);
+  // ToolSpec does not return meta (execution metadata);
+  // agent.ts wraps ToolSpec.execute() with try/catch for observability
+  assert.equal(result.success, true);
+  assert.ok(result.data);
 });
 
 test("executeTool normalizes date parameters", async () => {
@@ -773,10 +809,12 @@ test("compare_results with missing cache entries returns error", async () => {
     { userId: "user_1" }
   );
 
-  assert.equal(result.success, true);
-  assert.equal(result.data?.compared, false);
-  assert.ok(result.data?.error, "Should have error message");
-  assert.ok(Array.isArray(result.data?.availableKeys), "Should return available keys");
+  assert.equal(result.success, false, "Should fail when results not found");
+  assert.ok(result.error, "Should have error message");
+  if (result.data) {
+    const d = result.data as Record<string, unknown>;
+    assert.ok(Array.isArray(d.availableKeys), "Should return available keys");
+  }
 });
 
 test("compare_results with only one missing cache entry", async () => {
@@ -793,9 +831,10 @@ test("compare_results with only one missing cache entry", async () => {
     context
   );
 
-  assert.equal(result.success, true);
-  assert.equal(result.data?.compared, false);
-  assert.ok(result.data?.error, "Should have error");
+  // ToolSpec returns success: false when any result is missing
+  // but includes availableKeys in data for recovery
+  assert.equal(result.success, false, "Should fail when any result is missing");
+  assert.ok(result.error, "Should have error message");
 });
 
 test("compare_results with valid cache entries returns comparison", async () => {

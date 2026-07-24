@@ -425,7 +425,7 @@ export const T_GET_MERCHANT_HISTORY = register({
     const merchant = args.merchant as string | undefined;
     if (!merchant) throw new Error("merchant parameter is required");
     const { filterUserTransactions, buildAppliedRange } = await import("../analytics.ts");
-    const filters = buildFiltersFromArgs({ merchant }, { include_excluded: false });
+    const filters = buildFiltersFromArgs({ ...args, merchant }, { include_excluded: false });
     const transactions = filterUserTransactions(ctx.userId, filters);
     const monthlyTotals: Record<string, { month: string; amount: number; count: number }> = {};
     for (const txn of transactions) {

@@ -4,14 +4,13 @@ import { requireAiFeature } from "../ai.ts";
 import { AI_TOOL_CALLING_AGENT_ENABLED } from "../flags.ts";
 import { runToolCallingLlm, type ToolCallingMessage } from "./client.ts";
 import { TOOLS_BY_MODE, type AgentMode } from "./tools.ts";
-import { executeTool as legacyExecuteTool, type ToolExecutionContext } from "./tool-executor.ts";
 import { defaultConversationStore, type ConversationSession } from "./conversation-store.ts";
 import { createId, nowIso } from "../utils.ts";
 import { DEFAULT_CATEGORIES } from "../../../../packages/domain/src/constants.ts";
-import { ALL_TOOLS, type ToolSpec, type ToolCategory } from "./tool-spec.ts";
+import { ALL_TOOLS, type ToolSpec, type ToolCategory, type ToolExecutionContext } from "./tool-spec.ts";
 
 // ---------------------------------------------------------------------------
-// Tool dispatch: ToolSpec-based, with legacy fallback
+// Tool dispatch: ToolSpec-based (single source of truth)
 // ---------------------------------------------------------------------------
 
 const toolDispatch = new Map<string, ToolSpec>();
@@ -25,27 +24,19 @@ async function executeTool(
   context: ToolExecutionContext
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
   const spec = toolDispatch.get(toolName);
-  if (spec) {
-    try {
-      if (context._now) {
-        (args as Record<string, unknown>)._now = context._now;
-      }
-      const result = await spec.execute(context, args);
-      return { success: result.success, data: result.data, error: result.error };
-    } catch (err) {
-      return {
-        success: false,
-        error: `Tool ${toolName} threw: ${err instanceof Error ? err.message : String(err)}`
-      };
-    }
+  if (!spec) {
+    return { success: false, error: `Unknown tool: ${toolName}` };
   }
-  // Fall back to legacy executor
   try {
-    return legacyExecuteTool(toolName, args, context);
+    if (context._now) {
+      (args as Record<string, unknown>)._now = context._now;
+    }
+    const result = await spec.execute(context, args);
+    return { success: result.success, data: result.data, error: result.error };
   } catch (err) {
     return {
       success: false,
-      error: `Legacy tool ${toolName} threw: ${err instanceof Error ? err.message : String(err)}`
+      error: `Tool ${toolName} threw: ${err instanceof Error ? err.message : String(err)}`
     };
   }
 }
