@@ -1041,7 +1041,7 @@ export const T_GET_CARD_BENEFITS = register({
     const accountId = args.account_id as string;
     if (!accountId) return { success: false, error: "account_id is required" };
     const { getBenefitsForAccount, calculateBenefitUsage } = await import("./benefits-store.ts");
-    const benefits = getBenefitsForAccount(ctx.userId, accountId);
+    const benefits = await getBenefitsForAccount(ctx.userId, accountId);
     // Join each benefit definition with its deterministic usage calculation
     const benefitsWithUsage = await Promise.all(
       benefits.map(async (b) => {
@@ -1099,7 +1099,7 @@ export const T_GET_BENEFIT_USAGE = register({
     const benefitId = args.benefit_id as string;
     if (!benefitId) return { success: false, error: "benefit_id is required" };
     const { getBenefit, calculateBenefitUsage } = await import("./benefits-store.ts");
-    const benefit = getBenefit(ctx.userId, benefitId);
+    const benefit = await getBenefit(ctx.userId, benefitId);
     if (!benefit) return { success: false, error: "Benefit not found" };
     const usage = await calculateBenefitUsage(ctx.userId, benefit, ctx._now);
     return { success: true, data: usage };
@@ -1163,7 +1163,7 @@ export const T_GET_ANNUAL_FEE_ANALYSIS = register({
     const benefitId = args.benefit_id as string;
     if (!benefitId) return { success: false, error: "benefit_id is required" };
     const { getBenefit, getAnnualFeeAnalysis } = await import("./benefits-store.ts");
-    const benefit = getBenefit(ctx.userId, benefitId);
+    const benefit = await getBenefit(ctx.userId, benefitId);
     if (!benefit) return { success: false, error: "Benefit not found" };
     const analysis = await getAnnualFeeAnalysis(ctx.userId, benefit, ctx._now);
     return { success: true, data: analysis };
@@ -1195,7 +1195,7 @@ export const T_GET_ANNUAL_CREDITS = register({
     const benefitId = args.benefit_id as string;
     if (!benefitId) return { success: false, error: "benefit_id is required" };
     const { getBenefit, getAnnualCreditsUsage } = await import("./benefits-store.ts");
-    const benefit = getBenefit(ctx.userId, benefitId);
+    const benefit = await getBenefit(ctx.userId, benefitId);
     if (!benefit) return { success: false, error: "Benefit not found" };
     return { success: true, data: { credits: getAnnualCreditsUsage(benefit) } };
   }
@@ -1287,10 +1287,10 @@ export const T_SAVE_CARD_BENEFIT = register({
     let result;
 
     if (existingBenefitId) {
-      result = updateBenefit(ctx.userId, existingBenefitId, benefitData as Record<string, never>);
+      result = await updateBenefit(ctx.userId, existingBenefitId, benefitData as Record<string, never>);
       if (!result) return { success: false, error: "Benefit not found" };
     } else {
-      result = addBenefit(ctx.userId, {
+      result = await addBenefit(ctx.userId, {
         userId: ctx.userId,
         cardName,
         issuer,
@@ -1348,7 +1348,7 @@ export const T_DELETE_CARD_BENEFIT = register({
     if (!benefitId) return { success: false, error: "benefit_id is required" };
 
     const { getBenefit, deleteBenefit } = await import("./benefits-store.ts");
-    const benefit = getBenefit(ctx.userId, benefitId);
+    const benefit = await getBenefit(ctx.userId, benefitId);
     if (!benefit) return { success: false, error: "Benefit not found" };
 
     if (mode === "preview") {
@@ -1368,7 +1368,7 @@ export const T_DELETE_CARD_BENEFIT = register({
       };
     }
 
-    const deleted = deleteBenefit(ctx.userId, benefitId);
+    const deleted = await deleteBenefit(ctx.userId, benefitId);
     return {
       success: true,
       data: { deleted, message: "Benefit deleted." }

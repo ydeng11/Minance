@@ -173,10 +173,10 @@ test("benefits-store CRUD operations", async () => {
 
   // Clean slate
   store.resetBenefitsStore();
-  assert.deepEqual(store.getBenefitsForUser("user_1"), []);
+  assert.deepEqual(await store.getBenefitsForUser("user_1"), []);
 
   // Add
-  const benefit = store.addBenefit("user_1", {
+  const benefit = await store.addBenefit("user_1", {
     userId: "user_1",
     accountId: "acct_1",
     cardName: "Test Card",
@@ -195,22 +195,22 @@ test("benefits-store CRUD operations", async () => {
   assert.equal(benefit.rate, 3.0);
 
   // Get
-  const retrieved = store.getBenefit("user_1", benefit.id);
+  const retrieved = await store.getBenefit("user_1", benefit.id);
   assert.ok(retrieved);
   assert.equal(retrieved!.id, benefit.id);
 
   // Update
-  const updated = store.updateBenefit("user_1", benefit.id, { rate: 4.0 });
+  const updated = await store.updateBenefit("user_1", benefit.id, { rate: 4.0 });
   assert.ok(updated);
   assert.equal(updated!.rate, 4.0);
 
   // Delete
-  const deleted = store.deleteBenefit("user_1", benefit.id);
+  const deleted = await store.deleteBenefit("user_1", benefit.id);
   assert.equal(deleted, true);
-  assert.equal(store.getBenefit("user_1", benefit.id), undefined);
+  assert.equal(await store.getBenefit("user_1", benefit.id), undefined);
 
   // User isolation
-  assert.deepEqual(store.getBenefitsForUser("user_2"), []);
+  assert.deepEqual(await store.getBenefitsForUser("user_2"), []);
 });
 
 test("benefits-store seed and reset", async () => {
@@ -232,9 +232,9 @@ test("benefits-store seed and reset", async () => {
       annualCredits: []
     }
   ]);
-  assert.equal(store.getBenefitsForUser("user_1").length, 1);
+  assert.equal((await store.getBenefitsForUser("user_1")).length, 1);
   store.resetBenefitsStore();
-  assert.equal(store.getBenefitsForUser("user_1").length, 0);
+  assert.equal((await store.getBenefitsForUser("user_1")).length, 0);
 });
 
 // ---------------------------------------------------------------------------

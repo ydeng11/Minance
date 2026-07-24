@@ -74,61 +74,90 @@ export interface BenefitUsage {
 }
 
 // ---------------------------------------------------------------------------
-// Store
+// Store — dual layer: production uses central store, tests use in-memory Map
 // ---------------------------------------------------------------------------
 
-const store = new Map<string, CardBenefit[]>();
+const testStore = new Map<string, CardBenefit[]>();
 
-export function getBenefitsForUser(userId: string): CardBenefit[] {
-  return store.get(userId) || [];
+/** Check if test store has data for this user */
+function isUsingTestStore(userId: string): boolean {
+  return testStore.has(userId);
 }
 
-export function getBenefitsForAccount(userId: string, accountId: string): CardBenefit[] {
-  return (store.get(userId) || []).filter((b) => b.accountId === accountId);
+async function loadBenefitsStore(userId: string): Promise<CardBenefit[]> {
+  if (testStore.has(userId)) return testStore.get(userId) || [];
+  const { loadStore } = await import("../store.ts");
+  const s = loadStore() as Record<string, unknown>;
+  const byUser = (s.benefitsByUser as Record<string, CardBenefit[]>) || {};
+  return byUser[userId] || [];
 }
 
-export function getBenefit(userId: string, benefitId: string): CardBenefit | undefined {
-  return (store.get(userId) || []).find((b) => b.id === benefitId);
+async function saveBenefitsStore(userId: string, benefits: CardBenefit[]): Promise<void> {
+  if (testStore.has(userId)) {
+    testStore.set(userId, benefits);
+    return;
+  }
+  const { loadStore, saveStore } = await import("../store.ts");
+  const s = loadStore() as Record<string, unknown>;
+  if (!s.benefitsByUser) {
+    (s as Record<string, unknown>).benefitsByUser = {};
+  }
+  (s.benefitsByUser as Record<string, CardBenefit[]>)[userId] = benefits;
+  saveStore(s as never);
 }
 
-export function addBenefit(userId: string, benefit: Omit<CardBenefit, "id">): CardBenefit {
+export async function getBenefitsForUser(userId: string): Promise<CardBenefit[]> {
+  return loadBenefitsStore(userId);
+}
+
+export async function getBenefitsForAccount(userId: string, accountId: string): Promise<CardBenefit[]> {
+  const all = await loadBenefitsStore(userId);
+  return all.filter((b) => b.accountId === accountId);
+}
+
+export async function getBenefit(userId: string, benefitId: string): Promise<CardBenefit | undefined> {
+  const all = await loadBenefitsStore(userId);
+  return all.find((b) => b.id === benefitId);
+}
+
+export async function addBenefit(userId: string, benefit: Omit<CardBenefit, "id">): Promise<CardBenefit> {
   const newBenefit: CardBenefit = { ...benefit, id: createId("cbnf") };
-  const existing = store.get(userId) || [];
+  const existing = await loadBenefitsStore(userId);
   existing.push(newBenefit);
-  store.set(userId, existing);
+  await saveBenefitsStore(userId, existing);
   return newBenefit;
 }
 
-export function updateBenefit(
+export async function updateBenefit(
   userId: string,
   benefitId: string,
   patch: Partial<Omit<CardBenefit, "id" | "userId">>
-): CardBenefit | undefined {
-  const existing = store.get(userId) || [];
+): Promise<CardBenefit | undefined> {
+  const existing = await loadBenefitsStore(userId);
   const index = existing.findIndex((b) => b.id === benefitId);
   if (index === -1) return undefined;
   existing[index] = { ...existing[index], ...patch };
-  store.set(userId, existing);
+  await saveBenefitsStore(userId, existing);
   return existing[index];
 }
 
-export function deleteBenefit(userId: string, benefitId: string): boolean {
-  const existing = store.get(userId) || [];
+export async function deleteBenefit(userId: string, benefitId: string): Promise<boolean> {
+  const existing = await loadBenefitsStore(userId);
   const index = existing.findIndex((b) => b.id === benefitId);
   if (index === -1) return false;
   existing.splice(index, 1);
-  store.set(userId, existing);
+  await saveBenefitsStore(userId, existing);
   return true;
 }
 
-/** Seed benefits from fixture data (called during eval setup) */
+/** Seed benefits for tests (synchronous, in-memory only) */
 export function seedBenefits(userId: string, benefits: CardBenefit[]): void {
-  store.set(userId, benefits);
+  testStore.set(userId, benefits);
 }
 
-/** Reset store for tests */
+/** Reset in-memory test store */
 export function resetBenefitsStore(): void {
-  store.clear();
+  testStore.clear();
 }
 
 // ---------------------------------------------------------------------------

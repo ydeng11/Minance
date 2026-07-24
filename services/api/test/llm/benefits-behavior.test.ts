@@ -168,7 +168,7 @@ test("benefits: full credit usage shows zero remaining", () => {
 test("benefits: empty store returns empty array", async () => {
   resetBenefitsStore();
   const { getBenefitsForUser } = await import("../../src/llm/benefits-store.ts");
-  assert.deepEqual(getBenefitsForUser("nonexistent_user"), []);
+  assert.deepEqual(await getBenefitsForUser("nonexistent_user"), []);
 });
 
 // ---------------------------------------------------------------------------
@@ -180,10 +180,10 @@ test("benefits: user A's data is not visible to user B", async () => {
   seedBenefits("user_a", [FIXTURE_CARDS[0]]);
   seedBenefits("user_b", [FIXTURE_CARDS[1]]);
   const { getBenefitsForUser } = await import("../../src/llm/benefits-store.ts");
-  const userAData = getBenefitsForUser("user_a");
+  const userAData = await getBenefitsForUser("user_a");
   assert.equal(userAData.length, 1);
   assert.equal(userAData[0].cardName, "Chase Sapphire");
-  const userBData = getBenefitsForUser("user_b");
+  const userBData = await getBenefitsForUser("user_b");
   assert.equal(userBData.length, 1);
   assert.equal(userBData[0].cardName, "Amex Gold");
   resetBenefitsStore();
