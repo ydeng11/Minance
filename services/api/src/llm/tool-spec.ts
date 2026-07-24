@@ -492,9 +492,61 @@ export const T_GET_MERCHANT_TRANSACTIONS_6_MONTHS = register({
   }
 });
 
-// ----- Subscriptions tools (will be implemented in step 3) -----
+// ----- Subscriptions / Recurring tools -----
 
-// Placeholder — actual implementations will be added in step 3
+/**
+ * Amount-matching logic (deterministic, same as recurring-scan.ts).
+ */
+function amountMatches(a: number, b: number): boolean {
+  const AMOUNT_TOLERANCE_MIN = 0.10;
+  const AMOUNT_TOLERANCE_PERCENT = 0.05;
+  const tolerance = Math.max(AMOUNT_TOLERANCE_MIN, a * AMOUNT_TOLERANCE_PERCENT);
+  const EPSILON = 0.0001;
+  return Math.abs(a - b) <= tolerance + EPSILON;
+}
+
+/**
+ * Detect cadence from a sorted list of dates (ISO strings).
+ * Returns the best-guess cadence and confidence.
+ */
+function detectCadence(
+  dates: string[]
+): { cadence: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly" | null; confidence: number } {
+  if (dates.length < 2) return { cadence: null, confidence: 0 };
+
+  // Calculate gaps in days between consecutive dates
+  const gaps: number[] = [];
+  for (let i = 1; i < dates.length; i++) {
+    const diff = (new Date(dates[i]).getTime() - new Date(dates[i - 1]).getTime()) / (1000 * 60 * 60 * 24);
+    gaps.push(Math.round(diff));
+  }
+
+  if (gaps.length === 0) return { cadence: null, confidence: 0 };
+
+  const avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length;
+
+  // Score each cadence by how well it matches the average gap
+  const cadenceScores: Array<{ cadence: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly"; score: number }> = [
+    { cadence: "weekly", score: 1 / (1 + Math.abs(avgGap - 7)) },
+    { cadence: "biweekly", score: 1 / (1 + Math.abs(avgGap - 14)) },
+    { cadence: "monthly", score: 1 / (1 + Math.abs(avgGap - 30)) },
+    { cadence: "quarterly", score: 1 / (1 + Math.abs(avgGap - 91)) },
+    { cadence: "yearly", score: 1 / (1 + Math.abs(avgGap - 365)) }
+  ];
+
+  // Determine consistency: low variance = high confidence
+  const gapMean = gaps.reduce((s, g) => s + g, 0) / gaps.length;
+  const variance = gaps.map(g => (g - gapMean) ** 2).reduce((s, v) => s + v, 0) / gaps.length;
+  const consistencyScore = 1 / (1 + Math.sqrt(variance) / 10);
+
+  const best = cadenceScores.reduce((best, curr) => (curr.score > best.score ? curr : best));
+  const confidence = Math.min(1, best.score * consistencyScore);
+
+  return { cadence: best.score > 0.3 ? best.cadence : null, confidence: Math.round(confidence * 100) / 100 };
+}
+
+// --- Tool: list_recurring_rules ---
+
 export const T_LIST_RECURRING_RULES = register({
   name: "list_recurring_rules",
   description: "List all recurring rules (subscriptions, bills) the user has configured.",
@@ -514,6 +566,8 @@ export const T_LIST_RECURRING_RULES = register({
   }
 });
 
+// --- Tool: list_recurring_suggestions ---
+
 export const T_LIST_RECURRING_SUGGESTIONS = register({
   name: "list_recurring_suggestions",
   description: "List pending recurring suggestions that need user review.",
@@ -530,6 +584,376 @@ export const T_LIST_RECURRING_SUGGESTIONS = register({
   execute: async (ctx) => {
     const { listRecurringSuggestions } = await import("../recurring-suggestions.ts");
     return { success: true, data: listRecurringSuggestions(ctx.userId) };
+  }
+});
+
+// --- Tool: detect_recurring_patterns (deterministic, not LLM-on-LLM) ---
+
+export const T_DETECT_RECURRING_PATTERNS = register({
+  name: "detect_recurring_patterns",
+  description: "Analyze transaction history for recurring patterns. Deterministic analysis (not AI-based).",
+  access: "read",
+  category: "subscriptions",
+  schema: {
+    type: "function",
+    function: {
+      name: "detect_recurring_patterns",
+      description: "Analyze transaction history for recurring patterns by merchant.",
+      parameters: {
+        type: "object",
+        properties: {
+          merchant: { type: "string", description: "Merchant to analyze (optional — if omitted, analyzes all merchants)" }
+        },
+        required: []
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const merchant = args.merchant as string | undefined;
+    const { filterUserTransactions } = await import("../analytics.ts");
+    const now = new Date();
+    const end = now.toISOString().substring(0, 10);
+    const startDate = new Date(now);
+    startDate.setMonth(startDate.getMonth() - 6);
+    const start = startDate.toISOString().substring(0, 10);
+
+    const filters = { start, end, ...(merchant ? { merchant } : {}), include_excluded: false };
+    const transactions = filterUserTransactions(ctx.userId, filters);
+
+    if (transactions.length === 0) {
+      return { success: true, data: { patterns: [], note: "No transactions found in the last 6 months." } };
+    }
+
+    // Group by merchant-normalized
+    const merchantGroups: Record<string, Array<{ date: string; amount: number }>> = {};
+    for (const txn of transactions) {
+      const m = String(txn.merchant_normalized || txn.merchant || "unknown").trim().toLowerCase();
+      if (!merchantGroups[m]) merchantGroups[m] = [];
+      merchantGroups[m].push({
+        date: String(txn.transaction_date || ""),
+        amount: Math.abs(Number(txn.amount) || 0)
+      });
+    }
+
+    const patterns: Array<{
+      merchant: string;
+      cadence: "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly" | null;
+      suggestedAmount: number;
+      confidence: number;
+      transactionCount: number;
+      monthsCovered: number;
+      averageGapDays: number;
+    }> = [];
+
+    for (const [mName, txns] of Object.entries(merchantGroups)) {
+      if (txns.length < 2) continue; // Need at least 2 transactions
+
+      // Sort by date
+      txns.sort((a, b) => a.date.localeCompare(b.date));
+
+      // Group by similar amounts (within 5% tolerance)
+      const amountGroups: Array<typeof txns> = [];
+      for (const txn of txns) {
+        let added = false;
+        for (const group of amountGroups) {
+          if (amountMatches(group[0].amount, txn.amount)) {
+            group.push(txn);
+            added = true;
+            break;
+          }
+        }
+        if (!added) {
+          amountGroups.push([txn]);
+        }
+      }
+
+      // Analyze each group with >= 2 transactions
+      for (const group of amountGroups) {
+        if (group.length < 2) continue;
+
+        const dates = group.map(t => t.date).filter(Boolean);
+        const amounts = group.map(t => t.amount);
+        const avgAmount = amounts.reduce((s, a) => s + a, 0) / amounts.length;
+
+        const { cadence, confidence } = detectCadence(dates);
+
+        // Get unique months covered
+        const months = new Set(dates.map(d => d.substring(0, 7)));
+
+        patterns.push({
+          merchant: mName,
+          cadence,
+          suggestedAmount: Math.round(avgAmount * 100) / 100,
+          confidence,
+          transactionCount: group.length,
+          monthsCovered: months.size,
+          averageGapDays: dates.length > 1
+            ? Math.round(
+              (new Date(dates[dates.length - 1]).getTime() - new Date(dates[0]).getTime()) /
+                (1000 * 60 * 60 * 24 * (dates.length - 1))
+            )
+            : 0
+        });
+      }
+    }
+
+    // Sort by confidence descending
+    patterns.sort((a, b) => b.confidence - a.confidence);
+
+    return { success: true, data: { patterns, totalMerchantsAnalyzed: Object.keys(merchantGroups).length } };
+  }
+});
+
+// --- Tool: explain_recurring_rule ---
+
+export const T_EXPLAIN_RECURRING_RULE = register({
+  name: "explain_recurring_rule",
+  description: "Get detailed explanation of a recurring rule: projected annual cost, next expected date, cadence, and recent changes.",
+  access: "read",
+  category: "subscriptions",
+  schema: {
+    type: "function",
+    function: {
+      name: "explain_recurring_rule",
+      description: "Get detailed explanation of a recurring rule.",
+      parameters: {
+        type: "object",
+        properties: {
+          rule_id: { type: "string", description: "The recurring rule ID to explain" }
+        },
+        required: ["rule_id"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const ruleId = args.rule_id as string;
+    if (!ruleId) return { success: false, error: "rule_id is required" };
+
+    const { getRecurringRule } = await import("../recurrings.ts");
+    const { filterUserTransactions } = await import("../analytics.ts");
+
+    const rule = getRecurringRule(ctx.userId, ruleId);
+    if (!rule) return { success: false, error: "Rule not found" };
+
+    // Compute projected annual cost
+    const amount = Math.abs(Number(rule.amount) || 0);
+    const cadenceMultiplier: Record<string, number> = {
+      weekly: 52, biweekly: 26, monthly: 12, quarterly: 4, yearly: 1
+    };
+    const annualMultiplier = cadenceMultiplier[String(rule.cadence)] || 12;
+    const annualCost = amount * annualMultiplier;
+
+    // Compute next expected date
+    let nextDate: string | null = rule.next_run_at || null;
+    if (!nextDate && rule.last_evaluated_at) {
+      // Estimate from last evaluated + cadence
+      const lastDate = new Date(rule.last_evaluated_at);
+      const cadenceDays: Record<string, number> = {
+        weekly: 7, biweekly: 14, monthly: 30, quarterly: 91, yearly: 365
+      };
+      const days = cadenceDays[String(rule.cadence)] || 30;
+      lastDate.setDate(lastDate.getDate() + days);
+      nextDate = lastDate.toISOString().substring(0, 10);
+    }
+
+    // Get recent transactions for this merchant
+    const now = new Date();
+    const lookback = new Date(now);
+    lookback.setMonth(lookback.getMonth() - 6);
+    const recentTxns = filterUserTransactions(ctx.userId, {
+      start: lookback.toISOString().substring(0, 10),
+      end: now.toISOString().substring(0, 10),
+      merchant: rule.merchant_pattern || "",
+      include_excluded: false
+    });
+
+    // Detect amount changes
+    const amounts = recentTxns.map((t: { amount: number }) => Math.abs(Number(t.amount) || 0)).filter(Boolean);
+    let amountChange: "increased" | "decreased" | "stable" = "stable";
+    if (amounts.length >= 2) {
+      const firstHalfAvg = amounts.slice(0, Math.floor(amounts.length / 2)).reduce((s: number, a: number) => s + a, 0) / Math.floor(amounts.length / 2);
+      const secondHalfAvg = amounts.slice(Math.floor(amounts.length / 2)).reduce((s: number, a: number) => s + a, 0) / Math.ceil(amounts.length / 2);
+      if (secondHalfAvg > firstHalfAvg * 1.05) amountChange = "increased";
+      else if (secondHalfAvg < firstHalfAvg * 0.95) amountChange = "decreased";
+    }
+
+    return {
+      success: true,
+      data: {
+        rule: {
+          id: rule.id,
+          merchant: rule.name || rule.merchant_pattern,
+          cadence: rule.cadence,
+          amount: Math.round(amount * 100) / 100,
+          direction: rule.direction,
+          status: rule.status
+        },
+        projectedAnnualCost: Math.round(annualCost * 100) / 100,
+        annualMultiplier,
+        nextExpectedDate: nextDate,
+        amountChange,
+        recentTransactions: {
+          count: recentTxns.length,
+          averageAmount: amounts.length ? Math.round(amounts.reduce((s: number, a: number) => s + a, 0) / amounts.length * 100) / 100 : 0,
+          period: {
+            start: lookback.toISOString().substring(0, 10),
+            end: now.toISOString().substring(0, 10)
+          }
+        }
+      }
+    };
+  }
+});
+
+// --- Tool: create_recurring_rule (with confirmation) ---
+
+export const T_CREATE_RECURRING_RULE = register({
+  name: "create_recurring_rule",
+  description: "Create a recurring rule from a suggestion or detected pattern. Requires user confirmation.",
+  access: "write",
+  requiresConfirmation: true,
+  category: "subscriptions",
+  schema: {
+    type: "function",
+    function: {
+      name: "create_recurring_rule",
+      description: "Create a recurring rule from a suggestion or detected pattern. Use _mode=preview first, then _mode=execute after user confirms.",
+      parameters: {
+        type: "object",
+        properties: {
+          _mode: { type: "string", enum: ["preview", "execute"], description: "preview = show what would happen, execute = actually create" },
+          merchant: { type: "string", description: "Merchant name" },
+          cadence: { type: "string", enum: [...VALID_CADENCES], description: "How often the charge occurs" },
+          amount: { type: "number", description: "Expected amount" },
+          direction: { type: "string", enum: [...VALID_DIRECTIONS], description: "Direction of the transaction" },
+          suggestion_id: { type: "string", description: "Optional: suggestion ID to convert to rule" }
+        },
+        required: ["merchant", "cadence", "amount"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const mode = String(args._mode || "preview");
+    const merchant = String(args.merchant || "");
+    const cadence = String(args.cadence || "");
+    const amount = Number(args.amount) || 0;
+    const direction = String(args.direction || "outflow");
+
+    if (!merchant) return { success: false, error: "merchant is required" };
+    if (!VALID_CADENCES.includes(cadence as typeof VALID_CADENCES[number])) {
+      return { success: false, error: `Invalid cadence: ${cadence}. Must be ${VALID_CADENCES.join(", ")}` };
+    }
+    if (amount <= 0) return { success: false, error: "amount must be positive" };
+
+    if (mode === "preview") {
+      // Return a preview of what would be created
+      return {
+        success: true,
+        data: {
+          _requiresConfirmation: true,
+          _confirmationType: "create_recurring_rule",
+          preview: {
+            merchant,
+            cadence,
+            amount: Math.round(amount * 100) / 100,
+            direction,
+            projectedAnnualCost: Math.round(amount * ({
+              weekly: 52, biweekly: 26, monthly: 12, quarterly: 4, yearly: 1
+            }[cadence] || 12) * 100) / 100
+          },
+          confirmationQuestion: `Create a ${cadence} recurring rule for ${merchant} at $${amount.toFixed(2)}?`
+        }
+      };
+    }
+
+    // Execute mode: actually create the rule
+    const { createRecurringRule } = await import("../recurrings.ts");
+    const { createRuleFromSuggestion } = await import("../recurring-suggestions.ts");
+
+    const suggestionId = args.suggestion_id as string | undefined;
+    let result;
+
+    if (suggestionId) {
+      result = createRuleFromSuggestion(ctx.userId, suggestionId, {
+        cadence,
+        amount
+      });
+    } else {
+      result = createRecurringRule(ctx.userId, {
+        name: merchant,
+        merchant_pattern: merchant,
+        cadence,
+        amount,
+        direction,
+        status: "active"
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        created: true,
+        rule: result,
+        message: `Recurring rule created for ${merchant}: ${cadence} at $${amount.toFixed(2)}`
+      }
+    };
+  }
+});
+
+// --- Tool: dismiss_recurring_suggestion (with confirmation) ---
+
+export const T_DISMISS_RECURRING_SUGGESTION = register({
+  name: "dismiss_recurring_suggestion",
+  description: "Dismiss a pending recurring suggestion. Requires user confirmation.",
+  access: "write",
+  requiresConfirmation: true,
+  category: "subscriptions",
+  schema: {
+    type: "function",
+    function: {
+      name: "dismiss_recurring_suggestion",
+      description: "Dismiss a recurring suggestion. Use _mode=preview first, then _mode=execute after user confirms.",
+      parameters: {
+        type: "object",
+        properties: {
+          _mode: { type: "string", enum: ["preview", "execute"], description: "preview or execute" },
+          suggestion_id: { type: "string", description: "The suggestion ID to dismiss" },
+          reason: { type: "string", description: "Reason for dismissal", default: "user_dismissed" }
+        },
+        required: ["suggestion_id"]
+      }
+    }
+  },
+  execute: async (ctx, args) => {
+    const mode = String(args._mode || "preview");
+    const suggestionId = String(args.suggestion_id || "");
+    const reason = String(args.reason || "user_dismissed");
+
+    if (!suggestionId) return { success: false, error: "suggestion_id is required" };
+
+    if (mode === "preview") {
+      return {
+        success: true,
+        data: {
+          _requiresConfirmation: true,
+          _confirmationType: "dismiss_recurring_suggestion",
+          preview: { suggestionId, reason },
+          confirmationQuestion: `Dismiss this recurring suggestion? This will prevent it from appearing again for 30 days.`
+        }
+      };
+    }
+
+    const { dismissRecurringSuggestion } = await import("../recurring-suggestions.ts");
+    const result = dismissRecurringSuggestion(ctx.userId, suggestionId, reason);
+
+    return {
+      success: true,
+      data: {
+        dismissed: true,
+        result,
+        message: "Suggestion dismissed."
+      }
+    };
   }
 });
 

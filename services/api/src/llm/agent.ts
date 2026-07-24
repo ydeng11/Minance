@@ -52,6 +52,22 @@ defineCapability({
 - Compare periods \u2192 get_overview twice then compare_results`
 });
 
+// Subscriptions / recurring capability
+defineCapability({
+  id: "subscriptions",
+  name: "Subscriptions & Recurring Charges",
+  description: "Track subscriptions, recurring bills, and detect recurring spending patterns",
+  categories: ["subscriptions"],
+  systemPromptSegment: `
+## Subscriptions & Recurring
+- "What subscriptions do I have?" \u2192 list_recurring_rules
+- "Find recurring charges for [merchant]" \u2192 detect_recurring_patterns (deterministic, runs on transaction data)
+- "Show pending suggestions" \u2192 list_recurring_suggestions
+- "Explain my [rule] subscription" \u2192 explain_recurring_rule (shows annual cost, next date, changes)
+- "Create a rule for [merchant]" \u2192 create_recurring_rule with _mode=preview first, ask user to confirm, then _mode=execute
+- "Dismiss suggestion" \u2192 dismiss_recurring_suggestion with _mode=preview first, then _mode=execute after confirm`
+});
+
 // Maps legacy mode to capability IDs
 const MODE_TO_CAPABILITIES: Record<string, string[]> = {
   qa: ["analytics"],
@@ -458,6 +474,31 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
           recordTrace({ turn, type: "terminal", terminalType: "final", terminalData: parsed });
           if (_collectTrace) resultVal._trace = trace;
           return resultVal;
+        }
+
+        // Check for confirmation requirement (requiresConfirmation tools in preview mode)
+        if (result.success && result.data && typeof result.data === "object") {
+          const d = result.data as Record<string, unknown>;
+          if (d._requiresConfirmation === true) {
+            const clarificationResult: AgentResult = {
+              ok: true,
+              clarification: {
+                question: String(d.confirmationQuestion || "Do you want to proceed?"),
+                options: ["Yes, confirm", "No, cancel"]
+              },
+              toolCallsMade,
+              provider: aiContext.provider,
+              model: aiContext.model,
+              latencyMs: Date.now() - startedAt
+            };
+            // Include preview data so the frontend can render it
+            if (d.preview) {
+              (clarificationResult as Record<string, unknown>).confirmationPreview = d.preview;
+            }
+            recordTrace({ turn, type: "terminal", terminalType: "clarification", terminalData: { confirmationQuestion: d.confirmationQuestion, preview: d.preview } });
+            if (_collectTrace) clarificationResult._trace = trace;
+            return clarificationResult;
+          }
         }
 
         // Cache result for conversation references
