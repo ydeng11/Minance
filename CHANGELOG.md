@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of being silently dropped. Added argument validation for terminal tools (`assign_category`,
   `create_recurring_suggestion`, `assign_results`).
 
+- **Capability-based architecture**: Agent tools now use a capability registry. Each domain
+  (analytics, subscriptions, benefits, budgeting) registers its tools, system prompt segments,
+  and category tags independently. All modes are backward compatible.
+
+- **ToolSpec**: Consolidated from duplicate definitions in `tools.ts` and `tool-executor.ts`
+  into a single `ToolSpec` source of truth with unified schema, execute handler, access level,
+  confirmation policy, and category.
+
 ### Added
 
 - `model` column to `ai_provider_credentials` table and schema.
@@ -45,16 +53,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Override date**: `_overrideDate` field on `AgentInput` freezes "today" for reproducible
   date-relative evaluation.
 
-- **Deterministic AI tests**: 194 tests across credential management, assistant API,
-  LLM synthesis and categorization, agent loop (including multi-turn, trace, timeout,
-  tool validation, max-calls counting), client (request body, endpoint selection),
-  conversation store (concurrent sessions, updates, isolation), and tool executor
-  (edge cases, empty args, no-matches). All credential-free with injected mocks.
+- **ToolSpec** (`llm/tool-spec.ts`): Single source of truth for all 30+ assistant tools.
+  Each tool defines schema, deterministic execute handler, access level (read/write),
+  category (analytics/subscriptions/benefits/budgeting/system), and confirmation policy.
+
+- **Recurring subscription tools**: `list_recurring_rules`, `list_recurring_suggestions`,
+  `detect_recurring_patterns` (deterministic, not LLM-on-LLM), `explain_recurring_rule`
+  (projected annual cost, next date, amount changes), `create_recurring_rule` (with
+  confirmation flow), `dismiss_recurring_suggestion` (with confirmation flow).
+
+- **Credit card benefits** (`llm/benefits-store.ts`): In-memory store for card benefits
+  with deterministic usage calculation from transaction history. Supporting tools:
+  `list_credit_cards`, `get_card_benefits`, `get_benefit_usage`, `get_best_card_for_category`,
+  `get_annual_fee_analysis`, `get_annual_credits`, `save_card_benefit`,
+  `delete_card_benefit`. All write tools require explicit user confirmation.
+
+- **Budgeting & analysis tools**: `get_spending_trends` (month-over-month with direction),
+  `get_recurring_forecast` (project upcoming charges from rules),
+  `get_budget_comparison` (actual vs targets), `save_budget_target` (with confirmation).
+
+- **Confirmation flow**: Write tools return `_requiresConfirmation` with preview data.
+  Agent detects this and returns a clarification prompt. User confirms with "Yes, confirm"
+  before the tool executes. Frontend renders clickable option buttons.
+
+- **UI structured data cards**: Frontend assistant component now renders subscription,
+  card benefit, and budget comparison cards as structured sections below the chat bubble.
+
+- **Deterministic AI tests**: 250 tests (56 new) across all modules including full coverage
+  of new recurring, benefits, budgeting, and ToolSpec integrity tests.
 
 - **Live AI eval harness**: Opt-in `test:ai-evals` script (guarded by `AI_EVALS=1`)
   runs real LLM queries against versioned baselines with LLM-as-judge scoring.
   Aggregated per-baseline pass/fail at 80% paraphrase threshold. Records fixture hash,
   prompt version, assistant/judge models, and frozen override date.
+  V1 (8 analytics baselines) + V2 (10 recurring/benefits/budgeting baselines).
+
+- **Eval fixture** (`eval-fixture.json`): Supplemental fixture with 5 card benefits,
+  4 budget targets, 3 recurring suggestions, designed to complement the existing
+  deterministic financial store.
+
+- **`AI_CARD_BENEFITS_ENABLED`** feature flag.
 
 - **`just test-ai-evals` recipe**: Loads `.env.local` and runs the eval suite.
 
