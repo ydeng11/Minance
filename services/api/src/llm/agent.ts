@@ -4,11 +4,39 @@ import { requireAiFeature } from "../ai.ts";
 import { AI_TOOL_CALLING_AGENT_ENABLED } from "../flags.ts";
 import { runToolCallingLlm, type ToolCallingMessage } from "./client.ts";
 import { TOOLS_BY_MODE, type AgentMode } from "./tools.ts";
-import { executeTool, type ToolExecutionContext } from "./tool-executor.ts";
+import { executeTool as legacyExecuteTool, type ToolExecutionContext } from "./tool-executor.ts";
 import { defaultConversationStore, type ConversationSession } from "./conversation-store.ts";
 import { createId, nowIso } from "../utils.ts";
 import { DEFAULT_CATEGORIES } from "../../../../packages/domain/src/constants.ts";
 import { ALL_TOOLS, type ToolSpec, type ToolCategory } from "./tool-spec.ts";
+
+// ---------------------------------------------------------------------------
+// Tool dispatch: ToolSpec-based, with legacy fallback
+// ---------------------------------------------------------------------------
+
+const toolDispatch = new Map<string, ToolSpec>();
+for (const t of ALL_TOOLS) {
+  toolDispatch.set(t.name, t);
+}
+
+async function executeTool(
+  toolName: string,
+  args: Record<string, unknown>,
+  context: ToolExecutionContext
+): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  const spec = toolDispatch.get(toolName);
+  if (spec) {
+    // If spec has execute and a date override, pass it through
+    if (context._now) {
+      (args as Record<string, unknown>)._now = context._now;
+    }
+    const result = await spec.execute(context, args);
+    // Flatten ToolResult → simpler format expected by agent loop
+    return { success: result.success, data: result.data, error: result.error };
+  }
+  // Fall back to legacy executor
+  return legacyExecuteTool(toolName, args, context);
+}
 
 const MAX_TOOL_CALLS = 5;
 const AGENT_TIMEOUT_MS = 30000;
@@ -21,10 +49,8 @@ interface CapabilityDefinition {
   id: string;
   name: string;
   description: string;
-  /** Tool categories this capability enables */
-  categories: ToolCategory[];
-  /** Additional tool names to include */
-  extraTools?: string[];
+  /** Explicit list of tool names this capability enables */
+  tools: string[];
   /** System prompt segment to append */
   systemPromptSegment: string;
 }
@@ -41,7 +67,11 @@ defineCapability({
   id: "analytics",
   name: "Spending Analytics",
   description: "Analyze transaction data, spending patterns, categories, and merchants",
-  categories: ["analytics", "system"],
+  tools: [
+    "get_data_bounds", "get_overview", "get_category_breakdown",
+    "get_merchant_breakdown", "get_anomalies", "list_transactions",
+    "reference_previous", "compare_results", "ask_clarification"
+  ],
   systemPromptSegment: `
 ## Spending Analytics
 - General spending questions \u2192 get_overview (with specific dates if mentioned)
@@ -57,7 +87,11 @@ defineCapability({
   id: "subscriptions",
   name: "Subscriptions & Recurring Charges",
   description: "Track subscriptions, recurring bills, and detect recurring spending patterns",
-  categories: ["subscriptions"],
+  tools: [
+    "list_recurring_rules", "list_recurring_suggestions",
+    "detect_recurring_patterns", "explain_recurring_rule",
+    "create_recurring_rule", "dismiss_recurring_suggestion"
+  ],
   systemPromptSegment: `
 ## Subscriptions & Recurring
 - "What subscriptions do I have?" \u2192 list_recurring_rules
@@ -73,7 +107,11 @@ defineCapability({
   id: "benefits",
   name: "Credit Card Benefits",
   description: "Track credit card rewards, benefit caps, annual fees, and find the best card to use",
-  categories: ["benefits"],
+  tools: [
+    "list_credit_cards", "get_card_benefits", "get_benefit_usage",
+    "get_best_card_for_category", "get_annual_fee_analysis",
+    "get_annual_credits", "save_card_benefit", "delete_card_benefit"
+  ],
   systemPromptSegment: `
 ## Credit Card Benefits
 - "What cards do I have?" \u2192 list_credit_cards
@@ -91,7 +129,10 @@ defineCapability({
   id: "budgeting",
   name: "Budgeting & Trends",
   description: "Track spending trends, compare to budget targets, and forecast recurring charges",
-  categories: ["budgeting"],
+  tools: [
+    "get_spending_trends", "get_recurring_forecast",
+    "get_budget_comparison", "save_budget_target"
+  ],
   systemPromptSegment: `
 ## Budgeting & Trends
 - "Am I spending more than before?" \u2192 get_spending_trends (month-over-month analysis)
@@ -109,23 +150,19 @@ const MODE_TO_CAPABILITIES: Record<string, string[]> = {
   import: []
 };
 
-/** Get the tool schemas and execute handlers for a set of capabilities */
+/** Get the tool schemas for a set of capabilities */
 function getCapabilityTools(capIds: string[]): ToolSpec[] {
   const names = new Set<string>();
-  const categories = new Set<ToolCategory>();
 
   for (const id of capIds) {
     const cap = CAPABILITIES.get(id);
     if (!cap) continue;
-    for (const cat of cap.categories) categories.add(cat);
-    if (cap.extraTools) for (const n of cap.extraTools) names.add(n);
+    for (const n of cap.tools) names.add(n);
   }
 
-  if (categories.size === 0 && names.size === 0) return [];
+  if (names.size === 0) return [];
 
-  return ALL_TOOLS.filter(
-    (t) => names.has(t.name) || categories.has(t.category)
-  );
+  return ALL_TOOLS.filter((t) => names.has(t.name));
 }
 
 /** Build combined system prompt from capabilities */
@@ -136,6 +173,12 @@ function buildCapabilitySystemPrompt(capIds: string[], existingPrompt: string): 
     .map((cap) => cap!.systemPromptSegment);
   if (segments.length === 0) return existingPrompt;
   return existingPrompt + "\n\n" + segments.join("\n");
+}
+
+/** Extend the context with date overrides for deterministic calculations */
+export interface ToolExecutionContextWithDate extends ToolExecutionContext {
+  /** Override "now" for deterministic date-relative calculations */
+  _now?: Date;
 }
 
 /** A recorded step in the agent's observable trace */
@@ -220,6 +263,13 @@ export interface AgentResult {
   model: string;
   latencyMs: number;
   error?: string;
+  /** Confirmation preview data */
+  confirmationPreview?: Record<string, unknown>;
+  pendingActionKey?: string;
+  /** Structured data for API response */
+  subscriptions?: Array<{ merchant: string; cadence: string; amount: number; nextDate?: string; status: string }>;
+  cardBenefits?: Array<{ cardName: string; benefitType: string; category?: string; rate: number; used: number; cap: number | null; remaining: number | null }>;
+  budgetComparison?: Array<{ category: string; actual: number; target: number | null; difference: number }>;
   /** Observable trace of the agent's execution. Only present when _collectTrace is true. */
   _trace?: TraceEntry[];
 }
@@ -353,6 +403,8 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
   }
 
   let toolCallsMade = 0;
+  // Accumulate structured data from tool results for the final response
+  const structuredData: Record<string, unknown> = {};
 
   // Resolve the LLM function to use (injected or default)
   const llmFn = input._runToolCallingLlmFn ?? runToolCallingLlm;
@@ -442,10 +494,16 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
           args = {};
         }
 
+        // Compute override date for deterministic calculations
+        const nowDate = input._overrideDate
+          ? new Date(input._overrideDate + "T12:00:00Z")
+          : undefined;
+
         const context: ToolExecutionContext = {
           userId,
           resultCache,
-          conversationId: input.conversationId
+          conversationId: input.conversationId,
+          _now: nowDate
         };
 
         const toolStart = Date.now();
@@ -513,6 +571,16 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         if (result.success && result.data && typeof result.data === "object") {
           const d = result.data as Record<string, unknown>;
           if (d._requiresConfirmation === true) {
+            // Store the pending action so we can replay it on confirmation
+            const { storePendingAction } = await import("./pending-actions.ts");
+            const pendingKey = storePendingAction(
+              userId,
+              input.conversationId || "",
+              toolCall.function.name,
+              args,
+              (d.preview as Record<string, unknown>) || {}
+            );
+
             const clarificationResult: AgentResult = {
               ok: true,
               clarification: {
@@ -525,10 +593,13 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
               latencyMs: Date.now() - startedAt
             };
             // Include preview data so the frontend can render it
-            if (d.preview) {
-              (clarificationResult as Record<string, unknown>).confirmationPreview = d.preview;
-            }
-            recordTrace({ turn, type: "terminal", terminalType: "clarification", terminalData: { confirmationQuestion: d.confirmationQuestion, preview: d.preview } });
+            (clarificationResult as Record<string, unknown>).confirmationPreview = d.preview;
+            // Store the pending key so the UI can pass it back
+            (clarificationResult as Record<string, unknown>).pendingActionKey = pendingKey;
+            recordTrace({
+              turn, type: "terminal", terminalType: "clarification",
+              terminalData: { confirmationQuestion: d.confirmationQuestion, preview: d.preview, pendingActionKey: pendingKey }
+            });
             if (_collectTrace) clarificationResult._trace = trace;
             return clarificationResult;
           }
@@ -538,6 +609,42 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         if (mode === "qa" && result.success) {
           const resultId = `result_${resultCache.size + 1}`;
           resultCache.set(resultId, result.data);
+        }
+
+        // Extract structured data for API response
+        if (result.success && result.data && typeof result.data === "object") {
+          const d = result.data as Record<string, unknown>;
+          // Subscriptions
+          if (toolCall.function.name === "list_recurring_rules" && d.items) {
+            structuredData.subscriptions = (d.items as Array<Record<string, unknown>>).map((item) => ({
+              merchant: item.name || item.merchant_pattern || "Unknown",
+              cadence: item.cadence || "",
+              amount: Math.abs(Number(item.amount) || 0),
+              nextDate: item.next_run_at || item.next_expected_date || undefined,
+              status: item.status || "active"
+            }));
+          }
+          // Card benefits
+          if (toolCall.function.name === "get_card_benefits" && d.benefits) {
+            structuredData.cardBenefits = (d.benefits as Array<Record<string, unknown>>).map((b) => ({
+              cardName: b.cardName || "",
+              benefitType: b.benefitType || "rate",
+              category: b.category || undefined,
+              rate: Number(b.rate) || 0,
+              used: Number(b.usedAmount) || 0,
+              cap: b.capAmount !== null ? Number(b.capAmount) : null,
+              remaining: b.remainingAmount !== null ? Number(b.remainingAmount) : null
+            }));
+          }
+          // Budget comparison
+          if (toolCall.function.name === "get_budget_comparison" && d.comparisons) {
+            structuredData.budgetComparison = (d.comparisons as Array<Record<string, unknown>>).map((c) => ({
+              category: c.category || "",
+              actual: Math.round(Number(c.actual) * 100) / 100,
+              target: c.target !== null ? Math.round(Number(c.target) * 100) / 100 : null,
+              difference: Math.round(Number(c.difference) * 100) / 100
+            }));
+          }
         }
 
         // Add tool result to messages (success or failure — LLM sees both)
@@ -567,6 +674,9 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
 
       const resultVal: AgentResult = {
         ok: true,
+        ...(structuredData.subscriptions ? { subscriptions: structuredData.subscriptions } : {}),
+        ...(structuredData.cardBenefits ? { cardBenefits: structuredData.cardBenefits } : {}),
+        ...(structuredData.budgetComparison ? { budgetComparison: structuredData.budgetComparison } : {}),
         ...parsed,
         toolCallsMade,
         provider: aiContext.provider,

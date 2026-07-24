@@ -18,6 +18,8 @@ export interface ToolExecutionContext {
   userId: string;
   conversationId?: string;
   resultCache?: Map<string, unknown>;
+  /** Override "now" for deterministic date-relative calculations */
+  _now?: Date;
 }
 
 export interface ToolResult {
@@ -435,6 +437,9 @@ function buildFiltersFromArgs(args: Record<string, unknown>): Record<string, unk
 
 /**
  * Get the list of available tools with their schemas.
+ *
+ * @deprecated Use ALL_TOOLS from tool-spec.ts instead. This function is kept
+ * for backward compatibility during migration.
  */
 export function getAvailableTools() {
   return [

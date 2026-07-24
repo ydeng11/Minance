@@ -142,7 +142,12 @@ export async function runAssistantQuery(
       confidence: 0.9,
       toolCallsMade: agentResult.toolCallsMade,
       agentLatencyMs: agentResult.latencyMs,
-      clarification: agentResult.clarification
+      clarification: agentResult.clarification,
+      confirmationPreview: agentResult.confirmationPreview,
+      pendingActionKey: agentResult.pendingActionKey,
+      subscriptions: agentResult.subscriptions,
+      cardBenefits: agentResult.cardBenefits,
+      budgetComparison: agentResult.budgetComparison
     },
     createdAt: nowFn()
   };

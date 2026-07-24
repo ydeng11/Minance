@@ -873,3 +873,135 @@ test("agent: recurring validates cadence", async () => {
   assert.equal(result.cadence, "monthly");
   assert.equal(result.toolCallsMade, 2);
 });
+
+test("agent: dispatches list_recurring_rules through ToolSpec", async () => {
+  const result = await runToolCallingAgent({
+    mode: "qa",
+    capabilities: ["analytics", "subscriptions"],
+    userId: "usr_fixture_001",
+    question: "What subscriptions do I have?",
+    _testAiContext: TEST_AI_CONTEXT,
+    _runToolCallingLlmFn: makeInjectedLlm([
+      {
+        toolCalls: [{ id: "call_1", name: "list_recurring_rules", arguments: "{}" }]
+      },
+      {
+        content: JSON.stringify({
+          answer: "You have 6 active subscriptions.",
+          highlights: ["Total: 6 subscriptions"],
+          drill_down_filters: {}
+        })
+      }
+    ]),
+    _collectTrace: true
+  });
+
+  assert.equal(result.ok, true);
+  assert.ok(result.answer, "Should have an answer");
+  assert.equal(result.toolCallsMade, 1);
+
+  // Verify trace shows tool execution
+  const toolExecutions = (result._trace || []).filter((e) => e.type === "tool_execution");
+  assert.equal(toolExecutions.length, 1);
+  assert.equal(toolExecutions[0].toolName, "list_recurring_rules");
+  assert.ok(toolExecutions[0].toolSuccess, "Tool should succeed");
+});
+
+test("agent: dispatches get_benefit_usage through ToolSpec", async () => {
+  const result = await runToolCallingAgent({
+    mode: "qa",
+    capabilities: ["analytics", "benefits"],
+    userId: "usr_fixture_001",
+    question: "How much dining cashback have I used?",
+    _testAiContext: TEST_AI_CONTEXT,
+    _runToolCallingLlmFn: makeInjectedLlm([
+      {
+        toolCalls: [{
+          id: "call_1",
+          name: "get_benefit_usage",
+          arguments: JSON.stringify({ benefit_id: "cbnf_dining_chase" })
+        }]
+      },
+      {
+        content: JSON.stringify({
+          answer: "You've used $150 of your $300 dining cap.",
+          highlights: ["Dining cap: $300"],
+          drill_down_filters: {}
+        })
+      }
+    ]),
+    _collectTrace: true
+  });
+
+  assert.equal(result.ok, true);
+  const toolExecutions = (result._trace || []).filter((e) => e.type === "tool_execution");
+  assert.equal(toolExecutions.length, 1);
+  assert.equal(toolExecutions[0].toolName, "get_benefit_usage");
+});
+
+test("agent: dispatches get_budget_comparison through ToolSpec", async () => {
+  const result = await runToolCallingAgent({
+    mode: "qa",
+    capabilities: ["analytics", "budgeting"],
+    userId: "usr_fixture_001",
+    question: "How am I doing against my budget?",
+    _testAiContext: TEST_AI_CONTEXT,
+    _runToolCallingLlmFn: makeInjectedLlm([
+      {
+        toolCalls: [{
+          id: "call_1",
+          name: "get_budget_comparison",
+          arguments: JSON.stringify({ month: "2026-06" })
+        }]
+      },
+      {
+        content: JSON.stringify({
+          answer: "Here's your budget comparison for June.",
+          highlights: ["Budget data"],
+          drill_down_filters: {}
+        })
+      }
+    ]),
+    _collectTrace: true
+  });
+
+  assert.equal(result.ok, true);
+  const toolExecutions = (result._trace || []).filter((e) => e.type === "tool_execution");
+  assert.equal(toolExecutions.length, 1);
+  assert.equal(toolExecutions[0].toolName, "get_budget_comparison");
+});
+
+test("agent: new tool with unknown name reports error to LLM", async () => {
+  const result = await runToolCallingAgent({
+    mode: "qa",
+    capabilities: ["analytics"],
+    userId: "user_123",
+    question: "test",
+    _testAiContext: TEST_AI_CONTEXT,
+    _runToolCallingLlmFn: makeInjectedLlm([
+      {
+        toolCalls: [{
+          id: "call_1",
+          name: "nonexistent_tool_xyz",
+          arguments: "{}"
+        }]
+      },
+      {
+        content: JSON.stringify({
+          answer: "The tool failed.",
+          highlights: [],
+          drill_down_filters: {}
+        })
+      }
+    ]),
+    _collectTrace: true
+  });
+
+  // Agent should continue after error and produce an answer
+  assert.equal(result.ok, true);
+  // The LLM should have received the error and responded
+  assert.ok(result.answer, "Should produce an answer even after tool error");
+  const toolExecutions = (result._trace || []).filter((e) => e.type === "tool_execution");
+  assert.equal(toolExecutions.length, 1);
+  assert.equal(toolExecutions[0].toolSuccess, false, "Unknown tool should fail");
+});

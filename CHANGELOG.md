@@ -27,9 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (analytics, subscriptions, benefits, budgeting) registers its tools, system prompt segments,
   and category tags independently. All modes are backward compatible.
 
-- **ToolSpec**: Consolidated from duplicate definitions in `tools.ts` and `tool-executor.ts`
-  into a single `ToolSpec` source of truth with unified schema, execute handler, access level,
-  confirmation policy, and category.
+- **ToolSpec**: Created `tool-spec.ts` as single source of truth with unified schema, execute
+  handler, access level, confirmation policy, and category. `tools.ts` now derives its exports
+  from `ALL_TOOLS`. `tool-executor.ts::getAvailableTools()` retained as deprecated fallback.
 
 ### Added
 

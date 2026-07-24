@@ -143,12 +143,13 @@ export function resetBenefitsStore(): void {
  */
 export async function calculateBenefitUsage(
   userId: string,
-  benefit: CardBenefit
+  benefit: CardBenefit,
+  nowOverride?: Date
 ): Promise<BenefitUsage> {
   const { filterUserTransactions } = await import("../analytics.ts");
 
   // Determine the calculation period
-  const now = new Date();
+  const now = nowOverride || new Date();
   let periodStart: Date;
   let periodEnd: Date = now;
 
@@ -175,7 +176,9 @@ export async function calculateBenefitUsage(
   if (benefit.category) filters.category = benefit.category;
   if (benefit.merchant) filters.merchant = benefit.merchant;
 
-  const transactions = filterUserTransactions(userId, filters);
+  // Filter by the specific account as well
+  const accountFilters: Record<string, unknown> = { ...filters, account: benefit.accountId };
+  const transactions = filterUserTransactions(userId, accountFilters);
   const usedAmount = transactions.reduce(
     (sum: number, t: { amount: number }) => sum + Math.abs(Number(t.amount) || 0),
     0
@@ -211,7 +214,8 @@ export async function calculateBenefitUsage(
 export async function getBestCardForCategory(
   userId: string,
   category: string,
-  spendAmount: number = 0
+  spendAmount: number = 0,
+  nowOverride?: Date
 ): Promise<
   Array<{
     accountId: string;
@@ -230,15 +234,17 @@ export async function getBestCardForCategory(
 
   const results = [];
   for (const benefit of benefits) {
-    const usage = await calculateBenefitUsage(userId, benefit);
+    const usage = await calculateBenefitUsage(userId, benefit, nowOverride);
 
     // Calculate what this spend would earn
+    // rate 3 means 3% = spend * 0.03
+    const rateDecimal = benefit.rate / 100;
     const spendAfterCap = usage.remainingAmount !== null
       ? Math.min(spendAmount, usage.remainingAmount)
       : spendAmount;
 
-    const estimatedReward = Math.round(spendAmount * benefit.rate * 100) / 100;
-    const estimatedRewardAfterSpend = Math.round(spendAfterCap * benefit.rate * 100) / 100;
+    const estimatedReward = Math.round(spendAmount * rateDecimal * 100) / 100;
+    const estimatedRewardAfterSpend = Math.round(spendAfterCap * rateDecimal * 100) / 100;
 
     results.push({
       accountId: benefit.accountId,
@@ -252,11 +258,11 @@ export async function getBestCardForCategory(
     });
   }
 
-  // Sort by: remaining benefit (high to low), then rate (high to low)
+  // Sort by: marginal reward for the proposed spend (highest first),
+  // then by rate (highest first) as tiebreaker.
   results.sort((a, b) => {
-    const remainingA = a.remainingAmount ?? Infinity;
-    const remainingB = b.remainingAmount ?? Infinity;
-    if (remainingB !== remainingA) return remainingB - remainingA;
+    const rewardDiff = b.estimatedRewardAfterSpend - a.estimatedRewardAfterSpend;
+    if (rewardDiff !== 0) return rewardDiff;
     return b.rate - a.rate;
   });
 
@@ -269,7 +275,8 @@ export async function getBestCardForCategory(
  */
 export async function getAnnualFeeAnalysis(
   userId: string,
-  benefit: CardBenefit
+  benefit: CardBenefit,
+  nowOverride?: Date
 ): Promise<{
   annualFee: number;
   totalRewardsEarned: number;
@@ -281,7 +288,7 @@ export async function getAnnualFeeAnalysis(
   const { filterUserTransactions } = await import("../analytics.ts");
 
   // Look back 12 months
-  const now = new Date();
+  const now = nowOverride || new Date();
   const start = new Date(now);
   start.setFullYear(start.getFullYear() - 1);
 
@@ -307,10 +314,18 @@ export async function getAnnualFeeAnalysis(
     );
 
     if (spend > 0) {
+      // Filter by account
+      const acctFilters: Record<string, unknown> = { ...filters, account: benefit.accountId };
+      const acctTransactions = filterUserTransactions(userId, acctFilters);
+      const acctSpend = acctTransactions.reduce(
+        (sum: number, t: { amount: number }) => sum + Math.abs(Number(t.amount) || 0),
+        0
+      );
       // Apply cap if applicable
-      const effectiveSpend = benefit.capAmount !== null ? Math.min(spend, benefit.capAmount) : spend;
-      const reward = Math.round(effectiveSpend * benefit.rate * 100) / 100;
-      breakdown.push({ category: cat, spend: Math.round(spend * 100) / 100, reward });
+      const rateDecimal = benefit.rate / 100;
+      const effectiveSpend = benefit.capAmount !== null ? Math.min(acctSpend, benefit.capAmount) : acctSpend;
+      const reward = Math.round(effectiveSpend * rateDecimal * 100) / 100;
+      breakdown.push({ category: cat, spend: Math.round(acctSpend * 100) / 100, reward });
       totalRewardsEarned += reward;
     }
   }

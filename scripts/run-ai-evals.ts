@@ -483,12 +483,15 @@ async function main() {
       console.log(`[EVAL] Seeded ${evalFixtureData.cardBenefits.length} card benefits`);
     }
 
-    // Seed budget targets in store
+    // Seed budget targets in store (user-scoped)
     if (evalFixtureData.budgetTargets) {
       const { loadStore, saveStore } = await import("../services/api/src/store.ts");
-      const store = loadStore();
-      (store as Record<string, unknown>).budgetTargets = evalFixtureData.budgetTargets;
-      saveStore(store);
+      const store = loadStore() as Record<string, unknown>;
+      if (!store.budgetTargetsByUser) {
+        store.budgetTargetsByUser = {};
+      }
+      (store.budgetTargetsByUser as Record<string, Record<string, number>>)[FIXTURE_USER_ID] = evalFixtureData.budgetTargets;
+      saveStore(store as never);
       const targetCount = Object.keys(evalFixtureData.budgetTargets).length;
       console.log(`[EVAL] Seeded ${targetCount} budget targets`);
     }

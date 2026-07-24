@@ -15,6 +15,8 @@ export interface ToolExecutionContext {
   userId: string;
   conversationId?: string;
   resultCache?: Map<string, unknown>;
+  /** Override "now" for deterministic date-relative calculations */
+  _now?: Date;
 }
 
 export interface ToolResult {
@@ -74,6 +76,13 @@ export function normalizeDateArgs(args: Record<string, unknown>): Record<string,
   if (n.start && typeof n.start !== "string") n.start = String(n.start);
   if (n.end && typeof n.end !== "string") n.end = String(n.end);
   return n;
+}
+
+/**
+ * Get the effective "now" date. Uses context override if available.
+ */
+export function getEffectiveNow(ctx: ToolExecutionContext): Date {
+  return ctx._now || new Date();
 }
 
 // ---------------------------------------------------------------------------
@@ -457,7 +466,7 @@ export const T_GET_MERCHANT_TRANSACTIONS_6_MONTHS = register({
   execute: async (ctx, args) => {
     const merchant = args.merchant as string | undefined;
     if (!merchant) throw new Error("merchant parameter is required");
-    const now = new Date();
+    const now = getEffectiveNow(ctx);
     const end = now.toISOString().substring(0, 10);
     const startDate = new Date(now);
     startDate.setMonth(startDate.getMonth() - 6);
@@ -611,7 +620,7 @@ export const T_DETECT_RECURRING_PATTERNS = register({
   execute: async (ctx, args) => {
     const merchant = args.merchant as string | undefined;
     const { filterUserTransactions } = await import("../analytics.ts");
-    const now = new Date();
+    const now = getEffectiveNow(ctx);
     const end = now.toISOString().substring(0, 10);
     const startDate = new Date(now);
     startDate.setMonth(startDate.getMonth() - 6);
@@ -757,7 +766,7 @@ export const T_EXPLAIN_RECURRING_RULE = register({
     }
 
     // Get recent transactions for this merchant
-    const now = new Date();
+    const now = getEffectiveNow(ctx);
     const lookback = new Date(now);
     lookback.setMonth(lookback.getMonth() - 6);
     const recentTxns = filterUserTransactions(ctx.userId, {
@@ -1036,7 +1045,7 @@ export const T_GET_BENEFIT_USAGE = register({
     const { getBenefit, calculateBenefitUsage } = await import("./benefits-store.ts");
     const benefit = getBenefit(ctx.userId, benefitId);
     if (!benefit) return { success: false, error: "Benefit not found" };
-    const usage = await calculateBenefitUsage(ctx.userId, benefit);
+    const usage = await calculateBenefitUsage(ctx.userId, benefit, ctx._now);
     return { success: true, data: usage };
   }
 });
@@ -1068,7 +1077,7 @@ export const T_GET_BEST_CARD_FOR_CATEGORY = register({
     if (!category) return { success: false, error: "category is required" };
     const spendAmount = Number(args.spend_amount) || 0;
     const { getBestCardForCategory } = await import("./benefits-store.ts");
-    const results = await getBestCardForCategory(ctx.userId, category, spendAmount);
+    const results = await getBestCardForCategory(ctx.userId, category, spendAmount, ctx._now);
     return { success: true, data: { category, recommendations: results } };
   }
 });
@@ -1100,7 +1109,7 @@ export const T_GET_ANNUAL_FEE_ANALYSIS = register({
     const { getBenefit, getAnnualFeeAnalysis } = await import("./benefits-store.ts");
     const benefit = getBenefit(ctx.userId, benefitId);
     if (!benefit) return { success: false, error: "Benefit not found" };
-    const analysis = await getAnnualFeeAnalysis(ctx.userId, benefit);
+    const analysis = await getAnnualFeeAnalysis(ctx.userId, benefit, ctx._now);
     return { success: true, data: analysis };
   }
 });
@@ -1340,7 +1349,7 @@ export const T_GET_SPENDING_TRENDS = register({
     const monthsCount = Math.min(Math.max(Number(args.months) || 6, 2), 24);
     const { filterUserTransactions } = await import("../analytics.ts");
 
-    const now = new Date();
+    const now = getEffectiveNow(ctx);
     const end = now.toISOString().substring(0, 10);
     const startDate = new Date(now);
     startDate.setMonth(startDate.getMonth() - monthsCount);
@@ -1446,7 +1455,7 @@ export const T_GET_RECURRING_FORECAST = register({
       };
     }
 
-    const now = new Date();
+    const now = getEffectiveNow(ctx);
     const startDate = args.start_date ? new Date(String(args.start_date)) : now;
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + monthsAhead);
@@ -1539,7 +1548,7 @@ export const T_GET_BUDGET_COMPARISON = register({
     const { listCategories } = await import("../categories.ts");
 
     // Determine analysis period
-    const now = new Date();
+    const now = getEffectiveNow(ctx);
     let targetMonth: string;
     if (args.month && typeof args.month === "string") {
       targetMonth = args.month.substring(0, 7);
@@ -1554,13 +1563,11 @@ export const T_GET_BUDGET_COMPARISON = register({
     // Get all categories for the user
     const categories = listCategories(ctx.userId);
 
-    // Get budget targets from user store
+    // Get budget targets (user-scoped)
     const { loadStore } = await import("../store.ts");
-    const store = loadStore();
-    const budgetTargets: Record<string, number> =
-      (store as Record<string, unknown>).budgetTargets as Record<string, number> ||
-      (store as Record<string, unknown>).budget_targets as Record<string, number> ||
-      {};
+    const store = loadStore() as Record<string, unknown>;
+    const allTargets = (store.budgetTargetsByUser as Record<string, Record<string, number>>) || {};
+    const budgetTargets: Record<string, number> = allTargets[ctx.userId] || {};
 
     // Get spending by category
     const filters: Record<string, unknown> = { start, end, include_excluded: false };
@@ -1665,15 +1672,18 @@ export const T_SAVE_BUDGET_TARGET = register({
       };
     }
 
-    // Execute: save the budget target
+    // Execute: save the budget target (user-scoped)
     const { loadStore, saveStore } = await import("../store.ts");
-    const store = loadStore();
-    if (!(store as Record<string, unknown>).budgetTargets) {
-      (store as Record<string, unknown>).budgetTargets = {};
+    const store = loadStore() as Record<string, unknown>;
+    if (!store.budgetTargetsByUser) {
+      store.budgetTargetsByUser = {};
     }
-    const targets = (store as Record<string, unknown>).budgetTargets as Record<string, number>;
-    targets[category] = Math.round(amount * 100) / 100;
-    saveStore(store);
+    const userTargets = (store.budgetTargetsByUser as Record<string, Record<string, number>>);
+    if (!userTargets[ctx.userId]) {
+      userTargets[ctx.userId] = {};
+    }
+    userTargets[ctx.userId][category] = Math.round(amount * 100) / 100;
+    saveStore(store as never);
 
     return {
       success: true,
