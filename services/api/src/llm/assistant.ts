@@ -21,7 +21,9 @@ export async function synthesizeAssistantAnswerWithLlm({
   userId,
   question,
   plan,
-  deterministicResult
+  deterministicResult,
+  requireAiFeatureFn = requireAiFeature,
+  runStructuredLlmFn = runStructuredLlm
 }) {
   if (!AI_LLM_ASSISTANT_SYNTHESIS_ENABLED) {
     return { ok: false, reason: "disabled" };
@@ -29,7 +31,7 @@ export async function synthesizeAssistantAnswerWithLlm({
 
   let aiContext = null;
   try {
-    aiContext = requireAiFeature(userId, "assistant");
+    aiContext = requireAiFeatureFn(userId, "assistant");
   } catch {
     return { ok: false, reason: "no_ai_setup" };
   }
@@ -44,7 +46,7 @@ export async function synthesizeAssistantAnswerWithLlm({
     deterministicResult
   });
 
-  const llm = await runStructuredLlm({
+  const llm = await runStructuredLlmFn({
     provider: aiContext.provider,
     apiKey: aiContext.apiKey,
     model: aiContext.model,

@@ -1,0 +1,166 @@
+[
+  {
+    "id": "spend-last-month",
+    "description": "User asks about total spending last month",
+    "prompts": [
+      "How much did I spend last month?",
+      "What were my total expenses for last month?",
+      "What did I spend last month?"
+    ],
+    "recommendedTools": ["get_overview"],
+    "reasonableTools": ["get_data_bounds", "get_category_breakdown", "get_merchant_breakdown"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "answerHasNumericTotal": 1.0,
+      "highlightsIncludeTotal": 0.6,
+      "drillDownFiltersPresent": 0.6,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.7
+  },
+  {
+    "id": "spend-specific-category",
+    "description": "User asks about spending in a specific category",
+    "prompts": [
+      "How much did I spend on dining?",
+      "What were my dining expenses?",
+      "How much did I spend eating out?",
+      "Show me my restaurant spending"
+    ],
+    "recommendedTools": ["get_overview", "get_category_breakdown"],
+    "reasonableTools": ["get_data_bounds", "get_merchant_breakdown", "ask_clarification"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "answerHasNumericTotal": 1.0,
+      "categoryMentioned": 0.8,
+      "highlightsPresent": 0.5,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.6
+  },
+  {
+    "id": "top-categories",
+    "description": "User asks about top spending categories",
+    "prompts": [
+      "What did I spend the most on?",
+      "What are my top spending categories?",
+      "Where does my money go?",
+      "Show me my biggest expenses"
+    ],
+    "recommendedTools": ["get_category_breakdown"],
+    "reasonableTools": ["get_data_bounds", "get_overview"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "topCategoriesListed": 1.0,
+      "answerHasNumericValues": 1.0,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.6
+  },
+  {
+    "id": "spend-specific-merchant",
+    "description": "User asks about spending at a specific merchant",
+    "prompts": [
+      "How much did I spend at green market?",
+      "What did I buy at green market?",
+      "Show me my green market spending"
+    ],
+    "recommendedTools": ["list_transactions", "get_overview", "get_merchant_breakdown"],
+    "reasonableTools": ["get_data_bounds", "get_category_breakdown"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "answerHasNumericValues": 1.0,
+      "merchantMentioned": 0.8,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.6
+  },
+  {
+    "id": "anomalies",
+    "description": "User asks about unusual transactions",
+    "prompts": [
+      "Any unusual transactions?",
+      "Show me anomalous spending",
+      "What transactions look suspicious?"
+    ],
+    "recommendedTools": ["get_anomalies"],
+    "reasonableTools": ["get_data_bounds", "get_overview", "list_transactions", "get_category_breakdown"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "anomaliesListed": 1.0,
+      "answerHasNumericValues": 0.5,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.5
+  },
+  {
+    "id": "ambiguous-time-clarification",
+    "description": "User asks a question that's ambiguous about time period",
+    "prompts": [
+      "How much did I spend?",
+      "What did I spend my money on?",
+      "Tell me about my spending"
+    ],
+    "recommendedTools": ["get_overview", "get_category_breakdown"],
+    "reasonableTools": ["get_data_bounds", "ask_clarification", "get_merchant_breakdown", "get_anomalies"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "answerHasNumericValues": 1.0,
+      "dataRangeMentioned": 0.7,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.6
+  },
+  {
+    "id": "multi-turn-followup",
+    "description": "User asks a follow-up question referencing previous results",
+    "prompts": [
+      "How much did I spend last month?",
+      "What about on dining specifically?"
+    ],
+    "recommendedTools": ["get_overview", "get_category_breakdown"],
+    "reasonableTools": ["get_data_bounds", "get_merchant_breakdown"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 6,
+    "toolCallsMax": 5,
+    "judgeRubric": {
+      "previousResultReferenced": 1.0,
+      "answerHasNumericValues": 1.0,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.6,
+    "isMultiTurn": true
+  },
+  {
+    "id": "compare-periods",
+    "description": "User asks to compare two time periods",
+    "prompts": [
+      "Compare this month to last month",
+      "How did my spending change from last month?",
+      "This month vs last month spending"
+    ],
+    "recommendedTools": ["get_overview", "compare_results"],
+    "reasonableTools": ["get_data_bounds", "get_category_breakdown", "get_merchant_breakdown", "reference_previous"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 6,
+    "toolCallsMax": 5,
+    "judgeRubric": {
+      "comparisonMade": 1.0,
+      "answerHasNumericValues": 1.0,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.6
+  }
+]

@@ -726,3 +726,224 @@ test("get_overview with range parameter", async () => {
   assert.equal(result.success, true);
   assert.ok(result.data?.meta?.appliedRange);
 });
+
+// ============================================================================
+// Edge case tests
+// ============================================================================
+
+test("get_merchant_history with no matching transactions returns empty history", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const result = await executeTool(
+    "get_merchant_history",
+    { merchant: "nonexistent_merchant_xyz", start: "2026-01-01", end: "2026-01-31" },
+    { userId: "user_1" }
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.merchant, "nonexistent_merchant_xyz");
+  assert.ok(Array.isArray(result.data?.history));
+  assert.equal(result.data?.history.length, 0);
+  assert.equal(result.data?.totalAmount, 0);
+  assert.equal(result.data?.totalTransactions, 0);
+});
+
+test("get_merchant_transactions_6_months with no matching merchant returns empty", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const result = await executeTool(
+    "get_merchant_transactions_6_months",
+    { merchant: "nonexistent_merchant_xyz" },
+    { userId: "user_1" }
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.merchant, "nonexistent_merchant_xyz");
+  assert.ok(Array.isArray(result.data?.transactions));
+  assert.equal(result.data?.transactions.length, 0);
+  assert.equal(result.data?.summary?.totalAmount, 0);
+});
+
+test("compare_results with missing cache entries returns error", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const result = await executeTool(
+    "compare_results",
+    { result_id_a: "nonexistent_a", result_id_b: "nonexistent_b" },
+    { userId: "user_1" }
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.compared, false);
+  assert.ok(result.data?.error, "Should have error message");
+  assert.ok(Array.isArray(result.data?.availableKeys), "Should return available keys");
+});
+
+test("compare_results with only one missing cache entry", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const context = {
+    userId: "user_1",
+    resultCache: new Map([["result_1", { total: 500 }]])
+  };
+
+  const result = await executeTool(
+    "compare_results",
+    { result_id_a: "result_1", result_id_b: "nonexistent_b" },
+    context
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.compared, false);
+  assert.ok(result.data?.error, "Should have error");
+});
+
+test("compare_results with valid cache entries returns comparison", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const context = {
+    userId: "user_1",
+    resultCache: new Map([
+      ["result_1", { totalAmount: 500, categories: [{ category: "Food", amount: 200 }] }],
+      ["result_2", { totalAmount: 300, categories: [{ category: "Food", amount: 150 }] }]
+    ])
+  };
+
+  const result = await executeTool(
+    "compare_results",
+    { result_id_a: "result_1", result_id_b: "result_2" },
+    context
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.compared, true);
+  assert.ok(result.data?.comparison, "Should have comparison data");
+  assert.ok(result.data?.comparison?.totalAmountA !== undefined, "Should have totalAmountA");
+  assert.ok(result.data?.comparison?.totalAmountB !== undefined, "Should have totalAmountB");
+  // Category comparison
+  assert.ok(Array.isArray(result.data?.comparison?.categoryComparison));
+});
+
+test("reference_previous with key takes precedence over result_id", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const context = {
+    userId: "user_1",
+    resultCache: new Map([
+      ["key_result", { data: "from_key" }],
+      ["id_result", { data: "from_id" }]
+    ])
+  };
+
+  // Both key and result_id are provided
+  const result = await executeTool(
+    "reference_previous",
+    { key: "key_result", result_id: "id_result" },
+    context
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.key, "key_result");
+  assert.ok(result.data?.data, "Should have cached data");
+  assert.equal(result.data?.data?.data, "from_key");
+});
+
+test("all tools with empty args do not throw", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const toolNames = [
+    "get_data_bounds",
+    "get_overview",
+    "get_category_breakdown",
+    "get_merchant_breakdown",
+    "get_anomalies",
+    "list_transactions",
+    "get_categories"
+  ];
+
+  for (const toolName of toolNames) {
+    const result = await executeTool(toolName, {}, { userId: "user_1" });
+    assert.equal(result.success, true, `${toolName} with empty args should not throw`);
+  }
+});
+
+test("all tools with unexpected extra args do not throw", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const toolNames = [
+    "get_data_bounds",
+    "get_overview",
+    "get_category_breakdown",
+    "get_merchant_breakdown",
+    "get_anomalies",
+    "list_transactions",
+    "get_categories"
+  ];
+
+  for (const toolName of toolNames) {
+    const result = await executeTool(
+      toolName,
+      { unexpected_param: "value", another_extra: 123, nested: { key: "val" } },
+      { userId: "user_1" }
+    );
+    assert.equal(result.success, true, `${toolName} with extra args should not throw`);
+  }
+});
+
+test("list_transactions with limit=0 returns default limit items", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const result = await executeTool(
+    "list_transactions",
+    { start: "2026-01-01", end: "2026-01-31", limit: 0 },
+    { userId: "user_1" }
+  );
+
+  assert.equal(result.success, true);
+  assert.ok(Array.isArray(result.data?.items));
+  // limit=0 is handled as "no limit" by the transaction listing, returning all items
+  // This is existing behavior -- the test documents it
+  assert.ok(result.data?.items.length >= 3, "Should return all matching transactions when limit is 0");
+  assert.equal(result.data?.total, 3);
+});
+
+test("list_transactions with limit=1 returns single item", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const result = await executeTool(
+    "list_transactions",
+    { start: "2026-01-01", end: "2026-01-31", limit: 1 },
+    { userId: "user_1" }
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.items.length, 1);
+  assert.equal(result.data?.total, 3); // total unaffected by limit
+});
+
+test("get_data_bounds returns correct count for user with no transactions", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  // User with no transactions
+  const result = await executeTool("get_data_bounds", {}, { userId: "user_with_none" });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.count, 0, "Should have 0 transactions");
+  assert.equal(result.data?.start, null, "Start should be null");
+  assert.equal(result.data?.end, null, "End should be null");
+});
+
+test("ask_clarification with no options returns null options", async () => {
+  resetStoreForTests(structuredClone(baseStore));
+
+  const result = await executeTool(
+    "ask_clarification",
+    { question: "What period?" },
+    { userId: "user_1" }
+  );
+
+  assert.equal(result.success, true);
+  assert.equal(result.data?.needsClarification, true);
+  assert.equal(result.data?.question, "What period?");
+  assert.equal(result.data?.options, null);
+});

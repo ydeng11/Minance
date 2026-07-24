@@ -7,9 +7,26 @@ import { TOOLS_BY_MODE, type AgentMode } from "./tools.ts";
 import { executeTool, type ToolExecutionContext } from "./tool-executor.ts";
 import { defaultConversationStore, type ConversationSession } from "./conversation-store.ts";
 import { createId, nowIso } from "../utils.ts";
+import { DEFAULT_CATEGORIES } from "../../../../packages/domain/src/constants.ts";
 
 const MAX_TOOL_CALLS = 5;
 const AGENT_TIMEOUT_MS = 30000;
+
+/** A recorded step in the agent's observable trace */
+export interface TraceEntry {
+  turn: number;
+  type: "llm_call" | "tool_execution" | "terminal";
+  toolName?: string;
+  toolArgs?: Record<string, unknown>;
+  toolSuccess?: boolean;
+  toolError?: string;
+  llmError?: string;
+  latencyMs?: number;
+  llmContent?: string;
+  llmToolCalls?: Array<{ name: string; args?: string }>;
+  terminalType?: "final" | "clarification" | "error" | "timeout" | "max_calls";
+  terminalData?: unknown;
+}
 
 export interface AgentInput {
   mode: AgentMode;
@@ -35,6 +52,12 @@ export interface AgentInput {
     model: string;
     apiKey: string;
   };
+  /** Optional injected LLM function (avoids global fetch for testing) */
+  _runToolCallingLlmFn?: typeof runToolCallingLlm;
+  /** When true, populates _trace with observable turn/action records */
+  _collectTrace?: boolean;
+  /** Override "today" date (YYYY-MM-DD) for reproducible date-relative evals */
+  _overrideDate?: string;
 }
 
 export interface AgentResult {
@@ -68,15 +91,23 @@ export interface AgentResult {
   model: string;
   latencyMs: number;
   error?: string;
+  /** Observable trace of the agent's execution. Only present when _collectTrace is true. */
+  _trace?: TraceEntry[];
 }
 
 export async function runToolCallingAgent(input: AgentInput): Promise<AgentResult> {
   const startedAt = Date.now();
-  const { mode, userId } = input;
+  const { mode, userId, _collectTrace } = input;
+  const trace: TraceEntry[] = [];
+  let turn = 0;
+
+  const recordTrace = (entry: TraceEntry) => {
+    if (_collectTrace) trace.push(entry);
+  };
 
   // Check feature flag
   if (!AI_TOOL_CALLING_AGENT_ENABLED) {
-    return {
+    const result: AgentResult = {
       ok: false,
       error: "Tool-calling agent is disabled",
       toolCallsMade: 0,
@@ -84,6 +115,8 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
       model: "none",
       latencyMs: Date.now() - startedAt
     };
+    if (_collectTrace) result._trace = trace;
+    return result;
   }
 
   // Resolve AI provider (use injected context for testing, otherwise resolve from store)
@@ -94,7 +127,7 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
     try {
       aiContext = requireAiFeature(userId, mode === "qa" ? "assistant" : "categorization");
     } catch {
-      return {
+      const result: AgentResult = {
         ok: false,
         error: "AI setup required",
         toolCallsMade: 0,
@@ -102,13 +135,15 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         model: "none",
         latencyMs: Date.now() - startedAt
       };
+      if (_collectTrace) result._trace = trace;
+      return result;
     }
   }
 
   // Get tools for this mode
   const tools = TOOLS_BY_MODE[mode];
   if (!tools) {
-    return {
+    const result: AgentResult = {
       ok: false,
       error: `Unknown mode: ${mode}`,
       toolCallsMade: 0,
@@ -116,6 +151,8 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
       model: aiContext.model,
       latencyMs: Date.now() - startedAt
     };
+    if (_collectTrace) result._trace = trace;
+    return result;
   }
 
   // Build system prompt for this mode
@@ -173,11 +210,14 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
 
   let toolCallsMade = 0;
 
+  // Resolve the LLM function to use (injected or default)
+  const llmFn = input._runToolCallingLlmFn ?? runToolCallingLlm;
+
   // Agent loop
   while (toolCallsMade < MAX_TOOL_CALLS) {
     // Check timeout
     if (Date.now() - startedAt > AGENT_TIMEOUT_MS) {
-      return {
+      const result: AgentResult = {
         ok: false,
         error: "Agent timeout",
         toolCallsMade,
@@ -185,10 +225,15 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         model: aiContext.model,
         latencyMs: Date.now() - startedAt
       };
+      recordTrace({ turn, type: "terminal", terminalType: "timeout" });
+      if (_collectTrace) result._trace = trace;
+      return result;
     }
 
+    turn++;
+
     // Call LLM with tools
-    const response = await runToolCallingLlm({
+    const response = await llmFn({
       provider: aiContext.provider,
       apiKey: aiContext.apiKey,
       model: aiContext.model,
@@ -197,7 +242,7 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
     });
 
     if (!response.ok) {
-      return {
+      const result: AgentResult = {
         ok: false,
         error: response.error || "LLM request failed",
         toolCallsMade,
@@ -205,7 +250,19 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         model: aiContext.model,
         latencyMs: Date.now() - startedAt
       };
+      recordTrace({ turn, type: "llm_call", latencyMs: response.latencyMs, toolName: undefined, llmError: response.error });
+      if (_collectTrace) result._trace = trace;
+      return result;
     }
+
+    recordTrace({
+      turn,
+      type: "llm_call",
+      latencyMs: response.latencyMs,
+      llmContent: response.content ?? undefined,
+      llmToolCalls: response.toolCalls?.map(tc => ({ name: tc.function.name, args: tc.function.arguments }))
+    });
+
     // Check if LLM wants to call tools
     if (response.toolCalls && response.toolCalls.length > 0) {
       // Add assistant message with tool calls
@@ -215,9 +272,24 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         toolCalls: response.toolCalls
       });
 
-      // Execute each tool call
+      // Execute each tool call — each counts toward MAX_TOOL_CALLS
       for (const toolCall of response.toolCalls) {
         toolCallsMade++;
+
+        // Check if we've exceeded the limit mid-batch
+        if (toolCallsMade > MAX_TOOL_CALLS) {
+          const result: AgentResult = {
+            ok: false,
+            error: "Maximum tool calls exceeded",
+            toolCallsMade,
+            provider: aiContext.provider,
+            model: aiContext.model,
+            latencyMs: Date.now() - startedAt
+          };
+          recordTrace({ turn, type: "terminal", terminalType: "max_calls" });
+          if (_collectTrace) result._trace = trace;
+          return result;
+        }
 
         let args: Record<string, unknown>;
         try {
@@ -232,12 +304,24 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
           conversationId: input.conversationId
         };
 
+        const toolStart = Date.now();
         const result = await executeTool(toolCall.function.name, args, context);
+        const toolLatency = Date.now() - toolStart;
+
+        recordTrace({
+          turn,
+          type: "tool_execution",
+          toolName: toolCall.function.name,
+          toolArgs: args,
+          toolSuccess: result.success,
+          toolError: result.success ? undefined : result.error,
+          latencyMs: toolLatency
+        });
 
         // Check for clarification
         const data = result.success ? result.data as Record<string, unknown> | undefined : undefined;
         if (data?.needsClarification) {
-          return {
+          const resultVal: AgentResult = {
             ok: true,
             clarification: {
               question: String(data.question || "Could you provide more details?"),
@@ -248,12 +332,27 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
             model: aiContext.model,
             latencyMs: Date.now() - startedAt
           };
+          recordTrace({ turn, type: "terminal", terminalType: "clarification", terminalData: resultVal.clarification });
+          if (_collectTrace) resultVal._trace = trace;
+          return resultVal;
         }
 
         // Check for terminal tools (assign_category, assign_results, create_recurring_suggestion)
         if (["assign_category", "assign_results", "create_recurring_suggestion"].includes(toolCall.function.name)) {
+          // Validate terminal tool arguments before accepting
+          const validationError = validateTerminalToolArgs(toolCall.function.name, args);
+          if (validationError) {
+            // Return error to agent loop so LLM can retry
+            messages.push({
+              role: "tool",
+              toolCallId: toolCall.id,
+              content: JSON.stringify({ success: false, error: validationError })
+            });
+            continue;
+          }
+
           const parsed = parseTerminalToolResult(toolCall.function.name, args, mode);
-          return {
+          const resultVal: AgentResult = {
             ok: true,
             ...parsed,
             toolCallsMade,
@@ -261,6 +360,9 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
             model: aiContext.model,
             latencyMs: Date.now() - startedAt
           };
+          recordTrace({ turn, type: "terminal", terminalType: "final", terminalData: parsed });
+          if (_collectTrace) resultVal._trace = trace;
+          return resultVal;
         }
 
         // Cache result for conversation references
@@ -269,7 +371,7 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
           resultCache.set(resultId, result.data);
         }
 
-        // Add tool result to messages
+        // Add tool result to messages (success or failure — LLM sees both)
         messages.push({
           role: "tool",
           toolCallId: toolCall.id,
@@ -294,7 +396,7 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         await updateConversationSession(input.conversationId, userId, messages, resultCache);
       }
 
-      return {
+      const resultVal: AgentResult = {
         ok: true,
         ...parsed,
         toolCallsMade,
@@ -302,11 +404,14 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         model: aiContext.model,
         latencyMs: Date.now() - startedAt
       };
+      recordTrace({ turn, type: "terminal", terminalType: "final", terminalData: parsed });
+      if (_collectTrace) resultVal._trace = trace;
+      return resultVal;
     }
   }
 
   // Exceeded max tool calls
-  return {
+  const result: AgentResult = {
     ok: false,
     error: "Maximum tool calls exceeded",
     toolCallsMade,
@@ -314,27 +419,53 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
     model: aiContext.model,
     latencyMs: Date.now() - startedAt
   };
+  recordTrace({ turn, type: "terminal", terminalType: "max_calls" });
+  if (_collectTrace) result._trace = trace;
+  return result;
 }
 
 function buildSystemPrompt(mode: AgentMode, input: AgentInput): string {
-  const today = new Date().toISOString().split("T")[0];
+  const today = input._overrideDate || new Date().toISOString().split("T")[0];
 
   const prompts: Record<AgentMode, string> = {
     qa: `Today's date: ${today}
 
-You are a personal finance assistant. Use tools to get real data.
-1. Start with get_data_bounds to understand available data
-2. Use appropriate date ranges based on user's question
-3. If ambiguous, use ask_clarification sparingly
-4. Provide specific numbers in your answer
-5. For follow-ups, use reference_previous to access earlier results
-6. Keep the response compact and easy to scan
-7. If the user asks about a specific account, include the account filter on analytics/list tools
+You are a personal finance assistant. Call the right tool, get data, then present a clear answer.
 
-You can reference previous results by their ID (e.g., result_1, result_2).
-Use compare_results to compare two result sets.
+## RULES
 
-Output JSON: { "answer": string, "summary"?: string, "key_points"?: string[], "follow_up"?: string, "highlights": string[], "drill_down_filters": { "start"?, "end"?, "category"?, "merchant"? } }`,
+1. Avoid ask_clarification. The user expects an answer, not a question. Make reasonable assumptions:
+   - No time period specified → use range "all" (all available data).
+   - "Last month" → compute start/end dates from today and pass them.
+   - Always try the appropriate analytics tool before resorting to ask_clarification.
+
+2. Always include the actual dollar amounts from tool results. Never give a vague answer.
+   Bad: "You spent on dining last month"
+   Good: "You spent $450.23 on dining last month across 19 transactions"
+
+3. Keep the answer compact, scannable, and data-driven. One short paragraph is ideal.
+
+## Tool reference
+- get_overview: total spending, income, net flow, or filter by category/merchant/account
+- get_category_breakdown: spending by category, top categories
+- get_merchant_breakdown: spending by merchant, top merchants
+- get_anomalies: unusual or suspicious transactions
+- list_transactions: specific transactions, optionally filtered by merchant
+- get_data_bounds: what date range of data exists (optional, call only if you need this info)
+- compare_results: compare two previously cached results
+- reference_previous: fetch a result from earlier in the conversation
+- ask_clarification: LAST RESORT — ask only when you truly can't proceed
+
+**Result IDs**: After each tool call, the result is cached as result_1, result_2, etc. Use these IDs with reference_previous or compare_results.
+
+## Output format (return ONLY this JSON, no markdown)
+{
+  "answer": "Your response to the user with specific dollar amounts",
+  "summary": "One-line summary",
+  "key_points": ["Bullet 1", "Bullet 2"],
+  "highlights": ["Top finding"],
+  "drill_down_filters": { "start": "2026-01-01", "end": "2026-01-31" }
+}`,
 
     categorization: `You are categorizing a transaction.
 1. Get all available categories with get_categories
@@ -427,6 +558,77 @@ function parseAgentResponse(content: string, mode: AgentMode): Partial<AgentResu
   }
 
   return {};
+}
+
+/**
+ * Validate terminal-tool arguments before accepting them.
+ * Returns an error string if invalid, or undefined if valid.
+ */
+function validateTerminalToolArgs(toolName: string, args: Record<string, unknown>): string | undefined {
+  const ALLOWED_CATEGORIES = DEFAULT_CATEGORIES;
+  const VALID_CADENCES = ["weekly", "biweekly", "monthly", "quarterly", "yearly"];
+  const VALID_SOURCES = ["history", "inferred"];
+  const VALID_DIRECTIONS = ["inflow", "outflow"];
+
+  if (toolName === "assign_category") {
+    if (!args.category || typeof args.category !== "string" || !ALLOWED_CATEGORIES.includes(args.category)) {
+      return `Invalid category: "${args.category}". Must be one of: ${ALLOWED_CATEGORIES.join(", ")}`;
+    }
+    const confidence = Number(args.confidence);
+    if (Number.isNaN(confidence) || confidence < 0 || confidence > 1) {
+      return `Invalid confidence: ${args.confidence}. Must be a number in [0, 1].`;
+    }
+    if (!VALID_SOURCES.includes(args.source as string)) {
+      return `Invalid source: "${args.source}". Must be "history" or "inferred".`;
+    }
+    return undefined;
+  }
+
+  if (toolName === "create_recurring_suggestion") {
+    if (!args.merchant || typeof args.merchant !== "string" || !args.merchant.trim()) {
+      return "Merchant is required.";
+    }
+    if (!VALID_CADENCES.includes(args.cadence as string)) {
+      return `Invalid cadence: "${args.cadence}". Must be one of: ${VALID_CADENCES.join(", ")}`;
+    }
+    const amount = Number(args.suggested_amount);
+    if (Number.isNaN(amount) || amount <= 0) {
+      return `Invalid suggested_amount: ${args.suggested_amount}. Must be a positive number.`;
+    }
+    const confidence = Number(args.confidence);
+    if (Number.isNaN(confidence) || confidence < 0 || confidence > 1) {
+      return `Invalid confidence: ${args.confidence}. Must be a number in [0, 1].`;
+    }
+    return undefined;
+  }
+
+  if (toolName === "assign_results") {
+    if (!Array.isArray(args.results)) {
+      return "results must be an array.";
+    }
+    for (let i = 0; i < args.results.length; i++) {
+      const r = args.results[i] as Record<string, unknown>;
+      if (!r.transaction_id || typeof r.transaction_id !== "string") {
+        return `results[${i}].transaction_id is required.`;
+      }
+      if (!r.category || typeof r.category !== "string" || !ALLOWED_CATEGORIES.includes(r.category)) {
+        return `results[${i}].category invalid: "${r.category}".`;
+      }
+      if (!VALID_DIRECTIONS.includes(r.direction as string)) {
+        return `results[${i}].direction invalid: "${r.direction}".`;
+      }
+      const conf = Number(r.confidence);
+      if (Number.isNaN(conf) || conf < 0 || conf > 1) {
+        return `results[${i}].confidence invalid: ${r.confidence}.`;
+      }
+      if (!VALID_SOURCES.includes(r.source as string)) {
+        return `results[${i}].source invalid: "${r.source}".`;
+      }
+    }
+    return undefined;
+  }
+
+  return undefined;
 }
 
 function parseTerminalToolResult(

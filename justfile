@@ -129,3 +129,12 @@ e2e-a11y:
 docs-api:
     pnpm docs:api
 
+# Run AI assistant behavior evals (requires AI_EVALS=1 and credentials in .env.local)
+# Usage: just test-ai-evals
+test-ai-evals:
+    just --dotenv-filename .env.local _test-ai-evals
+
+[private]
+_test-ai-evals:
+    pnpm test:ai-evals
+

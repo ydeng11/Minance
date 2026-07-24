@@ -13,14 +13,20 @@ function normalizeConfidence(value, fallback = 0.5) {
   return Math.max(0, Math.min(1, num));
 }
 
-export async function categorizeTransactionWithLlm({ userId, transaction, userRules = [] }) {
+export async function categorizeTransactionWithLlm({
+  userId,
+  transaction,
+  userRules = [],
+  requireAiFeatureFn = requireAiFeature,
+  runStructuredLlmFn = runStructuredLlm
+}) {
   if (!AI_LLM_CATEGORIZATION_ENABLED) {
     return { ok: false, reason: "disabled" };
   }
 
   let aiContext = null;
   try {
-    aiContext = requireAiFeature(userId, "categorization");
+    aiContext = requireAiFeatureFn(userId, "categorization");
   } catch {
     return { ok: false, reason: "no_ai_setup" };
   }
@@ -52,7 +58,7 @@ export async function categorizeTransactionWithLlm({ userId, transaction, userRu
     exemplars
   });
 
-  const llm = await runStructuredLlm({
+  const llm = await runStructuredLlmFn({
     provider: aiContext.provider,
     apiKey: aiContext.apiKey,
     model: aiContext.model,

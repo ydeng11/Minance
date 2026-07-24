@@ -4,6 +4,7 @@ import { createId, nowIso } from "./utils.ts";
 import { runToolCallingAgent, createConversationId } from "./llm/agent.ts";
 import { defaultConversationStore, type ConversationSession } from "./llm/conversation-store.ts";
 import { AI_TOOL_CALLING_AGENT_ENABLED } from "./flags.ts";
+import type { AgentResult } from "./llm/agent.ts";
 
 function buildDrillDownUrl(filters) {
   const params = new URLSearchParams();
@@ -18,17 +19,27 @@ function buildDrillDownUrl(filters) {
  * Create a new conversation session for multi-turn assistant queries.
  * Returns the conversation ID that can be passed to runAssistantQuery.
  */
-export async function createConversation(userId: string): Promise<string> {
-  const conversationId = createConversationId();
+export async function createConversation(
+  userId: string,
+  deps?: {
+    conversationStore?: typeof defaultConversationStore;
+    createIdFn?: typeof createConversationId;
+    nowFn?: typeof nowIso;
+  }
+): Promise<string> {
+  const store = deps?.conversationStore ?? defaultConversationStore;
+  const genId = deps?.createIdFn ?? createConversationId;
+  const nowFn = deps?.nowFn ?? nowIso;
+  const conversationId = genId();
   const session: ConversationSession = {
     id: conversationId,
     userId,
     messages: [],
     resultCache: new Map(),
-    createdAt: nowIso(),
+    createdAt: nowFn(),
     expiresAt: new Date(Date.now() + 3600000).toISOString()
   };
-  await defaultConversationStore.set(conversationId, session);
+  await store.set(conversationId, session);
   return conversationId;
 }
 
@@ -55,20 +66,50 @@ export async function requireConversationOwnership(
   return conversation;
 }
 
-export async function runAssistantQuery(userId, question, conversationId?: string) {
+export async function runAssistantQuery(
+  userId: string,
+  question: string,
+  conversationId?: string,
+  deps?: {
+    requireAiFeatureFn?: typeof requireAiFeature;
+    runAgentFn?: typeof runToolCallingAgent;
+    createIdFn?: typeof createId;
+    nowFn?: typeof nowIso;
+    loadStoreFn?: typeof loadStore;
+    saveStoreFn?: typeof saveStore;
+    addAuditEventFn?: typeof addAuditEvent;
+    conversationStore?: typeof defaultConversationStore;
+  }
+) {
   if (!question || String(question).trim().length < 3) {
     throw new Error("Question is required");
   }
 
-  const aiContext = requireAiFeature(userId, "assistant");
-  const store = loadStore();
+  const aiFn = deps?.requireAiFeatureFn ?? requireAiFeature;
+  const agentFn = deps?.runAgentFn ?? runToolCallingAgent;
+  const genId = deps?.createIdFn ?? createId;
+  const nowFn = deps?.nowFn ?? nowIso;
+  const storeFn = deps?.loadStoreFn ?? loadStore;
+  const saveFn = deps?.saveStoreFn ?? saveStore;
+  const auditFn = deps?.addAuditEventFn ?? addAuditEvent;
+  const convStore = deps?.conversationStore ?? defaultConversationStore;
+
+  const aiContext = aiFn(userId, "assistant");
 
   // Run the tool-calling agent
   if (!AI_TOOL_CALLING_AGENT_ENABLED) {
     throw new Error("Assistant feature is not enabled");
   }
 
-  const agentResult = await runToolCallingAgent({
+  // Cross-user conversation isolation: verify ownership before loading history
+  if (conversationId) {
+    const session = await convStore.get(conversationId);
+    if (!session || session.userId !== userId) {
+      throw new Error("Conversation not found or access denied");
+    }
+  }
+
+  const agentResult = await agentFn({
     mode: "qa",
     userId,
     question,
@@ -79,8 +120,9 @@ export async function runAssistantQuery(userId, question, conversationId?: strin
     throw new Error(`Assistant query failed: ${agentResult.error || "unknown error"}`);
   }
 
+  const store = storeFn();
   const record = {
-    id: createId("asst"),
+    id: genId("asst"),
     userId,
     question,
     result: {
@@ -98,12 +140,12 @@ export async function runAssistantQuery(userId, question, conversationId?: strin
       agentLatencyMs: agentResult.latencyMs,
       clarification: agentResult.clarification
     },
-    createdAt: nowIso()
+    createdAt: nowFn()
   };
 
   store.assistantQueries.push(record);
-  saveStore(store);
-  addAuditEvent(userId, "assistant.query", {
+  saveFn(store);
+  auditFn(userId, "assistant.query", {
     assistantQueryId: record.id,
     provider: aiContext.provider,
     model: aiContext.model,

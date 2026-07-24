@@ -23,7 +23,8 @@
     "e2e": "env NODE_ENV=test playwright test",
     "e2e:headed": "env NODE_ENV=test playwright test --project=chromium --headed",
     "e2e:ci": "env NODE_ENV=test playwright test --project=chromium",
-    "e2e:a11y": "env NODE_ENV=test playwright test --project=chromium --grep @a11y"
+    "e2e:a11y": "env NODE_ENV=test playwright test --project=chromium --grep @a11y",
+    "test:ai-evals": "env AI_EVALS=1 tsx scripts/run-ai-evals.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
