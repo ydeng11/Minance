@@ -12,7 +12,8 @@ dev:
 
 [private]
 _dev:
-    just _prepare-data development
+    set -a; [ -f .env.local ] && . ./.env.local; set +a; \
+    just _prepare-data development; \
     pnpm exec tsx scripts/run-with-open-ports.ts dev
 
 # Start the Next.js app in development mode
@@ -25,7 +26,8 @@ dev-api:
 
 [private]
 _dev-api:
-    just _prepare-data development
+    set -a; [ -f .env.local ] && . ./.env.local; set +a; \
+    just _prepare-data development; \
     pnpm dev:api
 
 # Prepare a SQLite database from the deterministic fixture

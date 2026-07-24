@@ -327,7 +327,7 @@ export function ensureDevOpenRouterCredential(userId) {
 
   const store = loadStore();
   const now = nowIso();
-  const defaultModel = AI_PROVIDERS.openrouter.models[0] || null;
+  const defaultModel = process.env.AI_DEV_MODEL || AI_PROVIDERS.openrouter.models[0] || null;
 
   let existingCredential = store.aiProviderCredentials.find(
     (entry) =>
@@ -337,6 +337,7 @@ export function ensureDevOpenRouterCredential(userId) {
   );
 
   let createdCredential = false;
+  let updatedCredential = false;
   if (!existingCredential) {
     existingCredential = {
       id: createId("cred"),
@@ -353,10 +354,11 @@ export function ensureDevOpenRouterCredential(userId) {
     };
     store.aiProviderCredentials.push(existingCredential);
     createdCredential = true;
-  } else if (!existingCredential.model) {
-    // Migrate: set model on existing credential that lacks it
+  } else if (existingCredential.model !== defaultModel) {
+    // Always sync model to env (AI_DEV_MODEL) even if credential already has one
     existingCredential.model = defaultModel;
     existingCredential.updatedAt = now;
+    updatedCredential = true;
   }
 
   let preferences = store.aiProviderPreferences.find((entry) => entry.userId === userId);
@@ -378,7 +380,7 @@ export function ensureDevOpenRouterCredential(userId) {
     updatedPreferences = true;
   }
 
-  if (!createdCredential && !updatedPreferences) {
+  if (!createdCredential && !updatedCredential && !updatedPreferences) {
     return {
       enabled: true,
       createdCredential: false,
@@ -392,6 +394,11 @@ export function ensureDevOpenRouterCredential(userId) {
       provider: "openrouter",
       credentialId: existingCredential.id
     });
+  } else if (updatedCredential) {
+    addAuditEvent(userId, "ai.credential.update", {
+      provider: "openrouter",
+      credentialId: existingCredential.id
+    });
   }
   if (updatedPreferences) {
     addAuditEvent(userId, "ai.preferences.seed_dev_env", {
@@ -402,6 +409,7 @@ export function ensureDevOpenRouterCredential(userId) {
   return {
     enabled: true,
     createdCredential,
+    updatedCredential,
     updatedPreferences
   };
 }
