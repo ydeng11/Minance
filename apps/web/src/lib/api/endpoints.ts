@@ -464,7 +464,17 @@ export const assistantApi = {
     request<{ query: AssistantQuery }>(`/v1/assistant/conversations/${encodeURIComponent(conversationId)}/query`, {
       method: "POST",
       body: { question }
-    })
+    }),
+  confirmAction: (request: ApiRequest, actionId: string) =>
+    request<{ confirmed: boolean; success: boolean; message?: string; error?: string; data?: unknown }>(
+      `/v1/assistant/actions/${encodeURIComponent(actionId)}/confirm`,
+      { method: "POST" }
+    ),
+  cancelAction: (request: ApiRequest, actionId: string) =>
+    request<{ cancelled: boolean; toolName: string }>(
+      `/v1/assistant/actions/${encodeURIComponent(actionId)}/cancel`,
+      { method: "POST" }
+    )
 };
 
 export const categoriesApi = {

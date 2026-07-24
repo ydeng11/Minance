@@ -1314,6 +1314,79 @@ async function handleApiRequest(req, res, url) {
       return;
     }
 
+    // Confirm/cancel pending assistant actions
+    const actionConfirmParams = matchPath(pathname, "/v1/assistant/actions/:id/confirm");
+    if (req.method === "POST" && actionConfirmParams) {
+      const user = requireUser(req);
+      const { consumePendingAction } = await import("./llm/pending-actions.ts");
+      const { ALL_TOOLS } = await import("./llm/tool-spec.ts");
+      const { addAuditEvent } = await import("./store.ts");
+      const action = consumePendingAction(actionConfirmParams.id);
+      if (!action) {
+        sendError(res, 404, "Action not found or expired");
+        return;
+      }
+      if (action.userId !== user.id) {
+        sendError(res, 403, "Action belongs to a different user");
+        return;
+      }
+      try {
+        const toolSpec = ALL_TOOLS.find((t) => t.name === action.toolName);
+        if (!toolSpec) {
+          sendError(res, 500, `Tool ${action.toolName} not found`);
+          return;
+        }
+        const execArgs = { ...action.args, _mode: "execute" };
+        const result = await toolSpec.execute(
+          { userId: user.id, conversationId: action.conversationId, resultCache: new Map() },
+          execArgs
+        );
+        addAuditEvent(user.id, "assistant.action.confirm", {
+          actionId: action.key,
+          toolName: action.toolName,
+          success: result.success,
+          error: result.error
+        });
+        if (!result.success) {
+          sendJson(res, 200, { confirmed: true, success: false, error: result.error });
+          return;
+        }
+        const msg = (result.data as Record<string, unknown>)?.message || `${action.toolName} executed successfully.`;
+        sendJson(res, 200, { confirmed: true, success: true, message: msg, data: result.data });
+      } catch (err) {
+        addAuditEvent(user.id, "assistant.action.confirm", {
+          actionId: actionConfirmParams.id,
+          toolName: action?.toolName,
+          success: false,
+          error: String(err)
+        });
+        sendError(res, 500, `Failed to execute: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      return;
+    }
+
+    const actionCancelParams = matchPath(pathname, "/v1/assistant/actions/:id/cancel");
+    if (req.method === "POST" && actionCancelParams) {
+      const user = requireUser(req);
+      const { consumePendingAction } = await import("./llm/pending-actions.ts");
+      const { addAuditEvent } = await import("./store.ts");
+      const action = consumePendingAction(actionCancelParams.id);
+      if (!action) {
+        sendError(res, 404, "Action not found or expired");
+        return;
+      }
+      if (action.userId !== user.id) {
+        sendError(res, 403, "Action belongs to a different user");
+        return;
+      }
+      addAuditEvent(user.id, "assistant.action.cancel", {
+        actionId: action.key,
+        toolName: action.toolName
+      });
+      sendJson(res, 200, { cancelled: true, toolName: action.toolName });
+      return;
+    }
+
     if (req.method === "GET" && pathname === "/v1/categories") {
       const user = requireUser(req);
       sendJson(res, 200, { categories: listCategories(user.id) });

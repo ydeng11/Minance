@@ -50,7 +50,9 @@ export function useApi() {
       assistant: {
         ask: assistantApi.ask.bind(null, request),
         createConversation: assistantApi.createConversation.bind(null, request),
-        askInConversation: assistantApi.askInConversation.bind(null, request)
+        askInConversation: assistantApi.askInConversation.bind(null, request),
+        confirmAction: assistantApi.confirmAction.bind(null, request),
+        cancelAction: assistantApi.cancelAction.bind(null, request)
       },
       categories: {
         list: () => categoriesApi.list(request),

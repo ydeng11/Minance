@@ -206,15 +206,19 @@ function renderAssistantBody(entry: AssistantMessageCard) {
   );
 }
 
-function renderAssistantFooter(entry: AssistantMessageCard, onConfirmAction?: (confirm: boolean) => void) {
+function renderAssistantFooter(
+  entry: AssistantMessageCard,
+  onConfirm?: () => void,
+  onCancel?: () => void
+) {
   if (entry.state !== "complete") {
     return null;
   }
 
   return (
     <>
-      {/* Confirmation preview with buttons */}
-      {entry.confirmationPreview ? (
+      {/* Confirmation preview with buttons that call explicit API endpoints */}
+      {entry.confirmationPreview && entry.pendingActionKey ? (
         <div className="mt-3 space-y-2 rounded-lg border border-accent/25 bg-accent-soft/50 p-3">
           <p className="text-xs font-medium text-accent">
             Review the action before confirming:
@@ -225,14 +229,14 @@ function renderAssistantFooter(entry: AssistantMessageCard, onConfirmAction?: (c
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => onConfirmAction?.(true)}
+              onClick={onConfirm}
               className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-app-bg transition hover:bg-accent/90"
             >
               Confirm
             </button>
             <button
               type="button"
-              onClick={() => onConfirmAction?.(false)}
+              onClick={onCancel}
               className="rounded-md border border-border-subtle bg-surface-field px-4 py-2 text-sm text-text-secondary transition hover:bg-surface-elevated hover:text-text-primary"
             >
               Cancel
@@ -497,9 +501,39 @@ export function AssistantConversation({ mode = "page", focusToken = 0, onClose }
                     </span>
                     <div className={ASSISTANT_BUBBLE_CLASS}>
                       {renderAssistantBody(entry)}
-                      {renderAssistantFooter(entry, (confirm) => {
-                        setPendingConfirmText(confirm ? "Yes, confirm" : "No, cancel");
-                      })}
+                      {renderAssistantFooter(
+                        entry,
+                        // Confirm: call API endpoint directly
+                        async () => {
+                          if (!entry.pendingActionKey) return;
+                          setIsLoading(true);
+                          try {
+                            const result = await api.assistant.confirmAction(entry.pendingActionKey);
+                            if (result.confirmed && result.success) {
+                              setMessage(result.message || "Done.");
+                            } else {
+                              setMessage(result.error || "Action failed.");
+                            }
+                          } catch {
+                            setMessage("Failed to confirm action.");
+                          } finally {
+                            setIsLoading(false);
+                          }
+                        },
+                        // Cancel: call API endpoint directly
+                        async () => {
+                          if (!entry.pendingActionKey) return;
+                          setIsLoading(true);
+                          try {
+                            await api.assistant.cancelAction(entry.pendingActionKey);
+                            setMessage("Action cancelled.");
+                          } catch {
+                            setMessage("Failed to cancel action.");
+                          } finally {
+                            setIsLoading(false);
+                          }
+                        }
+                      )}
                     </div>
                   </div>
                 </article>
