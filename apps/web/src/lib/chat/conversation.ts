@@ -1,6 +1,6 @@
 import { ApiError } from "@/lib/api/client";
 import type { AssistantQuery } from "@/lib/api/types";
-import { assistantQueryToMessage, type AssistantMessageCard } from "./adapter";
+import { assistantQueryToMessage, normalizeHydratedMessage, type AssistantMessageCard } from "./adapter";
 
 export const ASSISTANT_CONVERSATION_STORAGE_KEY = "minance.assistant.conversationId";
 export const ASSISTANT_TRANSCRIPT_STORAGE_KEY = "minance.assistant.transcript";
@@ -108,6 +108,11 @@ export function getStoredAssistantTranscriptSnapshot(
 
     if (getStoredAssistantConversationId(storage) !== parsed.conversationId) {
       persistAssistantConversationId(storage, parsed.conversationId);
+    }
+
+    // Normalize stored messages to strip any raw trailing JSON
+    if (Array.isArray(parsed.messages)) {
+      parsed.messages = parsed.messages.map(normalizeHydratedMessage);
     }
 
     return parsed;

@@ -79,7 +79,7 @@ test("runToolCallingAgent should enforce max tool calls limit", async () => {
 
     assert.equal(result.ok, false);
     assert.ok(result.error?.includes("Maximum tool calls"), "Should mention max tool calls exceeded");
-    assert.equal(result.toolCallsMade, 5);
+    assert.equal(result.toolCallsMade, 12);
   } finally {
     global.fetch = originalFetch;
   }
@@ -698,7 +698,7 @@ test("agent: MAX_TOOL_CALLS counted per individual call, not per response", asyn
   // Should hit MAX_TOOL_CALLS limit: calls 1-5 execute, call 6 is rejected
   assert.equal(result.ok, false);
   assert.ok(result.error?.includes("Maximum tool calls"));
-  assert.equal(result.toolCallsMade, 6, "Should reject the 6th call after 5 are made");
+  assert.equal(result.toolCallsMade, 12, "Should reject after hitting MAX_TOOL_CALLS");
 });
 
 test("agent: _collectTrace populates observable trace", async () => {

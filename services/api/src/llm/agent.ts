@@ -50,7 +50,7 @@ async function executeTool(
   }
 }
 
-const MAX_TOOL_CALLS = 5;
+const MAX_TOOL_CALLS = 12;
 const AGENT_TIMEOUT_MS = 30000;
 
 // ---------------------------------------------------------------------------
@@ -91,7 +91,12 @@ defineCapability({
 - Merchant breakdowns \u2192 get_merchant_breakdown
 - Unusual transactions \u2192 get_anomalies
 - Transaction listing \u2192 list_transactions
-- Compare periods \u2192 get_overview twice then compare_results`
+- Compare periods \u2192 get_overview twice then compare_results
+
+## Efficiency rules (must follow)
+- Do NOT call get_data_bounds unless the user explicitly asks about data coverage.
+- Combine parameters: pass date range, category, and merchant filters directly to get_overview instead of making separate calls.
+- Prefer get_overview with filters over get_category_breakdown + get_merchant_breakdown when one call suffices.`
 });
 
 // Subscriptions / recurring capability
@@ -854,14 +859,43 @@ function readStringList(value: unknown, limit = 4): string[] {
   return Array.isArray(value) ? value.slice(0, limit).map(String) : [];
 }
 
+import { normalizeResponse, normalizeAnswer } from "./response-normalizer.ts";
+
 function parseAgentResponse(content: string, mode: AgentMode): Partial<AgentResult> {
+  // First, try to normalize the response to strip trailing JSON
+  const { cleaned, structured } = normalizeAnswer(content);
+
+  // If we got structured fields, use them directly
+  if (structured && (structured.answer || structured.summary)) {
+    if (mode === "qa") {
+      const keyPoints = (structured.key_points || structured.keyPoints || []).slice(0, 4);
+      return {
+        answer: cleaned || structured.answer || content,
+        summary: structured.summary,
+        keyPoints: keyPoints.length ? keyPoints : undefined,
+        followUp: structured.follow_up || structured.followUp,
+        highlights: (structured.highlights || []).slice(0, 4),
+        drillDownFilters: {}
+      };
+    }
+  }
+
+  // Fallback: try strict JSON.parse (original behavior for non-qa modes)
   try {
     const parsed = JSON.parse(content);
 
     if (mode === "qa") {
       const keyPoints = readStringList(parsed.key_points);
+
+      // Strip trailing JSON that the LLM sometimes embeds inside the answer field
+      let answer = String(parsed.answer || content);
+      const { cleaned: normAnswer, fields: normFields } = normalizeAnswer(answer);
+      if (normFields.answer || normFields.summary) {
+        answer = normAnswer || normFields.answer || answer;
+      }
+
       return {
-        answer: String(parsed.answer || content),
+        answer: answer,
         summary: readOptionalString(parsed.summary),
         keyPoints: keyPoints.length ? keyPoints : readStringList(parsed.keyPoints),
         followUp: readOptionalString(parsed.follow_up) || readOptionalString(parsed.followUp),
@@ -1052,3 +1086,5 @@ async function updateConversationSession(
 export function createConversationId(): string {
   return createId("conv");
 }
+
+

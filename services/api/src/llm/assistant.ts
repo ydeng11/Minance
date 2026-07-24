@@ -2,6 +2,7 @@ import { requireAiFeature } from "../ai.ts";
 import { AI_LLM_ASSISTANT_SYNTHESIS_ENABLED } from "../flags.ts";
 import { runStructuredLlm } from "./client.ts";
 import { buildAssistantSynthesisPrompt } from "./prompts.ts";
+import { normalizeAnswer } from "./response-normalizer.ts";
 
 function sanitizeFilters(value) {
   if (!value || typeof value !== "object") {
@@ -60,9 +61,18 @@ export async function synthesizeAssistantAnswerWithLlm({
     return { ok: false, reason: llm.error || "llm_failed" };
   }
 
-  const answer = String(llm.data?.answer || "").trim();
+  let answer = String(llm.data?.answer || "").trim();
   if (!answer) {
     return { ok: false, reason: "empty_answer" };
+  }
+
+  // Strip trailing JSON that the LLM sometimes embeds inside the answer
+  const { cleaned: normAnswer, fields: normFields } = normalizeAnswer(answer);
+  if (normFields.answer || normFields.summary) {
+    answer = (normAnswer || normFields.answer || answer).trim();
+    if (!answer) {
+      return { ok: false, reason: "empty_answer" };
+    }
   }
 
   const highlights = Array.isArray(llm.data?.highlights)

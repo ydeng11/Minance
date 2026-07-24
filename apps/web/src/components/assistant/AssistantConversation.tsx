@@ -6,6 +6,7 @@ import { Bot, Loader2, Send, User, X } from "lucide-react";
 import { ApiError } from "@/lib/api/client";
 import { useApi } from "@/hooks/useApi";
 import { StatusMessage } from "@/components/feedback/StatusMessage";
+import { MarkdownRenderer } from "@/components/assistant/MarkdownRenderer";
 import { cn } from "@/lib/utils";
 import type { AssistantMessageCard } from "@/lib/chat/adapter";
 import {
@@ -108,9 +109,19 @@ function renderAssistantBody(entry: AssistantMessageCard) {
           ) : null}
         </div>
       ) : (
-        <p className="text-sm leading-6 text-text-primary">
-          {entry.summary || entry.answer}
-        </p>
+        <div className="space-y-3">
+          {/* Summary rendered as a concise callout when present and different from answer */}
+          {entry.summary && entry.summary !== entry.answer ? (
+            <div className="rounded-lg border border-accent/20 bg-accent-soft/50 px-3 py-2 text-sm font-medium text-accent">
+              {entry.summary}
+            </div>
+          ) : null}
+          {/* Full answer as Markdown (tables, lists, bold, etc.) */}
+          <MarkdownRenderer
+            content={entry.answer}
+            className="text-sm leading-6 text-text-primary"
+          />
+        </div>
       )}
       {entry.keyPoints.length ? (
         <ul className="space-y-2 text-sm text-text-primary">
