@@ -1,0 +1,211 @@
+[
+  {
+    "id": "v2-subscriptions-list",
+    "description": "User asks about their subscriptions",
+    "capabilities": ["analytics", "subscriptions"],
+    "prompts": [
+      "What subscriptions do I have?",
+      "Show me my recurring bills",
+      "List my active subscriptions"
+    ],
+    "recommendedTools": ["list_recurring_rules"],
+    "reasonableTools": ["get_data_bounds", "list_recurring_suggestions"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "subscriptionsListed": 1.0,
+      "answerHasNumericValues": 1.0,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.5
+  },
+  {
+    "id": "v2-subscriptions-explain",
+    "description": "User asks for details about a specific subscription",
+    "capabilities": ["analytics", "subscriptions"],
+    "prompts": [
+      "How much do I spend on streaming per year?",
+      "Tell me about my streaming subscription",
+      "What's my annual subscription cost?"
+    ],
+    "recommendedTools": ["list_recurring_rules"],
+    "reasonableTools": ["get_overview", "get_category_breakdown", "explain_recurring_rule"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "annualCostMentioned": 1.0,
+      "answerHasNumericValues": 1.0,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.5
+  },
+  {
+    "id": "v2-benefits-which-card",
+    "description": "User asks which card to use for a category",
+    "capabilities": ["analytics", "subscriptions", "benefits", "budgeting"],
+    "prompts": [
+      "Which card should I use for dining?",
+      "What's the best card for groceries?",
+      "Which credit card gives me the best rewards on dining?"
+    ],
+    "recommendedTools": ["get_best_card_for_category", "list_credit_cards"],
+    "reasonableTools": ["get_card_benefits", "get_overview"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "cardRecommendationGiven": 1.0,
+      "reasonIncludesRate": 0.7,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.5
+  },
+  {
+    "id": "v2-benefits-usage",
+    "description": "User asks about benefit cap usage",
+    "capabilities": ["analytics", "subscriptions", "benefits", "budgeting"],
+    "prompts": [
+      "How much dining cashback have I used this month?",
+      "Am I maxing out my dining benefit?",
+      "What's my dining spending against my card cap?"
+    ],
+    "recommendedTools": ["get_benefit_usage", "get_card_benefits"],
+    "reasonableTools": ["get_overview", "get_category_breakdown", "list_credit_cards"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 4,
+    "judgeRubric": {
+      "usageNumbersGiven": 1.0,
+      "capMentioned": 0.7,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.5
+  },
+  {
+    "id": "v2-benefits-annual-fee",
+    "description": "User asks about annual fee worth-it analysis",
+    "capabilities": ["analytics", "subscriptions", "benefits", "budgeting"],
+    "prompts": [
+      "Is my Amex Gold worth the annual fee?",
+      "Should I keep my card with the $250 fee?",
+      "Do I earn enough rewards to justify my annual fee?"
+    ],
+    "recommendedTools": ["get_annual_fee_analysis"],
+    "reasonableTools": ["get_card_benefits", "list_credit_cards", "get_overview"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 4,
+    "judgeRubric": {
+      "feeVsRewardsComparison": 1.0,
+      "answerHasNumericValues": 1.0,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.5
+  },
+  {
+    "id": "v2-budget-comparison",
+    "description": "User asks how they're doing against their budget",
+    "capabilities": ["analytics", "subscriptions", "benefits", "budgeting"],
+    "prompts": [
+      "How am I doing against my dining budget?",
+      "Am I over budget on groceries?",
+      "Compare my spending to my budget targets"
+    ],
+    "recommendedTools": ["get_budget_comparison"],
+    "reasonableTools": ["get_overview", "get_category_breakdown"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "budgetComparisonMade": 1.0,
+      "answerHasNumericValues": 1.0,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.5
+  },
+  {
+    "id": "v2-trends",
+    "description": "User asks about spending trends",
+    "capabilities": ["analytics", "subscriptions", "benefits", "budgeting"],
+    "prompts": [
+      "Is my spending going up or down?",
+      "Show me my spending trends",
+      "Am I spending more than I used to?"
+    ],
+    "recommendedTools": ["get_spending_trends"],
+    "reasonableTools": ["get_overview", "get_category_breakdown", "get_data_bounds"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "trendDirectionGiven": 1.0,
+      "answerHasNumericValues": 1.0,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.5
+  },
+  {
+    "id": "v2-recurring-forecast",
+    "description": "User asks about upcoming recurring charges",
+    "capabilities": ["analytics", "subscriptions", "benefits", "budgeting"],
+    "prompts": [
+      "What recurring charges are coming up?",
+      "How much will I be billed next month?",
+      "What bills are due soon?"
+    ],
+    "recommendedTools": ["get_recurring_forecast", "list_recurring_rules"],
+    "reasonableTools": ["get_overview", "get_category_breakdown"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "forecastGiven": 1.0,
+      "answerHasNumericValues": 1.0,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.5
+  },
+  {
+    "id": "v2-pending-suggestions",
+    "description": "User asks about pending recurring suggestions",
+    "capabilities": ["analytics", "subscriptions", "benefits", "budgeting"],
+    "prompts": [
+      "Do I have any pending subscription suggestions?",
+      "Show me suggested recurring charges to review",
+      "What recurring charges did you find?"
+    ],
+    "recommendedTools": ["list_recurring_suggestions"],
+    "reasonableTools": ["list_recurring_rules", "detect_recurring_patterns", "get_data_bounds"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 3,
+    "judgeRubric": {
+      "suggestionsListed": 1.0,
+      "noHallucinatedNumbers": 1.0
+    },
+    "judgeMinScore": 0.4
+  },
+  {
+    "id": "v2-unsupported-financial-advice",
+    "description": "User asks for financial advice the assistant can't provide",
+    "capabilities": ["analytics", "subscriptions", "benefits", "budgeting"],
+    "prompts": [
+      "What interest rate should I expect on a savings account?",
+      "Should I invest in stocks?",
+      "What's the best credit card to apply for?"
+    ],
+    "recommendedTools": [],
+    "reasonableTools": ["list_credit_cards", "get_card_benefits"],
+    "forbiddenTools": [],
+    "modelTurnsMax": 4,
+    "toolCallsMax": 2,
+    "judgeRubric": {
+      "noInventedRates": 1.0,
+      "honestLimitationAcknowledged": 0.7,
+      "dataBasedAnalysisUsed": 0.5
+    },
+    "judgeMinScore": 0.4
+  }
+]

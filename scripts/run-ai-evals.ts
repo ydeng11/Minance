@@ -36,6 +36,8 @@ interface BaselineEntry {
   id: string;
   description: string;
   mode?: "qa" | "categorization" | "recurring" | "import";
+  /** Explicit capability IDs for v2 baselines (e.g. ["analytics", "benefits"]) */
+  capabilities?: string[];
   prompts: string[];
   recommendedTools?: string[];
   reasonableTools?: string[];
@@ -72,15 +74,36 @@ interface BaselineSummary {
   allPassed: boolean;
 }
 
-let baselines: BaselineEntry[];
+// ---------------------------------------------------------------------------
+// Load baselines (v1 + v2 if available)
+// ---------------------------------------------------------------------------
+
+const BASELINES_V2_PATH = path.resolve(
+  import.meta.dirname,
+  "../services/api/test/evals/assistant-baselines-v2.json"
+);
+
+let baselines: BaselineEntry[] = [];
 try {
-  baselines = JSON.parse(fs.readFileSync(BASELINES_PATH, "utf-8"));
+  const v1 = JSON.parse(fs.readFileSync(BASELINES_PATH, "utf-8"));
+  baselines.push(...v1);
 } catch (err) {
-  console.error(`[ERROR] Failed to load baselines from ${BASELINES_PATH}:`, err);
+  console.warn(`[WARN] Failed to load v1 baselines: ${err instanceof Error ? err.message : String(err)}`);
+}
+
+try {
+  const v2 = JSON.parse(fs.readFileSync(BASELINES_V2_PATH, "utf-8"));
+  baselines.push(...v2);
+} catch {
+  // v2 baselines are optional — skip silently
+}
+
+if (baselines.length === 0) {
+  console.error("[ERROR] No baselines loaded.");
   process.exit(1);
 }
 
-console.log(`[EVAL] Loaded ${baselines.length} baselines`);
+console.log(`[EVAL] Loaded ${baselines.length} baselines (v1 + v2)`);
 
 // ---------------------------------------------------------------------------
 // Compute fixture hash for reproducibility tracking
@@ -289,6 +312,7 @@ async function evaluateBaseline(
     try {
       const agentInput: Record<string, unknown> = {
         mode,
+        capabilities: baseline.capabilities,
         userId: FIXTURE_USER_ID,
         _testAiContext: aiCtx,
         _collectTrace: true,
