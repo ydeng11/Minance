@@ -200,6 +200,64 @@ export interface TraceEntry {
   terminalData?: unknown;
 }
 
+// ---------------------------------------------------------------------------
+// Agent state machine
+// ---------------------------------------------------------------------------
+
+export type AgentState =
+  | "planning"
+  | "awaiting_llm"
+  | "tool_call"
+  | "preview"
+  | "awaiting_confirmation"
+  | "executing"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "timeout"
+  | "max_calls";
+
+const VALID_TRANSITIONS: Record<AgentState, AgentState[]> = {
+  planning: ["awaiting_llm", "failed"],
+  awaiting_llm: ["tool_call", "completed", "failed", "timeout"],
+  tool_call: ["preview", "awaiting_llm", "failed"],
+  preview: ["awaiting_confirmation", "failed"],
+  awaiting_confirmation: ["executing", "cancelled", "failed"],
+  executing: ["completed", "failed"],
+  completed: [],
+  failed: [],
+  cancelled: [],
+  timeout: [],
+  max_calls: []
+};
+
+export class AgentStateMachine {
+  private _state: AgentState = "planning";
+  private _transitions: Array<{ from: AgentState; to: AgentState }> = [];
+
+  get state(): AgentState {
+    return this._state;
+  }
+
+  get transitions(): ReadonlyArray<{ from: AgentState; to: AgentState }> {
+    return this._transitions;
+  }
+
+  transition(to: AgentState): void {
+    const allowed = VALID_TRANSITIONS[this._state];
+    if (!allowed.includes(to)) {
+      console.warn(`Agent state: invalid transition ${this._state} -> ${to} (allowed: ${allowed.join(",")})`);
+    }
+    this._transitions.push({ from: this._state, to });
+    this._state = to;
+  }
+
+  reset(): void {
+    this._state = "planning";
+    this._transitions = [];
+  }
+}
+
 export interface AgentInput {
   /** Legacy mode selector. Maps to capabilities automatically. */
   mode?: AgentMode;
@@ -408,6 +466,7 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
   let toolCallsMade = 0;
   // Accumulate structured data from tool results for the final response
   const structuredData: Record<string, unknown> = {};
+  const sm = new AgentStateMachine();
 
   // Resolve the LLM function to use (injected or default)
   const llmFn = input._runToolCallingLlmFn ?? runToolCallingLlm;
@@ -416,6 +475,7 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
   while (toolCallsMade < MAX_TOOL_CALLS) {
     // Check timeout
     if (Date.now() - startedAt > AGENT_TIMEOUT_MS) {
+      sm.transition("timeout");
       const result: AgentResult = {
         ok: false,
         error: "Agent timeout",
@@ -430,6 +490,7 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
     }
 
     turn++;
+    sm.transition("awaiting_llm");
 
     // Call LLM with tools
     const response = await llmFn({
@@ -474,9 +535,11 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
       // Execute each tool call — each counts toward MAX_TOOL_CALLS
       for (const toolCall of response.toolCalls) {
         toolCallsMade++;
+        sm.transition("tool_call");
 
         // Check if we've exceeded the limit mid-batch
         if (toolCallsMade > MAX_TOOL_CALLS) {
+          sm.transition("max_calls");
           const result: AgentResult = {
             ok: false,
             error: "Maximum tool calls exceeded",
@@ -664,6 +727,7 @@ export async function runToolCallingAgent(input: AgentInput): Promise<AgentResul
         latencyMs: Date.now() - startedAt
       };
       recordTrace({ turn, type: "terminal", terminalType: "final", terminalData: parsed });
+      sm.transition("completed");
       if (_collectTrace) resultVal._trace = trace;
       return resultVal;
     }

@@ -280,3 +280,67 @@ test("tool with extra unknown args does not throw", async () => {
   );
   assert.equal(result.success, true);
 });
+
+// ---------------------------------------------------------------------------
+// State machine tests
+// ---------------------------------------------------------------------------
+
+test("state machine starts in planning state", async () => {
+  const { AgentStateMachine } = await import("../../src/llm/agent.ts");
+  const sm = new AgentStateMachine();
+  assert.equal(sm.state, "planning");
+});
+
+test("state machine transitions to awaiting_llm", async () => {
+  const { AgentStateMachine } = await import("../../src/llm/agent.ts");
+  const sm = new AgentStateMachine();
+  sm.transition("awaiting_llm");
+  assert.equal(sm.state, "awaiting_llm");
+  assert.equal(sm.transitions.length, 1);
+  assert.equal(sm.transitions[0].from, "planning");
+  assert.equal(sm.transitions[0].to, "awaiting_llm");
+});
+
+test("state machine invalid transition warns but does not throw", async () => {
+  const { AgentStateMachine } = await import("../../src/llm/agent.ts");
+  const sm = new AgentStateMachine();
+  // completed -> tool_call is invalid but the machine should still "transition"
+  sm.transition("completed");
+  sm.transition("tool_call"); // Should warn, not throw
+  assert.equal(sm.transitions.length, 2);
+  // The invalid transition is still recorded (state does change)
+  assert.equal(sm.transitions[1].from, "completed");
+  assert.equal(sm.transitions[1].to, "tool_call");
+});
+
+test("state machine reset clears transitions", async () => {
+  const { AgentStateMachine } = await import("../../src/llm/agent.ts");
+  const sm = new AgentStateMachine();
+  sm.transition("awaiting_llm");
+  sm.transition("tool_call");
+  assert.equal(sm.transitions.length, 2);
+  sm.reset();
+  assert.equal(sm.state, "planning");
+  assert.equal(sm.transitions.length, 0);
+});
+
+test("state machine tracks complete lifecycle", async () => {
+  const { AgentStateMachine } = await import("../../src/llm/agent.ts");
+  const sm = new AgentStateMachine();
+  sm.transition("awaiting_llm");
+  sm.transition("tool_call");
+  sm.transition("preview");
+  sm.transition("awaiting_confirmation");
+  sm.transition("executing");
+  sm.transition("completed");
+  assert.equal(sm.state, "completed");
+  assert.equal(sm.transitions.length, 6);
+});
+
+test("state machine allows max_calls as terminal state", async () => {
+  const { AgentStateMachine } = await import("../../src/llm/agent.ts");
+  const sm = new AgentStateMachine();
+  sm.transition("awaiting_llm");
+  sm.transition("max_calls");
+  assert.equal(sm.state, "max_calls");
+});

@@ -14,11 +14,9 @@ const commandPaletteSource = readFileSync(
   "utf8"
 );
 
-test("dashboard KPI buttons expose descriptive aria-labels for drill-down actions", () => {
-  assert.match(dashboardPageSource, /aria-label=\{`Open transactions for net flow \$\{netFlowValue\}`\}/);
-  assert.match(dashboardPageSource, /aria-label=\{`Open expense transactions totaling \$\{spendValue\}`\}/);
-  assert.match(dashboardPageSource, /aria-label=\{`Open income transactions totaling \$\{incomeValue\}`\}/);
-  assert.match(dashboardPageSource, /aria-label=\{`Open recurring transactions totaling \$\{recurringValue\}`\}/);
+test("home story actions expose descriptive accessible names", () => {
+  assert.match(dashboardPageSource, /aria-label="Explain this operating flow in Explorer"/);
+  assert.match(dashboardPageSource, /aria-label=\{`Open transactions for \$\{entry\.merchant\}, \$\{money\(entry\.amount\)\}`\}/);
 });
 
 test("help menu uses menu semantics and shared shell tokens", () => {

@@ -50,6 +50,9 @@ export interface ExplorerAnalyticsApiParams {
   tag?: string;
   merchant?: string;
   recurring_rule_id?: string;
+  min_amount?: number;
+  max_amount?: number;
+  currency?: string;
 }
 
 const RANGE_VALUES: Set<string> = new Set([...RANGE_OPTIONS.map((option) => option.value), "custom"]);
@@ -71,6 +74,13 @@ function cleanValue(value: string | null) {
 function cleanIsoDate(value: string | null) {
   const normalized = cleanValue(value);
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : "";
+}
+
+function cleanAmountValue(value: string | null) {
+  const normalized = cleanValue(value);
+  if (!normalized) return "";
+  const amount = Number(normalized);
+  return Number.isFinite(amount) && amount >= 0 ? normalized : "";
 }
 
 function cleanUniqueList<T extends string>(values: string[], normalizeValue: (value: string) => T | "") {
@@ -206,6 +216,12 @@ export function toExplorerAnalyticsApiParams(
   if (filters.recurring) {
     params.recurring_rule_id = "true";
   }
+  if (filters.minAmount) {
+    params.min_amount = Number(filters.minAmount);
+  }
+  if (filters.maxAmount) {
+    params.max_amount = Number(filters.maxAmount);
+  }
 
   if (filters.range === "custom") {
     if (filters.start) {
@@ -298,8 +314,8 @@ export function toValidExplorerFilterState(filters: ExplorerFilterState): Explor
     transactionTypes: cleanTransactionTypeList(filters.transactionTypes),
     tag: cleanValue(filters.tag),
     recurring: Boolean(filters.recurring),
-    minAmount: cleanValue(filters.minAmount),
-    maxAmount: cleanValue(filters.maxAmount)
+    minAmount: cleanAmountValue(filters.minAmount),
+    maxAmount: cleanAmountValue(filters.maxAmount)
   };
 
   next.perspective = readEnumValue(next.perspective, PERSPECTIVE_VALUES, "overview");

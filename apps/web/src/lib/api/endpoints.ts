@@ -11,6 +11,7 @@ import type {
   CommitImportResponse,
   Profile,
   ExplorerAnalyticsResponse,
+  InsightFactsResponse,
   HeatmapItem,
   ImportDetailsResponse,
   ImportDatabaseBackupResponse,
@@ -425,8 +426,10 @@ export const analyticsApi = {
       category_view?: "granular" | "coarse";
       perspective?: "overview" | "category" | "account";
       compare?: "previous";
+      currency?: string;
       account?: string;
       category?: string[];
+      invert_categories?: boolean;
       merchant?: string;
       query?: string;
       direction?: "outflow" | "inflow";
@@ -438,6 +441,25 @@ export const analyticsApi = {
       max_amount?: number;
     }
   ) => request<ExplorerAnalyticsResponse>(`/v1/analytics/explorer${buildQuery(params)}`),
+  insights: (
+    request: ApiRequest,
+    params: {
+      range?: string;
+      start?: string;
+      end?: string;
+      currency?: string;
+      category_view?: "granular" | "coarse";
+      account?: string;
+      category?: string[];
+      invert_categories?: boolean;
+      merchant?: string;
+      tag?: string;
+      recurring_rule_id?: string;
+      min_amount?: number;
+      max_amount?: number;
+      as_of?: string;
+    }
+  ) => request<InsightFactsResponse>(`/v1/analytics/insights${buildQuery(params)}`),
   categories: (request: ApiRequest, params: { range?: string; start?: string; end?: string; category_view?: "granular" | "coarse" }) =>
     request<{ items: Array<{ category: string; amount: number }> }>(`/v1/analytics/categories${buildQuery(params)}`),
   merchants: (request: ApiRequest, params: { range?: string; start?: string; end?: string; category_view?: "granular" | "coarse" }) =>

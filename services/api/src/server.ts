@@ -65,6 +65,7 @@ import {
 // TODO(maybe-later): Keep investments API support for future re-enable while frontend hides this module.
 import {
   getExplorerAnalytics,
+  getInsightFacts,
   getOverview,
   getCategoryRollup,
   getMerchantRollup,
@@ -1196,6 +1197,7 @@ async function handleApiRequest(req, res, url) {
         category_view: searchParams.get("category_view"),
         perspective: searchParams.get("perspective"),
         compare: searchParams.get("compare"),
+        currency: searchParams.get("currency"),
         category: searchParams.getAll("category"),
         account: searchParams.get("account"),
         merchant: searchParams.get("merchant"),
@@ -1208,6 +1210,28 @@ async function handleApiRequest(req, res, url) {
         review_status: searchParams.get("review_status"),
         min_amount: searchParams.get("min_amount"),
         max_amount: searchParams.get("max_amount")
+      });
+      sendJson(res, 200, result);
+      return;
+    }
+
+    if (req.method === "GET" && pathname === "/v1/analytics/insights") {
+      const user = requireUser(req);
+      const result = getInsightFacts(user.id, {
+        start: searchParams.get("start"),
+        end: searchParams.get("end"),
+        range: searchParams.get("range"),
+        currency: searchParams.get("currency"),
+        category_view: searchParams.get("category_view"),
+        category: searchParams.getAll("category"),
+        invert_categories: searchParams.get("invert_categories"),
+        account: searchParams.get("account"),
+        merchant: searchParams.get("merchant"),
+        tag: searchParams.get("tag"),
+        recurring_rule_id: searchParams.get("recurring_rule_id"),
+        min_amount: searchParams.get("min_amount"),
+        max_amount: searchParams.get("max_amount"),
+        as_of: searchParams.get("as_of")
       });
       sendJson(res, 200, result);
       return;

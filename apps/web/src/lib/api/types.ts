@@ -548,6 +548,91 @@ export interface OverviewResponse {
   meta: AnalyticsMeta;
 }
 
+export interface InsightDriver {
+  key: string;
+  label: string;
+  current: number;
+  previous: number;
+  delta: number;
+  contributionPercent: number;
+  countDelta: number;
+  meaningful: boolean;
+  evidenceTransactionIds: string[];
+  evidence: Array<{
+    transactionId: string;
+    transactionDate: string;
+    merchant: string;
+    amount: number;
+    category: string;
+    accountId: string | null;
+    accountName: string;
+  }>;
+}
+
+export interface InsightFactsResponse {
+  scope: {
+    current: AppliedRangeMeta;
+    previous: AppliedRangeMeta | null;
+    partialPeriod: boolean;
+    treatmentSet: Array<"expense" | "income">;
+    currency: string | null;
+    availableCurrencies: string[];
+    accountsRepresented: number;
+    transactionCount: number;
+    reviewNeededCount: number;
+    uncategorizedAmount: number;
+    comparisonEligible: boolean;
+    limitationReasons: string[];
+  };
+  operatingFlow: {
+    current: { income: number; expense: number; net: number };
+    previous: { income: number; expense: number; net: number } | null;
+    delta: { income: number; expense: number; net: number } | null;
+    transition: "surplus" | "deficit" | "surplus_to_deficit" | "deficit_to_surplus" | "stable";
+  } | null;
+  changeAttribution: {
+    meaningful: boolean;
+    totalExpenseDelta: number;
+    dimensions: {
+      category: InsightDriver[];
+      account: InsightDriver[];
+      merchant: InsightDriver[];
+    };
+    recurring: {
+      recurringDelta: number;
+      variableDelta: number;
+    };
+  } | null;
+  reviewTransactions: Array<{
+    transactionId: string;
+    transactionDate: string;
+    merchant: string;
+    amount: number;
+    category: string;
+    reason: string;
+  }>;
+  recurring: {
+    historicalLinkedSpend: number;
+    activeMonthlyEquivalent: number;
+    incomeBurdenPercent: number | null;
+    upcoming30Days: Array<{
+      id: string;
+      name: string;
+      amount: number;
+      cadence: string;
+      nextRunAt: string;
+    }>;
+    priceDrift: Array<{
+      ruleId: string;
+      name: string;
+      expectedAmount: number;
+      recentAmount: number;
+      percent: number;
+    }>;
+    possibleRecurringCount: number;
+  } | null;
+}
+
 export interface ExplorerSummaryDeltaValue {
   delta: number;
   percent: number | null;
@@ -653,6 +738,7 @@ export interface ExplorerAnalyticsResponse {
     current: OverviewResponse["summary"];
     previous: OverviewResponse["summary"] | null;
     delta: ExplorerSummaryDelta | null;
+    trend: OverviewResponse["trend"];
   };
   trend: {
     items: ExplorerTrendItem[];

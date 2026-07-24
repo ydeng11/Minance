@@ -173,13 +173,22 @@ function resolveCategoryType(entry, categoryTypeLookup) {
   return categoryTypeLookup.get(`${userId}::${categoryName}`) || null;
 }
 
-function normalizeTransactionType(entry, categoryTypeLookup) {
+export function buildCategoryTypeLookup() {
+  return new Map(
+    loadStore().categories
+      .filter((category) => category.userId && category.name && category.type)
+      .map((category) => [`${category.userId}::${normalizeText(category.name)}`, category.type])
+  );
+}
+
+export function normalizeTransactionType(entry, categoryTypeLookup = null) {
   const explicit = normalizeTransactionTypeFilter(entry?.transaction_type);
   if (explicit) {
     return explicit;
   }
 
-  const categoryType = resolveCategoryType(entry, categoryTypeLookup);
+  const lookup = categoryTypeLookup || buildCategoryTypeLookup();
+  const categoryType = resolveCategoryType(entry, lookup);
   if (categoryType) {
     return categoryType;
   }
@@ -200,11 +209,7 @@ function matchesAccount(entry, rawAccount) {
 
 export function applySharedTransactionFilters(transactions, filters = {}) {
   let txns = [...transactions];
-  const categoryTypeLookup = new Map(
-    loadStore().categories
-      .filter((entry) => entry.userId && entry.name && entry.type)
-      .map((entry) => [`${entry.userId}::${normalizeText(entry.name)}`, entry.type])
-  );
+  const categoryTypeLookup = buildCategoryTypeLookup();
 
   if (filters.query) {
     const query = normalizeText(filters.query);

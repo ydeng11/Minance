@@ -199,7 +199,8 @@ export async function runToolCallingLlm({
   messages,
   tools,
   maxTokens = 800,
-  temperature = 0.1
+  temperature = 0.1,
+  signal
 }: {
   provider: string;
   apiKey: string;
@@ -208,6 +209,7 @@ export async function runToolCallingLlm({
   tools: ToolDefinition[];
   maxTokens?: number;
   temperature?: number;
+  signal?: AbortSignal;
 }): Promise<ToolCallingResult> {
   const startedAt = Date.now();
   const endpoint = endpointForProvider(provider);

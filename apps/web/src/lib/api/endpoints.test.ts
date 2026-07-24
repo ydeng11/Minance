@@ -105,14 +105,36 @@ test("analyticsApi.explorer appends repeated category and type params", async ()
   const { calls, request } = createRecorder();
   await analyticsApi.explorer(request, {
     category_view: "granular",
+    currency: "USD",
     category: ["Food", "Travel"],
+    invert_categories: true,
     transaction_type: ["expense", "transfer"]
   });
 
   assert.equal(calls.length, 1);
   assert.equal(
     calls[0].path,
-    "/v1/analytics/explorer?category_view=granular&category=Food&category=Travel&transaction_type=expense&transaction_type=transfer"
+    "/v1/analytics/explorer?category_view=granular&currency=USD&category=Food&category=Travel&invert_categories=true&transaction_type=expense&transaction_type=transfer"
+  );
+});
+
+test("analyticsApi.insights preserves financial scope", async () => {
+  const { calls, request } = createRecorder();
+  await analyticsApi.insights(request, {
+    start: "2026-02-01",
+    end: "2026-02-14",
+    currency: "USD",
+    account: "acct_card",
+    category: ["Dining"],
+    invert_categories: true,
+    min_amount: 25,
+    max_amount: 500
+  });
+
+  assert.equal(calls.length, 1);
+  assert.equal(
+    calls[0].path,
+    "/v1/analytics/insights?start=2026-02-01&end=2026-02-14&currency=USD&account=acct_card&category=Dining&invert_categories=true&min_amount=25&max_amount=500"
   );
 });
 

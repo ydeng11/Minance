@@ -116,6 +116,28 @@ test("toExplorerAnalyticsApiParams forwards merchant drill-down state", () => {
   assert.equal(params.merchant, "Sunset Grocer");
 });
 
+test("toExplorerAnalyticsApiParams forwards amount bounds", () => {
+  const params = toExplorerAnalyticsApiParams({
+    ...createDefaultExplorerFilterState(),
+    minAmount: "25",
+    maxAmount: "500"
+  });
+
+  assert.equal(params.min_amount, 25);
+  assert.equal(params.max_amount, 500);
+});
+
+test("toValidExplorerFilterState drops invalid amount bounds", () => {
+  const result = toValidExplorerFilterState({
+    ...createDefaultExplorerFilterState(),
+    minAmount: "not-a-number",
+    maxAmount: "-5"
+  });
+
+  assert.equal(result.minAmount, "");
+  assert.equal(result.maxAmount, "");
+});
+
 test("toValidExplorerFilterState trims and deduplicates array filters", () => {
   const state = toValidExplorerFilterState({
     ...createDefaultExplorerFilterState(),

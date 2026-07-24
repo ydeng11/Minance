@@ -1,6 +1,10 @@
 import { loadStore, getUserTransactions, onCacheReloaded, onStoreReset } from "./store.ts";
 import { computeDateRange, inDateRange, monthKey } from "./utils.ts";
-import { applySharedTransactionFilters } from "./transactionFilters.ts";
+import {
+  applySharedTransactionFilters,
+  buildCategoryTypeLookup,
+  normalizeTransactionType
+} from "./transactionFilters.ts";
 import {
   CATEGORY_VIEW_COARSE,
   createCategoryResolver,
@@ -143,6 +147,10 @@ export function filterUserTransactions(userId, filters = {}) {
   const resolveCategory = createCategoryResolver(strategy);
   const categoryFilters = normalizeFilterList(filters.category);
   const includeExcluded = normalizeIncludeExcluded(readIncludeExcludedFilter(filters), true);
+  const requestedCurrency = String(filters.currency || "").trim().toUpperCase();
+  const accountById = requestedCurrency
+    ? new Map(loadStore().accounts.filter((account) => account.userId === userId).map((account) => [account.id, account]))
+    : null;
 
   // Use the per-user transaction index instead of scanning all store.transactions.
   const userTransactions = getUserTransactions(userId);
@@ -154,6 +162,9 @@ export function filterUserTransactions(userId, filters = {}) {
     }
 
     const normalizedTxn = normalizeTransactionForAnalytics(txn);
+    if (requestedCurrency && resolveAnalyticsCurrency(normalizedTxn, accountById) !== requestedCurrency) {
+      continue;
+    }
     let resolvedCategory = null;
     if (!includeExcluded || categoryFilters.length) {
       resolvedCategory = resolveTxnCategory(resolveCategory, normalizedTxn);
@@ -855,8 +866,428 @@ export function getAnomalies(userId, filters = {}) {
     });
 }
 
+function resolveAnalyticsCurrency(transaction, accountById) {
+  const directCurrency = String(transaction?.currency || "").trim().toUpperCase();
+  if (directCurrency) {
+    return directCurrency;
+  }
+  const accountCurrency = transaction?.account_id
+    ? String(accountById.get(transaction.account_id)?.currency || "").trim().toUpperCase()
+    : "";
+  return accountCurrency || "USD";
+}
+
+function buildOperatingFlow(transactions, categoryTypeLookup) {
+  let income = 0;
+  let expense = 0;
+  for (const transaction of transactions) {
+    const transactionType = normalizeTransactionType(transaction, categoryTypeLookup);
+    if (transactionType === "income") {
+      income += toAmount(transaction);
+    } else if (transactionType === "expense") {
+      expense += toAmount(transaction);
+    }
+  }
+  return {
+    income: round2(income),
+    expense: round2(expense),
+    net: round2(income - expense)
+  };
+}
+
+function median(values) {
+  if (!values.length) {
+    return 0;
+  }
+  const sorted = [...values].sort((left, right) => left - right);
+  const midpoint = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) {
+    return sorted[midpoint];
+  }
+  return (sorted[midpoint - 1] + sorted[midpoint]) / 2;
+}
+
+function buildDriverMap(transactions, dimension, context) {
+  const grouped = new Map();
+  for (const transaction of transactions) {
+    if (normalizeTransactionType(transaction, context.categoryTypeLookup) !== "expense") {
+      continue;
+    }
+
+    let key = "";
+    let label = "";
+    if (dimension === "category") {
+      const categoryMeta = resolveTxnCategory(context.resolveCategory, transaction);
+      key = context.categoryView === CATEGORY_VIEW_COARSE
+        ? categoryMeta.categoryCoarse
+        : categoryMeta.categoryGranular;
+      label = key;
+    } else if (dimension === "account") {
+      const account = transaction.account_id ? context.accountById.get(transaction.account_id) : null;
+      key = String(transaction.account_id || transaction.account_key || "unassigned");
+      label = account?.displayName || String(transaction.account_key || "Unassigned");
+    } else {
+      key = String(transaction.merchant_normalized || transaction.merchant_raw || "Unknown merchant");
+      label = key;
+    }
+
+    const current = grouped.get(key) || {
+      key,
+      label,
+      amount: 0,
+      count: 0,
+      evidence: []
+    };
+    current.amount += toAmount(transaction);
+    current.count += 1;
+    current.evidence.push(transaction);
+    grouped.set(key, current);
+  }
+  return grouped;
+}
+
+function buildChangeDrivers(currentTransactions, previousTransactions, dimension, totalDelta, context) {
+  const currentMap = buildDriverMap(currentTransactions, dimension, context);
+  const previousMap = buildDriverMap(previousTransactions, dimension, context);
+  const keys = new Set([...currentMap.keys(), ...previousMap.keys()]);
+
+  return [...keys]
+    .map((key) => {
+      const current = currentMap.get(key);
+      const previous = previousMap.get(key);
+      const delta = round2((current?.amount || 0) - (previous?.amount || 0));
+      const sameDirection = totalDelta !== 0 && Math.sign(delta) === Math.sign(totalDelta);
+      const contributionPercent = sameDirection
+        ? round2(Math.min(100, (Math.abs(delta) / Math.abs(totalDelta)) * 100))
+        : 0;
+      const evidenceTransactions = [...(current?.evidence || [])]
+        .sort((left, right) => toAmount(right) - toAmount(left))
+        .slice(0, 5);
+      return {
+        key,
+        label: current?.label || previous?.label || key,
+        current: round2(current?.amount || 0),
+        previous: round2(previous?.amount || 0),
+        delta,
+        contributionPercent,
+        countDelta: (current?.count || 0) - (previous?.count || 0),
+        meaningful: contributionPercent >= 20,
+        evidenceTransactionIds: evidenceTransactions.map((transaction) => transaction.id),
+        evidence: evidenceTransactions.map((transaction) => {
+          const categoryMeta = resolveTxnCategory(context.resolveCategory, transaction);
+          const account = transaction.account_id ? context.accountById.get(transaction.account_id) : null;
+          return {
+            transactionId: transaction.id,
+            transactionDate: transaction.transaction_date,
+            merchant: transaction.merchant_normalized || transaction.merchant_raw || "Unknown merchant",
+            amount: round2(toAmount(transaction)),
+            category: context.categoryView === CATEGORY_VIEW_COARSE
+              ? categoryMeta.categoryCoarse
+              : categoryMeta.categoryGranular,
+            accountId: transaction.account_id || null,
+            accountName: account?.displayName || transaction.account_key || "Unassigned"
+          };
+        })
+      };
+    })
+    .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta));
+}
+
+function normalizeRecurringMonthlyAmount(rule) {
+  const amount = Math.abs(Number(rule?.amount || 0));
+  if (rule?.cadence === "weekly") return amount * 52 / 12;
+  if (rule?.cadence === "biweekly") return amount * 26 / 12;
+  if (rule?.cadence === "quarterly") return amount / 3;
+  if (rule?.cadence === "yearly") return amount / 12;
+  return amount;
+}
+
+function buildRecurringInsight(
+  store,
+  userId,
+  currentTransactions,
+  currentFlow,
+  previousFlow,
+  filters,
+  categoryTypeLookup,
+  scope
+) {
+  const activeRules = (store.recurringRules || [])
+    .filter((rule) => {
+      if (rule.user_id !== userId || rule.status !== "active" || rule.direction === "inflow") return false;
+      const account = rule.account_id ? scope.accountById.get(rule.account_id) : null;
+      if (!account && scope.availableCurrencies.length > 1) return false;
+      if (scope.currency && account && String(account.currency || "USD").toUpperCase() !== scope.currency) return false;
+      if (scope.accountFilter) {
+        const normalizedAccountFilter = String(scope.accountFilter).trim().toLowerCase();
+        const accountMatches = [rule.account_id, account?.normalizedKey, account?.displayName]
+          .some((value) => String(value || "").trim().toLowerCase() === normalizedAccountFilter);
+        if (!accountMatches) return false;
+      }
+      return true;
+    });
+  const activeMonthlyEquivalent = round2(
+    activeRules.reduce((sum, rule) => sum + normalizeRecurringMonthlyAmount(rule), 0)
+  );
+  const historicalLinkedSpend = round2(currentTransactions.reduce((sum, transaction) => {
+    return normalizeTransactionType(transaction, categoryTypeLookup) === "expense" && transaction.recurring_rule_id
+      ? sum + toAmount(transaction)
+      : sum;
+  }, 0));
+  const asOf = new Date(`${filters.as_of || formatDateYmd(new Date())}T12:00:00Z`);
+  const upcomingLimit = new Date(asOf.getTime() + 30 * DAY_IN_MS);
+  const upcoming30Days = activeRules
+    .filter((rule) => {
+      const nextRun = new Date(`${rule.next_run_at || ""}T12:00:00Z`);
+      return !Number.isNaN(nextRun.getTime()) && nextRun >= asOf && nextRun <= upcomingLimit;
+    })
+    .sort((left, right) => String(left.next_run_at).localeCompare(String(right.next_run_at)))
+    .map((rule) => ({
+      id: rule.id,
+      name: rule.name,
+      amount: round2(Math.abs(Number(rule.amount || 0))),
+      cadence: rule.cadence,
+      nextRunAt: rule.next_run_at
+    }));
+  const hasStableIncome = currentFlow.income > 0 && previousFlow?.income > 0 && scope.elapsedDays > 0;
+  const averagePeriodIncome = hasStableIncome ? (currentFlow.income + previousFlow.income) / 2 : 0;
+  const monthlyIncomeEquivalent = averagePeriodIncome * (365.25 / 12) / scope.elapsedDays;
+
+  const currentByRule = new Map();
+  for (const transaction of currentTransactions) {
+    if (!transaction.recurring_rule_id) continue;
+    const existing = currentByRule.get(transaction.recurring_rule_id);
+    if (!existing || String(transaction.transaction_date).localeCompare(String(existing.transaction_date)) > 0) {
+      currentByRule.set(transaction.recurring_rule_id, transaction);
+    }
+  }
+  const priceDrift = activeRules.flatMap((rule) => {
+    const recent = currentByRule.get(rule.id);
+    const expectedAmount = Math.abs(Number(rule.amount || 0));
+    const recentAmount = recent ? toAmount(recent) : 0;
+    if (!recent || expectedAmount <= 0) return [];
+    const percent = round2(((recentAmount - expectedAmount) / expectedAmount) * 100);
+    if (Math.abs(percent) <= 5) return [];
+    return [{
+      ruleId: rule.id,
+      name: rule.name,
+      expectedAmount: round2(expectedAmount),
+      recentAmount: round2(recentAmount),
+      percent
+    }];
+  }).sort((left, right) => Math.abs(right.percent) - Math.abs(left.percent));
+
+  return {
+    historicalLinkedSpend,
+    activeMonthlyEquivalent,
+    incomeBurdenPercent: hasStableIncome
+      ? round2((activeMonthlyEquivalent / monthlyIncomeEquivalent) * 100)
+      : null,
+    upcoming30Days,
+    priceDrift,
+    possibleRecurringCount: (store.recurringSuggestions || [])
+      .filter((suggestion) => suggestion.user_id === userId).length
+  };
+}
+
+function buildReviewTransactions(currentTransactions, historicalTransactions, context) {
+  const historicalByMerchant = new Map();
+  for (const transaction of historicalTransactions) {
+    if (normalizeTransactionType(transaction, context.categoryTypeLookup) !== "expense") continue;
+    const merchant = String(transaction.merchant_normalized || transaction.merchant_raw || "").trim();
+    if (!merchant) continue;
+    const values = historicalByMerchant.get(merchant) || [];
+    values.push(toAmount(transaction));
+    historicalByMerchant.set(merchant, values);
+  }
+
+  return currentTransactions.flatMap((transaction) => {
+    if (normalizeTransactionType(transaction, context.categoryTypeLookup) !== "expense" || transaction.recurring_rule_id) {
+      return [];
+    }
+    const merchant = String(transaction.merchant_normalized || transaction.merchant_raw || "").trim();
+    const baseline = historicalByMerchant.get(merchant) || [];
+    if (baseline.length < 4) return [];
+    const baselineMedian = median(baseline);
+    const amount = toAmount(transaction);
+    if (baselineMedian <= 0 || amount < baselineMedian * 2.5 || amount - baselineMedian < 25) return [];
+    const categoryMeta = resolveTxnCategory(context.resolveCategory, transaction);
+    return [{
+      transactionId: transaction.id,
+      transactionDate: transaction.transaction_date,
+      merchant: merchant || "Unknown merchant",
+      amount: round2(amount),
+      category: context.categoryView === CATEGORY_VIEW_COARSE
+        ? categoryMeta.categoryCoarse
+        : categoryMeta.categoryGranular,
+      reason: "amount_above_merchant_pattern"
+    }];
+  }).sort((left, right) => right.amount - left.amount).slice(0, 3);
+}
+
+function getFlowTransition(currentNet, previousNet) {
+  if (previousNet < 0 && currentNet >= 0) return "deficit_to_surplus";
+  if (previousNet >= 0 && currentNet < 0) return "surplus_to_deficit";
+  if (currentNet < 0) return "deficit";
+  if (currentNet > 0) return "surplus";
+  return "stable";
+}
+
+export function getInsightFacts(userId, filters = {}) {
+  const store = loadStore();
+  const categoryTypeLookup = buildCategoryTypeLookup();
+  const accountById = new Map(
+    store.accounts.filter((account) => account.userId === userId).map((account) => [account.id, account])
+  );
+  const baseFilters = {
+    ...filters,
+    transaction_type: ["expense", "income"]
+  };
+  const currentUnscoped = filterUserTransactions(userId, baseFilters);
+  const availableCurrencies = [...new Set(
+    currentUnscoped.map((transaction) => resolveAnalyticsCurrency(transaction, accountById))
+  )].sort();
+  const requestedCurrency = String(filters.currency || "").trim().toUpperCase();
+  const currency = requestedCurrency || (availableCurrencies.length === 1 ? availableCurrencies[0] : null);
+  const limitationReasons = [];
+  if (!currency && availableCurrencies.length > 1) {
+    limitationReasons.push("multiple_currencies");
+  }
+
+  const currentTransactions = currency
+    ? currentUnscoped.filter((transaction) => resolveAnalyticsCurrency(transaction, accountById) === currency)
+    : [];
+  const previousFilters = derivePreviousComparisonFilters(baseFilters);
+  const previousTransactions = previousFilters && currency
+    ? filterUserTransactions(userId, previousFilters)
+      .filter((transaction) => resolveAnalyticsCurrency(transaction, accountById) === currency)
+    : [];
+  const appliedRange = buildAppliedRange(filters);
+  const rangeStart = appliedRange.start ? new Date(`${appliedRange.start}T12:00:00Z`) : null;
+  const rangeEnd = appliedRange.end ? new Date(`${appliedRange.end}T12:00:00Z`) : null;
+  const elapsedDays = rangeStart && rangeEnd
+    ? Math.round((rangeEnd.getTime() - rangeStart.getTime()) / DAY_IN_MS) + 1
+    : 0;
+  const comparisonEligible = Boolean(currency && previousFilters && elapsedDays >= 7 && previousTransactions.length > 0);
+  if (currency && !comparisonEligible) {
+    limitationReasons.push("insufficient_comparison_history");
+  }
+
+  const currentFlow = currency ? buildOperatingFlow(currentTransactions, categoryTypeLookup) : null;
+  const previousFlow = comparisonEligible ? buildOperatingFlow(previousTransactions, categoryTypeLookup) : null;
+  const resolveCategory = createCategoryResolver(ensureCategoryStrategyForUser(userId));
+  const categoryView = normalizeCategoryView(filters.category_view || filters.categoryView);
+  const context = { accountById, resolveCategory, categoryView, categoryTypeLookup };
+  const totalExpenseDelta = currentFlow && previousFlow
+    ? round2(currentFlow.expense - previousFlow.expense)
+    : 0;
+  const expenseAmounts = [...currentTransactions, ...previousTransactions]
+    .filter((transaction) => normalizeTransactionType(transaction, categoryTypeLookup) === "expense")
+    .map(toAmount);
+  const priorPercent = previousFlow?.expense
+    ? Math.abs(totalExpenseDelta / previousFlow.expense) * 100
+    : 0;
+  const meaningful = comparisonEligible
+    && priorPercent >= 10
+    && Math.abs(totalExpenseDelta) >= median(expenseAmounts) * 2;
+  const dimensions = comparisonEligible
+    ? {
+        category: buildChangeDrivers(currentTransactions, previousTransactions, "category", totalExpenseDelta, context),
+        account: buildChangeDrivers(currentTransactions, previousTransactions, "account", totalExpenseDelta, context),
+        merchant: buildChangeDrivers(currentTransactions, previousTransactions, "merchant", totalExpenseDelta, context)
+      }
+    : { category: [], account: [], merchant: [] };
+  const recurringCurrent = currentTransactions
+    .filter((transaction) => normalizeTransactionType(transaction, categoryTypeLookup) === "expense" && transaction.recurring_rule_id)
+    .reduce((sum, transaction) => sum + toAmount(transaction), 0);
+  const recurringPrevious = previousTransactions
+    .filter((transaction) => normalizeTransactionType(transaction, categoryTypeLookup) === "expense" && transaction.recurring_rule_id)
+    .reduce((sum, transaction) => sum + toAmount(transaction), 0);
+
+  const representedAccounts = new Set(currentTransactions.map((transaction) => transaction.account_id).filter(Boolean));
+  const uncategorizedAmount = currentTransactions.reduce((sum, transaction) => {
+    const category = String(transaction.category_final || "").trim().toLowerCase();
+    return !category || category === "uncategorized" ? sum + toAmount(transaction) : sum;
+  }, 0);
+
+  const currentStart = appliedRange.start || "";
+  const historicalTransactions = currency
+    ? getUserTransactions(userId).filter((transaction) => (
+        String(transaction.transaction_date || "") < currentStart
+        && resolveAnalyticsCurrency(transaction, accountById) === currency
+      ))
+    : [];
+
+  return {
+    scope: {
+      current: appliedRange,
+      previous: previousFilters ? buildAppliedRange(previousFilters) : null,
+      partialPeriod: Boolean(filters.partial_period),
+      treatmentSet: ["expense", "income"],
+      currency,
+      availableCurrencies,
+      accountsRepresented: representedAccounts.size,
+      transactionCount: currentTransactions.length,
+      reviewNeededCount: currentTransactions.filter((transaction) => transaction.needs_category_review).length,
+      uncategorizedAmount: round2(uncategorizedAmount),
+      comparisonEligible,
+      limitationReasons
+    },
+    operatingFlow: currentFlow
+      ? {
+          current: currentFlow,
+          previous: previousFlow,
+          delta: previousFlow
+            ? {
+                income: round2(currentFlow.income - previousFlow.income),
+                expense: round2(currentFlow.expense - previousFlow.expense),
+                net: round2(currentFlow.net - previousFlow.net)
+              }
+            : null,
+          transition: getFlowTransition(currentFlow.net, previousFlow?.net ?? currentFlow.net)
+        }
+      : null,
+    changeAttribution: currentFlow
+      ? {
+          meaningful,
+          totalExpenseDelta,
+          dimensions,
+          recurring: {
+            recurringDelta: round2(recurringCurrent - recurringPrevious),
+            variableDelta: round2(totalExpenseDelta - (recurringCurrent - recurringPrevious))
+          }
+        }
+      : null,
+    reviewTransactions: buildReviewTransactions(currentTransactions, historicalTransactions, context),
+    recurring: currentFlow
+      ? buildRecurringInsight(
+          store,
+          userId,
+          currentTransactions,
+          currentFlow,
+          previousFlow,
+          filters,
+          categoryTypeLookup,
+          {
+            accountById,
+            accountFilter: filters.account,
+            currency,
+            availableCurrencies,
+            elapsedDays
+          }
+        )
+      : null
+  };
+}
+
 export function getExplorerAnalytics(userId, filters = {}) {
-  const { effectiveFilters, categoryView } = normalizeAnalyticsFilters(filters);
+  const { effectiveFilters: requestedFilters, categoryView } = normalizeAnalyticsFilters(filters);
+  const hasExplicitTransactionType = Array.isArray(requestedFilters.transaction_type)
+    ? requestedFilters.transaction_type.length > 0
+    : Boolean(requestedFilters.transaction_type);
+  const effectiveFilters = hasExplicitTransactionType
+    ? requestedFilters
+    : { ...requestedFilters, transaction_type: ["expense", "income"] };
   const strategy = ensureCategoryStrategyForUser(userId);
   const resolveCategory = createCategoryResolver(strategy);
   const currentTransactions = filterUserTransactions(userId, effectiveFilters);
@@ -897,7 +1328,8 @@ export function getExplorerAnalytics(userId, filters = {}) {
       enabled: Boolean(previousOverview),
       current: currentOverview.summary,
       previous: previousOverview?.summary || null,
-      delta: previousOverview ? buildSummaryDelta(currentOverview.summary, previousOverview.summary) : null
+      delta: previousOverview ? buildSummaryDelta(currentOverview.summary, previousOverview.summary) : null,
+      trend: previousOverview?.trend || []
     },
     trend: {
       items: buildExplorerTrendFromTransactions(currentTransactions, resolveCategory, categoryView)

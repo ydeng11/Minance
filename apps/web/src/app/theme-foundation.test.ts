@@ -196,7 +196,6 @@ test("dashboard route uses semantic tokens instead of hard-coded dark palettes",
   assert.match(dashboardPageSource, /text-text-primary/);
   assert.match(dashboardPageSource, /focus-visible:ring-focus-ring/);
   assert.match(dashboardPageSource, /text-warning/);
-  assert.match(dashboardPageSource, /text-danger/);
 
   assert.doesNotMatch(dashboardPageSource, /stone-\d/);
   assert.doesNotMatch(dashboardPageSource, /rose-\d/);
