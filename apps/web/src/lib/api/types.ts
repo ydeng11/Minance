@@ -827,6 +827,8 @@ export interface AssistantQuery {
     };
     /** Confirmation preview data (for write tools) */
     confirmationPreview?: Record<string, unknown>;
+    /** Pending action key (for confirmation flow) */
+    pendingActionKey?: string;
     /** Structured subscription data */
     subscriptions?: Array<{
       merchant: string;
