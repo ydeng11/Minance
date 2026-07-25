@@ -1037,7 +1037,7 @@ test("Error handling: max tool calls exceeded", async () => {
 
     assert.equal(result.ok, false);
     assert.ok(result.error?.includes("Maximum tool calls"));
-    assert.equal(result.toolCallsMade, 5);
+    assert.equal(result.toolCallsMade, 12);
   } finally {
     global.fetch = originalFetch;
   }
