@@ -260,10 +260,12 @@ test("quarterly cadence handles year boundaries", () => {
 });
 
 test("yearly cadence handles leap year boundary", () => {
-  const date = new Date("2024-02-29T00:00:00Z"); // Leap year
+  // Use local date constructor to avoid timezone offset from UTC string
+  const date = new Date(2024, 1, 29); // Leap year, month is 0-indexed
   date.setFullYear(date.getFullYear() + 1);
-  // Feb 29 2024 + 1 year = Feb 28 2025 (JS auto-corrects)
-  assert.equal(date.getDate(), 28, "Feb 29 + 1 year = Feb 28 in non-leap year");
+  // JS Date does NOT clamp Feb 29 to Feb 28 — it rolls extra days into March
+  assert.equal(date.getMonth(), 2, "Feb 29 + 1 year rolls to March (month 2)");
+  assert.equal(date.getDate(), 1, "Feb 29 + 1 year = Mar 1 (JS rolls extra days)");
 });
 
 // ---------------------------------------------------------------------------
