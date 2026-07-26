@@ -10,6 +10,24 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.resolve(__dirname, "..");
 
+export async function prepareE2eSqlite({ sqliteFile, schemaFile, seedDataset }) {
+  await fs.mkdir(path.dirname(sqliteFile), { recursive: true });
+  await fs.rm(sqliteFile, { force: true });
+
+  ensureSqliteFoundation({
+    backend: "sqlite",
+    sqliteFile,
+    schemaFile,
+    autoInit: true
+  });
+
+  if (seedDataset === "deterministic-financial") {
+    writeStoreCollectionsToSqlite(createDeterministicFinancialFixture(), {
+      dbPath: sqliteFile
+    });
+  }
+}
+
 export default async function globalSetup() {
   const sqliteFile = path.join(ROOT_DIR, "services/api/tmp/e2e/test-minance.sqlite");
   const schemaFile = path.join(ROOT_DIR, "services/api/sql/schema.sql");
@@ -17,22 +35,14 @@ export default async function globalSetup() {
   const testResultsDir = path.join(ROOT_DIR, "output/playwright/test-results");
   const e2eSeedDataset = String(process.env.E2E_SEED_DATASET || "").trim();
 
-  await fs.mkdir(path.dirname(sqliteFile), { recursive: true });
   await fs.mkdir(path.join(ROOT_DIR, "output/playwright"), { recursive: true });
 
-  await fs.rm(sqliteFile, { force: true });
   await fs.rm(reportDir, { recursive: true, force: true });
   await fs.rm(testResultsDir, { recursive: true, force: true });
 
-  if (e2eSeedDataset === "deterministic-financial") {
-    ensureSqliteFoundation({
-      backend: "sqlite",
-      sqliteFile,
-      schemaFile,
-      autoInit: true
-    });
-    writeStoreCollectionsToSqlite(createDeterministicFinancialFixture(), {
-      dbPath: sqliteFile
-    });
-  }
+  await prepareE2eSqlite({
+    sqliteFile,
+    schemaFile,
+    seedDataset: e2eSeedDataset
+  });
 }
