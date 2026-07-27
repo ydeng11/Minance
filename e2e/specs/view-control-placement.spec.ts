@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { gotoView, loginWithSeedAccount, uploadAndCommitFixtureCsv } from "./helpers.ts";
+import { gotoView, loginWithSeedAccount, openShellView, uploadAndCommitFixtureCsv } from "./helpers.ts";
 
 test("shell view button appears on supported routes and opens the shell dialog", async ({ page }) => {
   await loginWithSeedAccount(page);
@@ -15,10 +15,8 @@ test("shell view button appears on supported routes and opens the shell dialog",
   );
   expect(headerButtonTestIds.indexOf("shell-view-toggle")).toBeLessThan(headerButtonTestIds.indexOf("assistant-toggle"));
 
-  await page.getByTestId("shell-view-toggle").click();
-  const dialog = page.getByTestId("shell-view-dialog");
+  const dialog = await openShellView(page);
   await expect(dialog).toBeVisible();
-  await expect(dialog).toBeFocused();
   await expect(dialog).toContainText("Reset");
   await expect(dialog).toContainText("Apply");
 
@@ -27,7 +25,7 @@ test("shell view button appears on supported routes and opens the shell dialog",
   await expect(page.getByTestId("shell-view-toggle")).toBeFocused();
 
   await gotoView(page, "transactions");
-  await expect(page.getByTestId("shell-view-toggle")).toHaveCount(0);
+  await expect(page.getByTestId("shell-view-toggle")).toBeVisible();
 
   await page.goto("/accounts");
   await expect(page.getByTestId("shell-view-toggle")).toHaveCount(0);

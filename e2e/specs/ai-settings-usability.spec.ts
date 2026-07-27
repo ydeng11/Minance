@@ -8,33 +8,44 @@ test("@core AI settings supports end-to-end profile creation, activation, and ed
   await page.getByTestId("settings-menu-ai").click();
   await expect(page.getByTestId("ai-settings-page")).toBeVisible();
 
+  const apiKey = `sk-playwright-${Date.now()}-abcdefghijklmnop`;
+
   await expect.poll(async () => await page.locator('[data-testid="profile-provider-select"] option').count()).toBeGreaterThan(0);
 
-  // Create a new profile
-  await page.getByTestId("profile-name-input").fill("E2E OpenAI profile");
+  // Create a first profile. The first profile auto-activates.
+  await page.getByTestId("profile-name-input").fill("E2E Profile A");
   await page.getByTestId("profile-provider-select").selectOption("openai");
-  await page.getByTestId("profile-key-input").fill(`sk-playwright-${Date.now()}-abcdefghijklmnop`);
+  await page.getByTestId("profile-key-input").fill(apiKey);
   await page.getByTestId("profile-save-btn").click();
 
   await expect(page.getByTestId("global-message")).toContainText("Profile created.");
+  await expect(page.getByTestId("profile-list")).toContainText("E2E Profile A");
 
-  // Wait for profile to appear and check it's shown
-  await expect(page.getByTestId("profile-list")).toContainText("E2E OpenAI profile");
+  // Create a second profile so we can exercise the activation UI (only one
+  // profile can be active at a time). The second profile is not auto-activated.
+  await page.getByTestId("profile-name-input").fill("E2E Profile B");
+  await page.getByTestId("profile-provider-select").selectOption("openai");
+  await page.getByTestId("profile-key-input").fill(`sk-playwright-${Date.now()}-qrstuvwxyz`);
+  await page.getByTestId("profile-save-btn").click();
+  await expect(page.getByTestId("global-message")).toContainText("Profile created.");
 
-  // Activate the profile
-  const profileId = await page.getByTestId(/^profile-/).first().getAttribute("data-testid");
-  const id = profileId?.replace("profile-", "") ?? "";
+  // Activate the second profile via its activate button. The first profile
+  // becomes inactive, so exactly one activate button is present.
+  const activateButton = page.getByTestId(/^activate-profile-/).first();
+  await expect(activateButton).toBeVisible();
+  const activateTestId = await activateButton.getAttribute("data-testid");
+  const profileId = activateTestId?.replace("activate-profile-", "") ?? "";
+  expect(profileId).toBeTruthy();
 
-  if (id) {
-    await page.getByTestId(`activate-profile-${id}`).click();
-    await expect(page.getByTestId("global-message")).toContainText("Profile activated.");
-    await expect(page.getByTestId(`active-badge-${id}`)).toBeVisible();
-  }
+  await activateButton.click();
+  await expect(page.getByTestId("global-message")).toContainText("Profile activated.");
+  await expect(page.getByTestId(`active-badge-${profileId}`)).toBeVisible();
 
-  // Edit profile name
-  await page.getByTestId(`edit-profile-${id}`).click();
-  await expect(page.getByTestId("profile-name-input")).toHaveValue("E2E OpenAI profile");
-  await page.getByTestId("profile-name-input").fill("E2E OpenAI profile (edited)");
+  // Edit the activated profile's name through the inline edit form.
+  await page.getByTestId(`edit-profile-${profileId}`).click();
+  await expect(page.getByTestId("profile-name-input")).toHaveValue("E2E Profile B");
+  await page.getByTestId("profile-name-input").fill("E2E Profile B (edited)");
   await page.getByTestId("profile-save-btn").click();
   await expect(page.getByTestId("global-message")).toContainText("Profile updated.");
+  await expect(page.getByTestId("profile-list")).toContainText("E2E Profile B (edited)");
 });

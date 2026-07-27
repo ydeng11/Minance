@@ -4,6 +4,7 @@ import {
   CSV_FIXTURE_PATH,
   gotoView,
   loginWithSeedAccount,
+  openShellView,
   searchTransactions,
   uploadAndCommitFixtureCsv
 } from "./helpers.ts";
@@ -241,14 +242,15 @@ test("@core major tab text and input contrast meets dark-theme thresholds", asyn
     minRatio: CONTRAST_TARGETS.body
   });
 
-  const rangeSelect = page.getByTestId("txn-range");
+  const shellDialog = await openShellView(page);
+
+  const rangeSelect = shellDialog.getByTestId("transactions-range");
   await expectContrast(rangeSelect, {
     label: "transactions range select text",
     minRatio: CONTRAST_TARGETS.emphasizedText
   });
 
-  await page.getByTestId("txn-open-advanced-filters").click();
-  const tagInput = page.getByTestId("txn-tag-filter");
+  const tagInput = shellDialog.getByTestId("transactions-tag-filter");
   await expect(tagInput).toBeVisible();
 
   await expectContrast(tagInput, {
@@ -263,7 +265,8 @@ test("@core major tab text and input contrast meets dark-theme thresholds", asyn
     pseudo: "::placeholder"
   });
 
-  await page.getByTestId("txn-advanced-apply").click();
+  await page.keyboard.press("Escape");
+  await expect(shellDialog).toHaveCount(0);
 
   await gotoView(page, "imports");
   await page.getByTestId("import-file").setInputFiles(CSV_FIXTURE_PATH);

@@ -6,8 +6,7 @@ test("@core transactions workspace header keeps filters visible", async ({ page 
   await gotoView(page, "transactions");
 
   await expect(page.getByTestId("txn-workspace-header")).toBeVisible();
-  await expect(page.getByTestId("txn-command-bar")).toBeVisible();
-  await expect(page.getByTestId("txn-open-advanced-filters")).toBeVisible();
+  await expect(page.getByTestId("shell-view-toggle")).toBeVisible();
   await expect(page.getByTestId("txn-active-filters")).toBeVisible();
   await expect(page.getByTestId("txn-create-open")).toBeVisible();
   await expect(page.getByTestId("txn-select-all-visible")).toBeVisible();

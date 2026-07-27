@@ -47,6 +47,7 @@ test("@core upload CSV then create/edit/delete a manual transaction", async ({ p
   await page.getByTestId(/txn-inline-cancel-/).click();
 
   await updatedRow.locator('button', { hasText: 'Delete' }).click();
+  await updatedRow.getByTestId(/txn-delete-confirm-/).click();
   await searchTransactions(page, manualMerchant);
   await expect.poll(async () => await page.locator('[data-testid="txn-table"] tr', { hasText: manualMerchant }).count()).toBe(0);
 });

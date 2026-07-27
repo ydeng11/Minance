@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import {
   applyTransactionsFilters,
+  clearSharedFilters,
   createManualTransaction,
   gotoView,
   loginWithSeedAccount,
@@ -9,6 +10,7 @@ import {
 
 test("@core transactions clears stale category filter when switching category view", async ({ page }) => {
   await loginWithSeedAccount(page);
+  await clearSharedFilters(page);
   await gotoView(page, "transactions");
 
   const merchant = `PW View Switch ${Date.now()}`;
@@ -21,15 +23,15 @@ test("@core transactions clears stale category filter when switching category vi
   await expect.poll(async () => await createdRow.count()).toBe(1);
 
   await openTransactionsAdvancedFilters(page);
-  await page.getByTestId("txn-category-filter-trigger").click();
+  await page.getByTestId("transactions-category-multiselect-trigger").click();
   await page.getByRole("option", { name: "Dining", exact: true }).click();
   await applyTransactionsFilters(page);
   await expect(createdRow).toBeVisible();
 
   await openTransactionsAdvancedFilters(page);
-  await page.getByTestId("txn-category-view").selectOption("coarse");
-  await expect(page.getByTestId("txn-category-view")).toHaveValue("coarse");
-  await expect(page.getByTestId("txn-category-filter-trigger")).toContainText("All categories");
+  await page.getByTestId("transactions-category-view").selectOption("coarse");
+  await expect(page.getByTestId("transactions-category-view")).toHaveValue("coarse");
+  await expect(page.getByTestId("transactions-category-multiselect-trigger")).toContainText("All categories");
   await applyTransactionsFilters(page);
   await expect(page).toHaveURL(/category_view=coarse/);
   expect(page.url()).not.toContain("category=Dining");

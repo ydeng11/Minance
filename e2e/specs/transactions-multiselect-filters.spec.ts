@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   appApi,
   applyTransactionsFilters,
+  getLocalDateYmd,
   gotoView,
   loginWithSeedAccount,
   openTransactionsAdvancedFilters
@@ -27,7 +28,7 @@ async function createTransaction(page, {
   await appApi(page, "/v1/transactions", {
     method: "POST",
     body: {
-      transaction_date: "2026-03-01",
+      transaction_date: getLocalDateYmd(),
       description: merchant,
       merchant_raw: merchant,
       amount,
@@ -91,19 +92,22 @@ test("@core transactions multiselect filters use repeated params and AND across 
   await gotoView(page, "transactions");
   await openTransactionsAdvancedFilters(page);
 
-  await page.getByTestId("txn-category-filter-trigger").click();
-  await page.getByTestId("txn-category-filter-search").fill(String(suffix));
+  await page.getByTestId("transactions-category-multiselect-trigger").click();
+  await page.getByTestId("transactions-category-multiselect-search").fill(String(suffix));
   await page.getByRole("option", { name: diningCategory }).click();
   await page.getByRole("option", { name: transferCategory }).click();
 
-  await page.getByTestId("txn-account-filter-trigger").click();
-  await page.getByTestId("txn-account-filter-search").fill(String(suffix));
+  await page.getByTestId("transactions-account-multiselect-trigger").click();
+  await page.getByTestId("transactions-account-multiselect-search").fill(String(suffix));
   await page.getByRole("option", { name: primaryAccount }).click();
   await page.getByRole("option", { name: travelAccount }).click();
 
-  await page.getByTestId("txn-type-filter-trigger").click();
+  await page.getByTestId("transactions-type-multiselect-trigger").click();
   await page.getByRole("option", { name: "Expense" }).click();
   await page.getByRole("option", { name: "Transfer" }).click();
+  await expect(page.getByTestId("transactions-type-multiselect-trigger")).toContainText("Expense");
+  await expect(page.getByTestId("transactions-type-multiselect-trigger")).toContainText("Transfer");
+  await page.waitForTimeout(100);
 
   await applyTransactionsFilters(page);
 

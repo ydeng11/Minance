@@ -22,6 +22,7 @@ test("@core database backup create → list → export → restore flow through 
 
   // Wait for a backup row to appear (status message shown, backup in list)
   await expect(page.getByTestId("global-message")).toContainText("Backup created", { timeout: 20_000 });
+  await page.getByTestId("settings-backup-list-toggle").click();
   const backupRows = page.getByTestId(/^settings-backup-item-/);
   await expect(backupRows.first()).toBeVisible();
 

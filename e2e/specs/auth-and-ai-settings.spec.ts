@@ -12,5 +12,5 @@ test("@core login and configure AI provider settings", async ({ page }) => {
   const aiConfig = await ensureAiCredential(page);
 
   await expect(settingsCredentialContainer(page)).toContainText(aiConfig.provider);
-  await expect(page.getByTestId("global-message")).toContainText("Preferences saved.");
+  await expect(page.getByTestId(/^active-badge-/)).toBeVisible();
 });

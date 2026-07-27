@@ -24,7 +24,7 @@ test("@core full user flow covers auth, AI settings, imports, transactions, anal
   await clearAllCredentials(page);
   const aiConfig = await ensureAiCredential(page);
   await expect(settingsCredentialContainer(page)).toContainText(aiConfig.provider);
-  await expect(page.getByTestId("global-message")).toContainText("Preferences saved.");
+  await expect(page.getByTestId(/^active-badge-/)).toBeVisible();
 
   const { importDetails } = await uploadAndCommitFixtureCsv(page, {
     assertAiSuggested: hasRealE2eAssistantKey() ? true : undefined
@@ -55,10 +55,12 @@ test("@core full user flow covers auth, AI settings, imports, transactions, anal
   await expect(updatedRow).toContainText("$61.25");
 
   await updatedRow.locator('button', { hasText: 'Delete' }).click();
+  await updatedRow.getByTestId(/txn-delete-confirm-/).click();
   await searchTransactions(page, manualMerchant);
   await expect.poll(async () => await page.locator('[data-testid="txn-table"] tr', { hasText: manualMerchant }).count()).toBe(0);
 
   await gotoView(page, "dashboard");
+  await page.getByTestId("dashboard-range").selectOption("all");
   const dashboardKpis = page.locator('[data-testid="dashboard-kpis"] button');
   await expect(dashboardKpis).toHaveCount(4);
   const kpiTexts = await dashboardKpis.allTextContents();
@@ -70,18 +72,10 @@ test("@core full user flow covers auth, AI settings, imports, transactions, anal
   await expect(analyticsMerchantBars(page).first()).toBeVisible();
 
   await gotoView(page, "analytics");
+  await page.goto("/explorer?range=all");
   await expect(page.getByTestId("explorer-page")).toBeVisible();
   await expect(analyticsCategoryBars(page).first()).toBeVisible();
   await expect(analyticsMerchantBars(page).first()).toBeVisible();
-  await expect(page.getByTestId("analytics-anomalies")).toBeVisible();
-
-  const anomalyRows = analyticsAnomalyRows(page);
-  if ((await anomalyRows.count()) > 0) {
-    await expect(anomalyRows.first()).toBeVisible();
-  } else {
-    await expect(page.getByTestId("analytics-anomalies")).toContainText("No anomalies detected.");
-  }
-
   await gotoView(page, "assistant");
   await page.getByTestId("assistant-question").fill("How much did I spend on dining this quarter?");
   if (hasRealE2eAssistantKey()) {

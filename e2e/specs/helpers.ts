@@ -116,7 +116,7 @@ export function getLocalDateYmd(date = new Date()) {
 }
 
 export function settingsCredentialContainer(page) {
-  return page.getByTestId("credential-list");
+  return page.getByTestId("profile-list");
 }
 
 export function assistantResponseCards(page) {
@@ -297,7 +297,7 @@ export async function clearAllCredentials(page) {
 
   await page.goto("/settings/ai");
   await expect(page.getByTestId("ai-settings-page")).toBeVisible();
-  await expect(settingsCredentialContainer(page)).toContainText("No keys configured.");
+  await expect(settingsCredentialContainer(page)).toContainText("No profiles yet. Add one to get started.");
 }
 
 export async function ensureOpenAiCredential(page) {
@@ -306,10 +306,10 @@ export async function ensureOpenAiCredential(page) {
 
 export async function ensureAiCredential(page, options = {}) {
   await gotoAiSettings(page);
-  await expect.poll(async () => await page.locator('[data-testid="ai-provider-select"] option').count()).toBeGreaterThan(0);
+  await expect.poll(async () => await page.locator('[data-testid="profile-provider-select"] option').count()).toBeGreaterThan(0);
 
   const availableProviders = await page
-    .locator('[data-testid="ai-provider-select"] option')
+    .locator('[data-testid="profile-provider-select"] option')
     .evaluateAll((nodes) => nodes.map((node) => node.value).filter(Boolean));
 
   if (!availableProviders.length) {
@@ -326,26 +326,41 @@ export async function ensureAiCredential(page, options = {}) {
     throw new Error(`Requested provider is unavailable: ${provider}`);
   }
 
-  const credentialText = (await settingsCredentialContainer(page).textContent()) || "";
-  const hasCredential = credentialText.toLowerCase().includes(provider.toLowerCase());
+  // Resolve a default model from the provider catalog so the credential is usable.
+  const providersPayload = await appApi(page, "/v1/ai/providers");
+  const providerEntry = (Array.isArray(providersPayload?.providers) ? providersPayload.providers : []).find((entry) => entry?.id === provider);
+  const defaultModel = (providerEntry?.models && providerEntry.models[0]) || null;
 
-  if (!hasCredential) {
-    await page.getByTestId("ai-provider-select").selectOption(provider);
-    await page.getByTestId("ai-provider-label").fill(`Playwright ${provider} key`);
-    await page.getByTestId("ai-provider-key").fill(providerTestKey(provider));
-    await page.getByTestId("ai-provider-save").click();
-    await expect(page.getByTestId("global-message")).toContainText("Credential saved.");
+  // Ensure a credential exists for this provider, then activate it.
+  const existingPayload = await appApi(page, "/v1/ai/credentials");
+  const existingCredentials = Array.isArray(existingPayload?.credentials) ? existingPayload.credentials : [];
+  let credential = existingCredentials.find((entry) => entry?.provider === provider);
+
+  if (!credential) {
+    const createdPayload = await appApi(page, "/v1/ai/credentials", {
+      method: "POST",
+      body: {
+        provider,
+        label: `Playwright ${provider} profile`,
+        apiKey: providerTestKey(provider),
+        model: defaultModel || undefined
+      }
+    });
+    credential = createdPayload?.credential;
   }
 
-  await page.getByTestId("ai-pref-provider").selectOption(provider);
-  await expect.poll(async () => await page.locator('[data-testid="ai-pref-model"] option').count()).toBeGreaterThan(0);
-  const model = await page.getByTestId("ai-pref-model").inputValue();
+  if (!credential?.id) {
+    throw new Error(`Failed to ensure AI credential for ${provider}`);
+  }
 
-  await page.getByTestId("ai-save-preferences").click();
-  await expect(page.getByTestId("global-message")).toContainText("Preferences saved.");
+  await appApi(page, "/v1/ai/credentials/activate", { method: "PUT", body: { profileId: credential.id } });
+
+  await page.goto("/settings/ai");
+  await expect(page.getByTestId("ai-settings-page")).toBeVisible();
   await expect(settingsCredentialContainer(page)).toContainText(provider);
+  await expect(page.getByTestId(`active-badge-${credential.id}`)).toBeVisible();
 
-  return { provider, model };
+  return { provider, model: credential.model ?? defaultModel };
 }
 
 export async function uploadAndCommitFixtureCsv(page, options = {}) {
@@ -427,7 +442,15 @@ export async function applyTransactionsFilters(page) {
 
   const previousUrl = page.url();
 
-  await applyButton.click();
+  if (isShellApplyVisible) {
+    await applyButton.evaluate((element) => {
+      if (element instanceof HTMLElement) {
+        element.click();
+      }
+    });
+  } else {
+    await applyButton.click();
+  }
 
   const completionSignals: Array<Promise<unknown>> = [
     page.waitForResponse(isTransactionsListResponse, { timeout: 10000 }).catch(() => null),
@@ -444,17 +467,36 @@ export async function applyTransactionsFilters(page) {
   await Promise.race(completionSignals);
 }
 
+export async function openShellView(page) {
+  const toggle = page.getByTestId("shell-view-toggle");
+  const dialog = page.getByTestId("shell-view-dialog");
+
+  await expect(toggle).toBeVisible();
+  await expect(async () => {
+    if (!(await dialog.isVisible().catch(() => false))) {
+      const expanded = await toggle.getAttribute("aria-expanded");
+      if (expanded !== "true") {
+        await toggle.click();
+      }
+    }
+    await expect(dialog).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+
+  return dialog;
+}
+
 export async function openTransactionsAdvancedFilters(page) {
   const legacyTrigger = page.getByTestId("txn-open-advanced-filters");
   if (await legacyTrigger.isVisible().catch(() => false)) {
     await legacyTrigger.click();
-    await expect(page.getByTestId("txn-advanced-filters")).toBeVisible();
-    return;
+    const legacyDialog = page.getByTestId("txn-advanced-filters");
+    await expect(legacyDialog).toBeVisible();
+    return legacyDialog;
   }
 
-  await page.getByTestId("shell-view-toggle").click();
-  await expect(page.getByTestId("shell-view-dialog")).toBeVisible();
-  await expect(page.getByTestId("transactions-advanced-filters")).toBeVisible();
+  const dialog = await openShellView(page);
+  await expect(dialog.getByTestId("transactions-advanced-filters")).toBeVisible();
+  return dialog;
 }
 
 export async function openNewTransactionDialog(page) {
@@ -503,6 +545,10 @@ async function selectTransactionAccount(form, accountName: string) {
 
   const selectedAccount = availableAccounts.includes(accountName) ? accountName : availableAccounts[0];
   await form.locator('select[name="account_name"]').selectOption(selectedAccount);
+}
+
+export async function clearSharedFilters(page) {
+  await page.evaluate(() => sessionStorage.removeItem("minance:shared-filters"));
 }
 
 export async function createManualTransaction(page, options = {}) {

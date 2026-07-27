@@ -15,15 +15,16 @@ test("@core cross-tab parity covers dashboard, transactions, accounts, categorie
   await expect(page.getByTestId("dashboard-page")).toBeVisible();
   await expect(page.getByTestId("dashboard-kpis")).toBeVisible();
 
-  await page.getByTestId("dashboard-range").selectOption("30d");
-  await expect(page.getByTestId("dashboard-range")).toHaveValue("30d");
+  await page.getByTestId("dashboard-range").selectOption("6m");
+  await expect(page.getByTestId("dashboard-range")).toHaveValue("6m");
   await Promise.all([
     page.waitForURL(/\/transactions\?/),
     page.getByTestId("dashboard-kpi-spent").click()
   ]);
 
   await expect(page.getByTestId("transactions-page")).toBeVisible();
-  await expect(page.getByTestId("txn-active-filters")).toContainText("Types: Expense");
+  await expect.poll(() => new URL(page.url()).searchParams.getAll("type")).toEqual(["expense"]);
+  await expect(page.getByTestId("txn-active-filters")).toBeVisible();
   await expect(page.getByTestId("txn-table")).toBeVisible();
 
   await gotoView(page, "accounts");
@@ -36,7 +37,8 @@ test("@core cross-tab parity covers dashboard, transactions, accounts, categorie
 
   await page.getByTestId("accounts-wizard-manual-institution").fill("Parity Bank");
   await page.getByTestId("accounts-wizard-manual-name").fill(accountName);
-  await page.getByTestId("accounts-wizard-manual-type").selectOption("checking");
+  await page.getByTestId("accounts-wizard-manual-type").click();
+  await page.getByRole("option", { name: /checking/i }).click();
   await page.getByTestId("accounts-wizard-manual-currency").fill("USD");
   await page.getByTestId("accounts-wizard-manual-balance").fill("123.45");
   await page.getByTestId("accounts-wizard-manual-save").click();

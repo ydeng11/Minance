@@ -52,7 +52,9 @@ test("@core transactions bulk delete removes selected visible rows", async ({ pa
   await expect(page.getByTestId("txn-bulk-bar")).toHaveCount(0);
 
   await page.getByTestId(`txn-select-row-${firstId}`).check();
-  await gotoView(page, "transactions");
+  // Navigate to the full transactions view without query params.
+  await page.goto("/transactions");
+  await expect(page.getByTestId("transactions-page")).toBeVisible();
   await selectTransactions(page, selectedIds);
   await expect(page.getByTestId("txn-bulk-bar")).toContainText("2 selected");
 

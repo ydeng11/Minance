@@ -1,9 +1,11 @@
 import { test, expect } from "@playwright/test";
 import {
   appApi,
+  getLocalDateYmd,
   gotoView,
   loginWithSeedAccount,
   openTransactionsAdvancedFilters,
+  openShellView,
   applyTransactionsFilters
 } from "./helpers.ts";
 
@@ -34,7 +36,7 @@ test("@core shared filter sync preserves transaction types from Explorer to Tran
   await appApi(page, "/v1/transactions", {
     method: "POST",
     body: {
-      transaction_date: "2026-03-01",
+      transaction_date: getLocalDateYmd(),
       description: expenseMerchant,
       merchant_raw: expenseMerchant,
       amount: -50.00,
@@ -46,7 +48,7 @@ test("@core shared filter sync preserves transaction types from Explorer to Tran
   await appApi(page, "/v1/transactions", {
     method: "POST",
     body: {
-      transaction_date: "2026-03-01",
+      transaction_date: getLocalDateYmd(),
       description: incomeMerchant,
       merchant_raw: incomeMerchant,
       amount: 5000.00,
@@ -58,7 +60,7 @@ test("@core shared filter sync preserves transaction types from Explorer to Tran
   await appApi(page, "/v1/transactions", {
     method: "POST",
     body: {
-      transaction_date: "2026-03-01",
+      transaction_date: getLocalDateYmd(),
       description: transferMerchant,
       merchant_raw: transferMerchant,
       amount: -1000.00,
@@ -70,21 +72,22 @@ test("@core shared filter sync preserves transaction types from Explorer to Tran
 
   await gotoView(page, "explorer");
   await expect(page.getByTestId("explorer-page")).toBeVisible();
+  await expect(page.getByTestId("explorer-summary-band")).toBeVisible();
+  await page.waitForLoadState("networkidle");
 
-  const advancedFiltersButton = page.getByRole("button", { name: /advanced|filters/i }).first();
-  await advancedFiltersButton.click();
+  await openShellView(page);
 
-  const typeFilterTrigger = page.getByTestId("explorer-type-filter-trigger");
-  if (await typeFilterTrigger.isVisible()) {
-    await typeFilterTrigger.click();
-  } else {
-    await page.getByRole("combobox", { name: /transaction type/i }).click();
-  }
+  const typeFilterTrigger = page.getByTestId("explorer-type-multiselect-trigger");
+  await expect(typeFilterTrigger).toBeVisible();
+  await typeFilterTrigger.click();
 
   await page.getByRole("option", { name: "Expense" }).click();
   await page.getByRole("option", { name: "Income" }).click();
+  await expect(typeFilterTrigger).toContainText("Expense");
+  await expect(typeFilterTrigger).toContainText("Income");
+  await page.waitForTimeout(100);
 
-  await page.getByRole("button", { name: /apply/i }).click();
+  await applyTransactionsFilters(page);
 
   await expect.poll(() => new URL(page.url()).searchParams.getAll("type")).toEqual(["expense", "income"]);
 
@@ -111,7 +114,7 @@ test("@core shared filter sync handles empty transaction types correctly", async
   await expect(page.getByTestId("explorer-page")).toBeVisible();
 
   await gotoView(page, "transactions");
-  await expect(page.getByTestId("txn-active-filters")).toContainText("All transactions in view");
+  await expect(page.getByTestId("txn-active-filters")).not.toContainText("Types:");
 
   await expect(page.getByTestId("txn-table")).toBeVisible();
   const urlTypes = new URL(page.url()).searchParams.getAll("type");
@@ -149,9 +152,12 @@ test("@core shared filter sync updates sessionStorage when filters change in Tra
   });
 
   await openTransactionsAdvancedFilters(page);
-  await page.getByTestId("txn-type-filter-trigger").click();
+  await page.getByTestId("transactions-type-multiselect-trigger").click();
   await page.getByRole("option", { name: "Expense" }).click();
   await page.getByRole("option", { name: "Income" }).click();
+  await expect(page.getByTestId("transactions-type-multiselect-trigger")).toContainText("Expense");
+  await expect(page.getByTestId("transactions-type-multiselect-trigger")).toContainText("Income");
+  await page.waitForTimeout(100);
   await applyTransactionsFilters(page);
 
   const sharedFilters = await page.evaluate(() => {
@@ -201,5 +207,5 @@ test("@core shared filter sync prevents duplicate API calls on mount", async ({ 
   );
   expect(transactionsCalls.length).toBe(1);
 
-  expect(transactionsCalls[0].params.getAll("type")).toEqual(["expense"]);
+  expect(transactionsCalls[0].params.getAll("transaction_type")).toEqual(["expense"]);
 });
