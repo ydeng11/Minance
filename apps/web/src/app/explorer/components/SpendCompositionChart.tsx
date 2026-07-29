@@ -26,7 +26,7 @@ const CATEGORY_CHART_COLORS = [
   "#a783c9", // lavender
 ];
 
-const OTHER_SPEND_CATEGORY = "Other spend";
+export const OTHER_SPEND_CATEGORY = "Other spend";
 const OTHER_SPEND_COLOR = "#54615d";
 const COLOR_CACHE = new Map<string, string>();
 
@@ -168,6 +168,45 @@ function buildSpendSegments(spend: number, composition: SpendCompositionSegment[
   ];
 }
 
+/**
+ * Filter segments to only keep the given `showCategories`, rolling
+ * the removed categories into "Other spend".  Recalculates shares.
+ */
+export function filterSegments(
+  segments: SpendCompositionSegment[],
+  showCategories: Set<string>
+): SpendCompositionSegment[] {
+  let otherAmount = 0;
+  let existingOtherIndex = -1;
+  const kept: SpendCompositionSegment[] = [];
+
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    if (seg.category === OTHER_SPEND_CATEGORY) {
+      existingOtherIndex = kept.length; /* will be the index we push it at */
+      kept.push({ ...seg });
+    } else if (showCategories.has(seg.category)) {
+      kept.push({ ...seg });
+    } else {
+      otherAmount += seg.amount;
+    }
+  }
+
+  if (existingOtherIndex !== -1 && otherAmount > 0) {
+    // Merge pre-existing Other with rolled amount
+    kept[existingOtherIndex].amount += otherAmount;
+  } else if (otherAmount > MIN_OTHER_AMOUNT) {
+    kept.push({ category: OTHER_SPEND_CATEGORY, amount: otherAmount, share: 0 });
+  }
+
+  const total = kept.reduce((sum, s) => sum + s.amount, 0);
+  for (const seg of kept) {
+    if (total > 0) seg.share = (seg.amount / total) * 100;
+  }
+
+  return kept;
+}
+
 export function resolveTooltipSide(selectedIndex: number, totalBars: number): "left" | "right" {
   if (totalBars <= 1) return "right";
   return selectedIndex >= Math.floor(totalBars / 2) ? "left" : "right";
@@ -177,7 +216,9 @@ export function resolveTooltipSide(selectedIndex: number, totalBars: number): "l
 
 export function SpendCompositionChart({ trend, loading }: SpendCompositionChartProps) {
   const [displayMode, setDisplayMode] = useState<"absolute" | "percent">("absolute");
+  const [top5Enabled, setTop5Enabled] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [filteredCategory, setFilteredCategory] = useState<string | null>(null);
 
   const trendBars = useMemo(() => {
     const source = trend || [];
@@ -201,12 +242,60 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
     return Array.from(seen);
   }, [trendBars]);
 
+  /* ── Top 5 categories (by total spend across all months) ── */
+  const topCategories = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const bar of trendBars) {
+      for (const seg of buildSpendSegments(bar.spend, bar.spendComposition)) {
+        if (seg.category === OTHER_SPEND_CATEGORY) continue;
+        totals.set(seg.category, (totals.get(seg.category) || 0) + seg.amount);
+      }
+    }
+    return Array.from(totals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([category]) => category);
+  }, [trendBars]);
+
+  /* Categories to show in stack (for top5 mode) — excludes "Other spend" */
+  const activeCategorySet = useMemo(() => {
+    if (filteredCategory) return new Set([filteredCategory]);
+    if (top5Enabled) return new Set(topCategories);
+    return new Set(allCategories);
+  }, [filteredCategory, top5Enabled, topCategories, allCategories]);
+
+  /* ── Per-month filtered amounts when a single category is selected ── */
+  const barCategoryData = useMemo(() => {
+    if (!filteredCategory) return null;
+    return trendBars.map((item) => {
+      const seg = buildSpendSegments(item.spend, item.spendComposition)
+        .find((s) => s.category === filteredCategory);
+      return seg ? seg.amount : 0;
+    });
+  }, [trendBars, filteredCategory]);
+
+  /* Check whether "Other spend" has a positive amount in any visible bar */
+  const hasVisibleOther = useMemo(() => {
+    if (filteredCategory) return false;
+    if (!top5Enabled) {
+      return allCategories.includes(OTHER_SPEND_CATEGORY);
+    }
+    return trendBars.some((item) => {
+      const rawSegments = buildSpendSegments(item.spend, item.spendComposition);
+      const segments = filterSegments(rawSegments, new Set(topCategories));
+      return segments.some((s) => s.category === OTHER_SPEND_CATEGORY && s.amount > MIN_OTHER_AMOUNT);
+    });
+  }, [trendBars, top5Enabled, filteredCategory, allCategories, topCategories]);
+
+  /* Build color map from ALL categories (not just visible) so colors stay stable */
   const categoryColors = useMemo(() => buildCategoryColorMap(allCategories), [allCategories]);
 
-  const maxSpend = useMemo(
-    () => Math.max(1, ...trendBars.map((bar) => bar.spend)),
-    [trendBars]
-  );
+  const maxSpend = useMemo(() => {
+    if (barCategoryData) {
+      return Math.max(1, ...barCategoryData);
+    }
+    return Math.max(1, ...trendBars.map((bar) => bar.spend));
+  }, [trendBars, barCategoryData]);
 
   const ticks = useMemo(() => computeTicks(maxSpend * 1.08), [maxSpend]);
   const chartMax = ticks[ticks.length - 1] || maxSpend;
@@ -218,7 +307,20 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
     ? trendBars.findIndex((bar) => bar.month === selectedBar.month)
     : -1;
   const selectedTooltipSegments = selectedBar
-    ? buildSpendSegments(selectedBar.spend, selectedBar.spendComposition).slice(0, 5)
+    ? (barCategoryData
+        ? (() => {
+            const amount = barCategoryData[selectedBarIndex];
+            return amount > 0
+              ? [{ category: filteredCategory!, amount, share: 100 }]
+              : [];
+          })()
+        : top5Enabled
+          ? filterSegments(
+              buildSpendSegments(selectedBar.spend, selectedBar.spendComposition),
+              activeCategorySet
+            )
+          : buildSpendSegments(selectedBar.spend, selectedBar.spendComposition)
+      ).slice(0, 5)
     : [];
   const selectedTooltipSide = resolveTooltipSide(selectedBarIndex, trendBars.length);
   const tooltipSideOffset = (BAR_MAX_WIDTH / 2) + TOOLTIP_GAP + (TOOLTIP_WIDTH / 2);
@@ -298,13 +400,21 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
               className="relative grid h-full items-end gap-2 px-1 sm:gap-4"
               style={{ gridTemplateColumns: chartGridTemplate }}
             >
-              {trendBars.map((item) => {
-                const segments = buildSpendSegments(item.spend, item.spendComposition);
+              {trendBars.map((item, barIdx) => {
+                const rawSegments = buildSpendSegments(item.spend, item.spendComposition);
+                const segments = barCategoryData
+                  ? (barCategoryData[barIdx] > 0
+                      ? [{ category: filteredCategory!, amount: barCategoryData[barIdx], share: 0 }]
+                      : [])
+                  : top5Enabled
+                    ? filterSegments(rawSegments, new Set(topCategories))
+                    : rawSegments;
                 const hasComposition = segments.length > 0;
                 const isSelected = selectedMonth === item.month;
-                const barHeight = displayMode === "percent"
+                const barValue = barCategoryData ? barCategoryData[barIdx] : item.spend;
+                const barHeight = displayMode === "percent" && !filteredCategory
                   ? BAR_GRID_HEIGHT
-                  : Math.max(8, Math.round((item.spend / chartMax) * BAR_GRID_HEIGHT));
+                  : Math.max(8, Math.round((barValue / chartMax) * BAR_GRID_HEIGHT));
                 const labelBottom = Math.min(
                   barHeight + TOTAL_LABEL_GAP,
                   BAR_GRID_HEIGHT + TOTAL_LABEL_GAP
@@ -333,7 +443,7 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
                       data-testid="spend-composition-total-label"
                       style={{ bottom: labelBottom, height: TOTAL_LABEL_HEIGHT }}
                     >
-                      {money(item.spend)}
+                      {money(barValue)}
                     </span>
 
                     {hasComposition ? (
@@ -447,36 +557,85 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
       {/* ──────────────── LEGEND ──────────────── */}
       {allCategories.length > 0 && (
         <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-border-subtle pt-4">
-          {allCategories.slice(0, 10).map((category) => (
-            <div key={category} className="flex items-center gap-1.5 text-xs text-text-secondary">
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
-                data-testid="spend-composition-legend-swatch"
-                style={{ backgroundColor: colorForCategory(category) }}
-              />
-              {category}
-            </div>
-          ))}
-          {allCategories.length > 10 && (
+          {Array.from(activeCategorySet)
+            .filter((c) => c !== OTHER_SPEND_CATEGORY)
+            .concat(hasVisibleOther ? [OTHER_SPEND_CATEGORY] : [])
+            .slice(0, 10)
+            .map((category) => {
+              const isOther = category === OTHER_SPEND_CATEGORY;
+              return isOther ? (
+                <div
+                  key={category}
+                  className="flex items-center gap-1.5 text-xs text-text-secondary"
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
+                    data-testid="spend-composition-legend-swatch"
+                    style={{ backgroundColor: colorForCategory(category) }}
+                  />
+                  {category}
+                </div>
+              ) : (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() =>
+                    setFilteredCategory((prev) =>
+                      prev === category ? null : category
+                    )
+                  }
+                  onDoubleClick={() => setFilteredCategory(null)}
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs transition",
+                    filteredCategory === category
+                      ? "text-accent font-semibold"
+                      : filteredCategory && filteredCategory !== category
+                        ? "text-text-muted opacity-50"
+                        : "text-text-secondary hover:text-text-primary"
+                  )}
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-[3px]"
+                    data-testid="spend-composition-legend-swatch"
+                    style={{ backgroundColor: colorForCategory(category) }}
+                  />
+                  {category}
+                  {filteredCategory === category && (
+                    <span className="ml-1 text-[10px] text-accent">(filtered)</span>
+                  )}
+                </button>
+              );
+            })}
+          {!top5Enabled && !filteredCategory && allCategories.length > 10 && (
             <span className="text-xs text-text-muted">
               +{allCategories.length - 10} more
             </span>
+          )}
+          {filteredCategory && (
+            <button
+              type="button"
+              onClick={() => setFilteredCategory(null)}
+              onDoubleClick={() => setFilteredCategory(null)}
+              className="text-xs text-text-muted underline transition hover:text-text-secondary"
+            >
+              Clear filter
+            </button>
           )}
         </div>
       )}
 
       {/* ──────────────── DISPLAY MODE TOGGLE ──────────────── */}
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex items-center justify-end gap-3">
         <div
           className="flex rounded-full border border-border-subtle bg-surface-field p-0.5"
           role="radiogroup"
-          aria-label="Stack display mode"
+          aria-label="Scale mode"
         >
           <button
             type="button"
             role="radio"
             aria-checked={displayMode === "absolute"}
-            onClick={() => setDisplayMode("absolute")}
+            onClick={() => { setDisplayMode("absolute"); }}
             className={displayMode === "absolute" ? TOGGLE_ACTIVE_CLASS : TOGGLE_INACTIVE_CLASS}
             data-testid="spend-chart-mode-absolute"
           >
@@ -486,13 +645,21 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
             type="button"
             role="radio"
             aria-checked={displayMode === "percent"}
-            onClick={() => setDisplayMode("percent")}
+            onClick={() => { setDisplayMode("percent"); }}
             className={displayMode === "percent" ? TOGGLE_ACTIVE_CLASS : TOGGLE_INACTIVE_CLASS}
             data-testid="spend-chart-mode-percent"
           >
             Percent
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => { setTop5Enabled((p) => !p); setFilteredCategory(null); }}
+          className={top5Enabled ? TOGGLE_ACTIVE_CLASS : TOGGLE_INACTIVE_CLASS}
+          data-testid="spend-chart-mode-top5"
+        >
+          Top 5
+        </button>
       </div>
     </div>
   );

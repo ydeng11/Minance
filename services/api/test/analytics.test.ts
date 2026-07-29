@@ -109,6 +109,58 @@ test("coarse category rollup groups by strategy buckets", () => {
   assert.equal(categories[1].amount, 10);
 });
 
+test("coarse explorer view still returns granular trend.spendComposition", () => {
+  resetStoreForTests(structuredClone(baseStore));
+  const analytics = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31",
+    category_view: "coarse"
+  });
+
+  const jan = analytics.trend.items.find((e) => e.month === "2026-01");
+  assert.ok(jan);
+  for (const entry of jan.spendComposition) {
+    assert.notEqual(entry.category, "Essential");
+    assert.notEqual(entry.category, "Extra");
+    assert.notEqual(entry.category, "Neutral");
+    assert.notEqual(entry.category, "Other");
+  }
+});
+
+test("explorer trend spendComposition includes all categories (no monthly truncation)", () => {
+  const store = structuredClone(baseStore);
+  const categories = [
+    "Groceries", "Dining", "Transport", "Auto",
+    "Utilities", "Healthcare", "Entertainment", "Shopping"
+  ];
+  store.transactions = categories.map((cat, idx) => ({
+    id: `txn_${idx}`,
+    user_id: "user_1",
+    transaction_date: `2026-01-${String(idx + 1).padStart(2, "0")}`,
+    merchant_normalized: cat.toLowerCase(),
+    merchant_raw: cat,
+    description: cat,
+    amount: 100,
+    direction: "outflow",
+    category_final: cat,
+    dedupe_fingerprint: `cat_${idx}`
+  }));
+
+  resetStoreForTests(store);
+  const analytics = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31"
+  });
+
+  const jan = analytics.trend.items.find((e) => e.month === "2026-01");
+  assert.ok(jan);
+  assert.equal(jan.spendComposition.length, 8);
+  const names = jan.spendComposition.map((e) => e.category);
+  for (const cat of categories) {
+    assert.ok(names.includes(cat), `expected ${cat} in composition`);
+  }
+});
+
 test("overview and explorer omit excluded-group transactions by default", () => {
   const store = structuredClone(baseStore);
   store.transactions.push({

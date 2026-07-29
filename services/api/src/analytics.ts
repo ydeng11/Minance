@@ -435,7 +435,6 @@ function buildCategoryCompositionItems(grouped) {
 
   return entries
     .sort((a, b) => b.amount - a.amount)
-    .slice(0, 4)
     .map((entry) => ({
       category: entry.category,
       amount: round2(entry.amount),
@@ -444,7 +443,7 @@ function buildCategoryCompositionItems(grouped) {
     }));
 }
 
-function buildExplorerTrendFromTransactions(txns, resolveCategory, categoryView) {
+function buildExplorerTrendFromTransactions(txns, resolveCategory) {
   const byMonth = {};
 
   for (const txn of txns) {
@@ -461,12 +460,8 @@ function buildExplorerTrendFromTransactions(txns, resolveCategory, categoryView)
 
     const bucket = byMonth[key];
     const categoryMeta = resolveTxnCategory(resolveCategory, txn);
-    const categoryName = categoryView === CATEGORY_VIEW_COARSE
-      ? categoryMeta.categoryCoarse
-      : categoryMeta.categoryGranular;
-    const emoji = categoryView === CATEGORY_VIEW_COARSE
-      ? categoryMeta.categoryCoarseEmoji
-      : categoryMeta.categoryEmoji;
+    const categoryName = categoryMeta.categoryGranular;
+    const emoji = categoryMeta.categoryEmoji;
     const amount = toAmount(txn);
 
     if (txn.direction === "outflow") {
@@ -1332,7 +1327,7 @@ export function getExplorerAnalytics(userId, filters = {}) {
       trend: previousOverview?.trend || []
     },
     trend: {
-      items: buildExplorerTrendFromTransactions(currentTransactions, resolveCategory, categoryView)
+      items: buildExplorerTrendFromTransactions(currentTransactions, resolveCategory)
     },
     categories: {
       items: buildExplorerCategoryRollupFromTransactions(
