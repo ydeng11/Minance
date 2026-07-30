@@ -15,7 +15,7 @@ import {
 
 const CHASE_IMPORT_FIXTURE_PATH = path.resolve(
   __dirname,
-  "../fixtures/Chase8457_Activity20260101_20260325_20260326.CSV"
+  "../fixtures/chase-existing-account.csv"
 );
 const EXISTING_ACCOUNT = {
   displayName: "Hyatt",
@@ -62,7 +62,7 @@ test("@core imports Chase CSV into an existing account and shows it on Transacti
   await gotoView(page, "imports");
 
   await page.getByTestId("import-file").setInputFiles(CHASE_IMPORT_FIXTURE_PATH);
-  await expect(page.getByTestId("import-selected-file")).toContainText("Chase8457_Activity20260101_20260325_20260326.CSV");
+  await expect(page.getByTestId("import-selected-file")).toContainText("chase-existing-account.csv");
 
   await page.getByTestId("import-process").click();
   await expect(page.getByText(/^Analyzed \d+ rows in /)).toBeVisible({ timeout: 30_000 });
