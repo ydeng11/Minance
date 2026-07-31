@@ -166,6 +166,17 @@ const CARD_STYLE_REGISTRY: Array<{ patterns: RegExp[]; style: CardFaceStyle }> =
     }
   },
   {
+    patterns: [/bilt/i],
+    style: {
+      label: "Bilt",
+      primary: "#0a0b0d",
+      secondary: "#2d2f33",
+      accent: "#00d4aa",
+      textColor: "#ffffff",
+      initial: "B"
+    }
+  },
+  {
     patterns: [/barclays/i],
     style: {
       label: "Barclays",
@@ -342,6 +353,12 @@ const CARD_FACE_IMAGE_MAP: Record<string, string> = {
   "Truist Enjoy Beyond": "/card-faces/truist-enjoy-beyond.png",
   "TD First Class Visa Signature": "/card-faces/td-first-class-visa.png",
   "Citizens Wealth Management World Elite Mastercard": "/card-faces/citizens-summit.png",
+
+  // Bilt
+  "Bilt Rewards Mastercard": "/card-faces/bilt-rewards-mastercard.png",
+  "Bilt Blue Card": "/card-faces/bilt-blue-card.png",
+  "Bilt Obsidian Card": "/card-faces/bilt-obsidian-card.png",
+  "Bilt Palladium Card": "/card-faces/bilt-palladium-card.png",
 
   // Discover not in presets but nice to have
   "Discover it Cash Back": "/card-faces/discover-it-cash-back.png",

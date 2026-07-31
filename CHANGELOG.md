@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Bilt credit card presets**: Added "Bilt" as a standalone institution with its own
+  card presets. Includes the full Bilt Card 2.0 lineup — **Bilt Rewards Mastercard**
+  (legacy, $0 AF), **Bilt Blue Card** ($0 AF), **Bilt Obsidian Card** ($95 AF), and
+  **Bilt Palladium Card** ($495 AF) — with annual fees, rewards rates, and benefits
+  for each tier. "Bilt Rewards Mastercard" moved from the Wells Fargo section to the
+  dedicated Bilt section in both name-only presets (`CREDIT_CARD_PRESETS`) and rich
+  metadata presets (`CREDIT_CARD_PRESETS_META`). Added Bilt to `INSTITUTION_PRESETS`
+  and Bilt card styles to `cardStyles.ts`.
+
+### Fixed
+
+- **Spend Composition categories**: The chart now groups each transaction by its persisted
+  granular category instead of reclassifying it through merchant and taxonomy hints.
+
 ## [0.1.1] - 2026-07-24
 
 ### Changed

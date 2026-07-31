@@ -4,9 +4,10 @@
  * before any accounts exist in their local data.
  */
 
-/** Top 10 U.S. banks (alphabetical for the datalist) */
+/** Top U.S. banks and financial institutions (alphabetical for the datalist) */
 export const INSTITUTION_PRESETS: string[] = [
   "Bank of America",
+  "Bilt",
   "Capital One",
   "Chase",
   "Citibank",
@@ -67,7 +68,6 @@ export const CREDIT_CARD_PRESETS: Record<string, string[]> = {
     "Wells Fargo Attune",
     "Choice Privileges Select Visa",
     "Choice Privileges Mastercard",
-    "Bilt Rewards Mastercard",
     "Wells Fargo Clear Access Banking Visa",
     "Wells Fargo Business Select",
   ],
@@ -130,6 +130,12 @@ export const CREDIT_CARD_PRESETS: Record<string, string[]> = {
     "TD Business Solutions",
     "TD Aeroplan Visa Signature",
     "TD Essential",
+  ],
+  "Bilt": [
+    "Bilt Rewards Mastercard",
+    "Bilt Blue Card",
+    "Bilt Obsidian Card",
+    "Bilt Palladium Card",
   ],
   "Citizens Bank": [
     "Citizens Cash Back Plus World Mastercard",
@@ -428,6 +434,62 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       ],
     },
   ],
+  "Bilt": [
+    {
+      name: "Bilt Rewards Mastercard",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "1 point per $1 on rent (up to 50K points per year, no transaction fee)", monetaryValue: null, consumable: false },
+        { name: "2 points per $1 on travel (book direct)", monetaryValue: null, consumable: false },
+        { name: "3 points per $1 on dining", monetaryValue: null, consumable: false },
+        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
+        { name: "Double points on Rent Day (1st of month)", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Bilt Blue Card",
+      accountType: "credit",
+      annualFee: 0,
+      benefits: [
+        { name: "1 point per $1 on everyday spend", monetaryValue: null, consumable: false },
+        { name: "4% back in Bilt Cash on everyday spend", monetaryValue: null, consumable: false },
+        { name: "$100 Bilt Cash on account opening", monetaryValue: 100, consumable: true },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Bilt Obsidian Card",
+      accountType: "credit",
+      annualFee: 95,
+      benefits: [
+        { name: "3X points on dining or grocery (grocery up to $25K/yr)", monetaryValue: null, consumable: false },
+        { name: "2X points on travel", monetaryValue: null, consumable: false },
+        { name: "1X points on all other everyday spend", monetaryValue: null, consumable: false },
+        { name: "4% back in Bilt Cash on everyday spend", monetaryValue: null, consumable: false },
+        { name: "$100 annual Bilt Travel Hotel credit ($50 semi-annual)", monetaryValue: 100, consumable: true },
+        { name: "$200 Bilt Cash on account opening", monetaryValue: 200, consumable: true },
+        { name: "Trip Delay Insurance", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+      ],
+    },
+    {
+      name: "Bilt Palladium Card",
+      accountType: "credit",
+      annualFee: 495,
+      benefits: [
+        { name: "2X points on everyday spend", monetaryValue: null, consumable: false },
+        { name: "4% back in Bilt Cash on everyday spend", monetaryValue: null, consumable: false },
+        { name: "$200 annual Bilt Cash credit", monetaryValue: 200, consumable: true },
+        { name: "$400 annual Bilt Travel Hotel credit ($200 semi-annual)", monetaryValue: 400, consumable: true },
+        { name: "$300 Bilt Cash on account opening", monetaryValue: 300, consumable: true },
+        { name: "Priority Pass lounge access", monetaryValue: null, consumable: false },
+        { name: "Purchase protection", monetaryValue: null, consumable: false },
+        { name: "No foreign transaction fees", monetaryValue: null, consumable: false },
+        { name: "Point Accelerator available", monetaryValue: null, consumable: false },
+      ],
+    },
+  ],
   "Citibank": [
     {
       name: "Citi Double Cash",
@@ -710,18 +772,6 @@ export const CREDIT_CARD_PRESETS_META: Record<string, CreditCardPreset[]> = {
       benefits: [
         { name: "3 points per $1 on Choice Hotels purchases", monetaryValue: null, consumable: false },
         { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
-      ],
-    },
-    {
-      name: "Bilt Rewards Mastercard",
-      accountType: "credit",
-      annualFee: 0,
-      benefits: [
-        { name: "1 point per $1 on rent (up to 50K points per year, no transaction fee)", monetaryValue: null, consumable: false },
-        { name: "2 points per $1 on travel (book direct)", monetaryValue: null, consumable: false },
-        { name: "3 points per $1 on dining", monetaryValue: null, consumable: false },
-        { name: "1 point per $1 on all other purchases", monetaryValue: null, consumable: false },
-        { name: "Double points on Rent Day (1st of month)", monetaryValue: null, consumable: false },
       ],
     },
     {
