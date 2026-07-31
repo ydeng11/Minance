@@ -127,6 +127,53 @@ test("coarse explorer view still returns granular trend.spendComposition", () =>
   }
 });
 
+test("explorer spend composition preserves each transaction's stored granular category", () => {
+  const store = structuredClone(baseStore);
+  store.transactions = [
+    {
+      id: "txn_housing",
+      user_id: "user_1",
+      transaction_date: "2026-01-10",
+      merchant_normalized: "boa mortgage",
+      merchant_raw: "BOA Mortgage",
+      description: "Mortgage payment",
+      amount: 100,
+      direction: "outflow",
+      category_raw: "Mortgage & Loan",
+      category_final: "Housing",
+      category_emoji: "🏠",
+      dedupe_fingerprint: "housing"
+    },
+    {
+      id: "txn_transport",
+      user_id: "user_1",
+      transaction_date: "2026-01-11",
+      merchant_normalized: "honda financial",
+      merchant_raw: "Honda Financial",
+      description: "Auto payment",
+      amount: 50,
+      direction: "outflow",
+      category_raw: "Auto",
+      category_final: "Transport",
+      category_emoji: "🚇",
+      dedupe_fingerprint: "transport"
+    }
+  ];
+
+  resetStoreForTests(store);
+  const analytics = getExplorerAnalytics("user_1", {
+    start: "2026-01-01",
+    end: "2026-01-31"
+  });
+
+  const jan = analytics.trend.items.find((entry) => entry.month === "2026-01");
+  assert.ok(jan);
+  assert.deepEqual(jan.spendComposition, [
+    { category: "Housing", amount: 100, share: 66.67, emoji: "🏠" },
+    { category: "Transport", amount: 50, share: 33.33, emoji: "🚇" }
+  ]);
+});
+
 test("explorer trend spendComposition includes all categories (no monthly truncation)", () => {
   const store = structuredClone(baseStore);
   const categories = [

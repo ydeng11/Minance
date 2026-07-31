@@ -443,7 +443,7 @@ function buildCategoryCompositionItems(grouped) {
     }));
 }
 
-function buildExplorerTrendFromTransactions(txns, resolveCategory) {
+function buildExplorerTrendFromTransactions(txns) {
   const byMonth = {};
 
   for (const txn of txns) {
@@ -459,9 +459,10 @@ function buildExplorerTrendFromTransactions(txns, resolveCategory) {
     }
 
     const bucket = byMonth[key];
-    const categoryMeta = resolveTxnCategory(resolveCategory, txn);
-    const categoryName = categoryMeta.categoryGranular;
-    const emoji = categoryMeta.categoryEmoji;
+    const categoryName = String(
+      txn.category_final || (txn.direction === "inflow" ? "Income" : "Uncategorized")
+    ).trim();
+    const emoji = String(txn.category_emoji || "");
     const amount = toAmount(txn);
 
     if (txn.direction === "outflow") {
@@ -1327,7 +1328,7 @@ export function getExplorerAnalytics(userId, filters = {}) {
       trend: previousOverview?.trend || []
     },
     trend: {
-      items: buildExplorerTrendFromTransactions(currentTransactions, resolveCategory)
+      items: buildExplorerTrendFromTransactions(currentTransactions)
     },
     categories: {
       items: buildExplorerCategoryRollupFromTransactions(
