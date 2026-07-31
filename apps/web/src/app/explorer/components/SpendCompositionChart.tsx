@@ -207,6 +207,43 @@ export function filterSegments(
   return kept;
 }
 
+export type SpendFilterAction =
+  | { type: "click"; category: string }
+  | { type: "clear" };
+
+/**
+ * Resolve the in-chart category filter for a legend interaction.
+ *
+ * A single click isolates the clicked category; re-clicking the isolated
+ * category removes the filter again (toggle). The explicit "Clear filter"
+ * button also removes the filter.
+ */
+export function resolveFilterState(
+  prev: string | null,
+  action: SpendFilterAction
+): string | null {
+  switch (action.type) {
+    case "click":
+      return prev === action.category ? null : action.category;
+    case "clear":
+      return null;
+  }
+}
+
+/**
+ * Legend entries stay stable while a filter is active so users can see
+ * (and switch to) every other category without clearing first.
+ * "Other spend" is display-only and only included when it has content.
+ */
+export function resolveLegendCategories(options: {
+  categories: string[];
+  hasVisibleOther: boolean;
+}): string[] {
+  const base = options.categories.filter((c) => c !== OTHER_SPEND_CATEGORY);
+  const withOther = options.hasVisibleOther ? [...base, OTHER_SPEND_CATEGORY] : base;
+  return withOther.slice(0, 10);
+}
+
 export function resolveTooltipSide(selectedIndex: number, totalBars: number): "left" | "right" {
   if (totalBars <= 1) return "right";
   return selectedIndex >= Math.floor(totalBars / 2) ? "left" : "right";
@@ -289,6 +326,16 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
 
   /* Build color map from ALL categories (not just visible) so colors stay stable */
   const categoryColors = useMemo(() => buildCategoryColorMap(allCategories), [allCategories]);
+
+  /* Legend entries — independent of the filter so alternatives stay visible */
+  const legendCategories = useMemo(
+    () =>
+      resolveLegendCategories({
+        categories: top5Enabled ? topCategories : allCategories,
+        hasVisibleOther,
+      }),
+    [top5Enabled, topCategories, allCategories, hasVisibleOther]
+  );
 
   const maxSpend = useMemo(() => {
     if (barCategoryData) {
@@ -557,11 +604,7 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
       {/* ──────────────── LEGEND ──────────────── */}
       {allCategories.length > 0 && (
         <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 border-t border-border-subtle pt-4">
-          {Array.from(activeCategorySet)
-            .filter((c) => c !== OTHER_SPEND_CATEGORY)
-            .concat(hasVisibleOther ? [OTHER_SPEND_CATEGORY] : [])
-            .slice(0, 10)
-            .map((category) => {
+          {legendCategories.map((category) => {
               const isOther = category === OTHER_SPEND_CATEGORY;
               return isOther ? (
                 <div
@@ -581,10 +624,11 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
                   type="button"
                   onClick={() =>
                     setFilteredCategory((prev) =>
-                      prev === category ? null : category
+                      resolveFilterState(prev, { type: "click", category })
                     )
                   }
-                  onDoubleClick={() => setFilteredCategory(null)}
+                  aria-pressed={filteredCategory === category}
+                  title="Click to isolate this category; click again to clear"
                   className={cn(
                     "flex items-center gap-1.5 text-xs transition",
                     filteredCategory === category
@@ -606,7 +650,7 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
                 </button>
               );
             })}
-          {!top5Enabled && !filteredCategory && allCategories.length > 10 && (
+          {!top5Enabled && allCategories.length > 10 && (
             <span className="text-xs text-text-muted">
               +{allCategories.length - 10} more
             </span>
@@ -614,8 +658,9 @@ export function SpendCompositionChart({ trend, loading }: SpendCompositionChartP
           {filteredCategory && (
             <button
               type="button"
-              onClick={() => setFilteredCategory(null)}
-              onDoubleClick={() => setFilteredCategory(null)}
+              onClick={() =>
+                setFilteredCategory((prev) => resolveFilterState(prev, { type: "clear" }))
+              }
               className="text-xs text-text-muted underline transition hover:text-text-secondary"
             >
               Clear filter

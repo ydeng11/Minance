@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Spend Composition legend filter**: Clicking a legend category isolates that category's
+  bars; clicking it again (or the "Clear filter" button) removes the filter.
+  Other categories stay visible and clickable while a filter is active, so switching
+  categories no longer requires clearing the filter first.
+
 - **Spend Composition categories**: The chart now groups each transaction by its persisted
   granular category instead of reclassifying it through merchant and taxonomy hints.
 

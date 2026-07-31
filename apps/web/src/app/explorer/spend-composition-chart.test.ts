@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { SpendCompositionChart, resolveTooltipSide, filterSegments, OTHER_SPEND_CATEGORY } from "./components/SpendCompositionChart";
+import { SpendCompositionChart, resolveTooltipSide, filterSegments, resolveFilterState, resolveLegendCategories, OTHER_SPEND_CATEGORY } from "./components/SpendCompositionChart";
 
 const trend = [
   {
@@ -134,6 +134,33 @@ test("filterSegments merges pre-existing Other with rolled amounts into one segm
   assert.ok(other);
   assert.equal(other.amount, 250);
   assert.equal(result.filter((s) => s.category === OTHER_SPEND_CATEGORY).length, 1);
+});
+
+test("resolveFilterState: single click isolates a category; re-click removes the filter", () => {
+  // no filter yet → isolate the clicked category
+  assert.equal(resolveFilterState(null, { type: "click", category: "Travel" }), "Travel");
+  // re-clicking the isolated category removes the filter
+  assert.equal(resolveFilterState("Travel", { type: "click", category: "Travel" }), null);
+  // clicking a different category switches the isolation
+  assert.equal(resolveFilterState("Travel", { type: "click", category: "Dining" }), "Dining");
+});
+
+test("resolveFilterState: clear action removes the filter", () => {
+  assert.equal(resolveFilterState("Travel", { type: "clear" }), null);
+  assert.equal(resolveFilterState(null, { type: "clear" }), null);
+});
+
+test("resolveLegendCategories keeps non-selected categories visible while a filter is active", () => {
+  const categories = ["Mortgage & Loan", "Travel", "Dining", "Groceries"];
+  // The legend list is independent of the filter: all categories survive, Other is display-only
+  assert.deepEqual(resolveLegendCategories({ categories, hasVisibleOther: true }), [...categories, OTHER_SPEND_CATEGORY]);
+  assert.deepEqual(resolveLegendCategories({ categories, hasVisibleOther: false }), categories);
+  // capped at 10 entries
+  const many = resolveLegendCategories({
+    categories: Array.from({ length: 14 }, (_, i) => `Cat ${i}`),
+    hasVisibleOther: false
+  });
+  assert.equal(many.length, 10);
 });
 
 test("spend-chart-mode-top5 button appears in the toggle area", () => {
