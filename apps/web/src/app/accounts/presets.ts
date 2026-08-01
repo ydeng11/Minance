@@ -1296,3 +1296,76 @@ export function getPresetMetadata(
 export function getCardPresetsForInstitution(institution: string): CreditCardPreset[] {
   return CREDIT_CARD_PRESETS_META[institution.trim()] ?? [];
 }
+
+// ─── Institution suggestion normalization ────────────────────────
+
+/**
+ * Legacy institution identifiers written by the previous Minance app
+ * (CSV imports and migrated accounts stored BANK_OF_AMERICA, CITI, ...).
+ * Mapped to the human-readable names used by current presets so stale
+ * identifiers never surface as raw suggestions.
+ */
+export const LEGACY_INSTITUTION_ALIASES: Record<string, string> = {
+  AMEX: "American Express",
+  APPLE: "Apple",
+  BANK_OF_AMERICA: "Bank of America",
+  CASH_APP: "Cash App",
+  CHASE: "Chase",
+  CITI: "Citibank",
+  DISCOVER: "Discover",
+  MINANCE: "Minance",
+  PAYPAL: "PayPal",
+  WELLS_FARGO: "Wells Fargo"
+};
+
+/** Canonical display name for an institution value (alias-aware, trimmed). */
+export function normalizeInstitutionName(value: string): string {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+  const alias = LEGACY_INSTITUTION_ALIASES[trimmed.toUpperCase()];
+  if (alias) {
+    return alias;
+  }
+  const preset = INSTITUTION_PRESETS.find(
+    (name) => name.toLowerCase() === trimmed.toLowerCase()
+  );
+  return preset ?? trimmed;
+}
+
+/**
+ * Unique, sorted institution suggestions: legacy identifiers in stored
+ * account data are mapped to their display names, then deduped against
+ * the static presets (case-insensitively) so "BANK_OF_AMERICA" and
+ * "Bank of America" collapse into a single entry.
+ */
+export function buildInstitutionSuggestions(
+  knownInstitutionValues: Array<string | null | undefined>
+): string[] {
+  const seen = new Set<string>();
+  const suggestions: string[] = [];
+
+  function push(rawValue: string) {
+    const name = normalizeInstitutionName(rawValue);
+    if (!name) {
+      return;
+    }
+    const key = name.toLowerCase();
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    suggestions.push(name);
+  }
+
+  // Presets first so canonical display-name casing wins over stored variants.
+  for (const preset of INSTITUTION_PRESETS) {
+    push(preset);
+  }
+  for (const value of knownInstitutionValues) {
+    push(String(value ?? ""));
+  }
+
+  return suggestions.sort((a, b) => a.localeCompare(b));
+}

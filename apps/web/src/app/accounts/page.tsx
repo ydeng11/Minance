@@ -18,7 +18,7 @@ import {
   type ManualAccountErrors
 } from "./wizard";
 import { formatAccountTypeLabel } from "./accountFormatting";
-import { INSTITUTION_PRESETS, getCardPresetsForInstitution, getPresetMetadata } from "./presets";
+import { buildInstitutionSuggestions, getCardPresetsForInstitution, getPresetMetadata, normalizeInstitutionName } from "./presets";
 import { SearchableSelect } from "./SearchableSelect";
 import { createDefaultClassMetadata } from "../../../../../packages/domain/src/accounts";
 import { resolveSupportedAccountTypes } from "./accountTypes";
@@ -185,15 +185,7 @@ export default function AccountsPage() {
     [accountTypes]
   );
   const knownInstitutions = useMemo(
-    () => {
-      const dynamic = new Set(
-        accounts.map((entry) => entry.sourceInstitution).filter(Boolean) as string[]
-      );
-      for (const inst of INSTITUTION_PRESETS) {
-        dynamic.add(inst);
-      }
-      return Array.from(dynamic).sort((a, b) => a.localeCompare(b));
-    },
+    () => buildInstitutionSuggestions(accounts.map((entry) => entry.sourceInstitution)),
     [accounts]
   );
 
@@ -202,7 +194,7 @@ export default function AccountsPage() {
     const other: Account[] = [];
 
     for (const account of accounts) {
-      const inst = account.sourceInstitution?.trim();
+      const inst = normalizeInstitutionName(account.sourceInstitution || "");
       if (inst) {
         const list = groups.get(inst);
         if (list) {

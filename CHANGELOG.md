@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Add account institution presets**: Stored institution values from legacy data
+  (e.g. `BANK_OF_AMERICA`, `CITI`) now map to their display names and are deduplicated
+  against the preset list, so "Add account" no longer shows stale identifiers like
+  "BANK_OF_AMERICA" next to "Bank of America".
+
 ## [0.1.2] - 2026-07-31
 
 ### Added
