@@ -308,7 +308,7 @@ const ACCOUNT_TYPE_CARD_STYLES: Record<string, CardFaceStyle> = {
  * Cards listed here will render their real artwork instead of the generated SVG.
  * Cards without a mapping fall through to the unique deterministic gradient.
  */
-const CARD_FACE_IMAGE_MAP: Record<string, string> = {
+export const CARD_FACE_IMAGE_MAP: Record<string, string> = {
   // Chase
   "Chase Sapphire Preferred": "/card-faces/chase-sapphire-preferred.png",
   "Chase Sapphire Reserve": "/card-faces/chase-sapphire-reserve.png",

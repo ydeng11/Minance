@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   against the preset list, so "Add account" no longer shows stale identifiers like
   "BANK_OF_AMERICA" next to "Bank of America".
 
+- **Bilt card faces**: The Bilt preset cards (Bilt Rewards Mastercard, Bilt Blue
+  Card, Bilt Obsidian Card, Bilt Palladium Card) now render their real card face
+  artwork instead of the broken, pixelated image that appeared when the referenced
+  image files were missing. Card faces were sourced from official Bilt card renders
+  (Bilt Blue/Obsidian/Palladium full-bleed artwork, and the classic Bilt Rewards
+  Mastercard).
+
 ## [0.1.2] - 2026-07-31
 
 ### Added
