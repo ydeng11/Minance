@@ -355,6 +355,10 @@ export const CARD_FACE_IMAGE_MAP: Record<string, string> = {
   "Citizens Wealth Management World Elite Mastercard": "/card-faces/citizens-summit.png",
 
   // Bilt
+  // Blue/Obsidian/Palladium: official Bilt Card 2.0 full-bleed card art,
+  // mirrored from Upgraded Points (upgradedpoints.com), which credits Bilt.
+  // Bilt Rewards Mastercard (classic, discontinued Feb 2026): physical-card
+  // photo render from Thrifty Traveler (thriftytraveler.com).
   "Bilt Rewards Mastercard": "/card-faces/bilt-rewards-mastercard.png",
   "Bilt Blue Card": "/card-faces/bilt-blue-card.png",
   "Bilt Obsidian Card": "/card-faces/bilt-obsidian-card.png",
