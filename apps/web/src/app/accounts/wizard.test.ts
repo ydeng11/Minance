@@ -19,6 +19,7 @@ function createAccount(overrides: Partial<Account> = {}): Account {
     accountType: "high_yield_savings",
     currency: "USD",
     initialBalance: 0,
+    currentBalance: 0,
     version: 1,
     status: "active",
     hidden: false,

@@ -57,6 +57,7 @@ function createAccount(overrides: Partial<Account> = {}): Account {
     accountType: "checking",
     currency: "USD",
     initialBalance: 0,
+    currentBalance: 0,
     version: 1,
     status: "active",
     hidden: false,

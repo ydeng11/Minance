@@ -252,7 +252,94 @@ function normalizeStoredClosedAt(rawValue, fallbackValue = null) {
   }
 }
 
-function toAccountResponse(entry) {
+function roundCurrencyAmount(value) {
+  const amount = Number(value);
+  return Math.round((Number.isFinite(amount) ? amount : 0) * 100) / 100;
+}
+
+function toSignedTransactionAmount(transaction) {
+  const amount = Number(transaction.amount || 0);
+  if (!Number.isFinite(amount)) {
+    return 0;
+  }
+  return transaction.direction === "outflow" ? -Math.abs(amount) : Math.abs(amount);
+}
+
+function calculateAccountCurrentBalances(store, userId, accounts) {
+  const balances = new Map(
+    accounts.map((account) => [account.id, roundCurrencyAmount(account.initialBalance)])
+  );
+
+  for (const transaction of store.transactions) {
+    if (transaction.user_id !== userId || transaction.deleted_at || !balances.has(transaction.account_id)) {
+      continue;
+    }
+    balances.set(
+      transaction.account_id,
+      balances.get(transaction.account_id) + roundCurrencyAmount(toSignedTransactionAmount(transaction))
+    );
+  }
+
+  for (const account of accounts) {
+    for (const adjustment of Array.isArray(account.manualAdjustments) ? account.manualAdjustments : []) {
+      balances.set(account.id, balances.get(account.id) + roundCurrencyAmount(adjustment.amountDelta));
+    }
+  }
+
+  for (const [accountId, balance] of balances) {
+    balances.set(accountId, roundCurrencyAmount(balance));
+  }
+  return balances;
+}
+
+function listAccountBalanceEvents(store, userId, account) {
+  const accountTransactions = store.transactions
+    .filter((entry) => entry.user_id === userId && entry.account_id === account.id && !entry.deleted_at)
+    .map((entry) => ({
+      id: entry.id,
+      date: parseDate(entry.transaction_date) || parseDate(entry.created_at) || null,
+      delta: toSignedTransactionAmount(entry),
+      kind: "transaction",
+      description: String(entry.description || entry.merchant_raw || "Transaction"),
+      sourceId: entry.id,
+      createdAt: entry.created_at || entry.updated_at || null
+    }))
+    .filter((entry) => entry.date);
+
+  const manualAdjustments = (Array.isArray(account.manualAdjustments) ? account.manualAdjustments : [])
+    .map((entry) => ({
+      id: entry.id,
+      date: parseDate(entry.effectiveAt) || parseDate(entry.createdAt) || null,
+      delta: roundCurrencyAmount(entry.amountDelta),
+      kind: "manual_adjustment",
+      description: String(entry.reason || "Manual adjustment"),
+      note: entry.note || null,
+      sourceId: entry.id,
+      createdAt: entry.createdAt || null
+    }))
+    .filter((entry) => entry.date);
+
+  return [...accountTransactions, ...manualAdjustments].sort((left, right) => {
+    if (left.date !== right.date) {
+      return left.date.localeCompare(right.date);
+    }
+    return String(left.createdAt || "").localeCompare(String(right.createdAt || ""));
+  });
+}
+
+function calculateAccountBalance(store, userId, account) {
+  const openingBalance = roundCurrencyAmount(account.initialBalance);
+  const events = listAccountBalanceEvents(store, userId, account);
+  const currentBalance = calculateAccountCurrentBalances(store, userId, [account]).get(account.id);
+
+  return {
+    openingBalance,
+    events,
+    currentBalance: roundCurrencyAmount(currentBalance)
+  };
+}
+
+function toAccountResponse(entry, currentBalance) {
   const status = normalizeStoredAccountStatus(entry.status);
   const accountType = entry.accountType || DEFAULT_ACCOUNT_TYPE;
   const closedAt = status === "closed"
@@ -271,6 +358,7 @@ function toAccountResponse(entry) {
     accountType,
     currency: entry.currency || DEFAULT_CURRENCY,
     initialBalance: Number(entry.initialBalance || 0),
+    currentBalance,
     version: Number(entry.version || 1),
     status,
     hidden,
@@ -403,9 +491,10 @@ export function getSupportedAccountTypes() {
 
 export function listAccounts(userId) {
   const store = loadStore();
-  return store.accounts
-    .filter((entry) => entry.userId === userId)
-    .map((entry) => toAccountResponse(entry))
+  const accounts = store.accounts.filter((entry) => entry.userId === userId);
+  const currentBalances = calculateAccountCurrentBalances(store, userId, accounts);
+  return accounts
+    .map((entry) => toAccountResponse(entry, currentBalances.get(entry.id)))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
@@ -439,7 +528,7 @@ export function createAccount(userId, payload) {
   saveStore(store);
   addAuditEvent(userId, "account.create", { accountId: account.id });
 
-  return toAccountResponse(account);
+  return toAccountResponse(account, calculateAccountCurrentBalances(store, userId, [account]).get(account.id));
 }
 
 export function updateAccount(userId, accountId, payload) {
@@ -475,15 +564,7 @@ export function updateAccount(userId, accountId, payload) {
   saveStore(store);
   addAuditEvent(userId, "account.update", { accountId: account.id });
 
-  return toAccountResponse(account);
-}
-
-function toSignedTransactionAmount(transaction) {
-  const amount = Number(transaction.amount || 0);
-  if (!Number.isFinite(amount)) {
-    return 0;
-  }
-  return transaction.direction === "outflow" ? -Math.abs(amount) : Math.abs(amount);
+  return toAccountResponse(account, calculateAccountCurrentBalances(store, userId, [account]).get(account.id));
 }
 
 function findAccount(store, userId, accountId) {
@@ -575,7 +656,7 @@ export function createAccountManualAdjustment(userId, accountId, payload = {}) {
   });
 
   return {
-    account: toAccountResponse(account),
+    account: toAccountResponse(account, calculateAccountCurrentBalances(store, userId, [account]).get(account.id)),
     adjustment
   };
 }
@@ -596,41 +677,7 @@ export function listAccountBalanceHistory(userId, accountId, filters = {}) {
     throw new Error("Invalid end date");
   }
 
-  const accountTransactions = store.transactions
-    .filter((entry) => entry.user_id === userId && entry.account_id === account.id && !entry.deleted_at)
-    .map((entry) => ({
-      id: entry.id,
-      date: parseDate(entry.transaction_date) || parseDate(entry.created_at) || null,
-      delta: toSignedTransactionAmount(entry),
-      kind: "transaction",
-      description: String(entry.description || entry.merchant_raw || "Transaction"),
-      sourceId: entry.id,
-      createdAt: entry.created_at || entry.updated_at || null
-    }))
-    .filter((entry) => entry.date);
-
-  const manualAdjustments = (Array.isArray(account.manualAdjustments) ? account.manualAdjustments : [])
-    .map((entry) => ({
-      id: entry.id,
-      date: parseDate(entry.effectiveAt) || parseDate(entry.createdAt) || null,
-      delta: Number(entry.amountDelta || 0),
-      kind: "manual_adjustment",
-      description: String(entry.reason || "Manual adjustment"),
-      note: entry.note || null,
-      sourceId: entry.id,
-      createdAt: entry.createdAt || null
-    }))
-    .filter((entry) => entry.date);
-
-  const events = [...accountTransactions, ...manualAdjustments]
-    .sort((left, right) => {
-      if (left.date !== right.date) {
-        return left.date.localeCompare(right.date);
-      }
-      return String(left.createdAt || "").localeCompare(String(right.createdAt || ""));
-    });
-
-  const openingBalance = Number(account.initialBalance || 0);
+  const { openingBalance, events, currentBalance } = calculateAccountBalance(store, userId, account);
   let runningBalance = openingBalance;
   const openingDate = parseDate(account.createdAt) || null;
   const items = [];
@@ -657,8 +704,8 @@ export function listAccountBalanceHistory(userId, accountId, filters = {}) {
     items.push({
       date: event.date,
       kind: event.kind,
-      delta: Math.round(Number(event.delta || 0) * 100) / 100,
-      balanceAfter: Math.round(runningBalance * 100) / 100,
+      delta: roundCurrencyAmount(event.delta),
+      balanceAfter: roundCurrencyAmount(runningBalance),
       description: event.description,
       note: event.note || null,
       sourceId: event.sourceId
@@ -666,9 +713,9 @@ export function listAccountBalanceHistory(userId, accountId, filters = {}) {
   }
 
   return {
-    account: toAccountResponse(account),
+    account: toAccountResponse(account, currentBalance),
     openingBalance,
-    currentBalance: Math.round(runningBalance * 100) / 100,
+    currentBalance,
     currency: account.currency || DEFAULT_CURRENCY,
     items
   };

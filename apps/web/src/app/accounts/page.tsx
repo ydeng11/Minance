@@ -22,6 +22,7 @@ import { buildInstitutionSuggestions, getCardPresetsForInstitution, getPresetMet
 import { SearchableSelect } from "./SearchableSelect";
 import { createDefaultClassMetadata } from "../../../../../packages/domain/src/accounts";
 import { resolveSupportedAccountTypes } from "./accountTypes";
+import { getAccountBalancePresentation } from "./balancePresentation";
 
 interface AccountSettingsDraft {
   sourceInstitution: string;
@@ -667,28 +668,34 @@ export default function AccountsPage() {
                     </button>
                     {!isCollapsed && (
                       <div className="mt-3 grid gap-3 md:grid-cols-2">
-                        {groupAccounts.map((entry) => (
-                          <article
-                            key={entry.id}
-                            className="relative cursor-pointer rounded-xl overflow-hidden aspect-[280/176]"
-                            data-testid={`account-row-${entry.id}`}
-                            onClick={() => openAccountSettings(entry)}
-                          >
-                            <CardFace
-                              sourceInstitution={entry.sourceInstitution}
-                              accountType={entry.accountType}
-                              displayName={entry.displayName}
-                              cover
-                            />
-                            {/* Gradient overlay for text readability */}
-                            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-                            {/* Account name + balance */}
-                            <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-end justify-between gap-3 p-4">
-                              <p className="text-lg font-semibold text-white">{entry.displayName}</p>
-                              <span className="text-lg font-semibold text-white">{formatBalance(entry.initialBalance, entry.currency)}</span>
-                            </div>
-                          </article>
-                        ))}
+                        {groupAccounts.map((entry) => {
+                          const balancePresentation = getAccountBalancePresentation(entry.accountType, entry.currentBalance);
+                          return (
+                            <article
+                              key={entry.id}
+                              className="relative cursor-pointer rounded-xl overflow-hidden aspect-[280/176]"
+                              data-testid={`account-row-${entry.id}`}
+                              onClick={() => openAccountSettings(entry)}
+                            >
+                              <CardFace
+                                sourceInstitution={entry.sourceInstitution}
+                                accountType={entry.accountType}
+                                displayName={entry.displayName}
+                                cover
+                              />
+                              {/* Gradient overlay for text readability */}
+                              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                              {/* Account name + balance */}
+                              <div className="pointer-events-none absolute bottom-0 left-0 right-0 flex items-end justify-between gap-3 p-4">
+                                <p className="text-lg font-semibold text-white">{entry.displayName}</p>
+                                <span className="flex flex-col items-end">
+                                  <span className="text-xs text-white/80">{balancePresentation.label}</span>
+                                  <span className="text-lg font-semibold text-white">{formatBalance(balancePresentation.amount, entry.currency)}</span>
+                                </span>
+                              </div>
+                            </article>
+                          );
+                        })}
                       </div>
                     )}
                   </section>

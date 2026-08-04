@@ -58,6 +58,7 @@ export interface Account {
   accountType: string;
   currency: string;
   initialBalance: number;
+  currentBalance: number;
   version: number;
   status: "active" | "closed";
   hidden: boolean;

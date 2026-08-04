@@ -1422,6 +1422,10 @@ test("api parity contract suite for categories/transactions/settings and missing
     });
     assert.equal(Array.isArray(list.payload?.accounts), true);
     assert.equal(list.payload?.accounts?.some((entry) => entry.id === assetAccountId), true);
+    assert.equal(
+      list.payload?.accounts?.find((entry) => entry.id === assetAccountId)?.currentBalance,
+      history.payload?.currentBalance
+    );
 
     const removableAccount = await apiRequest(context, "POST", "/v1/accounts", {
       token: accessToken,

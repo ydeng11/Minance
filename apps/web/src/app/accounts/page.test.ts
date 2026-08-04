@@ -5,6 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getSupportedAccountTypes } from "../../../../../packages/domain/src/accounts";
 import { resolveSupportedAccountTypes } from "./accountTypes";
+import { getAccountBalancePresentation } from "./balancePresentation";
 
 const pageSource = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "page.tsx"), "utf8");
 
@@ -46,4 +47,37 @@ test("account delete confirmation uses styled in-app controls", () => {
   assert.match(pageSource, /DANGER_CONFIRM_BUTTON_CLASS/);
   assert.match(pageSource, /Delete account/);
   assert.doesNotMatch(pageSource, /window\.confirm\(`Delete/);
+});
+
+test("account balance presentation distinguishes assets, debt, and credit balances", () => {
+  assert.deepEqual(getAccountBalancePresentation("checking", 125.5), {
+    label: "Current balance",
+    amount: 125.5
+  });
+  assert.deepEqual(getAccountBalancePresentation("credit", -80), {
+    label: "Amount owed",
+    amount: 80
+  });
+  assert.deepEqual(getAccountBalancePresentation("loan", -250), {
+    label: "Amount owed",
+    amount: 250
+  });
+  assert.deepEqual(getAccountBalancePresentation("credit", 0), {
+    label: "Amount owed",
+    amount: 0
+  });
+  assert.deepEqual(getAccountBalancePresentation("credit", 15), {
+    label: "Credit balance",
+    amount: 15
+  });
+  assert.deepEqual(getAccountBalancePresentation("checking", -25), {
+    label: "Current balance",
+    amount: -25
+  });
+});
+
+test("account cards render the calculated current balance rather than the starting balance", () => {
+  assert.match(pageSource, /getAccountBalancePresentation\(entry\.accountType, entry\.currentBalance\)/);
+  assert.match(pageSource, /formatBalance\(balancePresentation\.amount, entry\.currency\)/);
+  assert.doesNotMatch(pageSource, /formatBalance\(entry\.initialBalance, entry\.currency\)/);
 });
