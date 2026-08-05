@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-08-04
+
 ### Fixed
 
 - **Account balances**: Account cards and API responses now show each account's current signed balance, including recorded inflows, outflows, and manual adjustments while excluding deleted transactions.
